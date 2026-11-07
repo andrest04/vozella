@@ -91,7 +91,7 @@ export function SummaryTabView(props: SummaryTabViewProps) {
       {props.loadError ? (
         <Notice tone="warning">{props.loadError}</Notice>
       ) : mode === 'notes' ? (
-        <div className="flex flex-col gap-2">
+        <div className="flex max-w-reading flex-col gap-2">
           <label htmlFor="summary-notes" className="text-ui font-medium text-ink-muted">
             {labels.notesHeader}
           </label>
@@ -118,7 +118,7 @@ export function SummaryTabView(props: SummaryTabViewProps) {
       ) : !props.hasSummary ? (
         <p className="max-w-[44ch] py-6 text-read text-ink-muted">{labels.readyToGenerate}</p>
       ) : (
-        <article className="pb-6">
+        <article className="max-w-reading pb-6">
           <MarkdownView
             source={props.summary}
             testId="TxtSummaryContent"

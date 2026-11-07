@@ -147,6 +147,14 @@ describe('TranscriptTab', () => {
     await expect(ref.current?.()).resolves.toBe(stored);
   });
 
+  it('keeps the transcript to the reading measure, left-aligned', async () => {
+    install(STORED);
+    mount();
+    const box = await screen.findByTestId('TxtTranscriptContent');
+    expect(box).toHaveClass('max-w-reading');
+    expect(box.className).not.toMatch(/mx-auto/);
+  });
+
   it('keeps blank lines as lines', async () => {
     install('a\n\nb');
     mount();

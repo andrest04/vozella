@@ -8,7 +8,7 @@ import { LibraryFolders, type SidebarLocation } from '../library/LibraryFolders'
 import { AiPanelArea } from '../chat/AiPanel';
 import { ChatBody } from '../chat/ChatBody';
 import { CallPromptBar } from './CallPromptBar';
-import { Mark, cn } from '../../ui';
+import { Mark, cn, pageColumn } from '../../ui';
 import { NavRail } from './NavRail';
 import { StartupNotice } from './StartupNotice';
 import { routeOfTag, tagOfPath } from './navigation';
@@ -36,6 +36,15 @@ function useWorkspaceNavigation(): void {
   }, [pathname]);
 }
 
+/**
+ * The element around the routed page. The Library fills the area with its own panes, each
+ * scrolling on its own; every other page sits in the shared page column. The element stays the
+ * same across routes, so the page does not remount.
+ */
+export function contentColumn(pathname: string): string {
+  return pathname === '/library' ? 'flex min-h-0 flex-1 flex-col' : pageColumn;
+}
+
 /** Window frame: a sidebar and a content area that share the custom title bar strip at the top. */
 export function AppShell() {
   const t = useT();
@@ -45,10 +54,7 @@ export function AppShell() {
   // The sidebar shows the folders on every route, so the library store belongs to the window too.
   useEffect(() => connectLibrary(), []);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  // Record gets a wider column than the documents; the Library fills the area with its own panes,
-  // each scrolling on its own. The elements stay the same, so the page does not remount.
   const paned = pathname === '/library';
-  const wide = pathname === '/record';
   return (
     <div className="h-screen bg-paper text-ink">
       <button
@@ -77,13 +83,7 @@ export function AppShell() {
                 paned ? 'flex flex-col overflow-hidden' : 'overflow-y-auto pb-8',
               )}
             >
-              <div
-                className={
-                  paned
-                    ? 'flex min-h-0 flex-1 flex-col'
-                    : cn('mx-auto w-full px-10 pt-8', wide ? 'max-w-[960px]' : 'max-w-[720px]')
-                }
-              >
+              <div className={contentColumn(pathname)}>
                 <div className={paned ? 'shrink-0 px-4' : undefined}>
                   <CallPromptBar />
                 </div>

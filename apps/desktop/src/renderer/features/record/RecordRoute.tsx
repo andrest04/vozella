@@ -185,9 +185,9 @@ export function RecordRoute() {
       className={
         scrollSession
           ? 'flex flex-col gap-6'
-          : // Before a take the page is a document: the 640 px text column of the 720 px layout. The
-            // scroll margin keeps a control that takes focus clear of the sticky action row.
-            'mx-auto flex w-full max-w-[640px] flex-col gap-8 [&_*]:scroll-mb-28'
+          : // Before a take the page is a document across the shell's page column. The scroll
+            // margin keeps a control that takes focus clear of the sticky action row.
+            'flex w-full flex-col gap-8 [&_*]:scroll-mb-28'
       }
       data-testid="record-page"
       data-session={scrollSession ? 'true' : 'false'}
