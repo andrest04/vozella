@@ -7,47 +7,11 @@
       "skillPath": "skills/accessibility/SKILL.md",
       "computedHash": "88c64dead9bb55925c7b983f5fd95cfecf30bd8c076fd384cdb17019d1becd87"
     },
-    "analyzing-dotnet-performance": {
-      "source": "dotnet/skills",
-      "sourceType": "github",
-      "skillPath": "plugins/dotnet-diag/skills/analyzing-dotnet-performance/SKILL.md",
-      "computedHash": "88e4ef0fbace90c8606466966634e597fad09951878fbf9332df7b98bd9924ee"
-    },
     "assertion-quality": {
       "source": "dotnet/skills",
       "sourceType": "github",
       "skillPath": "plugins/dotnet-test/skills/assertion-quality/SKILL.md",
       "computedHash": "d681790389db1ae627328fbcdff0797355f0aeece3c2065f31dd31293ee6c72f"
-    },
-    "binlog-failure-analysis": {
-      "source": "dotnet/skills",
-      "sourceType": "github",
-      "skillPath": "plugins/dotnet-msbuild/skills/binlog-failure-analysis/SKILL.md",
-      "computedHash": "f5cfa834b002082f4a24de4c4b2b0fcb8b313d3dd21f1b7002d12035d41d9fe4"
-    },
-    "coverage-analysis": {
-      "source": "dotnet/skills",
-      "sourceType": "github",
-      "skillPath": "plugins/dotnet-test/skills/coverage-analysis/SKILL.md",
-      "computedHash": "249de7827abab7392ac86b9123d70e0c7f602cf874d24b29fcfbf802b8f0b736"
-    },
-    "csharp-xunit": {
-      "source": "github/awesome-copilot",
-      "sourceType": "github",
-      "skillPath": "skills/csharp-xunit/SKILL.md",
-      "computedHash": "3c224e79f92ec027de3d5f44d0ca3077f076cb1e1bfff6b0db5b09c34c3aecd2"
-    },
-    "dotnet-pinvoke": {
-      "source": "dotnet/skills",
-      "sourceType": "github",
-      "skillPath": "plugins/dotnet-advanced/skills/dotnet-pinvoke/SKILL.md",
-      "computedHash": "1a1b4ac063392df8e140363237e210ba4f7395561a181669df40a681571b0ffe"
-    },
-    "dump-collect": {
-      "source": "dotnet/skills",
-      "sourceType": "github",
-      "skillPath": "plugins/dotnet-diag/skills/dump-collect/SKILL.md",
-      "computedHash": "8ebf8877ca6f36f6580109334b2c9f166be5b12db95fdf367c551986156f87c7"
     },
     "electron-best-practices": {
       "source": "jwynia/agent-skills",
@@ -73,23 +37,11 @@
       "skillPath": ".agents/skills/impeccable/SKILL.md",
       "computedHash": "fd2bd2b37e16d8a5ed3a5101288b360b9dcad0d664f7f333cc1df7654e79ea1f"
     },
-    "msbuild-antipatterns": {
-      "source": "dotnet/skills",
-      "sourceType": "github",
-      "skillPath": "plugins/dotnet-msbuild/skills/msbuild-antipatterns/SKILL.md",
-      "computedHash": "5b7d4fb842b91370877740700d0a020d8e053a96c78a9078714b165bac5d2b20"
-    },
     "playwright-best-practices": {
       "source": "currents-dev/playwright-best-practices-skill",
       "sourceType": "github",
       "skillPath": "playwright-best-practices/SKILL.md",
       "computedHash": "88623575c97314e115f0e361a7d942e31d3b7a4e8925832257e1ad33f52096e4"
-    },
-    "run-tests": {
-      "source": "dotnet/skills",
-      "sourceType": "github",
-      "skillPath": "plugins/dotnet-test/skills/run-tests/SKILL.md",
-      "computedHash": "c2bc0e61c3c18d93d416283c91e70e8a05f8f73aca02bb8e3c4cd6f204a2cfdf"
     },
     "rust-best-practices": {
       "source": "apollographql/skills",
@@ -114,42 +66,6 @@
       "sourceType": "github",
       "skillPath": "skills/vitest/SKILL.md",
       "computedHash": "b26b7f8d10e860e944e0334c003207771707c4906514cb96c971faae13fba875"
-    },
-    "winui-code-review": {
-      "source": "microsoft/win-dev-skills",
-      "sourceType": "github",
-      "skillPath": "plugins/winui/agent-plugin/skills/winui-code-review/SKILL.md",
-      "computedHash": "295cbb4bb6df72875c655994fec1cf1e4afcdd5338f9cb9159f374409fafa0f8"
-    },
-    "winui-design": {
-      "source": "microsoft/win-dev-skills",
-      "sourceType": "github",
-      "skillPath": "plugins/winui/agent-plugin/skills/winui-design/SKILL.md",
-      "computedHash": "ee1b64f65b1b878efb847316be7e07abd620588398bef7b0e472f5775d7cf394"
-    },
-    "winui-dev-workflow": {
-      "source": "microsoft/win-dev-skills",
-      "sourceType": "github",
-      "skillPath": "plugins/winui/agent-plugin/skills/winui-dev-workflow/SKILL.md",
-      "computedHash": "4c4b5086510c5a8995c3ab3fe48c86f6034fcd45ae120ccd53b024a89f0e75e2"
-    },
-    "winui-packaging": {
-      "source": "microsoft/win-dev-skills",
-      "sourceType": "github",
-      "skillPath": "plugins/winui/agent-plugin/skills/winui-packaging/SKILL.md",
-      "computedHash": "0963b6e8dd6864f411845bf845e8f738b771b98590f1682e1bf4621cd8482dc8"
-    },
-    "winui-setup": {
-      "source": "microsoft/win-dev-skills",
-      "sourceType": "github",
-      "skillPath": "plugins/winui/agent-plugin/skills/winui-setup/SKILL.md",
-      "computedHash": "fe57cf24cf20957307433bac6aec142b97e8fcd3a300ea117ef995ec26a9697e"
-    },
-    "winui-ui-testing": {
-      "source": "microsoft/win-dev-skills",
-      "sourceType": "github",
-      "skillPath": "plugins/winui/agent-plugin/skills/winui-ui-testing/SKILL.md",
-      "computedHash": "9eb7a30118a190eb3c9ca346291df516b80ef235ed91117a08c5f4e821ca2517"
     }
   }
 }
