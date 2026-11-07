@@ -13,7 +13,7 @@ import es from '../../../../apps/desktop/src/renderer/i18n/locales/es.json';
 import uiEn from '../../../../apps/desktop/src/renderer/i18n/locales/ui.en.json';
 import uiEs from '../../../../apps/desktop/src/renderer/i18n/locales/ui.es.json';
 
-// The renderer resolves both the converted WinUI keys and the hand-written `Ui_` keys.
+// The renderer resolves both the en/es catalog keys and the hand-written `Ui_` keys.
 const enT = { ...en, ...uiEn } as Record<string, string>;
 const esT = { ...es, ...uiEs } as Record<string, string>;
 const t = (key: string): string => enT[key] ?? `?${key}`;

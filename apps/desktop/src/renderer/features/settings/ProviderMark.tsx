@@ -2,7 +2,7 @@ import type { SummaryProviderDto } from '@vozella/contracts';
 import { Cpu } from 'lucide-react';
 import { Icon } from '../../ui';
 
-// Provider marks, copied verbatim from MeetingLive.App/Controls/*Icon.xaml (24 x 24 canvas).
+// Provider marks as 24 x 24 canvas paths.
 // They are third-party trademarks: shown only beside the provider's name, never as the app brand.
 const MARKS = {
   ClaudeCode: {

@@ -1,14 +1,14 @@
-"""Draw the Vozella icons from the mark: MeetingLive.App/Assets and docs/brand, or the Electron app.
+"""Draw the Vozella icons from the mark: the docs/brand SVGs, or the Electron app icons.
 
 The mark is five flat bars hung from one line. Their lengths trace a V, so it
 reads as the initial and as a sound level at once. It sits on a 24-unit grid,
 which keeps it sharp at taskbar size. Needs Pillow, which the app does not:
 
-    python scripts/make_icons.py                           # MeetingLive.App/Assets and docs/brand
+    python scripts/make_icons.py                           # docs/brand
     python scripts/make_icons.py --electron-out DIR        # only DIR/icon.ico and DIR/tray.ico
     python scripts/make_icons.py --check-brand             # fail if docs/brand differs from the geometry
 
-With --electron-out nothing else is written: the WinUI assets and docs/brand stay untouched.
+With --electron-out nothing else is written: docs/brand stays untouched.
 """
 from __future__ import annotations
 
@@ -20,7 +20,6 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent
-ASSETS = ROOT / "MeetingLive.App" / "Assets"
 BRAND = ROOT / "docs" / "brand"
 
 INK = "#0a0a0a"
@@ -85,15 +84,6 @@ def render(size: int, background: str | None, foreground: str) -> Image.Image:
     return image.resize((size, size), Image.BOX)
 
 
-def on_canvas(width: int, height: int, tile: int) -> Image.Image:
-    """Center the tile on a transparent canvas, for wide tiles and the splash."""
-    image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    image.alpha_composite(
-        render(tile, INK, PAPER), ((width - tile) // 2, (height - tile) // 2)
-    )
-    return image
-
-
 def svg(background: str | None, foreground: str) -> str:
     """Return the mark as a 24-unit SVG, on a tile when `background` is set."""
     parts = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">']
@@ -150,23 +140,8 @@ def check_brand() -> bool:
     return ok
 
 
-def write_winui() -> None:
-    tiled = {
-        "Square150x150Logo.scale-200.png": 300,
-        "Square44x44Logo.scale-200.png": 88,
-        "Square44x44Logo.targetsize-24_altform-unplated.png": 24,
-        "Square44x44Logo.targetsize-48_altform-lightunplated.png": 48,
-        "StoreLogo.png": 50,
-    }
-    for name, size in tiled.items():
-        render(size, INK, PAPER).save(ASSETS / name)
-
-    # Windows tints lock screen badges, so this one carries only the mark.
-    render(48, None, PAPER).save(ASSETS / "LockScreenLogo.scale-200.png")
-    on_canvas(620, 300, 200).save(ASSETS / "Wide310x150Logo.scale-200.png")
-    on_canvas(1240, 600, 300).save(ASSETS / "SplashScreen.scale-200.png")
-    save_ico(ASSETS / "AppIcon.ico", ICON_SIZES)
-
+def write_brand() -> None:
+    """The brand SVGs under docs/brand."""
     BRAND.mkdir(parents=True, exist_ok=True)
     for name, (background, foreground) in BRAND_VARIANTS.items():
         (BRAND / name).write_text(svg(background, foreground), encoding="utf-8")
@@ -182,7 +157,7 @@ def main() -> int:
     if args.electron_out is not None:
         write_electron(args.electron_out)
         return 0
-    write_winui()
+    write_brand()
     return 0
 
 
