@@ -389,6 +389,8 @@ export class SummaryTabService {
     meetingId: string,
     indexes: readonly number[],
     now: Date,
+    /** The description labels in the app language; the builder's English ones when omitted. */
+    labels?: { readonly owner: string; readonly meeting: string },
   ): Promise<ActionItemsIcsResult> {
     const record = await this.deps.meetings.get(meetingId);
     if (record === null) return { status: 'not-found' };
@@ -404,6 +406,7 @@ export class SummaryTabService {
       items: chosen,
       now,
       uidSeed: record.id,
+      ...(labels === undefined ? {} : { labels }),
     });
     return { status: 'ready', text, count, fileName: icsFileName(record.title) };
   }

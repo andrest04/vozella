@@ -170,7 +170,10 @@ export class SummariesController {
   ): Promise<ExportIcsResult> {
     try {
       const now = this.deps.now?.() ?? new Date();
-      const ics = await this.deps.tab.actionItemsIcs(meetingId, indexes, now);
+      const ics = await this.deps.tab.actionItemsIcs(meetingId, indexes, now, {
+        owner: this.deps.t('Ui_IcsOwnerLabel'),
+        meeting: this.deps.t('Ui_IcsMeetingLabel'),
+      });
       if (ics.status !== 'ready') {
         return ics.status === 'empty'
           ? { status: 'empty' }

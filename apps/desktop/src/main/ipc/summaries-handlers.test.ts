@@ -551,6 +551,10 @@ describe('action item deadlines (T4)', () => {
     expect(written[0]!.text.startsWith('BEGIN:VCALENDAR\r\n')).toBe(true);
     expect(written[0]!.text).toContain('DTSTART;VALUE=DATE:20260904');
     expect(written[0]!.text).toContain('DTSTAMP:20261106T100000Z');
+    // The description labels come from the app language through the main translator.
+    const unfolded = (written[0]?.text ?? '').replace(/\r\n /g, '');
+    expect(unfolded).toContain('Ui_IcsMeetingLabel: ');
+    expect(unfolded).not.toContain('Meeting: ');
   });
 
   it('a cancelled dialog writes nothing', async () => {

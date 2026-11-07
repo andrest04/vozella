@@ -651,6 +651,20 @@ describe('actionItemsIcs (action item deadlines T4)', () => {
     expect(await service.actionItemsIcs('zzz', [0], now)).toEqual({ status: 'not-found' });
   });
 
+  it('writes the description with the given labels', async () => {
+    const owned = items.map((item, at) => (at === 0 ? { ...item, owner: 'Ana' } : item));
+    const { service } = setup([rec('a', { title: 'Clase', actionItems: owned })]);
+    const result = await service.actionItemsIcs('a', [0], now, {
+      owner: 'Responsable',
+      meeting: 'Reunión',
+    });
+    if (result.status !== 'ready') throw new Error(result.status);
+    const text = result.text.replace(/\r\n /g, '');
+    expect(text).toContain('Responsable: Ana');
+    expect(text).toContain('Reunión: Clase');
+    expect(text).not.toContain('Meeting: Clase');
+  });
+
   it('a duplicated index is written once', async () => {
     const { service } = setup([rec('a', { actionItems: items })]);
     const result = await service.actionItemsIcs('a', [2, 2, 0], now);

@@ -190,7 +190,7 @@
   "Ui_AccelerationActiveGpu": "Se ejecuta en la tarjeta gráfica (GPU)",
   "Ui_LiveTranscriptionDescription": "Muestra subtítulos en pantalla mientras grabas. La transcripción guardada siempre se hace a partir de la grabación al detenerla; desactivar esto solo omite la vista previa en vivo.",
   "Ui_LiveNeedsEngine": "Descarga el motor de transcripción para usar esto.",
-  "Ui_SpeakerLabelsDescription": "Etiqueta hasta cuatro voces como Hablante 1 a 4. Necesita un modelo adicional pequeño (unos 0,14 GB) y usa más recursos del PC al transcribir.",
+  "Ui_SpeakerLabelsDescription": "Etiqueta hasta cuatro voces como Hablante 1 a 4. Necesita un modelo adicional pequeño (unos 0,14 GB) y usa más recursos del PC al transcribir. Las etiquetas son menos fiables con más de cuatro personas, cuando hablan a la vez o con audio que no está en inglés.",
   "Ui_SpeakerDownloading": "Descargando el modelo de hablantes",
   "Ui_FitRunsWell": "Funciona bien en este PC",
   "Ui_FitMayBeSlow": "Puede ir lento",
@@ -337,5 +337,7 @@
   "Ui_ActionItemsExported": "{0} elementos de acción guardados en el archivo de calendario.",
   "Ui_ActionItemsExportedOne": "1 elemento de acción guardado en el archivo de calendario.",
   "Ui_ActionItemsExportEmpty": "Ninguno de estos elementos tiene fecha todavía.",
-  "Ui_ActionItemsExportFailed": "No se pudo guardar el archivo de calendario: {0}"
+  "Ui_ActionItemsExportFailed": "No se pudo guardar el archivo de calendario: {0}",
+  "Ui_IcsOwnerLabel": "Responsable",
+  "Ui_IcsMeetingLabel": "Reunión"
 }
