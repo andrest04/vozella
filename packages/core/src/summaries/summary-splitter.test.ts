@@ -15,6 +15,21 @@ describe('splitSummaryResponse', () => {
     expect(r.suggestedTitle).toBeNull();
   });
 
+  it('reads owner and deadline, and resolves dates only when recordedAt is given', () => {
+    const reply =
+      '## Summary\nBody\n\n## Action Items\n- [ ] Bring the draft — Owner: Luis — Due: in_days:3 "in three days"\n';
+    expect(splitSummaryResponse(reply).actionItems).toEqual([
+      {
+        text: 'Bring the draft',
+        isDone: false,
+        owner: 'Luis',
+        deadline: { quote: 'in three days', kind: { type: 'in_days', days: 3 } },
+      },
+    ]);
+    const resolved = splitSummaryResponse(reply, { recordedAt: '2026-11-04T10:00:00-05:00' });
+    expect(resolved.actionItems[0]?.deadline?.date).toBe('2026-11-07');
+  });
+
   it('falls back to the first checkbox line without headers', () => {
     const r = splitSummaryResponse('Notes here.\n- [ ] Do it\n');
     expect(r.summaryMarkdown).toBe('Notes here.');

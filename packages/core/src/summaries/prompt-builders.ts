@@ -24,9 +24,21 @@ export function toEnglishLanguageName(code: string | null | undefined): string {
   return Object.hasOwn(LANGUAGE_NAMES, key) ? (LANGUAGE_NAMES[key] ?? 'Spanish') : 'Spanish';
 }
 
+/**
+ * Labels stay English (`Owner`, `Due`) in every language so the parser reads one stable form; the
+ * quote is in the transcript's words. Each line must parse with `parseActionItems`.
+ */
 const ACTION_EXAMPLES: Readonly<Record<'en' | 'es', string>> = {
-  en: '- [ ] Send the revised deck — Owner: Ana — Due: Friday\n- [ ] Review the API contract',
-  es: '- [ ] Enviar el deck revisado — Owner: Ana — Due: viernes\n- [ ] Revisar el contrato de la API',
+  en: [
+    '- [ ] Send the revised deck — Owner: Ana — Due: weekday:fri "by Friday"',
+    '- [ ] Bring the progress on the model — Due: next_meeting "for next class"',
+    '- [ ] Review the API contract',
+  ].join('\n'),
+  es: [
+    '- [ ] Enviar el deck revisado — Owner: Ana — Due: weekday:fri "el viernes"',
+    '- [ ] Traer el avance del modelo — Due: next_meeting "para la siguiente clase"',
+    '- [ ] Revisar el contrato de la API',
+  ].join('\n'),
 };
 
 const isEnglish = (code: string | null | undefined): boolean =>
@@ -134,8 +146,17 @@ Omit a section with no content; do not pad.
 ## Action Items
 
 Only real follow-ups that were stated or clearly agreed, each as a Markdown checkbox.
-Include owner and due date only when the transcript states them. If priority was
-stated, append it. Examples:
+If priority was stated, add it to the task text. Append " — Owner: <name>" only when
+the transcript names who will do it. Append " — Due: <token> "<quote>"" only when a
+deadline was spoken: one token, then the exact transcript words in double quotes.
+Tokens:
+- next_meeting: the next class, session, or meeting
+- weekday:mon to weekday:sun: a named weekday
+- in_days:N: in N days
+- next_week: next week
+- date:YYYY-MM-DD: only an explicit calendar date; take the year from <recorded_at>
+- unknown: a spoken deadline that fits none of the above
+Never compute or invent a date. Omit Due when no deadline was said. Examples:
 ${actionExamples}
 
 If there are none, leave this section empty (keep the heading); talks, classes, and

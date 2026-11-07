@@ -21,7 +21,7 @@ Out of scope: Google/Microsoft OAuth, reading calendars, Google Tasks / Microsof
 - One shared prompt for all engines (`packages/core/src/summaries/prompt-builders.ts`); prompt tests and `docs/port/specs/summaries.md` must agree.
 - Meeting storage is Markdown; old files must still load. `recordedAt` has a numeric offset only (no IANA zone).
 - Test first (RED→GREEN), en + es keys for all UI text, `pnpm check` before each commit.
-- Delivery strategy: ask-on-risk (forecast ~1000–1300 authored lines > 400).
+- Delivery strategy: exception-ok (solo project: no PRs, merge to main; 400-line budget does not apply, per user 2026-11-06).
 
 ## Tasks
 - [x] T1 Domain: extend `ActionItem` with `owner?`, `deadline?` (`quote`, `kind`, `date?`); parse the model line format; persist in meeting Markdown with round-trip + legacy compatibility. Route: delegated (writer trigger: 3+ non-trivial files).
@@ -42,6 +42,8 @@ Out of scope: Google/Microsoft OAuth, reading calendars, Google Tasks / Microsof
 
 ## Progress
 - 2026-11-06: exploration done (pipeline map), branch created. RDD: off (global).
+- 2026-11-06: T1+T2 done (delegated writer), commit `897a9c1`. core 2053 tests, contracts 65 tests, typecheck + lint pass; parent spot check 78/78. Format: `Due: <token> "<quote>"`; data in a `## Action Item Data` JSON section; legacy output byte-identical.
+- 2026-11-06: T3 started (delegated writer).
 
 ## Next step
-T1 + T2.
+Finish T3, then T4. Delivery: merge to main when done.

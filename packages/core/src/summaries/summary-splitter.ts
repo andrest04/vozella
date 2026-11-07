@@ -1,5 +1,5 @@
 import type { ActionItem } from '../library/meeting';
-import { isCheckboxLine, parseActionItems } from './action-items';
+import { isCheckboxLine, parseActionItems, type ActionItemParseOptions } from './action-items';
 
 export interface SplitSummary {
   readonly summaryMarkdown: string;
@@ -28,8 +28,14 @@ function stripCodeFence(lines: string[]): string[] {
   return lines;
 }
 
-/** Splits a model reply into summary, action items and raw (not normalized) title. */
-export function splitSummaryResponse(raw: string): SplitSummary {
+/**
+ * Splits a model reply into summary, action items and raw (not normalized) title. `options` go to
+ * `parseActionItems`: with `recordedAt`, deadline dates are resolved.
+ */
+export function splitSummaryResponse(
+  raw: string,
+  options: ActionItemParseOptions = {},
+): SplitSummary {
   const lines = stripCodeFence(raw.replace(/\r\n/g, '\n').split('\n'));
 
   let suggestedTitle: string | null = null;
@@ -58,7 +64,7 @@ export function splitSummaryResponse(raw: string): SplitSummary {
     summaryLines = lines.slice();
   } else {
     summaryLines = lines.slice(0, splitIndex);
-    actionItems = parseActionItems(lines.slice(splitIndex).join('\n'));
+    actionItems = parseActionItems(lines.slice(splitIndex).join('\n'), options);
   }
 
   if (titleIndex >= 0) {
