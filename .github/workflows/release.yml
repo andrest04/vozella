@@ -28,7 +28,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
-      # Full history and tags, to list what changed since the previous release.
+      # Full history and tags, to compute the version and list what changed since the previous release.
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
@@ -50,14 +50,23 @@ jobs:
 
       - run: pnpm check
 
-      # package.json holds major.minor; the patch counts the builds. Run 2 is the first release, 0.9.0.
+      # The version follows the Conventional Commits since the last v* tag (scripts/next-version.mjs):
+      # feat bumps the minor, a breaking change the minor while at 0.x, anything else the patch.
+      # It is written into package.json for this build only; the release step tags it.
       - name: Set the build version
         shell: pwsh
         run: |
           $file = "apps/desktop/package.json"
-          $manifest = Get-Content $file -Raw | ConvertFrom-Json
-          $parts = $manifest.version.Split(".")
-          $version = "$($parts[0]).$($parts[1]).$([int]$env:GITHUB_RUN_NUMBER - 2)"
+          $version = "$(node scripts/next-version.mjs)".Trim()
+          if (-not $version) {
+            Write-Error "scripts/next-version.mjs printed no version"
+            exit 1
+          }
+          # No commits since the last tag (a manual run) gives that tag's version back.
+          if (git tag --list "v$version") {
+            Write-Error "v$version is already released; nothing new to publish"
+            exit 1
+          }
           node -e "const fs=require('fs');const m=JSON.parse(fs.readFileSync('$file','utf8'));m.version='$version';fs.writeFileSync('$file',JSON.stringify(m,null,2)+'\n')"
           "VERSION=$version" >> $env:GITHUB_ENV
 
