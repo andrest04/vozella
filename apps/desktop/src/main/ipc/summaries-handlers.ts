@@ -6,12 +6,15 @@ import {
   summariesChooseLocalModel,
   summariesCopyActions,
   summariesCopyText,
+  summariesExportActionItemsIcs,
   summariesGenerate,
   summariesHardware,
   summariesLoadTab,
   summariesProviderStatus,
   summariesReplaceSummary,
   summariesSaveNotes,
+  summariesSetActionItemDate,
+  summariesSetNextSessionDate,
   summariesSetTemplate,
   summariesToggleAction,
   summariesWriteClipboard,
@@ -63,6 +66,15 @@ export function registerSummariesHandlers(deps: SummariesHandlerDeps): void {
   });
   registerRequest(server, summariesSetTemplate, ({ meetingId, templateId }) =>
     controller.setTemplate(meetingId, templateId),
+  );
+  registerRequest(server, summariesSetActionItemDate, ({ meetingId, index, date }) =>
+    controller.setActionItemDate(meetingId, index, date),
+  );
+  registerRequest(server, summariesSetNextSessionDate, ({ meetingId, date }) =>
+    controller.setNextSessionDate(meetingId, date),
+  );
+  registerRequest(server, summariesExportActionItemsIcs, ({ meetingId, indexes }) =>
+    controller.exportActionItemsIcs(meetingId, indexes),
   );
   registerRequest(server, summariesProviderStatus, () => controller.providerStatus());
   registerRequest(server, summariesHardware, () => controller.hardwareOptions());

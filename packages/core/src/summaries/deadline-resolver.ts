@@ -13,6 +13,12 @@ function meetingDay(recordedAt: string): number | null {
 
 const isoDay = (dayMs: number): string => new Date(dayMs).toISOString().slice(0, 10);
 
+/** The meeting's local calendar day as `YYYY-MM-DD` (its recorded offset); null when unreadable. */
+export function meetingLocalDay(recordedAt: string): string | null {
+  const day = meetingDay(recordedAt);
+  return day === null ? null : isoDay(day);
+}
+
 /**
  * Turns a deadline kind into `YYYY-MM-DD` in the meeting's calendar (its recorded offset, never
  * the machine zone). Rules:

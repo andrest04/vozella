@@ -84,6 +84,40 @@ describe('JsonSettingsStore', () => {
     });
   });
 
+  it('next-session dates: remembered per title key, kept across settings updates', async () => {
+    expect(await store().loadNextSessionDate('weekly sync')).toBeNull();
+    await store().update({ uiLanguage: 'es' });
+    await store().rememberNextSessionDate('weekly sync', '2026-11-12');
+    await store().rememberNextSessionDate('diseño', '2026-11-13');
+    await store().update({ summaryLanguage: 'en' });
+    expect(await store().loadNextSessionDate('weekly sync')).toBe('2026-11-12');
+    expect(await store().loadNextSessionDate('diseño')).toBe('2026-11-13');
+    const doc = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>;
+    expect(doc).toMatchObject({
+      uiLanguage: 'es',
+      summaryLanguage: 'en',
+      nextSessionDates: { 'weekly sync': '2026-11-12', diseño: '2026-11-13' },
+    });
+  });
+
+  it('next-session dates: concurrent remembers and updates all survive (B17)', async () => {
+    await Promise.all([
+      store().rememberNextSessionDate('a', '2026-11-12'),
+      store().update({ uiLanguage: 'es' }),
+      store().rememberNextSessionDate('b', '2026-11-13'),
+    ]);
+    expect(await store().loadNextSessionDate('a')).toBe('2026-11-12');
+    expect(await store().loadNextSessionDate('b')).toBe('2026-11-13');
+    expect((await store().load()).uiLanguage).toBe('es');
+  });
+
+  it('next-session dates: a malformed entry in the file reads as none', async () => {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, '{"nextSessionDates":{"a":"soon","b":"2026-11-12"}}');
+    expect(await store().loadNextSessionDate('a')).toBeNull();
+    expect(await store().loadNextSessionDate('b')).toBe('2026-11-12');
+  });
+
   it('B5: a damaged file loads defaults and is kept aside, not overwritten', async () => {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, '{oops');

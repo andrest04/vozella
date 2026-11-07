@@ -26,8 +26,8 @@ Out of scope: Google/Microsoft OAuth, reading calendars, Google Tasks / Microsof
 ## Tasks
 - [x] T1 Domain: extend `ActionItem` with `owner?`, `deadline?` (`quote`, `kind`, `date?`); parse the model line format; persist in meeting Markdown with round-trip + legacy compatibility. Route: delegated (writer trigger: 3+ non-trivial files).
 - [x] T2 Deadline resolver (pure): kinds `date:YYYY-MM-DD`, `weekday:<mon..sun>`, `in_days:<n>`, `next_week`, `next_meeting`, `none` → date relative to `recordedAt`. Route: delegated with T1 or inline.
-- [ ] T3 Prompt: ask for `— Owner: … — Due: <kind> "<exact quote>"`; update prompt tests + spec doc. Route: delegated.
-- [ ] T4 Contracts + core service: set/clear item date, remember next-session date per meeting title, build `.ics` text, `summaries.exportIcs` IPC with save dialog. Route: delegated.
+- [x] T3 Prompt: ask for `— Owner: … — Due: <kind> "<exact quote>"`; update prompt tests + spec doc. Route: delegated.
+- [x] T4 Contracts + core service: set/clear item date, remember next-session date per meeting title, build `.ics` text, `summaries.exportIcs` IPC with save dialog. Route: delegated.
 - [ ] T5 Renderer: confirmation queue UI in the summary tab, date editing, export button, en/es i18n, a11y. Route: delegated.
 - [ ] T6 e2e: Playwright spec for review + export with stubbed dialog. Route: delegated.
 
@@ -43,7 +43,9 @@ Out of scope: Google/Microsoft OAuth, reading calendars, Google Tasks / Microsof
 ## Progress
 - 2026-11-06: exploration done (pipeline map), branch created. RDD: off (global).
 - 2026-11-06: T1+T2 done (delegated writer), commit `897a9c1`. core 2053 tests, contracts 65 tests, typecheck + lint pass; parent spot check 78/78. Format: `Due: <token> "<quote>"`; data in a `## Action Item Data` JSON section; legacy output byte-identical.
-- 2026-11-06: T3 started (delegated writer).
+- 2026-11-06: T3 done (delegated writer), commit `b08efa1`. core 2057 tests, typecheck + lint pass; parent spot check 82/82. Prompt keeps English labels `Owner:`/`Due:` in both languages; priority goes inside the task text; prompt-size test cap raised to 3650 chars (local context 4096). `summaryResultFromResponse(id, raw, request?)` resolves dates only when given the request: engines don't pass it yet, so T4 resolves in `summary-service.ts` (it also knows the remembered next-session date).
+- 2026-11-06: T4 done (delegated writer). core 2098, contracts 69, platform 524 (+17 skipped), desktop 2259 (+6 skipped) tests pass; typecheck + lint pass; parent spot check 67/67. IPC for T5: `summaries.setActionItemDate {meetingId,index,date|null}`, `summaries.setNextSessionDate {meetingId,date}` (rejects dates on/before the meeting day), `summaries.exportActionItemsIcs {meetingId,indexes}` → exported|cancelled|empty|failed. Remembered dates live in `settings.json` key `nextSessionDates` (port `NextSessionDateStore`). Waiting item = `deadline.kind.type==='next_meeting'` with no `date`. ICS descriptions use English labels (builder accepts `labels`; T5 should pass localized ones).
+- 2026-11-06: T5 started (delegated writer).
 
 ## Next step
-Finish T3, then T4. Delivery: merge to main when done.
+Finish T5, then T6. Delivery: merge to main when done.
