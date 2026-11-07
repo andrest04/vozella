@@ -217,6 +217,13 @@ Constructed with `recordedAt` (`default` means unknown). Constants: `WindowLengt
 
 Results with no tags, or a single speaker, are returned unchanged, so the output without diarization is identical to the C# rules. A real two-word interjection ("yes, sure") is kept; a single short word from another speaker inside someone's sentence is not.
 
+**Port divergence: the local user as "You" (Electron port, `mic-activity.ts`, `local-speaker.ts`).** The recording is one mixed stream, so Sortformer cannot tell the microphone from the meeting audio. The capture side measures the RMS of the microphone and of the output before mixing, per `MIC_ACTIVITY_FRAME_MS = 50 ms` frame, and `MicActivityRecorder` keeps the ranges where the microphone dominates:
+- A frame is `microphone` when the mic RMS is at least `MIC_NOISE_FLOOR_RMS = 0.01` (about -40 dBFS) AND at least `MIC_DOMINANCE_RATIO = 2` times the output RMS (about 6 dB); `output` when the output is above the floor and louder than the mic; otherwise `quiet` (double talk and bleed count as quiet). Speaker echo and headset bleed reach the mic far weaker than the digital output, so they never qualify.
+- Hysteresis: `MIC_ENTER_FRAMES = 2` microphone frames in a row open a range, which starts at the first of them; `MIC_HANG_FRAMES = 6` non-microphone frames in a row (300 ms) or `MIC_OUTPUT_EXIT_FRAMES = 2` output frames in a row close it. A range ends at its last microphone frame: the hang bridges pauses between words, it never extends a range.
+- Before smoothing, every word with at least `LOCAL_SPEAKER_MIN_SHARE = 0.5` of its span inside a range gets the local speaker, tagged by Sortformer or not; other words keep their tag. Smoothing then treats the local user like any speaker. Lines of the local user are written `[ You ]`.
+- Live: each frame may carry its levels (`pushFrame(samples, rate, levels)`); they are recorded when the frame reaches the engine, so dropped frames shift neither timeline. Offline: the ranges come from the sidecar `<name>.mic.json` next to `<name>.wav` (`{"version":1,"ranges":[[startMs,endMs],...]}`, sorted, disjoint); an invalid or missing sidecar reads as a legacy recording.
+- Used only while speaker labels actually run (setting on AND Sortformer model present): with labels off the transcript has no labels, `[ You ]` included. With no microphone, a muted one, or a legacy recording nothing changes.
+
 Untimed windows (`FormatUntimedWindows`, safety net for no-word results): if `duration <= 30 s` one line. Else tokens by whitespace; `windowCount = min(ceil(duration / 30 s), tokens)`; if <= 1 one line; else window i gets tokens `[i*N/W, (i+1)*N/W)` (integer division) and time range `start + duration*i/W` to `start + duration*(i+1)/W`, with the last window ending exactly at `end`. Speaker tags are never emitted for untimed windows.
 
 ### 3.7 Stamp format (`TranscriptStampFormatter`)
@@ -298,7 +305,7 @@ Downloader algorithm:
 - `IsHeader(line)`: non-empty and (TrimStart) starts with `Recorded ` or `Ended ` (ordinal).
 - Stamp read: the line must start with `[`; the stamp is the text up to the first `]` (position must be > 1). Range parse: split at the first `-` (not first or last char); each side is `m...m:ss.ff` where minutes has at least 2 digits (the colon index must be >= 2), seconds are exactly 2 digits and <= 59, hundredths exactly 2 digits, `.` exactly 3 chars after the colon, side length exactly dot+3. Value = minutes + seconds + hundredths*10 ms.
 - `TryParseEnd`: the end of the range, false if the stamp is malformed.
-- `ExtractBody`: empty gives `""`; no valid stamp gives `line.Trim()`; else the text after `]` with an optional ` [ Speaker-<digits> ] ` removed (requires a space before the closing `]`, at least one digit), trimmed.
+- `ExtractBody`: empty gives `""`; no valid stamp gives `line.Trim()`; else the text after `]` with an optional ` [ Speaker-<digits> ] ` (or, in the port, ` [ You ] `) removed (requires a space before the closing `]`, at least one digit), trimmed.
 
 `TranscriptionLanguageCatalog` and `InferenceCatalog` are static lists (see 2.7 and 3.15).
 
@@ -319,7 +326,7 @@ Return ONLY the polished transcript. No preamble, no code fences, no commentary.
 
 Rules:
 - Keep the "Recorded ..." and "Ended ..." headers (if present) and every [start-end] prefix byte-for-byte.
-- Keep existing "[ Speaker-N ]" labels when present. Do not add, drop, or rename speakers.
+- Keep existing "[ Speaker-N ]" and "[ You ]" labels when present. Do not add, drop, or rename speakers.
 - Only edit the spoken text after the stamp and speaker label.
 - Fix punctuation, Spanish/English accents, truecasing, and well-known acronyms (ONU, NASA, FBI, UNESCO).
 - Convert obvious questions to ¿? / ?.
@@ -381,7 +388,7 @@ Ended 2026-11-02 14:52
 
 - Header lines are optional (`Recorded` is omitted when the recording time is unknown). `Ended` is added by the pipeline after the offline pass.
 - Stamp: `[mm:ss.ff-mm:ss.ff]`, minutes may exceed 59 and have 2 or more digits.
-- Speaker label: `[ Speaker-N ]` with N >= 1 (1-4 with Sortformer); absent when untagged.
+- Speaker label: `[ Speaker-N ]` with N >= 1 (1-4 with Sortformer); absent when untagged; `[ You ]` for the local user (stored in English like the headers; pages show it in the UI language, `Ui_SpeakerYou`).
 - A starred line has the literal prefix `* ` before the `[`. When a transcript has no stamped lines, highlight marks are appended as `* mm:ss.ff` lines.
 - Live interim lines use the same format but are never persisted unless committed at Stop; an interim without word timings and without elapsed audio is a bare text line with no stamp.
 

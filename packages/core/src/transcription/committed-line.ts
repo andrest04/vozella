@@ -1,4 +1,5 @@
 import { HIGHLIGHT_MARKER_PREFIX } from './highlights';
+import { SPEAKER_LABEL_PATTERN } from './stamp-format';
 
 /** Reads committed transcript lines in the stamp format (spec 3.13). */
 
@@ -55,8 +56,10 @@ export function parseCommittedLineStart(line: string): number | null {
   return readStamp(unstar(line))?.startMs ?? null;
 }
 
+const LEADING_SPEAKER_LABEL = new RegExp(`^ ${SPEAKER_LABEL_PATTERN.source}`);
+
 function stripSpeakerTag(afterStamp: string): string {
-  const match = /^ \[ Speaker-(\d+) \]/.exec(afterStamp);
+  const match = LEADING_SPEAKER_LABEL.exec(afterStamp);
   return match ? afterStamp.slice(match[0].length) : afterStamp;
 }
 

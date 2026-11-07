@@ -1,4 +1,6 @@
 import type { AsrResult, AsrWord } from './asr-types';
+import { markLocalSpeaker } from './local-speaker';
+import type { MicActivity } from './mic-activity';
 import { IDEA_PAUSE_MS, majoritySpeakerTag, smoothSpeakerTags } from './speaker-smoothing';
 import { formatHeader, formatLine } from './stamp-format';
 
@@ -11,6 +13,11 @@ const splitWhitespace = (text: string): string[] => text.split(/\s+/).filter((t)
 export interface AccumulatorOptions {
   /** Line separator of the produced text. Internally text uses `\n`; the platform one is a persistence concern. */
   readonly newline?: string;
+  /**
+   * When the local user spoke into the microphone. Words it dominated become `[ You ]`. Pass it
+   * only while speaker labels run: with labels off the transcript has no labels at all.
+   */
+  readonly micActivity?: MicActivity | null;
 }
 
 interface Window {
@@ -32,6 +39,7 @@ export class StreamingTranscriptAccumulator {
   private lastEndMs = 0;
   private wroteHeader = false;
   private readonly newline: string;
+  private readonly micActivity: MicActivity | null;
 
   /** `recordedAtMs` null means the recording time is unknown: no header. */
   constructor(
@@ -39,6 +47,7 @@ export class StreamingTranscriptAccumulator {
     options: AccumulatorOptions = {},
   ) {
     this.newline = options.newline ?? '\n';
+    this.micActivity = options.micActivity ?? null;
   }
 
   apply(result: AsrResult): void {
@@ -109,8 +118,9 @@ export class StreamingTranscriptAccumulator {
     text: string,
     commitTiming: boolean,
   ): { lines: string[]; bare: boolean } {
-    // Flicker and untagged words are cleaned first, so lines split on real turns only.
-    const words = smoothSpeakerTags(result.words);
+    // The microphone names the local user first; then flicker and untagged words are cleaned,
+    // so lines split on real turns only.
+    const words = smoothSpeakerTags(markLocalSpeaker(result.words, this.micActivity));
     const first = words[0];
     const last = words[words.length - 1];
     let startMs: number;

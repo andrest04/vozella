@@ -2,6 +2,7 @@ import type { CancelSignal } from '../cancel';
 import { engineLocaleFor } from '../settings/languages';
 import { StreamingTranscriptAccumulator } from './accumulator';
 import { MEETING_GEOMETRY } from './asr-types';
+import type { MicActivity } from './mic-activity';
 import { distinctPercent, toPercent } from './progress';
 import { TranscriptionCancelledError, type AudioFrameReader } from './ports';
 import type { NemoSpeechRecognizerFactory } from './recognizer-factory';
@@ -14,6 +15,11 @@ export interface TranscribeRequest {
   readonly language: string | null;
   readonly recordedAtMs: number | null;
   readonly speakerDiarization: boolean;
+  /**
+   * When the local user spoke, read from the recording's sidecar; null or absent for a legacy
+   * recording, an import or a take without a microphone. Used only while speaker labels run.
+   */
+  readonly micActivity?: MicActivity | null;
   /** Whole percent of the audio; each value is reported once. */
   readonly onProgress?: (percent: number) => void;
   readonly cancel?: CancelSignal;
@@ -45,7 +51,9 @@ export class TranscriptionService {
         interimResults: true,
         diarization: created.diarization,
       });
-      const accumulator = new StreamingTranscriptAccumulator(request.recordedAtMs);
+      const accumulator = new StreamingTranscriptAccumulator(request.recordedAtMs, {
+        micActivity: created.diarization ? (request.micActivity ?? null) : null,
+      });
       source = this.deps.audio.open(request.audioPath);
       const report = distinctPercent((percent) => request.onProgress?.(percent));
       const channels = Math.max(1, source.channels);

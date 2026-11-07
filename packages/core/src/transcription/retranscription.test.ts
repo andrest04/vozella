@@ -408,7 +408,7 @@ describe('transcript polish', () => {
       'Return ONLY the polished transcript',
       'Keep the "Recorded ..." and "Ended ..." headers',
       'byte-for-byte',
-      'Keep existing "[ Speaker-N ]" labels when present',
+      'Keep existing "[ Speaker-N ]" and "[ You ]" labels when present',
       'Do not add, drop, or rename speakers',
       'Do not add speakers, action items, or a summary',
       'Do not invent content',
