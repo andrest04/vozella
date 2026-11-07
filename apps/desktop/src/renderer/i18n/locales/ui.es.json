@@ -108,6 +108,7 @@
   "Ui_SpeakerModelFailed": "Las etiquetas de hablante siguen desactivadas.",
   "Ui_SpeakerDeleteFailed": "No se pudo eliminar el modelo de hablantes: {0}",
   "Ui_SpeakerModel": "Modelo de hablantes",
+  "Ui_SpeakerYou": "Tú",
   "Ui_RestartRefused": "Vozella no puede reiniciarse mientras hay una grabación en curso. Termínala y vuelve a intentarlo.",
   "Ui_SummaryLocalModelMissing": "El modelo local de resumen seleccionado todavía no se ha descargado. Descárgalo primero desde Configuración.",
   "Ui_SummaryLocalEmpty": "El modelo local no devolvió ningún contenido.",

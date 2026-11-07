@@ -1,6 +1,7 @@
 /** One displayed piece of a transcript line. The pieces joined give back the stored line. */
 export interface LinePart {
-  readonly kind: 'star' | 'stamp' | 'text';
+  /** `you`: the local user label `[ You ]` right after the stamp; pages show it localized. */
+  readonly kind: 'star' | 'stamp' | 'you' | 'text';
   readonly text: string;
 }
 
@@ -15,6 +16,8 @@ export interface TranscriptLine {
 }
 
 const STAMP = /^\[\d+:\d{2}\.\d{2}-\d+:\d{2}\.\d{2}\]/;
+/** The stored name of the local user, exactly as the transcription writes it. */
+export const YOU_LABEL = '[ You ]';
 const START = /^(?:\* )?\[(\d+):(\d{2})\.(\d{2})-/;
 
 /** The start second of a stamped line, or null. Header lines and mid-line brackets give null. */
@@ -46,6 +49,10 @@ export function parseLine(text: string): readonly LinePart[] {
   if (stamp) {
     parts.push({ kind: 'stamp', text: stamp[0] });
     rest = rest.slice(stamp[0].length);
+    if (rest.startsWith(` ${YOU_LABEL}`)) {
+      parts.push({ kind: 'text', text: ' ' }, { kind: 'you', text: YOU_LABEL });
+      rest = rest.slice(YOU_LABEL.length + 1);
+    }
   }
   if (rest.length > 0) parts.push({ kind: 'text', text: rest });
   return parts;

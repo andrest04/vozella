@@ -993,7 +993,7 @@ function main(): void {
         t: (key, ...args) => locale.t(key, ...args),
         onRecordingFrames: (listener) =>
           audio.onPush((event) => {
-            if (event.type === 'recording-frame') listener(event.pcm);
+            if (event.type === 'recording-frame') listener(event.pcm, event.levels);
           }),
         // Same rule as the session view: a zero-byte or unreadable recording is no audio (B20).
         fileExists: (file) => hasAudioBytes(file),

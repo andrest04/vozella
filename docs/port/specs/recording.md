@@ -933,6 +933,7 @@ Mark an item done only when the port reproduces the behavior and has a test (or 
 82. Pump paced against a wall clock excluding paused time; silence is written for empty sources.
 83. Header flush every 5 s of written audio; repair on failed close.
 84. Pause drops incoming audio and writes nothing; resume continues the same file.
+84a. Port addition (the local user as You, see transcription spec 3.6): with a microphone, each written 200 ms chunk is also measured per source before summing (RMS per 50 ms of the microphone and the output). The levels ride on the frame to the live pass (`recording-frame.levels`), feed a `MicActivityRecorder` over the written audio (pauses excluded), and at stop its ranges are saved as `<name>.mic.json` next to the WAV (best effort; a failure never fails the stop). A take without a microphone writes no sidecar; creating a WAV (record or import) first removes a stale sidecar at that path. A replaced take (B-3) and Library moves and deletes carry the sidecar with the WAV.
 85. PCM frames raised only with subscribers and while writing, as float32 = int16/32768.
 86. `CaptureSourceLost` with decremented `remainingSources`; not raised on user stop.
 87. `OutputCaptureFailed` only for process-tree errors not caused by a user stop; it cancels the pump.

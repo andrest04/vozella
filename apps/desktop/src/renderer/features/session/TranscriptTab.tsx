@@ -19,6 +19,7 @@ export type CopySourceRef = RefObject<CopySource | null>;
 const partClass = {
   star: 'text-ink-muted',
   stamp: 'font-mono text-[0.8125em] text-ink-muted',
+  you: 'text-ink-muted',
   text: '',
 } as const;
 
@@ -31,8 +32,11 @@ const Line = memo(function Line({
   onSeek,
   revealed = false,
   highlighted = false,
+  youLabel,
 }: {
   readonly line: TranscriptLine;
+  /** The local user's name in the UI language; `[ You ]` is shown as `[ Tú ]` in Spanish. */
+  readonly youLabel: string;
   /** Set when the audio plays and the line has a stamp: a click starts playback there. */
   readonly onSeek: ((seconds: number) => void) | undefined;
   /** The line a chat citation opened: it can take focus. */
@@ -69,7 +73,7 @@ const Line = memo(function Line({
       ) : (
         line.parts.map((part, index) => (
           <span key={index} className={partClass[part.kind]}>
-            {part.text}
+            {part.kind === 'you' ? `[ ${youLabel} ]` : part.text}
           </span>
         ))
       )}
@@ -80,7 +84,8 @@ const Line = memo(function Line({
 /**
  * Transcript tab (spec 2.6): the stored text, line by line, as written. Stamps are muted and
  * starred lines get a quiet marker, but every character stays in the DOM, so selecting and
- * copying gives back the stored transcript.
+ * copying gives back the stored transcript. The one exception is the local user label `[ You ]`,
+ * shown in the UI language; Copy still gives the stored text.
  */
 export function TranscriptTab({
   meetingId,
@@ -93,6 +98,7 @@ export function TranscriptTab({
   readonly hasAudio?: boolean;
 }) {
   const t = useT();
+  const youLabel = t('Ui_SpeakerYou');
   const model = useTranscript(meetingId);
   const displayed = useRef('');
   displayed.current = model.text;
@@ -215,6 +221,7 @@ export function TranscriptTab({
             onSeek={audioOn ? onSeek : undefined}
             revealed={revealed?.key === line.key}
             highlighted={revealed?.key === line.key && revealed.on}
+            youLabel={youLabel}
           />
         ))}
       </div>

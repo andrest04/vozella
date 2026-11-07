@@ -2,7 +2,7 @@ import { ArrowDown, Copy, Mic, Star } from 'lucide-react';
 import { memo, useId, useMemo, useRef } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import { Badge, Button, Icon, IconButton, Notice, cn } from '../../ui';
-import { liveLinesFrom, splitLines } from '../transcription/live-lines';
+import { liveLinesFrom, splitLines, type LiveSpeaker } from '../transcription/live-lines';
 import { useFollowScroll } from './use-follow-scroll';
 import { useHeldValue, useReadingHold } from './use-live-text';
 
@@ -32,17 +32,27 @@ export interface LiveCanvasProps {
 interface RowProps {
   readonly kind: 'committed' | 'interim';
   readonly start: string | null;
-  readonly speaker: number | null;
+  readonly speaker: LiveSpeaker | null;
   readonly text: string;
   readonly starred: boolean;
   readonly starLabel: string;
+  /** The local user's name in the UI language ("You", "Tú"). */
+  readonly youLabel: string;
 }
 
 /**
  * One transcript line. Every prop is a primitive, so `memo` skips the lines that did not change:
  * an update re-renders the interim tail and the new line, never the whole meeting (item 111).
  */
-const Row = memo(function Row({ kind, start, speaker, text, starred, starLabel }: RowProps) {
+const Row = memo(function Row({
+  kind,
+  start,
+  speaker,
+  text,
+  starred,
+  starLabel,
+  youLabel,
+}: RowProps) {
   return (
     <li
       className={cn(
@@ -61,7 +71,9 @@ const Row = memo(function Row({ kind, start, speaker, text, starred, starLabel }
       <span className="font-mono text-ui text-ink-faint select-none">{start ?? ''}</span>
       <span className="break-words whitespace-pre-wrap">
         {speaker === null ? null : (
-          <span className="me-2 font-mono text-ui text-ink-muted">{`S${String(speaker)}`}</span>
+          <span className="me-2 font-mono text-ui text-ink-muted">
+            {speaker === 'you' ? youLabel : `S${String(speaker)}`}
+          </span>
         )}
         {text}
       </span>
@@ -81,6 +93,7 @@ interface BlockProps {
   /** How many of the block's lines are committed. */
   readonly committed: number;
   readonly starLabel: string;
+  readonly youLabel: string;
 }
 
 /**
@@ -88,7 +101,7 @@ interface BlockProps {
  * numbers, so memo skips every block whose text did not change: only the block holding the
  * interim tail renders when text arrives (item 111).
  */
-const Block = memo(function Block({ text, committed, starLabel }: BlockProps) {
+const Block = memo(function Block({ text, committed, starLabel, youLabel }: BlockProps) {
   const lines = useMemo(() => liveLinesFrom(text, committed), [text, committed]);
   return lines.map((line, index) =>
     line.kind === 'header' ? (
@@ -102,6 +115,7 @@ const Block = memo(function Block({ text, committed, starLabel }: BlockProps) {
         text={line.text}
         starred={line.starred}
         starLabel={starLabel}
+        youLabel={youLabel}
       />
     ),
   );
@@ -159,6 +173,7 @@ export function LiveCanvas({
   );
   const follow = useFollowScroll(scroller, shown.text);
   const starLabel = t('Record_Highlight');
+  const youLabel = t('Ui_SpeakerYou');
 
   return (
     <div
@@ -236,6 +251,7 @@ export function LiveCanvas({
                     text={block.text}
                     committed={block.committed}
                     starLabel={starLabel}
+                    youLabel={youLabel}
                   />
                 ))}
               </ol>

@@ -752,3 +752,94 @@ describe('audit proofs', () => {
     await starting;
   });
 });
+
+describe('microphone activity (the local user as You)', () => {
+  function activityRig(): Rig & { readonly sidecars: { path: string; ranges: unknown }[] } {
+    const base = rig();
+    const sidecars: { path: string; ranges: unknown }[] = [];
+    base.service = new AudioCaptureService({
+      sources: base.port,
+      clock: base.clock,
+      createWriter: () => base.writer,
+      removeFile: (p) => base.removed.push(p),
+      repairWav: (p) => base.repaired.push(p),
+      writeMicActivity: (path, ranges) => sidecars.push({ path, ranges }),
+    });
+    base.service.setListeners({ onFrame: (f) => base.frames.push(f) });
+    return { ...base, sidecars };
+  }
+
+  it('measures each source before mixing, four levels per 200 ms frame', async () => {
+    const r = activityRig();
+    await r.service.start('a.wav', withMic);
+    await flush();
+    feed(r.port.mic, 16384);
+    feed(r.port.output, 3277);
+    await r.clock.advance(200);
+    const levels = r.frames[1]?.levels ?? [];
+    expect(levels).toHaveLength(4);
+    expect(levels[0]?.microphone).toBeCloseTo(0.5, 2);
+    expect(levels[0]?.output).toBeCloseTo(0.1, 2);
+  });
+
+  it('sends no levels and writes no sidecar without a microphone', async () => {
+    const r = activityRig();
+    await r.service.start('a.wav', systemOnly);
+    feed(r.port.output, 3277);
+    await r.clock.advance(400);
+    await r.service.stop();
+    expect(r.frames.every((f) => f.levels === undefined)).toBe(true);
+    expect(r.sidecars).toEqual([]);
+  });
+
+  it('writes the microphone ranges next to the WAV at stop', async () => {
+    const r = activityRig();
+    await r.service.start('take.wav', withMic);
+    await flush();
+    feed(r.port.mic, 16384);
+    await r.clock.advance(200);
+    await r.service.stop();
+    // The first chunk is read at start, before any audio: the speech is the second one.
+    expect(r.sidecars).toEqual([{ path: 'take.wav', ranges: [{ startMs: 200, endMs: 400 }] }]);
+  });
+
+  it('writes empty ranges for a muted microphone, so the take reads as measured', async () => {
+    const r = activityRig();
+    await r.service.start('take.wav', withMic);
+    await r.clock.advance(400);
+    await r.service.stop();
+    expect(r.sidecars).toEqual([{ path: 'take.wav', ranges: [] }]);
+  });
+
+  it('keeps the timeline on the written audio: a pause adds nothing', async () => {
+    const r = activityRig();
+    await r.service.start('take.wav', withMic);
+    await flush();
+    r.service.pause();
+    feed(r.port.mic, 16384);
+    await r.clock.advance(1000);
+    r.service.resume();
+    feed(r.port.mic, 16384);
+    await r.clock.advance(200);
+    await r.service.stop();
+    // One silent chunk before the pause; speech in the break is dropped; then speech at 200 ms.
+    expect(r.sidecars[0]?.ranges).toEqual([{ startMs: 200, endMs: 400 }]);
+  });
+
+  it('never fails the stop when the sidecar cannot be written', async () => {
+    const r = activityRig();
+    r.service = new AudioCaptureService({
+      sources: r.port,
+      clock: r.clock,
+      createWriter: () => r.writer,
+      removeFile: () => undefined,
+      repairWav: () => undefined,
+      writeMicActivity: () => {
+        throw new Error('disk full');
+      },
+    });
+    await r.service.start('take.wav', withMic);
+    await r.clock.advance(0);
+    await expect(r.service.stop()).resolves.toBeUndefined();
+  });
+});

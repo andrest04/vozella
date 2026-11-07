@@ -1,4 +1,5 @@
 import type { CancelSignal } from '../cancel';
+import { SPEAKER_LABEL_PATTERN } from './stamp-format';
 
 /**
  * Transcript polish: prompt, chunking and output checks (spec 3.14). The four providers (local
@@ -52,7 +53,7 @@ Return ONLY the polished transcript. No preamble, no code fences, no commentary.
 
 Rules:
 - Keep the "Recorded ..." and "Ended ..." headers (if present) and every [start-end] prefix byte-for-byte.
-- Keep existing "[ Speaker-N ]" labels when present. Do not add, drop, or rename speakers.
+- Keep existing "[ Speaker-N ]" and "[ You ]" labels when present. Do not add, drop, or rename speakers.
 - Only edit the spoken text after the stamp and speaker label.
 - Fix punctuation, Spanish/English accents, truecasing, and well-known acronyms (ONU, NASA, FBI, UNESCO).
 - Convert obvious questions to ¿? / ?.
@@ -97,7 +98,7 @@ export function stripCodeFences(output: string): string {
   return match ? (match[1] ?? '') : trimmed;
 }
 
-const speakerOf = (line: string): string | null => /\[ Speaker-\d+ \]/.exec(line)?.[0] ?? null;
+const speakerOf = (line: string): string | null => SPEAKER_LABEL_PATTERN.exec(line)?.[0] ?? null;
 
 /** The polished text keeps every line and every stamp, or it is not used (B16). */
 export function polishKeepsStructure(original: string, polished: string): boolean {

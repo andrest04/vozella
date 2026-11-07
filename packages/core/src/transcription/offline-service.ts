@@ -3,7 +3,11 @@ import { engineLocaleFor } from '../settings/languages';
 import { StreamingTranscriptAccumulator } from './accumulator';
 import { MEETING_GEOMETRY } from './asr-types';
 import { distinctPercent, toPercent } from './progress';
-import { TranscriptionCancelledError, type AudioFrameReader } from './ports';
+import {
+  TranscriptionCancelledError,
+  type AudioFrameReader,
+  type MicActivityReader,
+} from './ports';
 import type { NemoSpeechRecognizerFactory } from './recognizer-factory';
 
 /** 100 ms of 16 kHz audio, per channel. */
@@ -22,6 +26,8 @@ export interface TranscribeRequest {
 export interface TranscriptionServiceDeps {
   readonly factory: NemoSpeechRecognizerFactory;
   readonly audio: AudioFrameReader;
+  /** When the local user spoke in a recording; absent: no `[ You ]` labels. */
+  readonly micActivity?: MicActivityReader;
 }
 
 /** The offline pass over a finished WAV, for Stop, import and re-transcription (spec 3.11). */
@@ -45,7 +51,12 @@ export class TranscriptionService {
         interimResults: true,
         diarization: created.diarization,
       });
-      const accumulator = new StreamingTranscriptAccumulator(request.recordedAtMs);
+      const accumulator = new StreamingTranscriptAccumulator(request.recordedAtMs, {
+        // Only while speaker labels run: with labels off the transcript has none, You included.
+        micActivity: created.diarization
+          ? (this.deps.micActivity?.read(request.audioPath) ?? null)
+          : null,
+      });
       source = this.deps.audio.open(request.audioPath);
       const report = distinctPercent((percent) => request.onProgress?.(percent));
       const channels = Math.max(1, source.channels);

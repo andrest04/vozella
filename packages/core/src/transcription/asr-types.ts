@@ -35,14 +35,19 @@ export interface SortformerGeometry {
   readonly updatePeriodFrames: number;
 }
 
-/** Library defaults, about 1.6 s of input. Used by the live pass. */
+/**
+ * NVIDIA "low latency" profile (1.04 s input buffer: chunk 6 + right context 7 frames). Used by
+ * the live pass. It replaced the undocumented library defaults (all zeros, about 1.6 s) so the
+ * live labels come from a preset the model card publishes. Left context stays the default.
+ * https://huggingface.co/nvidia/diar_streaming_sortformer_4spk-v2
+ */
 export const STREAMING_GEOMETRY: SortformerGeometry = {
-  chunkFrames: 0,
-  rightContextFrames: 0,
+  chunkFrames: 6,
+  rightContextFrames: 7,
   leftContextFrames: -1,
-  fifoFrames: 0,
-  speakerCacheFrames: 0,
-  updatePeriodFrames: 0,
+  fifoFrames: 188,
+  speakerCacheFrames: 188,
+  updatePeriodFrames: 144,
 };
 
 /** NVIDIA very-high-latency profile (30.4 s input buffer). Used by the offline pass. */

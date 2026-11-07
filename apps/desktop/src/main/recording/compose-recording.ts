@@ -10,7 +10,6 @@ import {
   type Logger,
   type LocalModelStore,
   type OfflineTranscriber,
-  type PreviousAudioKeeper,
   type SettingsStore,
   type SummaryProviderResolver,
   type SummaryService,
@@ -23,6 +22,7 @@ import type { Broadcast } from '../ipc/library-handlers';
 import type { AudioController } from '../audio/audio-controller';
 import type { RecordingTakes } from '../audio/recording-take';
 import type { TranscriptionController } from '../transcription/transcription-controller';
+import { previousAudioKeeper } from './previous-audio';
 import { RecordingService, type LiveAskHooks } from './recording-service';
 import type { YouTubeAudioPort } from './youtube-import';
 
@@ -50,24 +50,6 @@ export interface ComposeRecordingDeps {
   readonly youtube: YouTubeAudioPort;
   readonly liveAsk?: LiveAskHooks;
   readonly onRecordingStarted?: () => void;
-}
-
-/** Renames the audio a new take replaces to `<stem> (previous).wav` beside it (B-3). */
-function previousAudioKeeper(): PreviousAudioKeeper {
-  return {
-    keep: (audioPath) => {
-      if (!fs.existsSync(audioPath)) return Promise.resolve(audioPath);
-      const dot = audioPath.lastIndexOf('.');
-      const stem = dot < 0 ? audioPath : audioPath.slice(0, dot);
-      const ext = dot < 0 ? '' : audioPath.slice(dot);
-      for (let n = 1; ; n += 1) {
-        const candidate = `${stem} (previous${n === 1 ? '' : ` ${n}`})${ext}`;
-        if (fs.existsSync(candidate)) continue;
-        fs.renameSync(audioPath, candidate);
-        return Promise.resolve(candidate);
-      }
-    },
-  };
 }
 
 /** The offline pass of the transcription module as the pipeline's port (188: repair first). */

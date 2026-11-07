@@ -10,7 +10,13 @@ import {
   type RecordingCaptureSources,
 } from './capture-sources';
 import { computeBufferRms, pcm16ToFloat } from './level-meter';
-import { AudioMixer } from './mixer';
+import {
+  frameLevels,
+  MicActivityRecorder,
+  type MicActivityRange,
+  type SourceLevels,
+} from '../transcription/mic-activity';
+import { AudioMixer, type MixerInput } from './mixer';
 import { FILE_BYTES_PER_SECOND, WavHeaderFlushCadence } from './wav-format';
 
 /** Spec 3.1.2. 200 ms of 16 kHz mono PCM16. */
@@ -50,6 +56,11 @@ export interface PcmFrame {
   readonly sampleRate: number;
   /** The same audio as PCM16 little-endian, as written to the file. */
   readonly pcm: Uint8Array;
+  /**
+   * Microphone and output RMS before mixing, one per 50 ms of the frame, when a microphone is
+   * recorded. They name the local user `[ You ]` in the live transcript.
+   */
+  readonly levels?: readonly SourceLevels[];
 }
 
 /** The microphone level is reported once per this many 20 ms frames (100 ms). */
@@ -65,6 +76,11 @@ export interface RecordingServiceDeps {
   readonly clock: PumpClock;
   /** Runs after validation and before any device opens; throws to refuse the request (C7). */
   readonly preflight?: (sources: RecordingCaptureSources) => void;
+  /**
+   * Saves when the microphone dominated, next to the WAV, at stop. Called only for takes that
+   * record a microphone; a failure never fails the stop (the transcript then has no You).
+   */
+  readonly writeMicActivity?: (path: string, ranges: readonly MicActivityRange[]) => void;
 }
 
 export interface RecordingListeners {
@@ -81,8 +97,16 @@ export interface RecordingListeners {
   onMicrophoneLevel?(level: number): void;
 }
 
+/** The two mixer inputs of a take with a microphone, read apart to tell who speaks. */
+interface MeasuredInputs {
+  readonly mic: MixerInput;
+  readonly output: MixerInput;
+  readonly activity: MicActivityRecorder;
+}
+
 interface Handles {
   readonly mic: CaptureSession | undefined;
+  readonly activity: MicActivityRecorder | undefined;
   readonly output: CaptureSession;
   readonly writer: WavWriter;
   readonly path: string;
@@ -147,11 +171,13 @@ export class AudioCaptureService {
     let mic: CaptureSession | undefined;
     let output: CaptureSession | undefined;
     let pump: Promise<void> | undefined;
+    let measured: MeasuredInputs | undefined;
     try {
       writer = this.deps.createWriter(path);
 
-      if (sources.captureMicrophone) {
-        const input = mixer.addInput();
+      const micInput = sources.captureMicrophone ? mixer.addInput() : undefined;
+      if (micInput) {
+        const input = micInput;
         mic = await this.deps.sources.start(
           { kind: 'mic', deviceId: effectiveMicrophoneId(sources) },
           (frame) => {
@@ -164,6 +190,9 @@ export class AudioCaptureService {
         );
       }
       const outputInput = mixer.addInput();
+      if (micInput) {
+        measured = { mic: micInput, output: outputInput, activity: new MicActivityRecorder() };
+      }
       const pushOutput = (frame: AudioFrame): void => {
         outputInput.push(frame.pcm);
       };
@@ -178,9 +207,9 @@ export class AudioCaptureService {
       );
       // As in C#: the pump runs once the devices are open, so the file gets no silent prefix
       // as long as a slow device activation.
-      pump = this.runPump(mixer, writer, cancel);
+      pump = this.runPump(mixer, writer, cancel, measured);
       this.pump = pump;
-      this.handles = { mic, output, writer, path };
+      this.handles = { mic, activity: measured?.activity, output, writer, path };
       this.recording = true;
     } catch (error) {
       await this.abortFailedStart({ cancel, pump, writer, mic, output, path });
@@ -237,6 +266,7 @@ export class AudioCaptureService {
       }
     }
     let writerFailed = false;
+    if (handles?.activity) this.saveMicActivity(handles.path, handles.activity);
     if (handles) {
       try {
         handles.writer.flush();
@@ -315,6 +345,14 @@ export class AudioCaptureService {
     this.handles = undefined;
   }
 
+  private saveMicActivity(path: string, activity: MicActivityRecorder): void {
+    try {
+      this.deps.writeMicActivity?.(path, activity.ranges);
+    } catch {
+      // Best effort: the recording is what matters; the transcript then has no You.
+    }
+  }
+
   private resetLevelWindow(): void {
     this.micLevelPeak = 0;
     this.micLevelFrames = 0;
@@ -352,7 +390,12 @@ export class AudioCaptureService {
     this.listeners.onSourceLost?.({ source, remaining: this.liveSources, error });
   }
 
-  private async runPump(mixer: AudioMixer, writer: WavWriter, cancel: CancelSource): Promise<void> {
+  private async runPump(
+    mixer: AudioMixer,
+    writer: WavWriter,
+    cancel: CancelSource,
+    measured: MeasuredInputs | undefined,
+  ): Promise<void> {
     const clock = this.deps.clock;
     const cadence = WavHeaderFlushCadence.forFormat(FILE_BYTES_PER_SECOND, HEADER_FLUSH_SECONDS);
     const startedAt = clock.nowMs();
@@ -382,8 +425,18 @@ export class AudioCaptureService {
             // The final flush at stop retries.
           }
         }
+        // Measured on written chunks only, so the timeline is the file's (pauses excluded).
+        const levels = measured
+          ? frameLevels(measured.mic.lastRead, measured.output.lastRead, 16_000)
+          : undefined;
+        if (measured && levels) for (const level of levels) measured.activity.push(level);
         if (this.listeners.onFrame && chunk.byteLength >= 2) {
-          this.listeners.onFrame({ samples: pcm16ToFloat(chunk), sampleRate: 16_000, pcm: chunk });
+          this.listeners.onFrame({
+            samples: pcm16ToFloat(chunk),
+            sampleRate: 16_000,
+            pcm: chunk,
+            ...(levels ? { levels } : {}),
+          });
         }
         const expectedMs = (bytesWritten * 1000) / FILE_BYTES_PER_SECOND;
         const sleepMs = expectedMs - (clock.nowMs() - startedAt - pauseAccumulatedMs);

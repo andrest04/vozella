@@ -6,6 +6,8 @@ export * from './engine-catalog';
 export * from './engine-installer';
 export * from './highlights';
 export * from './line-index';
+export * from './local-speaker';
+export * from './mic-activity';
 export * from './live-service';
 export * from './offline-service';
 export * from './pipeline-rules';

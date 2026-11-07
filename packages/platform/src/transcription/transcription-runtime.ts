@@ -9,8 +9,10 @@ import {
   type EngineModelStore,
   type HardwareProfile,
   type Logger,
+  type MicActivityReader,
   type RuntimeStore,
 } from '@vozella/core';
+import { SidecarMicActivityReader } from './mic-activity-sidecar';
 import { NemotronModelStore, type ModelStoreOptions } from './model-store';
 import { NemoSpeechRuntimeManager, type RuntimeManagerOptions } from './runtime-manager';
 import { WavFrameReader } from './wav-frame-reader';
@@ -23,6 +25,8 @@ export interface TranscriptionRuntimeOptions {
   readonly hardware: () => Promise<Pick<HardwareProfile, 'gpuName'>>;
   readonly logger: Logger;
   readonly audio?: AudioFrameReader;
+  /** When the local user spoke in a recording; defaults to the sidecar next to the WAV. */
+  readonly micActivity?: MicActivityReader;
   /** Test seams for the stores. */
   readonly models?: Partial<ModelStoreOptions>;
   readonly runtimes?: Partial<RuntimeManagerOptions>;
@@ -68,6 +72,7 @@ export class TranscriptionRuntime {
     this.offline = new TranscriptionService({
       factory: this.factory,
       audio: options.audio ?? new WavFrameReader(),
+      micActivity: options.micActivity ?? new SidecarMicActivityReader(),
     });
     this.live = new LiveTranscriptionService({
       factory: this.factory,
