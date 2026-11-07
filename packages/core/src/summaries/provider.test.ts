@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CancelSignal } from '../cancel';
 import { CancelSource } from '../cancel';
+import { parseOffsetDate } from '../library/offset-date';
 import { buildSummaryPrompt } from './prompt-builders';
 import { describeSummaryProviderContract } from './provider-contract';
 import {
@@ -76,6 +77,20 @@ describe('summaryResultFromResponse', () => {
     expect(result.suggestedTitle).toBe('Sprint plan');
     expect(result.summaryMarkdown).toBe('Body');
     expect(result.actionItems).toEqual([{ text: 'Ship it', isDone: false }]);
+  });
+
+  it('resolves deadline dates against the request recordedAt when given', () => {
+    const reply =
+      '## Summary\nBody\n\n## Action Items\n- [ ] Ship it — Due: weekday:fri "el viernes"\n';
+    const recordedAt = parseOffsetDate('2026-11-04T10:00:00.0000000-05:00')!;
+    const resolved = summaryResultFromResponse('codex', reply, { recordedAt });
+    expect(resolved.actionItems[0]?.deadline).toEqual({
+      quote: 'el viernes',
+      kind: { type: 'weekday', weekday: 'fri' },
+      date: '2026-11-06',
+    });
+    const unresolved = summaryResultFromResponse('codex', reply);
+    expect(unresolved.actionItems[0]?.deadline?.date).toBeUndefined();
   });
 
   it('gives a null title when the reply has none', () => {

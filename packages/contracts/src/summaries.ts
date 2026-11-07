@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineEvent, defineRequest } from './channel';
-import { appSettingsSchema } from './library';
+import { actionItemSchema, appSettingsSchema } from './library';
 import { modelRowSchema } from './settings';
 
 /**
@@ -14,8 +14,6 @@ const meetingId = z.string().min(1).max(200);
 export const summaryCliKindSchema = z.enum(['ClaudeCode', 'Codex']);
 export type SummaryCliKindDto = z.infer<typeof summaryCliKindSchema>;
 export const summarySetupKindSchema = z.enum(['Local', 'ClaudeCode', 'Codex']);
-
-const actionItemSchema = z.object({ text: z.string(), isDone: z.boolean() });
 
 const templateOptionSchema = z.object({
   id: z.string(),
@@ -193,6 +191,55 @@ export const summariesSetTemplate = defineRequest('summaries.setTemplate', {
   output: z.discriminatedUnion('status', [
     z.object({ status: z.enum(['saved', 'unchanged', 'not-found']) }),
     z.object({ status: z.literal('failed'), detail: z.string() }),
+  ]),
+});
+
+// ------------------------------------------------- action item deadlines
+
+const saveFailed = z.object({
+  status: z.literal('failed'),
+  message: z.string(),
+  detail: z.string(),
+});
+
+/** Sets (or clears with null) the confirmed `YYYY-MM-DD` date of one action item. */
+export const summariesSetActionItemDate = defineRequest('summaries.setActionItemDate', {
+  input: z.object({ meetingId, index: z.number().int().min(0), date: z.iso.date().nullable() }),
+  output: z.discriminatedUnion('status', [
+    z.object({ status: z.literal('saved'), actionItems: z.array(actionItemSchema).readonly() }),
+    z.object({ status: z.enum(['not-found', 'out-of-range', 'invalid-date']) }),
+    saveFailed,
+  ]),
+});
+
+/**
+ * Answers "when is the next session?": remembers the date for the meeting title and fills it on
+ * the meeting's undated `next_meeting` items (`filled` counts them). A date on or before the
+ * meeting day is `invalid-date`.
+ */
+export const summariesSetNextSessionDate = defineRequest('summaries.setNextSessionDate', {
+  input: z.object({ meetingId, date: z.iso.date() }),
+  output: z.discriminatedUnion('status', [
+    z.object({
+      status: z.literal('saved'),
+      actionItems: z.array(actionItemSchema).readonly(),
+      filled: z.number().int().min(0),
+    }),
+    z.object({ status: z.enum(['not-found', 'invalid-date']) }),
+    saveFailed,
+  ]),
+});
+
+/**
+ * Writes the chosen action items (by index) that have a date to an `.ics` file the user picks.
+ * `empty`: none of them has a date, no dialog was shown.
+ */
+export const summariesExportActionItemsIcs = defineRequest('summaries.exportActionItemsIcs', {
+  input: z.object({ meetingId, indexes: z.array(z.number().int().min(0)).max(1000) }),
+  output: z.discriminatedUnion('status', [
+    z.object({ status: z.literal('exported'), count: z.number().int().min(1) }),
+    z.object({ status: z.enum(['cancelled', 'empty']) }),
+    z.object({ status: z.literal('failed'), message: z.string() }),
   ]),
 });
 

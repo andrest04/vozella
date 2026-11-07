@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TranslateFn } from '../i18n/translator';
-import { InMemoryMeetingRepository } from '../library/in-memory-library';
-import type { MeetingRecord } from '../library/meeting';
+import { InMemoryMeetingRepository, InMemorySettingsStore } from '../library/in-memory-library';
+import type { ActionItem, MeetingRecord } from '../library/meeting';
 import type { MeetingList } from '../library/ports';
 import { copyTextFor, SummaryTabService } from './tab-service';
 
@@ -43,13 +43,15 @@ function setup(records: MeetingRecord[], selected: string | null = null) {
   const repo = new InMemoryMeetingRepository();
   for (const r of records) repo.records.set(r.id, r);
   const selections: string[] = [];
+  const settings = new InMemorySettingsStore();
   const service = new SummaryTabService({
     meetings: repo,
     translate,
     getSelectedMeetingId: () => selected,
     selectMeeting: (id) => selections.push(id),
+    nextSessionDates: settings,
   });
-  return { repo, service, selections };
+  return { repo, service, selections, settings };
 }
 
 async function load(service: SummaryTabService, meetingId: string | null) {
@@ -425,5 +427,247 @@ describe('replaceSummary (T4: apply a chat answer, undo)', () => {
       status: 'failed',
       detail: 'locked',
     });
+  });
+});
+
+describe('replaceSummary resolves deadline dates (action item deadlines T4)', () => {
+  it('an answer with deadlines gets dates from recordedAt and the remembered next session', async () => {
+    // Tuesday 2026-09-01 at +00:00.
+    const { repo, service, settings } = setup([rec('a', { title: 'Weekly Sync' })]);
+    await settings.rememberNextSessionDate('weekly sync', '2026-09-08');
+    await service.replaceSummary('a', {
+      kind: 'answer',
+      text: [
+        '## Summary',
+        'Short.',
+        '## Action Items',
+        '- [ ] Send the deck — Due: weekday:fri "el viernes"',
+        '- [ ] Bring progress — Due: next_meeting "la siguiente clase"',
+      ].join('\n'),
+    });
+    const dates = repo.records.get('a')?.actionItems.map((item) => item.deadline?.date);
+    expect(dates).toEqual(['2026-09-04', '2026-09-08']);
+  });
+
+  it('restore keeps the items exactly, an undated deadline stays undated', async () => {
+    const { repo, service } = setup([rec('a')]);
+    const items: ActionItem[] = [
+      { text: 'X', isDone: false, deadline: { quote: 'q', kind: { type: 'next_week' } } },
+    ];
+    await service.replaceSummary('a', { kind: 'restore', summary: 'S', actionItems: items });
+    expect(repo.records.get('a')?.actionItems).toEqual(items);
+  });
+});
+
+describe('setActionItemDate (action item deadlines T4)', () => {
+  const items: ActionItem[] = [
+    { text: 'No deadline', isDone: false },
+    {
+      text: 'Friday',
+      isDone: true,
+      owner: 'Ana',
+      deadline: {
+        quote: 'el viernes',
+        kind: { type: 'weekday', weekday: 'fri' },
+        date: '2026-09-04',
+      },
+    },
+  ];
+
+  it('sets a date on an item without a deadline as a hand-picked date', async () => {
+    const { repo, service } = setup([rec('a', { actionItems: items })]);
+    const result = await service.setActionItemDate('a', 0, '2026-09-10');
+    const expected = {
+      text: 'No deadline',
+      isDone: false,
+      deadline: { quote: '', kind: { type: 'date', date: '2026-09-10' }, date: '2026-09-10' },
+    };
+    expect(result).toEqual({ status: 'saved', actionItems: [expected, items[1]] });
+    expect(repo.records.get('a')?.actionItems).toEqual([expected, items[1]]);
+    expect(repo.records.get('a')).toMatchObject({ brief: 'Brief text' });
+  });
+
+  it('changes the date and keeps the quote, kind and owner', async () => {
+    const { repo, service } = setup([rec('a', { actionItems: items })]);
+    await service.setActionItemDate('a', 1, '2026-09-11');
+    expect(repo.records.get('a')?.actionItems[1]).toEqual({
+      ...items[1],
+      deadline: { ...items[1]!.deadline, date: '2026-09-11' },
+    });
+  });
+
+  it('null clears the date and keeps the quote; null on an item without a deadline writes nothing', async () => {
+    const { repo, service } = setup([rec('a', { actionItems: items })]);
+    await service.setActionItemDate('a', 1, null);
+    expect(repo.records.get('a')?.actionItems[1]?.deadline).toEqual({
+      quote: 'el viernes',
+      kind: { type: 'weekday', weekday: 'fri' },
+    });
+    let saves = 0;
+    const save = repo.save.bind(repo);
+    repo.save = (r) => {
+      saves += 1;
+      return save(r);
+    };
+    const result = await service.setActionItemDate('a', 0, null);
+    expect(result.status).toBe('saved');
+    expect(saves).toBe(0);
+  });
+
+  it('answers not-found, out-of-range, invalid-date and failed as values', async () => {
+    const { repo, service } = setup([rec('a', { actionItems: items })]);
+    expect(await service.setActionItemDate('zzz', 0, '2026-09-10')).toEqual({
+      status: 'not-found',
+    });
+    expect(await service.setActionItemDate('a', 2, '2026-09-10')).toEqual({
+      status: 'out-of-range',
+    });
+    expect(await service.setActionItemDate('a', 0, '2026-02-30')).toEqual({
+      status: 'invalid-date',
+    });
+    repo.save = () => Promise.reject(new Error('locked'));
+    expect(await service.setActionItemDate('a', 0, '2026-09-10')).toEqual({
+      status: 'failed',
+      message: 'Error saving the action item: locked',
+      detail: 'locked',
+    });
+  });
+
+  it('is queued with toggles so both land on fresh records', async () => {
+    const { repo, service } = setup([rec('a', { actionItems: items })]);
+    await Promise.all([
+      service.toggleActionItem('a', 0, true),
+      service.setActionItemDate('a', 0, '2026-09-10'),
+    ]);
+    expect(repo.records.get('a')?.actionItems[0]).toMatchObject({
+      isDone: true,
+      deadline: { date: '2026-09-10' },
+    });
+  });
+});
+
+describe('setNextSessionDate (action item deadlines T4)', () => {
+  const next = (text: string, date?: string): ActionItem => ({
+    text,
+    isDone: false,
+    deadline: {
+      quote: 'la siguiente clase',
+      kind: { type: 'next_meeting' },
+      ...(date === undefined ? {} : { date }),
+    },
+  });
+  const items: ActionItem[] = [
+    next('Bring progress'),
+    next('Already set', '2026-09-03'),
+    { text: 'Plain', isDone: false },
+    {
+      text: 'Friday',
+      isDone: false,
+      deadline: { quote: 'el viernes', kind: { type: 'weekday', weekday: 'fri' } },
+    },
+  ];
+
+  it('fills undated next_meeting items only and remembers the date for the title', async () => {
+    const { repo, service, settings } = setup([
+      rec('a', { title: '  Diseño  de Software', actionItems: items }),
+    ]);
+    const result = await service.setNextSessionDate('a', '2026-09-08');
+    const expected = [next('Bring progress', '2026-09-08'), items[1], items[2], items[3]];
+    expect(result).toEqual({ status: 'saved', actionItems: expected, filled: 1 });
+    expect(repo.records.get('a')?.actionItems).toEqual(expected);
+    expect(await settings.loadNextSessionDate('diseño de software')).toBe('2026-09-08');
+  });
+
+  it('remembers even when nothing needs filling, and skips the meeting write', async () => {
+    const { repo, service, settings } = setup([rec('a', { actionItems: [items[2]!] })]);
+    let saves = 0;
+    const save = repo.save.bind(repo);
+    repo.save = (r) => {
+      saves += 1;
+      return save(r);
+    };
+    const result = await service.setNextSessionDate('a', '2026-09-08');
+    expect(result).toEqual({ status: 'saved', actionItems: [items[2]], filled: 0 });
+    expect(saves).toBe(0);
+    expect(await settings.loadNextSessionDate('meeting a')).toBe('2026-09-08');
+  });
+
+  it('refuses an invalid date or one not after the meeting day, and remembers nothing', async () => {
+    const { service, settings } = setup([rec('a', { actionItems: items })]);
+    expect(await service.setNextSessionDate('a', 'soon')).toEqual({ status: 'invalid-date' });
+    expect(await service.setNextSessionDate('a', '2026-09-01')).toEqual({
+      status: 'invalid-date',
+    });
+    expect(await settings.loadNextSessionDate('meeting a')).toBeNull();
+  });
+
+  it('answers not-found and failed as values', async () => {
+    const { repo, service } = setup([rec('a', { actionItems: items })]);
+    expect(await service.setNextSessionDate('zzz', '2026-09-08')).toEqual({ status: 'not-found' });
+    repo.save = () => Promise.reject(new Error('locked'));
+    expect(await service.setNextSessionDate('a', '2026-09-08')).toEqual({
+      status: 'failed',
+      message: 'Error saving the action item: locked',
+      detail: 'locked',
+    });
+  });
+});
+
+describe('actionItemsIcs (action item deadlines T4)', () => {
+  const now = new Date('2026-11-06T10:00:00.000Z');
+  const items: ActionItem[] = [
+    {
+      text: 'Send the deck',
+      isDone: false,
+      deadline: {
+        quote: 'el viernes',
+        kind: { type: 'weekday', weekday: 'fri' },
+        date: '2026-09-04',
+      },
+    },
+    { text: 'Undated', isDone: false },
+    {
+      text: 'Book the room',
+      isDone: true,
+      deadline: { quote: '', kind: { type: 'date', date: '2026-09-07' }, date: '2026-09-07' },
+    },
+  ];
+
+  it('builds the calendar from the chosen indexes that have a date, with a file name', async () => {
+    const { service } = setup([rec('a', { title: 'Clase: Diseño', actionItems: items })]);
+    const result = await service.actionItemsIcs('a', [0, 1, 7], now);
+    if (result.status !== 'ready') throw new Error(result.status);
+    expect(result.count).toBe(1);
+    expect(result.fileName).toBe('Clase Diseño.ics');
+    expect(result.text).toContain('SUMMARY:Send the deck');
+    expect(result.text).not.toContain('Book the room');
+    expect(result.text).toContain('Meeting: Clase: Diseño');
+  });
+
+  it('answers empty when no chosen item has a date, and not-found for a missing meeting', async () => {
+    const { service } = setup([rec('a', { actionItems: items })]);
+    expect(await service.actionItemsIcs('a', [1], now)).toEqual({ status: 'empty' });
+    expect(await service.actionItemsIcs('a', [], now)).toEqual({ status: 'empty' });
+    expect(await service.actionItemsIcs('zzz', [0], now)).toEqual({ status: 'not-found' });
+  });
+
+  it('writes the description with the given labels', async () => {
+    const owned = items.map((item, at) => (at === 0 ? { ...item, owner: 'Ana' } : item));
+    const { service } = setup([rec('a', { title: 'Clase', actionItems: owned })]);
+    const result = await service.actionItemsIcs('a', [0], now, {
+      owner: 'Responsable',
+      meeting: 'Reunión',
+    });
+    if (result.status !== 'ready') throw new Error(result.status);
+    const text = result.text.replace(/\r\n /g, '');
+    expect(text).toContain('Responsable: Ana');
+    expect(text).toContain('Reunión: Clase');
+    expect(text).not.toContain('Meeting: Clase');
+  });
+
+  it('a duplicated index is written once', async () => {
+    const { service } = setup([rec('a', { actionItems: items })]);
+    const result = await service.actionItemsIcs('a', [2, 2, 0], now);
+    expect(result.status === 'ready' && result.count).toBe(2);
   });
 });

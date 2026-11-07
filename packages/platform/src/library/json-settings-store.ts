@@ -2,11 +2,14 @@ import fs from 'node:fs/promises';
 import {
   applySettingsPatch,
   parseSettingsJson,
+  readNextSessionDates,
   readSettings,
   serializeSettings,
+  withNextSessionDate,
   LibraryFileCorruptError,
   type AppSettings,
   type Logger,
+  type NextSessionDateStore,
   type RawSettings,
   type SettingsStore,
 } from '@vozella/core';
@@ -30,7 +33,7 @@ export interface JsonSettingsStoreOptions {
  * `update` is read-modify-write under one lock and changes only the fields in the patch, so two
  * callers cannot overwrite each other's fields (B17), and keys it does not know are kept.
  */
-export class JsonSettingsStore implements SettingsStore {
+export class JsonSettingsStore implements SettingsStore, NextSessionDateStore {
   private readonly locks: KeyedMutex;
 
   constructor(private readonly options: JsonSettingsStoreOptions) {
@@ -48,6 +51,21 @@ export class JsonSettingsStore implements SettingsStore {
       const next = applySettingsPatch(raw, patch);
       await writeFileAtomic(this.options.settingsFilePath, serializeSettings(next));
       return readSettings(next);
+    });
+  }
+
+  /** The remembered next-session date for a title key (`nextSessionDates` in the file). */
+  async loadNextSessionDate(titleKey: string): Promise<string | null> {
+    const dates = readNextSessionDates(await this.locked(() => this.readRaw()));
+    return Object.hasOwn(dates, titleKey) ? (dates[titleKey] ?? null) : null;
+  }
+
+  /** Read-modify-write under the same lock as `update`, so neither loses the other's change. */
+  rememberNextSessionDate(titleKey: string, date: string): Promise<void> {
+    return this.locked(async () => {
+      await this.options.ensureDirectories?.();
+      const next = withNextSessionDate(await this.readRaw(), titleKey, date);
+      await writeFileAtomic(this.options.settingsFilePath, serializeSettings(next));
     });
   }
 

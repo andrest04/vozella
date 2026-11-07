@@ -1,6 +1,6 @@
 import type { CancelSignal } from '../cancel';
 import type { ActionItem } from '../library/meeting';
-import type { OffsetDate } from '../library/offset-date';
+import { formatOffsetDate, type OffsetDate } from '../library/offset-date';
 import type { SummaryEnhancementContext } from './prompt-builders';
 import { splitSummaryResponse } from './summary-splitter';
 
@@ -59,9 +59,19 @@ export interface SummaryProvider {
   ): AsyncIterable<string>;
 }
 
-/** The shared reply handling: split the three sections of the model text (S02). */
-export function summaryResultFromResponse(providerId: ProviderId, raw: string): SummaryResult {
-  const split = splitSummaryResponse(raw);
+/**
+ * The shared reply handling: split the three sections of the model text (S02). Pass the request
+ * (or just its `recordedAt`) to resolve action-item deadline dates; without it they stay unresolved.
+ */
+export function summaryResultFromResponse(
+  providerId: ProviderId,
+  raw: string,
+  request?: Pick<SummarizeRequest, 'recordedAt'>,
+): SummaryResult {
+  const split = splitSummaryResponse(
+    raw,
+    request ? { recordedAt: formatOffsetDate(request.recordedAt, 'round-trip') } : {},
+  );
   return {
     summaryMarkdown: split.summaryMarkdown,
     actionItems: split.actionItems,

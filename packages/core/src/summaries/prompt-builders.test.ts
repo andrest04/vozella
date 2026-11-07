@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { offsetDateFromInstant, parseOffsetDate } from '../library/offset-date';
 import { SUMMARY_LANGUAGES } from '../settings/languages';
+import { parseActionItems } from './action-items';
 import {
   buildMergePrompt,
   buildPartPrompt,
@@ -66,9 +67,19 @@ Omit a section with no content; do not pad.
 ## Action Items
 
 Only real follow-ups that were stated or clearly agreed, each as a Markdown checkbox.
-Include owner and due date only when the transcript states them. If priority was
-stated, append it. Examples:
-- [ ] Send the revised deck — Owner: Ana — Due: Friday
+If priority was stated, add it to the task text. Append " — Owner: <name>" only when
+the transcript names who will do it. Append " — Due: <token> "<quote>"" only when a
+deadline was spoken: one token, then the exact transcript words in double quotes.
+Tokens:
+- next_meeting: the next class, session, or meeting
+- weekday:mon to weekday:sun: a named weekday
+- in_days:N: in N days
+- next_week: next week
+- date:YYYY-MM-DD: only an explicit calendar date; take the year from <recorded_at>
+- unknown: a spoken deadline that fits none of the above
+Never compute or invent a date. Omit Due when no deadline was said. Examples:
+- [ ] Send the revised deck — Owner: Ana — Due: weekday:fri "by Friday"
+- [ ] Bring the progress on the model — Due: next_meeting "for next class"
 - [ ] Review the API contract
 
 If there are none, leave this section empty (keep the heading); talks, classes, and
@@ -90,10 +101,16 @@ Rules:
 hello there
 </transcript>`;
 
-const EN_EXAMPLES =
-  '- [ ] Send the revised deck — Owner: Ana — Due: Friday\n- [ ] Review the API contract';
-const ES_EXAMPLES =
-  '- [ ] Enviar el deck revisado — Owner: Ana — Due: viernes\n- [ ] Revisar el contrato de la API';
+const EN_EXAMPLES = [
+  '- [ ] Send the revised deck — Owner: Ana — Due: weekday:fri "by Friday"',
+  '- [ ] Bring the progress on the model — Due: next_meeting "for next class"',
+  '- [ ] Review the API contract',
+].join('\n');
+const ES_EXAMPLES = [
+  '- [ ] Enviar el deck revisado — Owner: Ana — Due: weekday:fri "el viernes"',
+  '- [ ] Traer el avance del modelo — Due: next_meeting "para la siguiente clase"',
+  '- [ ] Revisar el contrato de la API',
+].join('\n');
 
 /** The Summary section of the instructions, from its heading to the Action Items heading. */
 const summarySection = (text: string): string =>
@@ -149,6 +166,37 @@ describe('buildSummaryPrompt snapshot', () => {
     expect(text).toContain('leave this section empty (keep the heading)');
   });
 
+  it('asks for owner and a typed, quoted deadline only when spoken, and never a computed date', () => {
+    const text = base();
+    expect(text).toContain('Owner: <name>" only when\nthe transcript names who will do it.');
+    expect(text).toContain('Due: <token> "<quote>"" only when a\ndeadline was spoken');
+    for (const token of [
+      '- next_meeting: the next class, session, or meeting',
+      '- weekday:mon to weekday:sun: a named weekday',
+      '- in_days:N: in N days',
+      '- next_week: next week',
+      '- date:YYYY-MM-DD: only an explicit calendar date; take the year from <recorded_at>',
+      '- unknown: a spoken deadline that fits none of the above',
+    ]) {
+      expect(text).toContain(`\n${token}\n`);
+    }
+    expect(text).toContain('Never compute or invent a date. Omit Due when no deadline was said.');
+  });
+
+  it('every action example parses into the typed owner and deadline the parser expects', () => {
+    for (const examples of [EN_EXAMPLES, ES_EXAMPLES]) {
+      const [withOwner, nextMeeting, plain] = parseActionItems(examples);
+      expect(withOwner).toMatchObject({
+        owner: 'Ana',
+        deadline: { kind: { type: 'weekday', weekday: 'fri' } },
+      });
+      expect(withOwner?.deadline?.quote).not.toBe('');
+      expect(nextMeeting).toMatchObject({ deadline: { kind: { type: 'next_meeting' } } });
+      expect(nextMeeting?.owner).toBeUndefined();
+      expect(plain && Object.keys(plain).sort()).toEqual(['isDone', 'text']);
+    }
+  });
+
   it('contains the U+2013 dash in 3-8 and no ASCII variant', () => {
     expect(base()).toContain('about 3–8 words');
     expect(base()).not.toContain('3-8 words');
@@ -161,8 +209,10 @@ describe('buildSummaryPrompt snapshot', () => {
   });
 
   it('stays compact enough for the local final-step budget', () => {
+    // 4096 context - 128 margin - 1024 reply leaves 2944 tokens; ~3.65k chars (~1k tokens) of
+    // instructions keeps well over the 640-token notes floor. Raised from 3050 for deadline tokens.
     for (const code of ['en', 'es']) {
-      expect(base({ outputLanguage: code, transcript: '' }).length).toBeLessThanOrEqual(3050);
+      expect(base({ outputLanguage: code, transcript: '' }).length).toBeLessThanOrEqual(3650);
     }
   });
 });

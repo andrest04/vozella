@@ -65,6 +65,9 @@ function setup(
     gate?: ProviderResolution;
     models?: FakeLocalModelStore;
     cli?: string[];
+    /** What the stubbed save dialog answers; null is a cancel. */
+    savePath?: string | null;
+    writeFails?: boolean;
   } = {},
 ) {
   const handlers = new Map<string, (event: never, ...args: unknown[]) => unknown>();
@@ -81,6 +84,8 @@ function setup(
   const resolver = { resolveSummaryProvider: () => Promise.resolve(gate) };
   const events: { name: string; payload: unknown }[] = [];
   const clipboard: string[] = [];
+  const dialogs: string[] = [];
+  const written: { file: string; text: string }[] = [];
   const store = options.models ?? new FakeLocalModelStore();
   const models = new LocalModelsService({ store, settings, notify: () => undefined });
   const dispose = vi.fn(() => Promise.resolve());
@@ -99,6 +104,7 @@ function setup(
       translate,
       getSelectedMeetingId: () => null,
       selectMeeting: () => undefined,
+      nextSessionDates: settings,
     }),
     resolver,
     models,
@@ -109,6 +115,18 @@ function setup(
     broadcast: (channel, payload) => events.push({ name: channel.name, payload }),
     logger: logger(),
     t: translate,
+    pickIcsExportPath: (defaultFileName) => {
+      dialogs.push(defaultFileName);
+      return Promise.resolve(
+        options.savePath === undefined ? 'C:/out/items.ics' : options.savePath,
+      );
+    },
+    writeTextFile: (file, text) => {
+      if (options.writeFails === true) return Promise.reject(new Error('disk full'));
+      written.push({ file, text });
+      return Promise.resolve();
+    },
+    now: () => new Date('2026-11-06T10:00:00.000Z'),
   });
   registerSummariesHandlers({
     server: { ipc, logger: logger(), isTrusted: () => true },
@@ -124,7 +142,19 @@ function setup(
     if (!handler) throw new Error(`no handler for ${name}`);
     return handler(event as never, input);
   };
-  return { call, controller, repo, settings, events, dispose, store, handlers, clipboard };
+  return {
+    call,
+    controller,
+    repo,
+    settings,
+    events,
+    dispose,
+    store,
+    handlers,
+    clipboard,
+    dialogs,
+    written,
+  };
 }
 
 const ok = (value: unknown): unknown => (value as { ok: boolean; value: unknown }).value;
@@ -133,7 +163,7 @@ describe('summaries handlers', () => {
   it('registers every summaries request channel', () => {
     const { handlers } = setup();
     const expected = Object.keys(requestChannels).filter((name) => name.startsWith('summaries.'));
-    expect(expected).toHaveLength(16);
+    expect(expected).toHaveLength(19);
     for (const name of expected) expect(handlers.has(name)).toBe(true);
   });
 
@@ -457,5 +487,111 @@ describe('summaries pipeline hook', () => {
     expect(await controller.summarizeForPipeline(request(), new CancelSource().signal)).toEqual({
       status: 'skipped',
     });
+  });
+});
+
+describe('action item deadlines (T4)', () => {
+  const items: MeetingRecord['actionItems'] = [
+    {
+      text: 'Send the deck',
+      isDone: false,
+      owner: 'Ana',
+      deadline: {
+        quote: 'el viernes',
+        kind: { type: 'weekday', weekday: 'fri' },
+        date: '2026-09-04',
+      },
+    },
+    {
+      text: 'Bring progress',
+      isDone: false,
+      deadline: { quote: 'la siguiente clase', kind: { type: 'next_meeting' } },
+    },
+  ];
+  const withItems = (options: Parameters<typeof setup>[0] = {}) => {
+    const context = setup(options);
+    context.repo.records.set(ID, record({ title: 'Clase: Diseño', actionItems: items }));
+    return context;
+  };
+
+  it('setActionItemDate saves the date and answers the items', async () => {
+    const { call, repo } = withItems();
+    const result = ok(
+      await call('summaries.setActionItemDate', { meetingId: ID, index: 1, date: '2026-09-08' }),
+    );
+    expect(result).toMatchObject({ status: 'saved' });
+    expect(repo.records.get(ID)?.actionItems[1]?.deadline?.date).toBe('2026-09-08');
+    expect(
+      ok(await call('summaries.setActionItemDate', { meetingId: ID, index: 5, date: null })),
+    ).toEqual({ status: 'out-of-range' });
+  });
+
+  it('setNextSessionDate fills next_meeting items and remembers the date for the title', async () => {
+    const { call, repo, settings } = withItems();
+    const result = ok(
+      await call('summaries.setNextSessionDate', { meetingId: ID, date: '2026-09-08' }),
+    );
+    expect(result).toMatchObject({ status: 'saved', filled: 1 });
+    expect(repo.records.get(ID)?.actionItems[1]?.deadline?.date).toBe('2026-09-08');
+    expect(await settings.loadNextSessionDate('clase: diseño')).toBe('2026-09-08');
+    expect(
+      ok(await call('summaries.setNextSessionDate', { meetingId: ID, date: '2026-08-01' })),
+    ).toEqual({ status: 'invalid-date' });
+  });
+
+  it('exportActionItemsIcs asks for a path named after the meeting and writes the calendar', async () => {
+    const { call, dialogs, written } = withItems();
+    const result = ok(
+      await call('summaries.exportActionItemsIcs', { meetingId: ID, indexes: [0, 1] }),
+    );
+    expect(result).toEqual({ status: 'exported', count: 1 });
+    expect(dialogs).toEqual(['Clase Diseño.ics']);
+    expect(written).toHaveLength(1);
+    expect(written[0]!.file).toBe('C:/out/items.ics');
+    expect(written[0]!.text.startsWith('BEGIN:VCALENDAR\r\n')).toBe(true);
+    expect(written[0]!.text).toContain('DTSTART;VALUE=DATE:20260904');
+    expect(written[0]!.text).toContain('DTSTAMP:20261106T100000Z');
+    // The description labels come from the app language through the main translator.
+    const unfolded = (written[0]?.text ?? '').replace(/\r\n /g, '');
+    expect(unfolded).toContain('Ui_IcsMeetingLabel: ');
+    expect(unfolded).not.toContain('Meeting: ');
+  });
+
+  it('a cancelled dialog writes nothing', async () => {
+    const { call, written } = withItems({ savePath: null });
+    expect(
+      ok(await call('summaries.exportActionItemsIcs', { meetingId: ID, indexes: [0] })),
+    ).toEqual({ status: 'cancelled' });
+    expect(written).toEqual([]);
+  });
+
+  it('no dated item answers empty without opening the dialog', async () => {
+    const { call, dialogs } = withItems();
+    expect(
+      ok(await call('summaries.exportActionItemsIcs', { meetingId: ID, indexes: [1] })),
+    ).toEqual({ status: 'empty' });
+    expect(dialogs).toEqual([]);
+  });
+
+  it('a failed write and a missing meeting answer failed with a message', async () => {
+    const failing = withItems({ writeFails: true });
+    expect(
+      ok(await failing.call('summaries.exportActionItemsIcs', { meetingId: ID, indexes: [0] })),
+    ).toEqual({ status: 'failed', message: 'disk full' });
+    const { call } = setup();
+    expect(
+      ok(await call('summaries.exportActionItemsIcs', { meetingId: 'gone', indexes: [0] })),
+    ).toEqual({ status: 'failed', message: 'Ui_SummaryMeetingGone' });
+  });
+
+  it('refuses a malformed date before it reaches the service', async () => {
+    const { call, repo } = withItems();
+    const reply = (await call('summaries.setActionItemDate', {
+      meetingId: ID,
+      index: 0,
+      date: '04/09/2026',
+    })) as { ok: boolean };
+    expect(reply.ok).toBe(false);
+    expect(repo.records.get(ID)?.actionItems[0]?.deadline?.date).toBe('2026-09-04');
   });
 });

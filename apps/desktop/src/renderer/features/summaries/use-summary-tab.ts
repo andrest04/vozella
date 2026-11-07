@@ -16,6 +16,13 @@ export interface SummaryTabModel {
   /** Writes the notes now when they differ from what was last saved. */
   readonly flushNotes: () => void;
   readonly toggleAction: (index: number, done: boolean) => void;
+  /** Sets (or clears with null) one item's confirmed date; a failure shows in `status`. */
+  readonly setActionDate: (index: number, date: string | null) => void;
+  /**
+   * Answers "when is the next session?". `invalid-date` is for the prompt to show inline; any
+   * other failure shows in `status` and answers `failed`.
+   */
+  readonly setNextSessionDate: (date: string) => Promise<'saved' | 'invalid-date' | 'failed'>;
   readonly dismissStatus: () => void;
   /** Saves any unsaved notes and resolves once main has them, so a run reads what was typed. */
   readonly settleNotes: () => Promise<void>;
@@ -212,6 +219,55 @@ export function useSummaryTab(
     })();
   }, []);
 
+  const setActionDate = useCallback((index: number, date: string | null) => {
+    const id = idRef.current;
+    if (id === null) return;
+    void (async () => {
+      let failure: string;
+      try {
+        const result = await window.vozella.invoke('summaries.setActionItemDate', {
+          meetingId: id,
+          index,
+          date,
+        });
+        if (idRef.current !== id) return;
+        if (result.status === 'saved') {
+          setActionItems(result.actionItems);
+          return;
+        }
+        failure = result.status === 'failed' ? result.message : messageRef.current(result.status);
+      } catch (error) {
+        failure = messageRef.current(errorText(error));
+      }
+      if (idRef.current === id) setStatus(failure);
+    })();
+  }, []);
+
+  const setNextSessionDate = useCallback(
+    async (date: string): Promise<'saved' | 'invalid-date' | 'failed'> => {
+      const id = idRef.current;
+      if (id === null) return 'failed';
+      let failure: string;
+      try {
+        const result = await window.vozella.invoke('summaries.setNextSessionDate', {
+          meetingId: id,
+          date,
+        });
+        if (result.status === 'invalid-date') return 'invalid-date';
+        if (result.status === 'saved') {
+          if (idRef.current === id) setActionItems(result.actionItems);
+          return 'saved';
+        }
+        failure = result.status === 'failed' ? result.message : messageRef.current(result.status);
+      } catch (error) {
+        failure = messageRef.current(errorText(error));
+      }
+      if (idRef.current === id) setStatus(failure);
+      return 'failed';
+    },
+    [],
+  );
+
   const dismissStatus = useCallback(() => {
     setStatus(null);
   }, []);
@@ -228,6 +284,8 @@ export function useSummaryTab(
     setNotes,
     flushNotes,
     toggleAction,
+    setActionDate,
+    setNextSessionDate,
     dismissStatus,
     settleNotes,
     refresh,

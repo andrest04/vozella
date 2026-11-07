@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CancelSource, type CancelSignal } from '../cancel';
 import type { Clock } from '../clock';
 import { InMemoryMeetingRepository, InMemorySettingsStore } from '../library/in-memory-library';
-import type { MeetingRecord } from '../library/meeting';
+import type { ActionItem, MeetingRecord } from '../library/meeting';
 import { CliToolError } from './cli-failure';
 import { SummaryError } from './cli-failure-messages';
 import { offsetDateFromInstant, parseOffsetDate } from '../library/offset-date';
@@ -93,6 +93,7 @@ function setup(
     clock,
     notifyMeetingChanged: (id) => notified.push(id),
     placeholderFormats: ['Meeting {0}', 'Reunión {0}'],
+    nextSessionDates: settings,
     ...(options.queue === undefined ? {} : { queue: options.queue }),
   });
   return { repo, settings, service, seen, notified };
@@ -407,6 +408,62 @@ describe('SummaryService.generate', () => {
     const { service } = setup({ onSummarize: () => Promise.reject(new CancelledError()) });
     expect(isCancellation(new CancelledError())).toBe(true);
     expect(await run(service)).toEqual({ status: 'cancelled' });
+  });
+});
+
+describe('deadline dates on save (action item deadlines T4)', () => {
+  const deadlineItems = (): ActionItem[] => [
+    {
+      text: 'Bring the progress',
+      isDone: false,
+      deadline: { quote: 'para la siguiente clase', kind: { type: 'next_meeting' } },
+    },
+    {
+      text: 'Send the deck',
+      isDone: false,
+      deadline: { quote: 'el viernes', kind: { type: 'weekday', weekday: 'fri' } },
+    },
+    {
+      text: 'Confirmed',
+      isDone: false,
+      deadline: { quote: 'x', kind: { type: 'next_week' }, date: '2026-12-24' },
+    },
+  ];
+
+  it('resolves dates from the stored recordedAt (Tuesday Sep 1) and never invents next_meeting', async () => {
+    const { repo, service } = setup({
+      stored: record({ title: 'Weekly sync' }),
+      onSummarize: () => Promise.resolve(result({ actionItems: deadlineItems() })),
+    });
+    const outcome = await run(service);
+    const saved = repo.records.get(ID)!.actionItems;
+    expect(saved[0]!.deadline).toEqual({
+      quote: 'para la siguiente clase',
+      kind: { type: 'next_meeting' },
+    });
+    expect(saved[1]!.deadline?.date).toBe('2026-09-04');
+    expect(saved[2]!.deadline?.date).toBe('2026-12-24');
+    expect(outcome.status === 'generated' && outcome.actionItems).toEqual(saved);
+  });
+
+  it('fills next_meeting from the date remembered for the (final) title', async () => {
+    const { repo, settings, service } = setup({
+      onSummarize: () =>
+        Promise.resolve(result({ actionItems: deadlineItems(), suggestedTitle: 'Budget  Review' })),
+    });
+    await settings.rememberNextSessionDate('budget review', '2026-09-08');
+    await run(service);
+    expect(repo.records.get(ID)!.actionItems[0]!.deadline?.date).toBe('2026-09-08');
+  });
+
+  it('ignores a remembered date that is not after the meeting day', async () => {
+    const { repo, settings, service } = setup({
+      stored: record({ title: 'Weekly sync' }),
+      onSummarize: () => Promise.resolve(result({ actionItems: deadlineItems() })),
+    });
+    await settings.rememberNextSessionDate('weekly sync', '2026-09-01');
+    await run(service);
+    expect(repo.records.get(ID)!.actionItems[0]!.deadline?.date).toBeUndefined();
   });
 });
 

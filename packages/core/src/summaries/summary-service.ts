@@ -3,11 +3,18 @@ import type { Clock } from '../clock';
 import type { TranslateFn } from '../i18n/translator';
 import type { ActionItem } from '../library/meeting';
 import { offsetDateFromInstant, parseOffsetDate, type OffsetDate } from '../library/offset-date';
-import type { MeetingBusyProbe, MeetingRepository, SettingsStore } from '../library/ports';
+import type {
+  MeetingBusyProbe,
+  MeetingRepository,
+  NextSessionDateStore,
+  SettingsStore,
+} from '../library/ports';
 import { resolveSummaryLanguage } from '../library/settings';
 import { CliToolError, type CliFailureKind } from './cli-failure';
 import { formatFailure, SummaryError, type SummaryErrorCode } from './cli-failure-messages';
+import { withResolvedDeadlines } from './deadline-resolver';
 import { applySummaryPatch } from './meeting-patch';
+import { rememberedNextSessionDate } from './next-session';
 import { PatchQueue } from './patch-queue';
 import { createEnhancementContext } from './prompt-builders';
 import { isCancellation, type ProviderId } from './provider';
@@ -89,6 +96,8 @@ export interface SummaryServiceDeps {
   readonly placeholderFormats?: readonly string[];
   /** Shared with the tab service so a generate save and a tab save never interleave (B4, B5). */
   readonly queue?: PatchQueue;
+  /** Remembered next-session dates, for `next_meeting` deadlines. None means none is filled. */
+  readonly nextSessionDates?: NextSessionDateStore;
 }
 
 export function failureFromError(error: unknown): GenerateFailure {
@@ -204,26 +213,33 @@ export class SummaryService {
       if (fresh === null) return null;
       const title = resolveTitle(fresh.title, result.suggestedTitle, this.patterns);
       const titleChanged = title !== fresh.title;
+      // Code, not the model, computes the dates: from the stored meeting day and, for
+      // `next_meeting`, the date remembered for the title the meeting ends up with.
+      const actionItems = withResolvedDeadlines(
+        result.actionItems,
+        fresh.recordedAt,
+        await rememberedNextSessionDate(this.deps.nextSessionDates, title, fresh.recordedAt),
+      );
       const saved = await this.deps.meetings.save(
         applySummaryPatch(fresh, {
           summary: result.summaryMarkdown,
-          actionItems: result.actionItems,
+          actionItems,
           summaryProvider: result.providerId,
           noteTemplateId: templateIdToStore(requested),
           title: titleChanged ? title : null,
         }),
       );
-      return { saved, titleChanged };
+      return { saved, titleChanged, actionItems };
     });
     if (outcome === null) return { status: 'not-found' };
-    const { saved, titleChanged } = outcome;
+    const { saved, titleChanged, actionItems } = outcome;
     if (titleChanged) this.deps.notifyMeetingChanged(meetingId);
     return {
       status: 'generated',
       title: saved.title,
       titleChanged,
       summary: result.summaryMarkdown,
-      actionItems: result.actionItems,
+      actionItems,
       providerId: result.providerId,
     };
   }

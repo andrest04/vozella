@@ -9,6 +9,7 @@ import type {
   MeetingDeleteMode,
   MeetingList,
   MeetingRepository,
+  NextSessionDateStore,
   SettingsStore,
 } from './ports';
 
@@ -82,8 +83,18 @@ export class InMemoryFolderRepository implements FolderRepository {
   }
 }
 
-export class InMemorySettingsStore implements SettingsStore {
+export class InMemorySettingsStore implements SettingsStore, NextSessionDateStore {
   private raw: RawSettings = {};
+  private readonly nextSessions = new Map<string, string>();
+
+  loadNextSessionDate(titleKey: string): Promise<string | null> {
+    return Promise.resolve(this.nextSessions.get(titleKey) ?? null);
+  }
+
+  rememberNextSessionDate(titleKey: string, date: string): Promise<void> {
+    this.nextSessions.set(titleKey, date);
+    return Promise.resolve();
+  }
 
   load(): Promise<AppSettings> {
     return Promise.resolve(readSettings(this.raw));

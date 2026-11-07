@@ -1,7 +1,11 @@
 import { parseGuid, stringifyCompact, stripBom } from './dotnet-json';
 import {
   MeetingFormatError,
+  formatDeadlineKind,
+  isIsoDay,
+  parseDeadlineKind,
   type ActionItem,
+  type ActionItemDeadline,
   type JevAnalysis,
   type JevActionVerdict,
   type MeetingRecord,
@@ -12,6 +16,7 @@ const H_BRIEF = '## Brief';
 const H_TRANSCRIPT = '## Transcript';
 const H_SUMMARY = '## Summary';
 const H_ACTIONS = '## Action Items';
+const H_ACTION_DATA = '## Action Item Data';
 const H_JEV = '## Jev';
 const H_NOTES = '## Personal Notes';
 const H_FOLLOW_UP = '## Follow-up';
@@ -22,6 +27,7 @@ const HEADERS: readonly string[] = [
   H_TRANSCRIPT,
   H_SUMMARY,
   H_ACTIONS,
+  H_ACTION_DATA,
   H_JEV,
   H_NOTES,
   H_FOLLOW_UP,
@@ -73,6 +79,35 @@ function jevToJson(jev: JevAnalysis): string {
     model: jev.model,
     analyzedAt: analyzed ? formatOffsetDate(analyzed, 'json') : jev.analyzedAt,
   });
+}
+
+const hasItemData = (item: ActionItem): boolean =>
+  item.owner !== undefined || item.deadline !== undefined;
+
+/**
+ * One compact JSON array aligned by index with the checkbox lines: `null` for an item with no
+ * owner or deadline, otherwise its line text (to detect hand edits) plus the extra fields.
+ */
+function actionDataToJson(items: readonly ActionItem[]): string {
+  return stringifyCompact(
+    items.map((item) => {
+      if (!hasItemData(item)) return null;
+      const deadline = item.deadline;
+      return {
+        text: oneLine(item.text).trim(),
+        ...(item.owner === undefined ? {} : { owner: item.owner }),
+        ...(deadline === undefined
+          ? {}
+          : {
+              deadline: {
+                quote: deadline.quote,
+                kind: formatDeadlineKind(deadline.kind),
+                ...(deadline.date === undefined ? {} : { date: deadline.date }),
+              },
+            }),
+      };
+    }),
+  );
 }
 
 /** Renders the exact file format of spec 3.8: LF endings, no BOM. */
@@ -139,6 +174,9 @@ export function renderMeetingMarkdown(record: MeetingRecord): string {
     for (const item of record.actionItems) {
       out += `- [${item.isDone ? 'x' : ' '}] ${oneLine(item.text)}\n`;
     }
+    if (record.actionItems.some(hasItemData)) {
+      out += `\n${H_ACTION_DATA}\n\n${actionDataToJson(record.actionItems)}\n`;
+    }
   }
   if (record.jevAnalysis) out += `\n${H_JEV}\n\n${jevToJson(record.jevAnalysis)}\n`;
   section(H_NOTES, record.notes);
@@ -203,6 +241,46 @@ function parseActionItems(text: string | null): ActionItem[] {
 }
 
 type Json = Record<string, unknown>;
+
+const isJsonObject = (value: unknown): value is Json =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+function parseItemDeadline(value: unknown): ActionItemDeadline | undefined {
+  if (!isJsonObject(value)) return undefined;
+  const kind = typeof value.kind === 'string' ? parseDeadlineKind(value.kind) : null;
+  if (typeof value.quote !== 'string' || kind === null) return undefined;
+  const date = typeof value.date === 'string' && isIsoDay(value.date) ? value.date : undefined;
+  return { quote: value.quote, kind, ...(date === undefined ? {} : { date }) };
+}
+
+/**
+ * Adds owners and deadlines from the `## Action Item Data` JSON. Lenient on purpose: invalid
+ * JSON, a malformed entry or an entry whose text no longer matches its line is ignored, so a
+ * hand-edited file still loads.
+ */
+function withActionData(items: ActionItem[], json: string | null): ActionItem[] {
+  if (json === null) return items;
+  let raw: unknown;
+  try {
+    raw = JSON.parse(json);
+  } catch {
+    return items;
+  }
+  if (!Array.isArray(raw)) return items;
+  const entries: readonly unknown[] = raw;
+  return items.map((item, index) => {
+    const entry = entries[index];
+    if (!isJsonObject(entry) || entry.text !== item.text) return item;
+    const owner =
+      typeof entry.owner === 'string' && entry.owner.trim() !== '' ? entry.owner : undefined;
+    const deadline = parseItemDeadline(entry.deadline);
+    return {
+      ...item,
+      ...(owner === undefined ? {} : { owner }),
+      ...(deadline === undefined ? {} : { deadline }),
+    };
+  });
+}
 
 function lowerKeys(value: unknown): Json {
   const out: Json = {};
@@ -315,7 +393,10 @@ export function parseMeetingMarkdown(
     brief: text(H_BRIEF),
     transcript: text(H_TRANSCRIPT),
     summary: text(H_SUMMARY),
-    actionItems: parseActionItems(extractSection(body, H_ACTIONS)),
+    actionItems: withActionData(
+      parseActionItems(extractSection(body, H_ACTIONS)),
+      extractSection(body, H_ACTION_DATA),
+    ),
     jevAnalysis: jevBody === null ? null : parseJev(jevBody),
     notes: text(H_NOTES),
     followUp: text(H_FOLLOW_UP),

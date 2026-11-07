@@ -435,7 +435,8 @@ Derived values:
 
 - `languageName = ToEnglishLanguageName(code)`: null/blank gives `Spanish`; otherwise trim and lowercase: `es` Spanish, `en` English, `pt` Portuguese, `fr` French, `de` German, `it` Italian, `nl` Dutch, `ja` Japanese, `zh` Chinese, anything else `Spanish`.
 - `IsEnglish(code)` = trimmed code equals `en` (case-insensitive). It now selects only the action examples; there are no fixed subheadings.
-- Action examples: English `- [ ] Send the revised deck — Owner: Ana — Due: Friday` and `- [ ] Review the API contract` (two lines). Non-English: `- [ ] Enviar el deck revisado — Owner: Ana — Due: viernes` and `- [ ] Revisar el contrato de la API`.
+- Action examples (three lines). English: `- [ ] Send the revised deck — Owner: Ana — Due: weekday:fri "by Friday"`, `- [ ] Bring the progress on the model — Due: next_meeting "for next class"`, `- [ ] Review the API contract`. Non-English: `- [ ] Enviar el deck revisado — Owner: Ana — Due: weekday:fri "el viernes"`, `- [ ] Traer el avance del modelo — Due: next_meeting "para la siguiente clase"`, `- [ ] Revisar el contrato de la API`. The labels stay `Owner` and `Due` in every language so the parser reads one stable form (it also accepts `Responsable` / `Fecha`); every example line must parse with `parseActionItems` (a test asserts it).
+- **Port divergence (action-item deadlines, 2026-11-06).** The model never computes a date. It writes one deadline kind token plus the exact transcript words in double quotes (`Due: <token> "<quote>"`), and only when a deadline was spoken. Tokens: `next_meeting`, `weekday:mon`..`weekday:sun`, `in_days:N`, `next_week`, `date:YYYY-MM-DD` (explicit calendar dates only, year from `<recorded_at>`), `unknown`. Code resolves the date from the token and `recordedAt` (`deadline-resolver.ts`); `next_meeting` stays unresolved until the user gives the next session date. Priority goes into the task text, never after `Due`, so the suffix stays parseable. `summaryResultFromResponse(id, raw, request?)` / `splitSummaryResponse(raw, { recordedAt? })` resolve dates when the request is passed.
 - `endedAtBlock`: when `endedAt` is set, a newline, then `<ended_at>` + ISO 8601 round-trip string (`O` format, invariant culture, for example `2026-11-02T15:30:00.0000000-05:00`) + `</ended_at>`. Else empty. (WinUI also indented it by 12 spaces; the port does not.)
 
 Prompt text. `{languageName}`, `{actionExamples}`, `{title}`, `{recordedAt}`, `{endedAtBlock}`, `{transcript}` are the substitutions. The en dashes in "3–8", "2–5" and "12:05–18:40" are U+2013. Newlines are LF. Verbatim:
@@ -479,8 +480,17 @@ Omit a section with no content; do not pad.
 ## Action Items
 
 Only real follow-ups that were stated or clearly agreed, each as a Markdown checkbox.
-Include owner and due date only when the transcript states them. If priority was
-stated, append it. Examples:
+If priority was stated, add it to the task text. Append " — Owner: <name>" only when
+the transcript names who will do it. Append " — Due: <token> "<quote>"" only when a
+deadline was spoken: one token, then the exact transcript words in double quotes.
+Tokens:
+- next_meeting: the next class, session, or meeting
+- weekday:mon to weekday:sun: a named weekday
+- in_days:N: in N days
+- next_week: next week
+- date:YYYY-MM-DD: only an explicit calendar date; take the year from <recorded_at>
+- unknown: a spoken deadline that fits none of the above
+Never compute or invent a date. Omit Due when no deadline was said. Examples:
 {actionExamples}
 
 If there are none, leave this section empty (keep the heading); talks, classes, and

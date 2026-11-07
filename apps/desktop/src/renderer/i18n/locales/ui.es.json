@@ -324,5 +324,21 @@
   "Ui_ChatPromptsFileFilter": "Prompts de Vozella",
   "Ui_ChatPromptsFileName": "Mis prompts",
   "Ui_ChatPromptRunsWith": "Responde con {0}",
-  "Ui_ChatLivePaused": "En pausa"
+  "Ui_ChatLivePaused": "En pausa",
+  "Ui_ActionItemAddDate": "Agregar fecha",
+  "Ui_ActionItemChangeDate": "Cambiar la fecha, {0}",
+  "Ui_ActionItemDateFor": "Fecha límite de {0}",
+  "Ui_ActionItemClearDate": "Quitar fecha",
+  "Ui_NextSessionQuestion": "¿Cuándo es la próxima sesión?",
+  "Ui_NextSessionHint": "Vozella la recordará para las reuniones llamadas “{0}”.",
+  "Ui_NextSessionSave": "Guardar",
+  "Ui_NextSessionInvalid": "Elige una fecha posterior a esta reunión.",
+  "Ui_ActionItemsExportIcs": "Agregar al calendario (.ics)",
+  "Ui_ActionItemsExportNone": "Asigna una fecha a un elemento pendiente para agregarlo a tu calendario.",
+  "Ui_ActionItemsExported": "{0} elementos de acción guardados en el archivo de calendario.",
+  "Ui_ActionItemsExportedOne": "1 elemento de acción guardado en el archivo de calendario.",
+  "Ui_ActionItemsExportEmpty": "Ninguno de estos elementos tiene fecha todavía.",
+  "Ui_ActionItemsExportFailed": "No se pudo guardar el archivo de calendario: {0}",
+  "Ui_IcsOwnerLabel": "Responsable",
+  "Ui_IcsMeetingLabel": "Reunión"
 }
