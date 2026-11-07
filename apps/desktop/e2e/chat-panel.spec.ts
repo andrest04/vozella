@@ -152,7 +152,7 @@ test('Settings hides the panel and the launcher, and the panel comes back open',
 });
 
 test('on a narrow window the panel floats over the page and Escape closes it', async () => {
-  // The window minimum leaves 728 px beside the sidebar: less than 560 plus the panel.
+  // The window minimum leaves 728 px beside the sidebar: less than 400 plus the 380 panel.
   await resize(960, 700);
   await expect(panel()).toHaveAttribute('data-mode', 'overlay');
   await expect(page.getByRole('separator', { name: 'Resize AI panel' })).toHaveCount(0);

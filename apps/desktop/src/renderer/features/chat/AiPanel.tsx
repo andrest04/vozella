@@ -12,16 +12,14 @@ import type { ChatScopeDecision } from '@vozella/core';
 import { readStored, writeStored } from '../../app/preference-storage';
 import { useT } from '../../i18n/I18nProvider';
 import { Icon, IconButton, Splitter, cn } from '../../ui';
-import { clampSize } from '../../ui/splitter-logic';
 import { AiLauncher } from './AiLauncher';
 import { LiveBadge } from './LiveBadge';
 import {
-  DOCK_MIN_CONTENT_WIDTH,
   PANEL_DEFAULT_WIDTH,
-  PANEL_MAX_WIDTH,
   PANEL_MIN_WIDTH,
   PANEL_OPEN_KEY,
   PANEL_WIDTH_KEY,
+  dockMaxWidth,
   isPanelToggle,
   panelMode,
   parseStoredOpen,
@@ -156,12 +154,6 @@ export function AiPanelArea({ children, body }: AiPanelAreaProps) {
       .catch(() => undefined);
   };
 
-  // Docked, the page keeps its minimum: the handle stops before the panel would push it into
-  // overlay mode.
-  const maxWidth =
-    available === null
-      ? PANEL_MAX_WIDTH
-      : clampSize(available - DOCK_MIN_CONTENT_WIDTH, PANEL_MIN_WIDTH, PANEL_MAX_WIDTH);
   const label = scopeLabel(t, decision, name);
 
   const aside = (
@@ -247,7 +239,7 @@ export function AiPanelArea({ children, body }: AiPanelAreaProps) {
         defaultSize={PANEL_DEFAULT_WIDTH}
         initialSize={width}
         minSize={PANEL_MIN_WIDTH}
-        maxSize={maxWidth}
+        maxSize={dockMaxWidth(available)}
         onSizeChange={(next) => {
           setWidth(next);
           writeStored(PANEL_WIDTH_KEY, String(next));

@@ -6,7 +6,7 @@ export const PANEL_MAX_WIDTH = 520;
 export const PANEL_DEFAULT_WIDTH = 380;
 
 /** The page keeps at least this much beside a docked panel; below it the panel floats over it. */
-export const DOCK_MIN_CONTENT_WIDTH = 560;
+export const DOCK_MIN_CONTENT_WIDTH = 400;
 
 export const PANEL_OPEN_KEY = 'vozella.aiPanel.open';
 export const PANEL_WIDTH_KEY = 'vozella.aiPanel.width';
@@ -20,6 +20,21 @@ export type PanelMode = 'dock' | 'overlay';
 export function panelMode(available: number | null, panelWidth: number): PanelMode {
   if (available === null) return 'dock';
   return available - panelWidth < DOCK_MIN_CONTENT_WIDTH ? 'overlay' : 'dock';
+}
+
+/**
+ * Largest width of the docked panel: its handle stops before the page would drop under its
+ * minimum and push the panel into overlay mode.
+ */
+export function dockMaxWidth(available: number | null): number {
+  if (available === null) return PANEL_MAX_WIDTH;
+  return clampSize(available - DOCK_MIN_CONTENT_WIDTH, PANEL_MIN_WIDTH, PANEL_MAX_WIDTH);
+}
+
+/** Largest width of the floating panel: it may cover the whole shared width, within its limits. */
+export function overlayMaxWidth(available: number | null): number {
+  if (available === null) return PANEL_MAX_WIDTH;
+  return clampSize(available, PANEL_MIN_WIDTH, PANEL_MAX_WIDTH);
 }
 
 export function parseStoredWidth(stored: string | null): number {

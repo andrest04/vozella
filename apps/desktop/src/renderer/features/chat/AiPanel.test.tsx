@@ -501,7 +501,7 @@ describe('AiPanel overlay on narrow windows', () => {
     observer.resize(1200);
     expect(panel().dataset.mode).toBe('dock');
     expect(screen.getByRole('separator', { name: 'Resize AI panel' })).toBeTruthy();
-    observer.resize(900);
+    observer.resize(700);
     expect(panel().dataset.mode).toBe('overlay');
     expect(screen.queryByRole('separator')).toBeNull();
   });
@@ -510,7 +510,7 @@ describe('AiPanel overlay on narrow windows', () => {
     const observer = installResizeObserver();
     install();
     mount();
-    observer.resize(800);
+    observer.resize(700);
     await openFromLauncher();
     expect(panel().dataset.mode).toBe('overlay');
     await userEvent.keyboard('{Escape}');
@@ -524,7 +524,7 @@ describe('AiPanel overlay on narrow windows', () => {
     const observer = installResizeObserver();
     install();
     mount();
-    observer.resize(800);
+    observer.resize(700);
     await openFromLauncher();
     await userEvent.click(chip());
     expect(bodyHidden()).toBe(false);
