@@ -25,6 +25,21 @@ test.describe.configure({ mode: 'serial', timeout: 120_000 });
 const viewport = (): Promise<[number, number]> =>
   page.evaluate(() => [window.innerWidth, window.innerHeight]);
 
+/**
+ * Windows can deliver a resize in steps (an intermediate size, then the final one), so the first
+ * `resize` event is not proof the window is done. Read until two reads 100 ms apart agree.
+ */
+async function settledViewport(): Promise<[number, number]> {
+  let previous = await viewport();
+  for (let read = 0; read < 10; read += 1) {
+    await page.evaluate(() => new Promise<void>((resolve) => setTimeout(resolve, 100)));
+    const current = await viewport();
+    if (current[0] === previous[0] && current[1] === previous[1]) return current;
+    previous = current;
+  }
+  return previous;
+}
+
 /** Sets the window's content size and waits until the page has seen the resize (or 1 s passed). */
 async function setContentSize(width: number, height: number): Promise<void> {
   await page.evaluate(() => {
@@ -55,9 +70,9 @@ async function setContentSize(width: number, height: number): Promise<void> {
  */
 async function resize(width: number, height: number): Promise<void> {
   let ask: [number, number] = [width, height];
-  for (let attempt = 0; attempt < 4; attempt += 1) {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
     await setContentSize(...ask);
-    const [actualWidth, actualHeight] = await viewport();
+    const [actualWidth, actualHeight] = await settledViewport();
     if (actualWidth === width && actualHeight === height) break;
     ask = [ask[0] + width - actualWidth, ask[1] + height - actualHeight];
   }
