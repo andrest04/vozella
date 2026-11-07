@@ -137,7 +137,7 @@ test('a chip click sends and streams the answer (item 107)', async () => {
   try {
     await openMeeting(page);
     await openPanel(page);
-    await page.getByTestId('ListMeetingChatStarters').getByRole('button').first().click();
+    await page.getByTestId('ListMeetingChatStarters').getByTestId('BtnChatStarter').first().click();
     const list = page.getByTestId('ListMeetingChat');
     await expect(list.getByText('The team went over the plan')).toBeVisible();
     await expect(page.getByTestId('TxtMeetingChat')).toHaveValue('');

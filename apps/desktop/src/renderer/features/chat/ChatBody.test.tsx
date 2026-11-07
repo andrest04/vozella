@@ -40,6 +40,7 @@ type Listener = (payload: unknown) => void;
 const ALL = { isVisible: true, kind: 'AllMeetings', folderId: null, meetingId: null } as const;
 const MEETING = { isVisible: true, kind: 'Meeting', folderId: null, meetingId: 'm1' } as const;
 const LIVE = { isVisible: true, kind: 'Live', folderId: null, meetingId: null } as const;
+const FOLDER = { isVisible: true, kind: 'Folder', folderId: 'f1', meetingId: null } as const;
 
 const msg = (id: string, role: 'user' | 'assistant', text: string) => ({
   id,
@@ -150,7 +151,7 @@ afterEach(() => {
 });
 
 const mount = (
-  scope: typeof ALL | typeof MEETING | typeof LIVE = ALL,
+  scope: typeof ALL | typeof MEETING | typeof LIVE | typeof FOLDER = ALL,
   locale: 'en' | 'es' = 'en',
 ) =>
   render(
@@ -348,7 +349,7 @@ describe('optimistic rows, rollback and draft restore (items 33 to 35, 44)', () 
 
 const chipNames = async (): Promise<string[]> =>
   within(await screen.findByTestId('ListMeetingChatStarters'))
-    .getAllByRole('button')
+    .getAllByTestId('BtnChatStarter')
     .map((b) => b.textContent);
 
 const MEETING_CHIPS = [
@@ -376,6 +377,26 @@ describe('starter chips (items 39 to 41)', () => {
     install({ actionItems: () => [] });
     mount(MEETING);
     expect(await chipNames()).toEqual(CONTENT_CHIPS);
+  });
+
+  it.each([
+    ['a meeting with action items', MEETING, [ITEM], 'About this meeting'],
+    ['a meeting without action items', MEETING, [], 'About this recording'],
+    ['all meetings', ALL, undefined, 'Across your meetings'],
+    ['a folder', FOLDER, undefined, 'About this folder'],
+    ['a live take', LIVE, undefined, 'While you record'],
+  ] as const)('%s heads the starter list with "%s"', async (_, scope, items, heading) => {
+    install(items ? { actionItems: () => [...items] } : {});
+    mount(scope);
+    expect(await screen.findByRole('list', { name: heading })).toBe(
+      screen.getByTestId('ListMeetingChatStarters'),
+    );
+  });
+
+  it('heads the starter list in Spanish', async () => {
+    install({ actionItems: () => [] });
+    mount(MEETING, 'es');
+    expect(await screen.findByRole('list', { name: 'Sobre esta grabación' })).toBeVisible();
   });
 
   it('a meeting the library cannot find falls back to the content recipes', async () => {

@@ -20,7 +20,7 @@ import { useSavedPrompts, type SavedPrompts } from './use-saved-prompts';
 
 export interface PromptLibraryInput {
   readonly kind: ChatScopeKind;
-  /** Null while a meeting scope is read: no chips yet, so they never flip. */
+  /** Null while a meeting scope is read: no starters yet, so they never flip. */
   readonly context: RecipeContext | null;
   /** The composer draft: "New prompt…" starts from the question typed so far. */
   readonly draft: string;
@@ -30,7 +30,7 @@ export interface PromptLibraryInput {
 export interface PromptLibrary {
   /** The `/` list: saved prompts of the scope, then the built-ins. */
   readonly recipes: readonly ChatRecipe[];
-  /** The chips: up to two saved prompts, then built-ins until four. */
+  /** The empty chat's starters: up to two saved prompts, then built-ins until four. */
   readonly starters: readonly ChatRecipe[];
   readonly actions: RecipeMenuActions;
   /** The picked saved prompt whose engine answers the next send; null for the default. */

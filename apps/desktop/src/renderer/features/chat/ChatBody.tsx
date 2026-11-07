@@ -14,7 +14,8 @@ import { ENGINE_LABEL } from './chat-prompts-view';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
 import { SavedPromptDialogs } from './SavedPromptDialogs';
-import { StarterChips } from './StarterChips';
+import { starterHeadingKey } from './starter-heading';
+import { StarterList } from './StarterList';
 import { useApplyToSummary } from './use-apply-to-summary';
 import { useChat } from './use-chat';
 import { useChatAttachments } from './use-chat-attachments';
@@ -44,8 +45,8 @@ export function ChatBody({ scope }: { readonly scope: ChatScopeDecision }) {
   // A meeting without action items (a talk, a video, a class) leads with the content recipes.
   const context = useRecipeContext(scope);
 
-  // Saved prompts lead the `/` list and the chips (Phase 5). Built-in names are looked up on every
-  // render, so a language change relabels the chips (B8).
+  // Saved prompts lead the `/` list and the starters (Phase 5). Built-in names are looked up on
+  // every render, so a language change relabels the starters (B8).
   const lookup = useCallback((key: string) => t(key as StringKey), [t]);
   const library = usePromptLibrary({ kind: scope.kind, context, draft: chat.draft, lookup });
   const { armed, arm, disarm } = library;
@@ -132,11 +133,14 @@ export function ChatBody({ scope }: { readonly scope: ChatScopeDecision }) {
         </div>
       ) : null}
       {!chat.isSending && rows.length === 0 ? (
-        <StarterChips
+        <StarterList
+          // No starters while a meeting scope is read (context null), so the heading never flips.
+          heading={context ? t(starterHeadingKey(scope.kind, context)) : ''}
           recipes={library.starters}
           onPick={(recipe) => {
             sendWith(recipe.prompt, recipe);
           }}
+          onEdit={library.actions.onEdit}
         />
       ) : null}
       {armed?.engine ? (

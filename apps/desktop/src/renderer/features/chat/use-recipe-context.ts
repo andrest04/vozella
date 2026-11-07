@@ -7,7 +7,7 @@ const NONE: RecipeContext = {};
  * What the recipe lists need to know about the scoped meeting: whether it has action items. A
  * meeting without them reads as a talk, a video or a class and gets the content starters. It reads
  * the meeting through the existing `library.getMeeting` call and reads it again when the library
- * changes, so a summary that adds action items switches the chips. Null while a meeting scope is
+ * changes, so a summary that adds action items switches the starters. Null while a meeting scope is
  * still being looked up; other scopes need nothing and answer at once.
  */
 export function useRecipeContext(scope: ChatScopeDecision): RecipeContext | null {

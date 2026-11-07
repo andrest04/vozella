@@ -5,6 +5,7 @@ import { useT } from '../../i18n/I18nProvider';
 import { SHORTCUTS } from '../../app/shortcuts';
 import { Button, IconButton, ShortcutHint, Tooltip, cn } from '../../ui';
 import { keyIntent } from './chat-view-model';
+import { COMPOSER_MAX_HEIGHT, COMPOSER_MIN_HEIGHT, composerFit } from './composer-fit';
 import {
   RECIPES_LIST_ID,
   RecipesMenu,
@@ -12,9 +13,6 @@ import {
   type RecipeMenuActions,
 } from './RecipesMenu';
 import { useRecipesMenu } from './use-recipes-menu';
-
-const MIN_HEIGHT = 32;
-const MAX_HEIGHT = 96;
 
 export interface ComposerProps {
   readonly draft: string;
@@ -92,7 +90,9 @@ export function Composer({
     const el = field.current;
     if (!el) return;
     el.style.height = 'auto';
-    el.style.height = `${String(Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, el.scrollHeight)))}px`;
+    const fit = composerFit(draft, el.scrollHeight);
+    el.style.height = `${String(fit.height)}px`;
+    el.style.overflowY = fit.overflowY;
   }, [draft]);
 
   const canSend = !isSending && draft.trim() !== '';
@@ -158,10 +158,11 @@ export function Composer({
             event.preventDefault();
           }
         }}
-        style={{ minHeight: MIN_HEIGHT, maxHeight: MAX_HEIGHT }}
+        style={{ minHeight: COMPOSER_MIN_HEIGHT, maxHeight: COMPOSER_MAX_HEIGHT }}
         className={cn(
           'min-w-0 flex-1 resize-none bg-transparent py-1.5 text-ui-lg leading-5 text-ink outline-none',
-          'placeholder:text-ink-faint',
+          // One line: a placeholder longer than a narrow panel ends in an ellipsis instead of wrapping.
+          'overflow-y-hidden placeholder:truncate placeholder:text-ink-faint',
         )}
       />
       {/* After the message box in the DOM, so Tab from it reaches the footer actions. */}

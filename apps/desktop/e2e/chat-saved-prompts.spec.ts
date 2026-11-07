@@ -97,9 +97,19 @@ test('create a saved prompt, find it first, run it with its engine, edit and del
     ]);
 
     // First in the chips and first in the `/` filter.
-    const chips = page.getByTestId('ListMeetingChatStarters').getByRole('button');
+    const chips = page.getByTestId('ListMeetingChatStarters').getByTestId('BtnChatStarter');
     await expect(chips).toHaveCount(4);
     await expect(chips.first()).toHaveText('Risk review');
+
+    // The starter row's pencil opens the editor for that prompt without sending it.
+    await chips.first().hover();
+    await page.getByRole('button', { name: 'Edit Risk review' }).click();
+    const fromStarter = page.getByRole('dialog', { name: 'Edit prompt' });
+    await expect(fromStarter.getByTestId('TxtChatPromptName')).toHaveValue('Risk review');
+    await fromStarter.getByTestId('BtnChatPromptCancel').click();
+    await expect(fromStarter).toBeHidden();
+    await expect(page.getByTestId('ListMeetingChat')).toHaveCount(0);
+
     await page.getByTestId('TxtMeetingChat').fill('/risk');
     const list = page.getByTestId('ListMeetingChatRecipes');
     await expect(list.getByRole('group', { name: 'Your prompts' })).toBeVisible();
@@ -177,7 +187,7 @@ test('export then import round-trips; a file that is not a prompts file is refus
       }),
     );
     await expect(
-      page.getByTestId('ListMeetingChatStarters').getByRole('button').first(),
+      page.getByTestId('ListMeetingChatStarters').getByTestId('BtnChatStarter').first(),
     ).toHaveText('Weekly status');
 
     // Export through a stubbed save dialog.

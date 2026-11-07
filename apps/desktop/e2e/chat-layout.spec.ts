@@ -60,6 +60,26 @@ test('composer grows from 32 to 96, scrolls past that and keeps a 180 wide field
   }
 });
 
+test('an empty composer keeps a long placeholder on one line with no scrollbar', async () => {
+  const { launched, page } = await open({});
+  try {
+    const box = page.getByTestId('TxtMeetingChat');
+    // Longer than any panel width: it must truncate, not wrap into a clipped second line.
+    await box.evaluate((el: HTMLTextAreaElement) => {
+      el.placeholder = 'Pregunta sobre tus reuniones '.repeat(6);
+    });
+    const state = await box.evaluate((el) => ({
+      h: el.getBoundingClientRect().height,
+      scrolls: el.scrollHeight > el.clientHeight,
+      overflowY: getComputedStyle(el).overflowY,
+    }));
+    // Chromium counts a wrapped placeholder in scrollHeight, so no vertical overflow means one line.
+    expect(state).toEqual({ h: 32, scrolls: false, overflowY: 'hidden' });
+  } finally {
+    await launched.close();
+  }
+});
+
 test('the transcript right-aligns bubbles at 75 percent, fills the panel and follows new rows', async () => {
   const { launched, page } = await open({});
   try {
