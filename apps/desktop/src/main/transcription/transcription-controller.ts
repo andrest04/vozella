@@ -32,6 +32,7 @@ import {
   type RetranscriptionPipelineCallbacks,
   type RetranscriptionResult,
   type SettingsStore,
+  type SourceLevels,
   type TranslateFn,
 } from '@vozella/core';
 import type { TranscriptionRuntime } from '@vozella/platform';
@@ -48,7 +49,13 @@ export interface TranscriptionControllerDeps {
   /** Looks a string up in the current app language at the moment of use. */
   readonly t: TranslateFn;
   /** Mixed recording frames (PCM16, 16 kHz mono) while a take runs. Returns the unsubscribe. */
-  readonly onRecordingFrames: (listener: (pcm: Uint8Array) => void) => () => void;
+  /**
+   * The mixed recording frames. `levels` are the microphone and output levels per 50 ms before
+   * mixing, when the capture measured them; they name the local user `[ You ]`.
+   */
+  readonly onRecordingFrames: (
+    listener: (pcm: Uint8Array, levels?: readonly SourceLevels[]) => void,
+  ) => () => void;
   readonly fileExists: (path: string) => boolean;
   /** The note template text for a meeting; the summary module supplies it. */
   readonly templateInstructions?: (record: MeetingRecord) => Promise<string | null>;
@@ -369,8 +376,8 @@ export class TranscriptionController {
       throw error;
     }
     this.unsubscribeFrames?.();
-    this.unsubscribeFrames = this.deps.onRecordingFrames((pcm) => {
-      live.pushFrame(pcm16ToFloat32(pcm), 16_000);
+    this.unsubscribeFrames = this.deps.onRecordingFrames((pcm, levels) => {
+      live.pushFrame(pcm16ToFloat32(pcm), 16_000, levels);
     });
     return { active: true };
   }

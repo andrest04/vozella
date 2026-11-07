@@ -1,6 +1,7 @@
 import type { CancelSignal } from '../cancel';
 import type { AsrBackend } from './asr-types';
 import type { PinnedFile } from './engine-catalog';
+import type { MicActivity } from './mic-activity';
 
 export type ProgressSink = (percent: number) => void;
 
@@ -54,4 +55,13 @@ export interface AudioFrameSource {
 export interface AudioFrameReader {
   /** Repairs a header a crash left with zero sizes, then opens the file. */
   open(path: string): AudioFrameSource;
+}
+
+/**
+ * Port: when the local user spoke in a recording (`mic-activity.ts`). Adapter reads the sidecar
+ * next to the WAV. Null for a legacy recording, an import, a take without a microphone, or an
+ * unreadable sidecar: never throws, so the offline pass never fails on it.
+ */
+export interface MicActivityReader {
+  read(audioPath: string): MicActivity | null;
 }

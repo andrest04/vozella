@@ -37,32 +37,48 @@ function setup(speakerModel: boolean) {
 
 describe('offline pass with microphone activity', () => {
   const micActivity = new MicActivityTimeline([{ startMs: 0, endMs: 1000 }]);
-  const transcribe = (speakerModel: boolean, speakerDiarization: boolean, withMic = true) => {
+  const transcribe = async (speakerModel: boolean, speakerDiarization: boolean, withMic = true) => {
     const { factory } = setup(speakerModel);
     const audio = new FakeAudioReader(new Float32Array(1600), 16_000, 1);
-    return new TranscriptionService({ factory, audio }).transcribe({
-      audioPath: 'a.wav',
-      language: 'es',
-      recordedAtMs: null,
-      speakerDiarization,
-      micActivity: withMic ? micActivity : null,
-    });
+    const asked: string[] = [];
+    const reader = {
+      read: (audioPath: string) => {
+        asked.push(audioPath);
+        return withMic ? micActivity : null;
+      },
+    };
+    const text = await new TranscriptionService({ factory, audio, micActivity: reader }).transcribe(
+      { audioPath: 'a.wav', language: 'es', recordedAtMs: null, speakerDiarization },
+    );
+    return { text, asked };
   };
 
   it('labels the microphone words as you when speaker labels run', async () => {
-    expect(await transcribe(true, true)).toBe(YOU_LINE);
+    expect(await transcribe(true, true)).toEqual({ text: YOU_LINE, asked: ['a.wav'] });
   });
 
-  it('adds no label when speaker labels are off', async () => {
-    expect(await transcribe(true, false)).toBe(PLAIN_LINE);
+  it('adds no label and reads no sidecar when speaker labels are off', async () => {
+    expect(await transcribe(true, false)).toEqual({ text: PLAIN_LINE, asked: [] });
   });
 
   it('adds no label when the speaker model is missing (labels do not run)', async () => {
-    expect(await transcribe(false, true)).toBe(PLAIN_LINE);
+    expect(await transcribe(false, true)).toEqual({ text: PLAIN_LINE, asked: [] });
   });
 
   it('keeps today’s output for a recording without activity (legacy)', async () => {
-    expect(await transcribe(true, true, false)).toBe(PLAIN_LINE);
+    expect((await transcribe(true, true, false)).text).toBe(PLAIN_LINE);
+  });
+
+  it('keeps today’s output when no reader is wired', async () => {
+    const { factory } = setup(true);
+    const audio = new FakeAudioReader(new Float32Array(1600), 16_000, 1);
+    const text = await new TranscriptionService({ factory, audio }).transcribe({
+      audioPath: 'a.wav',
+      language: 'es',
+      recordedAtMs: null,
+      speakerDiarization: true,
+    });
+    expect(text).toBe(PLAIN_LINE);
   });
 });
 

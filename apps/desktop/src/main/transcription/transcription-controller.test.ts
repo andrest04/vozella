@@ -9,8 +9,11 @@ import {
   MeetingBusyRegistry,
   RuntimeInUseError,
   createLookup,
+  MicActivityTimeline,
   type AsrResult,
   type Logger,
+  type MicActivityReader,
+  type SourceLevels,
   type MeetingRecord,
 } from '@vozella/core';
 import { TranscriptionRuntime } from '@vozella/platform';
@@ -67,6 +70,7 @@ function setup(
     captureActive?: () => boolean;
     queue?: { run<T>(key: string, task: () => Promise<T>): Promise<T> };
     defer?: (task: () => void) => void;
+    micActivity?: MicActivityReader;
   } = {},
 ) {
   const engine = new FakeAsrEngine();
@@ -85,6 +89,7 @@ function setup(
     logger,
     audio,
     stores: { models, runtimes },
+    ...(options.micActivity ? { micActivity: options.micActivity } : {}),
   });
   const settings = new InMemorySettingsStore();
   if (options.provider !== null) {
@@ -93,7 +98,7 @@ function setup(
   const meetings = new InMemoryMeetingRepository();
   const busy = new MeetingBusyRegistry();
   const events: { channel: string; payload: unknown }[] = [];
-  const frameListeners = new Set<(pcm: Uint8Array) => void>();
+  const frameListeners = new Set<(pcm: Uint8Array, levels?: readonly SourceLevels[]) => void>();
   const changed: string[] = [];
   const controller = new TranscriptionController({
     runtime,
@@ -431,6 +436,39 @@ describe('offline pass', () => {
     };
     expect(await run(true)).toBe('C:/models/diar.gguf');
     expect(await run(false)).toBeNull();
+  });
+});
+
+describe('the local user as You', () => {
+  /** 1 s of 16 kHz PCM16 as one frame. */
+  const second = new Uint8Array(32_000);
+  const micLevels: SourceLevels[] = Array.from({ length: 20 }, () => ({
+    microphone: 0.1,
+    output: 0,
+  }));
+
+  it('labels live lines spoken into the microphone from the frame levels', async () => {
+    const { controller, engine, frameListeners, settings, models } = setup();
+    models.diarization = true;
+    await settings.update({ speakerDiarizationEnabled: true });
+    engine.script = { afterPush: [[final('hola', 1)]] };
+    await controller.startLive(null);
+    for (const listener of frameListeners) listener(second, micLevels);
+    await flush();
+    expect(await controller.stopLive()).toBe('[00:00.00-00:01.00] [ You ] hola');
+  });
+
+  it('labels offline lines from the recording activity only while speaker labels run', async () => {
+    const run = async (enabled: boolean) => {
+      const micActivity = { read: () => new MicActivityTimeline([{ startMs: 0, endMs: 1000 }]) };
+      const { controller, engine, settings, models } = setup({ micActivity });
+      models.diarization = true;
+      await settings.update({ speakerDiarizationEnabled: enabled });
+      engine.script = { afterPush: [[final('hola', 1)]] };
+      return controller.transcribeFile({ audioPath: 'a.wav', recordedAtMs: null });
+    };
+    expect(await run(true)).toBe('[00:00.00-00:01.00] [ You ] hola');
+    expect(await run(false)).toBe('[00:00.00-00:01.00] hola');
   });
 });
 
