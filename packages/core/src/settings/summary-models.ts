@@ -211,6 +211,8 @@ export const LEGACY_SUMMARY_MODELS: readonly SummaryModelInfo[] = [
     // Between Gemma 4 E4B (3) and Qwen3 4B (4); only orders it, legacy is never recommended.
     rank: 3.5,
     legacy: true,
+    // Same family as E4B/12B, which reason under `--reasoning auto` and can return empty summaries.
+    serverArgs: ['--reasoning', 'off'],
     speedKey: 'ModelSpeedFast',
     qualityKey: 'ModelQualityVeryGood',
     useCaseKey: 'Ui_ModelUseCaseLegacy',
