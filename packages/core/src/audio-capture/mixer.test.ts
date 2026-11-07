@@ -51,4 +51,17 @@ describe('AudioMixer', () => {
     expect(all[SOURCE_BUFFER_SAMPLES - 1]).toBe(7);
     expect(all.slice(SOURCE_BUFFER_SAMPLES)).toEqual([0, 0, 0]);
   });
+
+  it('keeps what each source gave to the last read, zeros where it ran dry', () => {
+    const m = new AudioMixer();
+    const a = m.addInput();
+    const b = m.addInput();
+    a.push(pcm(32767, 32767, 32767));
+    b.push(pcm(-32767));
+    m.read(3);
+    expect([...a.lastRead]).toEqual([1, 1, 1]);
+    expect([...b.lastRead]).toEqual([-1, 0, 0]);
+    m.read(2);
+    expect([...a.lastRead]).toEqual([0, 0]);
+  });
 });

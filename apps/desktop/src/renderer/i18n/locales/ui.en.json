@@ -108,6 +108,7 @@
   "Ui_SpeakerModelFailed": "Speaker labels stay off.",
   "Ui_SpeakerDeleteFailed": "Could not delete the speaker model: {0}",
   "Ui_SpeakerModel": "Speaker model",
+  "Ui_SpeakerYou": "You",
   "Ui_RestartRefused": "Vozella cannot restart while a recording is in progress. Finish it, then try again.",
   "Ui_SummaryLocalModelMissing": "The selected local summary model has not been downloaded yet. Download it from Settings first.",
   "Ui_SummaryLocalEmpty": "The local model did not return any content.",

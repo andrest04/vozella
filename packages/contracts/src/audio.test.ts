@@ -64,6 +64,11 @@ describe('audio worker messages', () => {
       { type: 'rpc-result', id: 1, ok: true, result: [] },
       { type: 'rpc-result', id: 1, ok: false, message: 'x', code: 'process-loopback-unsupported' },
       { type: 'recording-frame', pcm: new Uint8Array(6400) },
+      {
+        type: 'recording-frame',
+        pcm: new Uint8Array(6400),
+        levels: [{ microphone: 0.1, output: 0.02 }],
+      },
       { type: 'recording-level', level: 12 },
       { type: 'source-lost', source: 'Microphone', remaining: 1, message: 'gone' },
       { type: 'output-failed', message: 'x' },
@@ -74,6 +79,13 @@ describe('audio worker messages', () => {
       expect(audioWorkerEventSchema.safeParse(e).success, JSON.stringify(e)).toBe(true);
     expect(
       audioWorkerEventSchema.safeParse({ type: 'recording-frame', pcm: 'bytes' }).success,
+    ).toBe(false);
+    expect(
+      audioWorkerEventSchema.safeParse({
+        type: 'recording-frame',
+        pcm: new Uint8Array(2),
+        levels: [{ microphone: -1, output: 0 }],
+      }).success,
     ).toBe(false);
   });
 });

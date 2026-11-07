@@ -10,6 +10,7 @@ import {
   folderChain,
   meetingListItem,
   meetingSearchText,
+  micActivityPathFor,
   parseMeetingMarkdown,
   renderMeetingMarkdown,
   sanitizeName,
@@ -254,6 +255,11 @@ export class MarkdownMeetingRepository implements MeetingRepository {
     }
     const sibling = siblingWavPath(entry.path);
     if (await exists(sibling)) await remove(sibling);
+    for (const audio of new Set([storedAudio, sibling])) {
+      if (audio.trim() !== '' && isUnder(audio, this.root)) {
+        await this.removeMicActivity(audio, remove);
+      }
+    }
     await remove(entry.path);
     this.cache.delete(entry.path);
   }
@@ -329,6 +335,32 @@ export class MarkdownMeetingRepository implements MeetingRepository {
     if (source.trim() === '' || samePath(source, destination)) return;
     if (!(await exists(source))) return;
     await moveFile(source, destination, this.rename);
+    // The microphone activity of the recording (the local user as You) goes with it.
+    const activity = micActivityPathFor(source);
+    if (!(await exists(activity))) return;
+    try {
+      await moveFile(activity, micActivityPathFor(destination), this.rename);
+    } catch (error) {
+      this.options.logger?.warn('could not move the microphone activity of a recording', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /** Best effort: a leftover sidecar only costs the You label, never the delete. */
+  private async removeMicActivity(
+    audioPath: string,
+    remove: (path: string) => Promise<void>,
+  ): Promise<void> {
+    const activity = micActivityPathFor(audioPath);
+    if (!(await exists(activity))) return;
+    try {
+      await remove(activity);
+    } catch (error) {
+      this.options.logger?.warn('could not remove the microphone activity of a recording', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   private async parseFile(path: string): Promise<MeetingRecord> {

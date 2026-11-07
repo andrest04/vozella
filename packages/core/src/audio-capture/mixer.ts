@@ -8,6 +8,11 @@ export class MixerInput {
   private readonly ring = new Float32Array(SOURCE_BUFFER_SAMPLES);
   private head = 0;
   private count = 0;
+  /**
+   * What this source gave to the last mix, zeros where it ran dry: the source alone, before
+   * summing, so its level can be compared with the others (the local user as You).
+   */
+  lastRead = new Float32Array(0);
 
   /** Appends PCM16 little-endian samples. Samples that do not fit are dropped. */
   push(pcm: Uint8Array): void {
@@ -23,9 +28,13 @@ export class MixerInput {
   /** Adds up to `into.length` samples to `into`; a short buffer leaves the rest untouched. */
   addTo(into: Float32Array): void {
     const n = Math.min(into.length, this.count);
+    const own = new Float32Array(into.length);
     for (let i = 0; i < n; i += 1) {
-      into[i] = (into[i] ?? 0) + (this.ring[(this.head + i) % this.ring.length] ?? 0);
+      const sample = this.ring[(this.head + i) % this.ring.length] ?? 0;
+      own[i] = sample;
+      into[i] = (into[i] ?? 0) + sample;
     }
+    this.lastRead = own;
     this.head = (this.head + n) % this.ring.length;
     this.count -= n;
   }

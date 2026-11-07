@@ -103,10 +103,17 @@ export const audioWorkerEventSchema = z.discriminatedUnion('type', [
     message: z.string().optional(),
     code: z.string().optional(),
   }),
-  /** The mixed recording stream: PCM16 little-endian, 16 kHz mono, 200 ms per frame. */
+  /**
+   * The mixed recording stream: PCM16 little-endian, 16 kHz mono, 200 ms per frame. `levels`:
+   * RMS (0..1) of the microphone and the output before mixing, one per 50 ms of the frame,
+   * which name the local user `[ You ]` in the transcript. Absent when not measured.
+   */
   z.object({
     type: z.literal('recording-frame'),
     pcm: z.custom<Uint8Array>((v) => v instanceof Uint8Array),
+    levels: z
+      .array(z.object({ microphone: z.number().min(0), output: z.number().min(0) }))
+      .optional(),
   }),
   /** Microphone level of the running recording, 0..100, about ten per second. */
   z.object({ type: z.literal('recording-level'), level: z.number() }),

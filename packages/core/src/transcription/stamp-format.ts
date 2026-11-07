@@ -1,4 +1,15 @@
+import { LOCAL_SPEAKER_TAG } from './local-speaker';
+
 /** Shared stamp format of the live preview and the offline pass (spec 3.7). */
+
+/**
+ * The stored name of the local user, written as `[ You ]`. Like `Speaker-N` and the headers it
+ * is a fixed English token in the file; pages show it in the UI language (`Ui_SpeakerYou`).
+ */
+export const LOCAL_SPEAKER_LABEL = 'You';
+
+/** A speaker label after the stamp: `[ Speaker-N ]` or `[ You ]`. */
+export const SPEAKER_LABEL_PATTERN = /\[ (?:Speaker-\d+|You) \]/;
 
 const pad2 = (value: number): string => String(value).padStart(2, '0');
 
@@ -21,11 +32,15 @@ export function formatElapsed(ms: number): string {
   return `${pad2(minutes)}:${pad2(seconds)}.${pad2(hundredths)}`;
 }
 
-/** `[a-b] text`, or `[a-b] [ Speaker-N ] text` when the tag is above zero. */
+/**
+ * `[a-b] text`, or `[a-b] [ Speaker-N ] text` when the tag is above zero, or `[a-b] [ You ] text`
+ * for the local speaker.
+ */
 export function formatLine(startMs: number, endMs: number, text: string, speakerTag = 0): string {
   const start = Math.max(0, startMs);
   const end = Math.max(endMs, start);
   const range = `[${formatElapsed(start)}-${formatElapsed(end)}]`;
+  if (speakerTag === LOCAL_SPEAKER_TAG) return `${range} [ ${LOCAL_SPEAKER_LABEL} ] ${text}`;
   return speakerTag > 0 ? `${range} [ Speaker-${String(speakerTag)} ] ${text}` : `${range} ${text}`;
 }
 

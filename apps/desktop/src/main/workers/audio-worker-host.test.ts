@@ -106,6 +106,16 @@ describe('AudioWorkerHost', () => {
     await expect(host.stopCapture()).resolves.toMatchObject({ frames: 2 });
   });
 
+  it('relays recording frames with their source levels unchanged (the local user as You)', async () => {
+    const { host, procs } = make();
+    const pushed: unknown[] = [];
+    host.onPush((event) => pushed.push(event));
+    await host.ping();
+    const levels = [{ microphone: 0.1, output: 0.01 }];
+    procs[0]?.raw({ type: 'recording-frame', pcm: new Uint8Array(6400), levels });
+    expect(pushed).toEqual([{ type: 'recording-frame', pcm: new Uint8Array(6400), levels }]);
+  });
+
   it('rejects a second capture while one is active', async () => {
     const { host } = make();
     await host.startCapture({ kind: 'mic' }, { onFrame: vi.fn() });

@@ -4,6 +4,7 @@ import { STREAMING_GEOMETRY } from './asr-types';
 import type { AsrBackendStatus } from './backend-status';
 import type { NemoSpeechRecognizerFactory } from './recognizer-factory';
 import { engineLocaleFor } from '../settings/languages';
+import { MIC_ACTIVITY_FRAME_MS, MicActivityRecorder, type SourceLevels } from './mic-activity';
 
 export interface LiveTranscriptUpdate {
   /** Committed lines plus the rewritten interim suffix. */
@@ -32,12 +33,16 @@ export const LIVE_QUEUE_CAPACITY = 8;
 interface Frame {
   readonly samples: Float32Array;
   readonly sampleRate: number;
+  /** Source levels per {@link MIC_ACTIVITY_FRAME_MS}, measured before mixing; absent: unknown. */
+  readonly levels: readonly SourceLevels[] | undefined;
 }
 
 interface Session {
   readonly recognizer: AsrRecognizer;
   readonly stream: AsrStream;
   readonly accumulator: StreamingTranscriptAccumulator;
+  /** Microphone activity in engine time, only while speaker labels run. */
+  readonly micActivity: MicActivityRecorder | null;
   readonly queue: Frame[];
   wake: (() => void) | null;
   closed: boolean;
@@ -90,10 +95,12 @@ export class LiveTranscriptionService {
         await created.recognizer.dispose().catch(() => undefined);
         throw error;
       }
+      const micActivity = created.diarization ? new MicActivityRecorder() : null;
       const session: Session = {
         recognizer: created.recognizer,
         stream,
-        accumulator: new StreamingTranscriptAccumulator(options.recordedAtMs),
+        accumulator: new StreamingTranscriptAccumulator(options.recordedAtMs, { micActivity }),
+        micActivity,
         queue: [],
         wake: null,
         closed: false,
@@ -106,11 +113,14 @@ export class LiveTranscriptionService {
     });
   }
 
-  /** Called for every capture frame. Never waits for the engine. */
-  pushFrame(samples: Float32Array, sampleRate: number): void {
+  /**
+   * Called for every capture frame. Never waits for the engine. `levels` are the microphone and
+   * output levels of the frame before mixing, which name the local user `[ You ]`.
+   */
+  pushFrame(samples: Float32Array, sampleRate: number, levels?: readonly SourceLevels[]): void {
     const session = this.session;
     if (!session || session.closed) return;
-    const frame: Frame = { samples, sampleRate };
+    const frame: Frame = { samples, sampleRate, levels };
     session.totalMs += frameMs(frame);
     if (session.queue.length >= LIVE_QUEUE_CAPACITY) {
       const dropped = session.queue.shift();
@@ -157,6 +167,8 @@ export class LiveTranscriptionService {
         continue;
       }
       let changed = false;
+      // Recorded when the frame reaches the engine, so a dropped frame shifts neither timeline.
+      recordLevels(session.micActivity, frame);
       try {
         await session.stream.push(frame.samples, frame.sampleRate);
         for (const result of await session.stream.pullAvailable()) {
@@ -192,3 +204,17 @@ export class LiveTranscriptionService {
     return run;
   }
 }
+
+/**
+ * Keeps the activity aligned with the audio the engine heard: one level per
+ * {@link MIC_ACTIVITY_FRAME_MS} of the frame, silence where levels are missing or short.
+ */
+function recordLevels(recorder: MicActivityRecorder | null, frame: Frame): void {
+  if (recorder === null) return;
+  const count = Math.round(frameMs(frame) / MIC_ACTIVITY_FRAME_MS);
+  for (let i = 0; i < count; i += 1) {
+    recorder.push(frame.levels?.[i] ?? SILENCE);
+  }
+}
+
+const SILENCE: SourceLevels = { microphone: 0, output: 0 };

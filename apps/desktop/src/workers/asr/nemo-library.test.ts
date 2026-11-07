@@ -141,13 +141,14 @@ describe('loadNemoLibrary with a recording koffi', () => {
       spkcache_frames: 188,
       update_period_frames: 300,
     });
+    // Model card "low latency" preset (1.04 s input buffer), not the library defaults.
     expect(creates[1]).toMatchObject({
-      chunk_frames: 0,
-      right_context_frames: 0,
+      chunk_frames: 6,
+      right_context_frames: 7,
       left_context_frames: -1,
-      fifo_frames: 0,
-      spkcache_frames: 0,
-      update_period_frames: 0,
+      fifo_frames: 188,
+      spkcache_frames: 188,
+      update_period_frames: 144,
     });
   });
 

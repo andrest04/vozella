@@ -693,3 +693,51 @@ describe('the directory tree is a write-only mirror', () => {
     expect((await fx.meetings.get(ID_A))?.sourcePath).toBe(elsewhere);
   });
 });
+
+describe('the microphone activity sidecar (<name>.mic.json) follows its recording', () => {
+  const withRecording = async () => {
+    const first = await fx.meetings.save(meeting());
+    const wav = first.sourcePath?.replace(/\.md$/, '.wav') ?? '';
+    fs.writeFileSync(wav, 'RIFF');
+    fs.writeFileSync(wav.replace(/\.wav$/, '.mic.json'), '{"version":1,"ranges":[]}');
+    return fx.meetings.save({ ...first, audioFilePath: wav });
+  };
+
+  it('moves with the wav when the meeting changes folder or title', async () => {
+    await fx.folders.save(folder(FOLDER_1, 'Universidad'));
+    const saved = await withRecording();
+    await fx.meetings.save({ ...saved, folderId: FOLDER_1, title: 'Retro' });
+    expect(tree(fx.root)).toEqual([
+      'Universidad/2026-09-01 Retro.md',
+      'Universidad/2026-09-01 Retro.mic.json',
+      'Universidad/2026-09-01 Retro.wav',
+      'folders.json',
+    ]);
+  });
+
+  it('is removed with the meeting', async () => {
+    await withRecording();
+    await fx.meetings.delete(ID_A);
+    expect(tree(fx.root)).toEqual([]);
+  });
+
+  it('never blocks a delete when it cannot be removed', async () => {
+    const f = createLibraryFixture({
+      unlink: (p) =>
+        p.endsWith('.mic.json')
+          ? Promise.reject(Object.assign(new Error('EBUSY'), { code: 'EBUSY' }))
+          : fs.promises.unlink(p),
+    });
+    try {
+      const first = await f.meetings.save(meeting());
+      const wav = first.sourcePath?.replace(/\.md$/, '.wav') ?? '';
+      fs.writeFileSync(wav, 'RIFF');
+      fs.writeFileSync(wav.replace(/\.wav$/, '.mic.json'), '{}');
+      await f.meetings.save({ ...first, audioFilePath: wav });
+      await f.meetings.delete(ID_A);
+      expect((await f.meetings.list()).items).toEqual([]);
+    } finally {
+      f.cleanup();
+    }
+  });
+});

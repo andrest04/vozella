@@ -88,7 +88,7 @@ videos often have none.
 Rules:
 - Ground every sentence in the transcript. Do not invent attendees, dates, companies, or tasks.
 - If a name or number is unclear because of ASR noise, paraphrase without guessing the spelling.
-- Transcript lines are stamped [mm:ss.ff-mm:ss.ff] elapsed ranges from recording start, with optional [ Speaker-N ] labels. Use those ranges to place points in time (and Recorded/Ended for wall-clock bounds).
+- Transcript lines are stamped [mm:ss.ff-mm:ss.ff] elapsed ranges from recording start, with optional [ Speaker-N ] or [ You ] (the person recording) labels. Use those ranges to place points in time (and Recorded/Ended for wall-clock bounds).
 - Transcript may start with Recorded and Ended local stamps (yyyy-MM-dd HH:mm). Use those / <ended_at> as the meeting end. Never write that the end time was not recorded when Ended or <ended_at> is present. If missing, omit end time (do not invent, do not say "not recorded").
 - Write the Title, the Summary body, and action-item text in English.
 - Keep the Markdown headings exactly "## Title", "## Summary", and "## Action Items" in English.

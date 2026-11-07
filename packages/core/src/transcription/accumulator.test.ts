@@ -173,7 +173,7 @@ describe('StreamingTranscriptAccumulator', () => {
 
   it('parity 25: a multi-line interim is committed line by line', () => {
     const acc = make();
-    acc.apply(result(false, 'one two', 40, [word(0, 3, 0), word(3, 5, 1)]));
+    acc.apply(result(false, 'one two', 40, [word(0, 3, 1), word(3, 5, 2)]));
     const shown = acc.displayText.split(NL).slice(1);
     expect(shown.length).toBeGreaterThan(1);
     acc.commitRemainingInterim();
@@ -207,6 +207,58 @@ describe('StreamingTranscriptAccumulator', () => {
     expect(acc.committedText).toBe(
       [header, line(0, 1, 'Hello,', 1), line(1, 2, 'world.', 2)].join(NL),
     );
+  });
+
+  describe('speaker smoothing', () => {
+    it('does not split a line on a one-word speaker flicker', () => {
+      const acc = make();
+      const words = [
+        word(0, 0.4, 1),
+        word(0.4, 0.8, 1),
+        word(0.8, 1.0, 2),
+        word(1.0, 1.4, 1),
+        word(1.4, 1.8, 1),
+      ];
+      acc.apply(result(true, 'we should ship it today', 1.8, words));
+      expect(acc.committedText).toBe(header + NL + line(0, 1.8, 'we should ship it today', 1));
+    });
+
+    it('labels a line whose first word is untagged (was unlabelled before)', () => {
+      const acc = make();
+      const words = [word(0, 0.3, 0), word(0.3, 0.8, 1), word(0.8, 1.2, 1)];
+      acc.apply(result(true, 'so the plan', 1.2, words));
+      expect(acc.committedText).toBe(header + NL + line(0, 1.2, 'so the plan', 1));
+    });
+
+    it('still splits at an idea pause and keeps a real turn change', () => {
+      const acc = make();
+      const words = [
+        word(0, 0.5, 1),
+        word(0.5, 1.0, 1),
+        word(1.6, 2.0, 2),
+        word(2.0, 2.4, 2),
+        word(2.4, 2.8, 1),
+        word(2.8, 3.2, 1),
+      ];
+      acc.apply(result(true, 'hello there yes indeed thank you', 3.2, words));
+      expect(acc.committedText).toBe(
+        [
+          header,
+          line(0, 1.0, 'hello there', 1),
+          line(1.6, 2.4, 'yes indeed', 2),
+          line(2.4, 3.2, 'thank you', 1),
+        ].join(NL),
+      );
+    });
+
+    it('does not carry a speaker across an idea pause into untagged words', () => {
+      const acc = make();
+      const words = [word(0, 0.5, 2), word(0.5, 1.0, 2), word(2.0, 2.5, 0), word(2.5, 3.0, 0)];
+      acc.apply(result(true, 'first part second part', 3.0, words));
+      expect(acc.committedText).toBe(
+        [header, line(0, 1.0, 'first part', 2), line(2.0, 3.0, 'second part')].join(NL),
+      );
+    });
   });
 
   describe('results with no word timings', () => {

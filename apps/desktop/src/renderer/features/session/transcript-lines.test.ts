@@ -27,6 +27,17 @@ describe('transcript lines', () => {
     expect(parts.map((p) => p.text).join('')).toBe(line);
   });
 
+  it('marks the local user label and keeps every character', () => {
+    const line = '* [00:04.52-00:09.10] [ You ] Empecemos';
+    const parts = parseLine(line);
+    expect(parts.map((p) => p.kind)).toEqual(['star', 'stamp', 'text', 'you', 'text']);
+    expect(parts.map((p) => p.text).join('')).toBe(line);
+    expect(parseLine('[00:00.00-00:01.00] said [ You ] later').map((p) => p.kind)).toEqual([
+      'stamp',
+      'text',
+    ]);
+  });
+
   it('does not mark header lines or odd brackets', () => {
     expect(parseLine('Recorded 2026-10-01 22:36').map((p) => p.kind)).toEqual(['text']);
     expect(parseLine('[1:2] x').map((p) => p.kind)).toEqual(['text']);

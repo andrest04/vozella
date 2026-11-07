@@ -78,6 +78,9 @@ describe('audio worker rpc', () => {
     expect(stopped).toMatchObject({ ok: true });
     expect(fs.statSync(target).size).toBeGreaterThan(46 + 6400);
     expect(events.some((e) => e.type === 'recording-frame')).toBe(true);
+    // The microphone and output levels before mixing ride along (the local user as You).
+    const frame = events.find((e) => e.type === 'recording-frame');
+    expect(frame?.type === 'recording-frame' && frame.levels?.length).toBe(4);
     const level = events.find((e) => e.type === 'recording-level');
     expect(level?.type === 'recording-level' && level.level).toBeGreaterThan(0);
   }, 10_000);
