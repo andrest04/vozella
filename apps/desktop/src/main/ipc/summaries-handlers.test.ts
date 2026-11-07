@@ -331,15 +331,16 @@ describe('summaries handlers', () => {
 });
 
 describe('summaries setup flow', () => {
-  it('lists the wizard rows and pre-selects the first Recommended model, then a downloaded one', async () => {
+  it('lists the wizard rows and pre-selects the model recommended for this PC, then a downloaded one', async () => {
     const { call, store } = setup();
     const first = ok(await call('summaries.hardware', {})) as {
-      rows: { fileName: string; fit: string | null }[];
+      rows: { fileName: string; fit: string | null; recommended: boolean }[];
       defaultFileName: string | null;
     };
     expect(first.rows).toHaveLength(SUMMARY_MODELS.length);
-    const recommended = first.rows.find((row) => row.fit === 'Recommended');
-    expect(first.defaultFileName).toBe(recommended?.fileName ?? first.rows[0]?.fileName);
+    const recommended = first.rows.filter((row) => row.recommended);
+    expect(recommended).toHaveLength(1);
+    expect(first.defaultFileName).toBe(recommended[0]?.fileName);
 
     const last = SUMMARY_MODELS[SUMMARY_MODELS.length - 1];
     store.files.add(last?.fileName ?? '');

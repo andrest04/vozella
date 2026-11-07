@@ -23,10 +23,15 @@ import {
 } from './note-templates';
 import {
   FIT_LABEL_KEYS,
+  LEGACY_SUMMARY_MODELS,
   SUMMARY_MODELS,
+  findSummaryModel,
   formatModelSize,
   rateFor,
+  recommendedFor,
+  serverArgsFor,
   type HardwareProfile,
+  type RateOptions,
   type SummaryModelInfo,
 } from './summary-models';
 
@@ -116,56 +121,96 @@ describe('B6: the picker and the engine agree on case and space variants', () =>
 });
 
 describe('summary model catalog', () => {
-  it('has the four curated entries', () => {
-    expect(SUMMARY_MODELS.map((m) => m.fileName)).toEqual([
-      'Llama-3.2-1B-Instruct-Q4_K_M.gguf',
-      'gemma-4-E2B-it-Q4_K_M.gguf',
-      'gemma-4-E4B-it-Q4_K_M.gguf',
-      'gemma-4-12b-it-Q4_K_M.gguf',
+  const known = [...SUMMARY_MODELS, ...LEGACY_SUMMARY_MODELS];
+
+  it('has the seven curated entries from four vendors', () => {
+    expect(SUMMARY_MODELS.map((m) => [m.fileName, m.displayName, m.vendor])).toEqual([
+      ['Llama-3.2-1B-Instruct-Q4_K_M.gguf', 'Llama 3.2 1B Instruct', 'Meta'],
+      ['Llama-3.2-3B-Instruct-Q4_K_M.gguf', 'Llama 3.2 3B Instruct', 'Meta'],
+      ['granite-4.0-micro-Q4_K_M.gguf', 'Granite 4.0 Micro', 'IBM'],
+      ['gemma-4-E4B-it-Q4_K_M.gguf', 'Gemma 4 E4B Instruct', 'Google'],
+      ['Qwen3-4B-Instruct-2507-Q4_K_M.gguf', 'Qwen3 4B Instruct 2507', 'Alibaba'],
+      ['Qwen3-8B-Q4_K_M.gguf', 'Qwen3 8B', 'Alibaba'],
+      ['gemma-4-12b-it-Q4_K_M.gguf', 'Gemma 4 12B Instruct', 'Google'],
     ]);
-    expect(SUMMARY_MODELS.map((m) => m.displayName)).toEqual([
-      'Llama 3.2 1B Instruct',
-      'Gemma 4 E2B Instruct',
-      'Gemma 4 E4B Instruct',
-      'Gemma 4 12B Instruct',
-    ]);
+  });
+
+  it('file names are unique across the catalog and the legacy entries', () => {
+    const names = known.map((m) => m.fileName.toLowerCase());
+    expect(new Set(names).size).toBe(names.length);
   });
 
   it('is ordered by ascending minimum RAM', () => {
     const rams = SUMMARY_MODELS.map((m) => m.minRamGb);
-    expect(rams).toEqual([4, 6, 8, 16]);
+    expect(rams).toEqual([4, 8, 8, 8, 12, 16, 16]);
     expect([...rams].sort((a, b) => a - b)).toEqual(rams);
   });
 
-  it('all have https download URLs and a positive size', () => {
-    for (const model of SUMMARY_MODELS) {
-      expect(model.downloadUrl.startsWith('https://')).toBe(true);
-      expect(model.downloadUrl.endsWith(model.fileName)).toBe(true);
+  it('ranks quality 1 (best) to 7 with no ties, from research', () => {
+    const byRank = [...SUMMARY_MODELS].sort((a, b) => a.rank - b.rank).map((m) => m.displayName);
+    expect(byRank).toEqual([
+      'Gemma 4 12B Instruct',
+      'Qwen3 8B',
+      'Gemma 4 E4B Instruct',
+      'Qwen3 4B Instruct 2507',
+      'Granite 4.0 Micro',
+      'Llama 3.2 3B Instruct',
+      'Llama 3.2 1B Instruct',
+    ]);
+    expect(new Set(known.map((m) => m.rank)).size).toBe(known.length);
+  });
+
+  it('every URL is https, pinned to a 40-hex commit, and ends with the file name', () => {
+    for (const model of known) {
+      expect(model.downloadUrl, model.fileName).toMatch(
+        /^https:\/\/huggingface\.co\/[^/]+\/[^/]+\/resolve\/[0-9a-f]{40}\//,
+      );
+      expect(model.downloadUrl.endsWith(`/${model.fileName}`)).toBe(true);
       expect(model.fileSizeGb).toBeGreaterThan(0);
     }
   });
 
-  it('B18: pins the exact byte size of every file and the hash of the 1B file only', () => {
+  it('B18: pins the exact byte size and the SHA-256 of every file', () => {
     expect(SUMMARY_MODELS.map((m) => m.sizeBytes)).toEqual([
-      807_694_464, 3_106_738_272, 4_977_171_584, 7_121_861_440,
+      807_694_464, 2_019_377_696, 2_099_502_528, 4_977_171_584, 2_497_281_120, 5_027_783_488,
+      7_121_861_440,
     ]);
-    for (const model of SUMMARY_MODELS) {
+    for (const model of known) {
       expect(Number.isInteger(model.sizeBytes)).toBe(true);
       // The rounded GB label agrees with the byte size.
       expect(Math.round((model.sizeBytes / 1e9) * 100) / 100).toBe(model.fileSizeGb);
+      expect(model.sha256, model.fileName).toMatch(/^[0-9a-f]{64}$/);
     }
-    expect(SUMMARY_MODELS.map((m) => m.sha256)).toEqual([
+    expect(findSummaryModel('Llama-3.2-1B-Instruct-Q4_K_M.gguf')?.sha256).toBe(
       '6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83',
-      undefined,
-      undefined,
-      undefined,
+    );
+  });
+
+  it('only Qwen3 8B needs server flags: thinking off', () => {
+    expect(known.filter((m) => m.serverArgs !== undefined).map((m) => m.fileName)).toEqual([
+      'Qwen3-8B-Q4_K_M.gguf',
     ]);
+    expect(serverArgsFor('Qwen3-8B-Q4_K_M.gguf')).toEqual(['--reasoning', 'off']);
+    expect(serverArgsFor('gemma-4-12b-it-Q4_K_M.gguf')).toEqual([]);
+    expect(serverArgsFor('nope.gguf')).toEqual([]);
+    expect(serverArgsFor(null)).toEqual([]);
+  });
+
+  it('Gemma 4 E2B left the catalog but is still known as a legacy model', () => {
+    expect(SUMMARY_MODELS.some((m) => m.fileName === 'gemma-4-E2B-it-Q4_K_M.gguf')).toBe(false);
+    expect(LEGACY_SUMMARY_MODELS.map((m) => m.fileName)).toEqual(['gemma-4-E2B-it-Q4_K_M.gguf']);
+    expect(findSummaryModel('gemma-4-E2B-it-Q4_K_M.gguf')).toMatchObject({
+      legacy: true,
+      sizeBytes: 3_106_738_272,
+    });
+    expect(SUMMARY_MODELS.every((m) => m.legacy !== true)).toBe(true);
   });
 
   it('B20: the catalog holds label keys, never translated text', () => {
-    for (const model of SUMMARY_MODELS) {
+    for (const model of known) {
       for (const key of [model.speedKey, model.qualityKey, model.useCaseKey]) {
-        expect(key).toMatch(/^Model(Speed|Quality|UseCase)[A-Za-z0-9]+$/);
+        // Ported WinUI keys, or hand written Ui_ keys for the models added after the port.
+        expect(key).toMatch(/^(Ui_)?Model(Speed|Quality|UseCase)[A-Za-z0-9]+$/);
         expect(key).not.toContain(' ');
       }
     }
@@ -180,43 +225,55 @@ describe('summary model catalog', () => {
     });
   });
 
-  it('pins every URL, size and catalog key', () => {
-    expect(
-      SUMMARY_MODELS.map((m) => [
-        m.downloadUrl,
-        m.fileSizeGb,
-        m.speedKey,
-        m.qualityKey,
-        m.useCaseKey,
-      ]),
-    ).toEqual([
+  it('pins every URL to the commit verified in C1, and every catalog key', () => {
+    expect(known.map((m) => [m.downloadUrl, m.speedKey, m.qualityKey, m.useCaseKey])).toEqual([
       [
-        'https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf',
-        0.81,
+        'https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/067b946cf014b7c697f3654f621d577a3e3afd1c/Llama-3.2-1B-Instruct-Q4_K_M.gguf',
         'ModelSpeedVeryFast',
-        'ModelQualityGood',
+        'Ui_ModelQualityBasic',
         'ModelUseCaseModestPcs',
       ],
       [
-        'https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_K_M.gguf',
-        3.11,
+        'https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/5ab33fa94d1d04e903623ae72c95d1696f09f9e8/Llama-3.2-3B-Instruct-Q4_K_M.gguf',
         'ModelSpeedFast',
-        'ModelQualityVeryGood',
-        'ModelUseCaseRecommendedDefault',
+        'ModelQualityGood',
+        'Ui_ModelUseCasePc8Gb',
       ],
       [
-        'https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf',
-        4.98,
+        'https://huggingface.co/ibm-granite/granite-4.0-micro-GGUF/resolve/ec48475f0c811d812fbfb61975717a9c36eeb652/granite-4.0-micro-Q4_K_M.gguf',
+        'ModelSpeedFast',
+        'ModelQualityGood',
+        'Ui_ModelUseCasePc8Gb',
+      ],
+      [
+        'https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/bfc15c382204943c3a8fff0c750b94ae2364d7a3/gemma-4-E4B-it-Q4_K_M.gguf',
         'ModelSpeedMedium',
+        'ModelQualityExcellent',
+        'Ui_ModelUseCasePc8Gb',
+      ],
+      [
+        'https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/a06e946bb6b655725eafa393f4a9745d460374c9/Qwen3-4B-Instruct-2507-Q4_K_M.gguf',
+        'ModelSpeedFast',
+        'ModelQualityVeryGood',
+        'Ui_ModelUseCasePc12Gb',
+      ],
+      [
+        'https://huggingface.co/Qwen/Qwen3-8B-GGUF/resolve/7c41481f57cb95916b40956ab2f0b139b296d974/Qwen3-8B-Q4_K_M.gguf',
+        'ModelSpeedSlowWithoutGpu',
         'ModelQualityExcellent',
         'ModelUseCasePc16GbOrGpu',
       ],
       [
-        'https://huggingface.co/unsloth/gemma-4-12b-it-GGUF/resolve/main/gemma-4-12b-it-Q4_K_M.gguf',
-        7.12,
+        'https://huggingface.co/unsloth/gemma-4-12b-it-GGUF/resolve/fc034cfff751157913579611efad8462ac1be606/gemma-4-12b-it-Q4_K_M.gguf',
         'ModelSpeedSlowWithoutGpu',
         'ModelQualityExcellent',
         'ModelUseCaseGpuOnly',
+      ],
+      [
+        'https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/0314792d7f1f7e229411f620751375812bb9faf2/gemma-4-E2B-it-Q4_K_M.gguf',
+        'ModelSpeedFast',
+        'ModelQualityVeryGood',
+        'Ui_ModelUseCaseLegacy',
       ],
     ]);
   });
@@ -224,11 +281,74 @@ describe('summary model catalog', () => {
   it('formats the size with the 0.# pattern', () => {
     expect(SUMMARY_MODELS.map((m) => formatModelSize(m.fileSizeGb, 'en'))).toEqual([
       '0.8',
-      '3.1',
+      '2',
+      '2.1',
+      '5',
+      '2.5',
       '5',
       '7.1',
     ]);
     expect(formatModelSize(7.12, 'es')).toBe('7,1');
+  });
+});
+
+describe('recommendedFor: the best model that runs well on this PC', () => {
+  const hw = (
+    totalRamGb: number,
+    gpuVramGb: number | null = null,
+    gpuName: string | null = gpuVramGb === null ? null : 'NVIDIA GeForce RTX 4060',
+  ): HardwareProfile => ({ totalRamGb, gpuName, gpuVramGb });
+  const pick = (hardware: HardwareProfile, options: RateOptions = {}) =>
+    recommendedFor(hardware, options)?.displayName ?? null;
+
+  it('4 GB: only the basic Llama 3.2 1B runs well', () => {
+    expect(pick(hw(4))).toBe('Llama 3.2 1B Instruct');
+  });
+
+  it('6 GB: the 1B runs well, so it wins over better models that may be slow', () => {
+    expect(pick(hw(6))).toBe('Llama 3.2 1B Instruct');
+  });
+
+  it('8 GB, no GPU: Gemma 4 E4B, the best of the 8 GB tier', () => {
+    expect(pick(hw(8))).toBe('Gemma 4 E4B Instruct');
+  });
+
+  it('12 GB: Gemma 4 E4B still outranks Qwen3 4B', () => {
+    expect(pick(hw(12))).toBe('Gemma 4 E4B Instruct');
+  });
+
+  it('16 GB: Gemma 4 12B', () => {
+    expect(pick(hw(16))).toBe('Gemma 4 12B Instruct');
+  });
+
+  it('32 GB and an 8 GB GPU: Gemma 4 12B', () => {
+    expect(pick(hw(32, 8))).toBe('Gemma 4 12B Instruct');
+  });
+
+  it('8 GB RAM and an 8 GB GPU: the GPU carries Gemma 4 12B', () => {
+    expect(pick(hw(8, 8))).toBe('Gemma 4 12B Instruct');
+  });
+
+  it('the CPU runtime (gpuOffload false) cannot use that GPU: back to Gemma 4 E4B', () => {
+    expect(pick(hw(8, 8), { gpuOffload: false })).toBe('Gemma 4 E4B Instruct');
+  });
+
+  it('with nothing that runs well, the best model that may be slow', () => {
+    // 3 GB is 0.75 of the 1B minimum: MayBeSlow, nothing Recommended.
+    expect(pick(hw(3))).toBe('Llama 3.2 1B Instruct');
+    const heavy = SUMMARY_MODELS.filter((m) => m.minRamGb === 8);
+    // 6 GB: the 8 GB tier may be slow, the best of it is Gemma 4 E4B.
+    expect(recommendedFor(hw(6), {}, heavy)?.displayName).toBe('Gemma 4 E4B Instruct');
+  });
+
+  it('none when even the lightest model is too heavy', () => {
+    expect(pick(hw(2))).toBeNull();
+    expect(recommendedFor(hw(64), {}, [])).toBeNull();
+  });
+
+  it('never recommends a legacy model', () => {
+    const onlyLegacy = [...LEGACY_SUMMARY_MODELS];
+    expect(recommendedFor(hw(64), {}, onlyLegacy)).toBeNull();
   });
 });
 

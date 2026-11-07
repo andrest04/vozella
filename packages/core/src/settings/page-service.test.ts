@@ -154,14 +154,32 @@ describe('SettingsPageService.load', () => {
   });
 
   it('lists the models with the active one and the missing active id', async () => {
-    const files = new Set(['gemma-4-E2B-it-Q4_K_M.gguf']);
+    const files = new Set(['granite-4.0-micro-Q4_K_M.gguf']);
     const { service, store } = page({ models: files });
-    await store.update({ selectedSummaryModelId: 'gemma-4-E2B-it-Q4_K_M.gguf' });
+    await store.update({ selectedSummaryModelId: 'granite-4.0-micro-Q4_K_M.gguf' });
     const snapshot = await service.load();
-    expect(snapshot.models.rows.map((row) => row.active)).toEqual([false, true, false, false]);
+    expect(snapshot.models.rows.filter((row) => row.active).map((row) => row.fileName)).toEqual([
+      'granite-4.0-micro-Q4_K_M.gguf',
+    ]);
     expect(snapshot.models.missingActiveId).toBeNull();
     files.clear();
-    expect((await service.load()).models.missingActiveId).toBe('gemma-4-E2B-it-Q4_K_M.gguf');
+    expect((await service.load()).models.missingActiveId).toBe('granite-4.0-micro-Q4_K_M.gguf');
+  });
+
+  it('a user who kept the legacy Gemma 4 E2B still sees it active; deleting it hides it', async () => {
+    const legacy = 'gemma-4-E2B-it-Q4_K_M.gguf';
+    const files = new Set([legacy]);
+    const { service, store } = page({ models: files });
+    await store.update({ selectedSummaryModelId: legacy });
+    const snapshot = await service.load();
+    expect(snapshot.models.rows.find((row) => row.active)).toMatchObject({
+      fileName: legacy,
+      legacy: true,
+    });
+    files.clear();
+    const after = await service.load();
+    expect(after.models.rows.map((row) => row.fileName)).not.toContain(legacy);
+    expect(after.models.missingActiveId).toBe(legacy);
   });
 
   it('carries the notices', async () => {

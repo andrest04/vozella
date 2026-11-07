@@ -162,6 +162,22 @@ describe('LocalLlmSummaryProvider server lifetime (B3)', () => {
     expect(argv[argv.indexOf('-c') + 1]).toBe(String(CONTEXT_TOKENS));
     expect(argv[argv.indexOf('-ngl') + 1]).toBe('0');
   });
+
+  it('adds the catalog flags of the model file: Qwen3 8B starts with thinking off', async () => {
+    const { provider, created, model } = setup();
+    model.path = 'C:/models/Qwen3-8B-Q4_K_M.gguf';
+    await provider.completePrompt('one', NEVER);
+    const argv = (await infoOf(created[0]!)).argv;
+    expect(argv[argv.indexOf('--reasoning') + 1]).toBe('off');
+    expect(argv.indexOf('--reasoning')).toBeGreaterThan(argv.indexOf('-np'));
+  });
+
+  it('a Gemma model gets no reasoning flag: its handling stays as it was', async () => {
+    const { provider, created, model } = setup();
+    model.path = 'C:/models/gemma-4-12b-it-Q4_K_M.gguf';
+    await provider.completePrompt('one', NEVER);
+    expect((await infoOf(created[0]!)).argv).not.toContain('--reasoning');
+  });
 });
 
 describe('LocalLlmSummaryProvider requests', () => {

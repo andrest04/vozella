@@ -1,4 +1,5 @@
-import { CONTEXT_TOKENS, type CancelSignal } from '@vozella/core';
+import nodePath from 'node:path';
+import { CONTEXT_TOKENS, serverArgsFor, type CancelSignal } from '@vozella/core';
 import type {
   ChatDelta,
   ChatMessage,
@@ -29,7 +30,15 @@ export interface LocalLlmHostOptions {
   createServer(): LocalLlmServer;
   resolveRuntime(cancel: CancelSignal): Promise<LocalLlmRuntime>;
   readonly contextTokens?: number;
+  /**
+   * Flags a model needs (Qwen3 8B: thinking off). Defaults to the catalog entry whose file name is
+   * the path's base name, which is how the model store names files.
+   */
+  serverArgsFor?(modelPath: string): readonly string[];
 }
+
+const catalogServerArgs = (modelPath: string): readonly string[] =>
+  serverArgsFor(nodePath.basename(modelPath));
 
 interface Loaded {
   readonly modelPath: string;
@@ -68,7 +77,12 @@ export class LocalLlmHost {
           contextTokens: this.options.contextTokens ?? CONTEXT_TOKENS,
           gpuLayers: runtime.gpuOffload ? 'auto' : 0,
           // One slot: the whole context belongs to the one request in flight.
-          extraArgs: ['-np', '1', ...(runtime.extraArgs ?? [])],
+          extraArgs: [
+            '-np',
+            '1',
+            ...(runtime.extraArgs ?? []),
+            ...(this.options.serverArgsFor?.(modelPath) ?? catalogServerArgs(modelPath)),
+          ],
           argsPrefix: runtime.argsPrefix,
           healthTimeoutMs: runtime.healthTimeoutMs,
           cancel,

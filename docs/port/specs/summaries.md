@@ -697,6 +697,23 @@ Ordered by ascending `MinRamGb`. All Q4_K_M GGUF. `FileName` is the stable id an
 
 Speed, quality and use-case labels are resolved from the Core string catalog at read time, in the current UI culture (so the list is built once per process in the culture active at first access, bug B20).
 
+**Port change (2026-11-07, `odd/tasks/summary-model-catalog.md`).** The Electron port replaces the table above with seven models from four vendors (`packages/core/src/settings/summary-models.ts`). Every URL is pinned to a repository commit (`/resolve/<40-hex>/`), and every entry pins `sizeBytes` and `sha256`. `rank` is a research-based quality order (1 best), not our own evaluation.
+
+| FileName | Display name | Vendor | Size GB | Min RAM GB | Rank | Server args |
+|---|---|---|---|---|---|---|
+| `Llama-3.2-1B-Instruct-Q4_K_M.gguf` | Llama 3.2 1B Instruct | Meta | 0.81 | 4 | 7 | |
+| `Llama-3.2-3B-Instruct-Q4_K_M.gguf` | Llama 3.2 3B Instruct | Meta | 2.02 | 8 | 6 | |
+| `granite-4.0-micro-Q4_K_M.gguf` | Granite 4.0 Micro | IBM | 2.10 | 8 | 5 | |
+| `gemma-4-E4B-it-Q4_K_M.gguf` | Gemma 4 E4B Instruct | Google | 4.98 | 8 | 3 | |
+| `Qwen3-4B-Instruct-2507-Q4_K_M.gguf` | Qwen3 4B Instruct 2507 | Alibaba | 2.50 | 12 | 4 | |
+| `Qwen3-8B-Q4_K_M.gguf` | Qwen3 8B | Alibaba | 5.03 | 16 | 2 | `--reasoning off` |
+| `gemma-4-12b-it-Q4_K_M.gguf` | Gemma 4 12B Instruct | Google | 7.12 | 16 | 1 | |
+
+- **Recommended for your PC.** `recommendedFor(hardware, rateOptions)` picks the best-ranked model whose `rateFor` is `Recommended`; if none, the best `MayBeSlow`; else none. Exactly one row carries `recommended: true`, and the setup wizard pre-selects it when no model is on disk yet (first downloaded, else recommended, else first `Recommended` fit, else first row).
+- **Legacy Gemma 4 E2B.** `gemma-4-E2B-it-Q4_K_M.gguf` left the catalog. It lives in `LEGACY_SUMMARY_MODELS`: `findSummaryModel` still knows it, so a saved selection, the model path and delete keep working. It is listed (last, `legacy: true`) only while its file is on disk, is never recommended, and a download request answers `ignored/unknown-model` (or `already-downloaded` when the file is there).
+- **Server args.** `LocalLlmHost` appends the entry's `serverArgs`, looked up by the model file name, after the shared `-np 1` and runtime flags. Qwen3 8B is a hybrid thinking model and starts with `--reasoning off`. Gemma models get no reasoning flag (unchanged).
+- Labels for the new tiers are hand-written `Ui_` keys (`Ui_ModelQualityBasic`, `Ui_ModelUseCasePc8Gb`, `Ui_ModelUseCasePc12Gb`, `Ui_ModelUseCaseLegacy`), because `en.json` and `es.json` are generated from the WinUI resources.
+
 ### 3.7 CLI providers (`ClaudeCodeCliSummaryProvider`, `CodexCliSummaryProvider`, `CliToolProviderBase`, `CliInvocation`)
 
 Both providers extend one base that supplies four values: executable name, timeout, argument string, display name. They run `RunRequiredStdoutAsync` (2.5) with the prompt on stdin.
