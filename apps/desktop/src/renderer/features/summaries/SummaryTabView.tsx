@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Button, Notice, Skeleton, SkeletonText, Textarea } from '../../ui';
-import { ActionItemsList } from './ActionItemsList';
+import { ActionItemsList, type ActionItemsListProps } from './ActionItemsList';
 import { MarkdownView, type LinkHandler } from './MarkdownView';
 import { ModeSwitch } from './ModeSwitch';
 import { RelatedMeetings, type RelatedMeetingView } from './RelatedMeetings';
@@ -14,7 +14,6 @@ export interface SummaryTabLabels {
   readonly notesPlaceholder: string;
   readonly empty: string;
   readonly emptyCta: string;
-  readonly actionItems: string;
   readonly related: string;
   readonly loading: string;
   readonly dismiss: string;
@@ -38,7 +37,8 @@ export interface SummaryTabViewProps {
   /** No summary and nothing to generate it from. */
   readonly isEmpty: boolean;
   readonly actionItems: readonly ActionItemDto[];
-  readonly onToggleAction: (index: number, done: boolean) => void;
+  /** Everything the action items list needs besides the items themselves. */
+  readonly actionItemsProps: Omit<ActionItemsListProps, 'items'>;
   readonly related: readonly RelatedMeetingView[];
   readonly onOpenRelated: (id: string) => void;
   readonly onRecord: () => void;
@@ -124,11 +124,7 @@ export function SummaryTabView(props: SummaryTabViewProps) {
             testId="TxtSummaryContent"
             {...(props.onLink ? { onLink: props.onLink } : {})}
           />
-          <ActionItemsList
-            items={props.actionItems}
-            heading={labels.actionItems}
-            onToggle={props.onToggleAction}
-          />
+          <ActionItemsList items={props.actionItems} {...props.actionItemsProps} />
         </article>
       )}
     </div>

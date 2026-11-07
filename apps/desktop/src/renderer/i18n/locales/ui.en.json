@@ -323,5 +323,19 @@
   "Ui_ChatPromptsFileFilter": "Vozella prompts",
   "Ui_ChatPromptsFileName": "My prompts",
   "Ui_ChatPromptRunsWith": "Answers with {0}",
-  "Ui_ChatLivePaused": "Paused"
+  "Ui_ChatLivePaused": "Paused",
+  "Ui_ActionItemAddDate": "Add date",
+  "Ui_ActionItemChangeDate": "Change the date, {0}",
+  "Ui_ActionItemDateFor": "Due date for {0}",
+  "Ui_ActionItemClearDate": "Clear date",
+  "Ui_NextSessionQuestion": "When is the next session?",
+  "Ui_NextSessionHint": "Vozella remembers it for meetings named “{0}”.",
+  "Ui_NextSessionSave": "Save",
+  "Ui_NextSessionInvalid": "Pick a date after this meeting.",
+  "Ui_ActionItemsExportIcs": "Add to calendar (.ics)",
+  "Ui_ActionItemsExportNone": "Set a date on an open item to add it to your calendar.",
+  "Ui_ActionItemsExported": "{0} action items saved to the calendar file.",
+  "Ui_ActionItemsExportedOne": "1 action item saved to the calendar file.",
+  "Ui_ActionItemsExportEmpty": "None of these items has a date yet.",
+  "Ui_ActionItemsExportFailed": "Could not save the calendar file: {0}"
 }
