@@ -539,3 +539,97 @@ describe('golden sample (spec 4.1, every field)', () => {
     expect(parse(text.replace(/\n/g, '\r\n'), 'a.md')).toEqual(parse(text, 'a.md'));
   });
 });
+
+describe('action item owner and deadline (## Action Item Data)', () => {
+  const items = [
+    { text: 'Plain item', isDone: false },
+    {
+      text: 'Send the deck',
+      isDone: true,
+      owner: 'Ana',
+      deadline: {
+        quote: 'el viernes',
+        kind: { type: 'weekday', weekday: 'fri' },
+        date: '2026-09-04',
+      },
+    },
+    {
+      text: 'Bring progress',
+      isDone: false,
+      deadline: { quote: 'para la siguiente clase', kind: { type: 'next_meeting' } },
+    },
+    { text: 'Call Bob', isDone: false, owner: 'Luis' },
+  ] as const;
+
+  it('keeps the readable checkbox lines and adds one JSON line aligned by index', () => {
+    const text = renderMeetingMarkdown(meeting({ actionItems: items }));
+    expect(text).toContain(
+      '\n## Action Items\n\n- [ ] Plain item\n- [x] Send the deck\n- [ ] Bring progress\n- [ ] Call Bob\n' +
+        '\n## Action Item Data\n\n' +
+        '[null,{"text":"Send the deck","owner":"Ana","deadline":{"quote":"el viernes","kind":"weekday:fri","date":"2026-09-04"}},' +
+        '{"text":"Bring progress","deadline":{"quote":"para la siguiente clase","kind":"next_meeting"}},' +
+        '{"text":"Call Bob","owner":"Luis"}]\n',
+    );
+  });
+
+  it('round-trips owners, deadlines and dates', () => {
+    const record = meeting({ actionItems: items, notes: 'n' });
+    const back = parse(renderMeetingMarkdown(record));
+    expect(back.actionItems).toEqual(items);
+    expect(renderMeetingMarkdown(back)).toBe(renderMeetingMarkdown(record));
+  });
+
+  it('writes no data section when no item has an owner or a deadline (byte-identical)', () => {
+    const plain = [
+      { text: 'a', isDone: false },
+      { text: 'b', isDone: true },
+    ];
+    const text = renderMeetingMarkdown(meeting({ actionItems: plain }));
+    expect(text).not.toContain('## Action Item Data');
+    expect(text).toBe(
+      `---\nid: ${ID}\ntitle: Standup\nrecordedAt: 2026-09-01T12:00:00.0000000+00:00\naudioFilePath: \n---\n` +
+        '\n## Action Items\n\n- [ ] a\n- [x] b\n',
+    );
+  });
+
+  it('loads a legacy file without the section unchanged', () => {
+    const head = `---\nid: ${ID}\nrecordedAt: 2026-09-01T12:00:00Z\n---\n`;
+    const back = parse(
+      `${head}\n## Action Items\n\n- [ ] Send the deck — Owner: Ana — Due: Friday\n`,
+    );
+    expect(back.actionItems).toEqual([
+      { text: 'Send the deck — Owner: Ana — Due: Friday', isDone: false },
+    ]);
+  });
+
+  it('drops entries whose text no longer matches the line, and bad entries', () => {
+    const head = `---\nid: ${ID}\nrecordedAt: 2026-09-01T12:00:00Z\n---\n`;
+    const back = parse(
+      `${head}\n## Action Items\n\n- [ ] edited by hand\n- [ ] b\n- [ ] c\n- [ ] d\n` +
+        '\n## Action Item Data\n\n' +
+        '[{"text":"original","owner":"Ana"},{"text":"b","owner":"","deadline":{"quote":"q","kind":"soon"}},' +
+        '{"text":"c","deadline":{"quote":"q","kind":"in_days:2","date":"2026-02-30"}},"junk",{"text":"extra","owner":"X"}]\n',
+    );
+    expect(back.actionItems).toEqual([
+      { text: 'edited by hand', isDone: false },
+      { text: 'b', isDone: false },
+      { text: 'c', isDone: false, deadline: { quote: 'q', kind: { type: 'in_days', days: 2 } } },
+      { text: 'd', isDone: false },
+    ]);
+  });
+
+  it('ignores a data section that is not valid JSON instead of skipping the file', () => {
+    const head = `---\nid: ${ID}\nrecordedAt: 2026-09-01T12:00:00Z\n---\n`;
+    const back = parse(`${head}\n## Action Items\n\n- [ ] a\n\n## Action Item Data\n\n{not json\n`);
+    expect(back.actionItems).toEqual([{ text: 'a', isDone: false }]);
+  });
+
+  it('matches data to items written on one line', () => {
+    const record = meeting({
+      actionItems: [{ text: 'two\nlines', isDone: false, owner: 'Ana' }],
+    });
+    expect(parse(renderMeetingMarkdown(record)).actionItems).toEqual([
+      { text: 'two lines', isDone: false, owner: 'Ana' },
+    ]);
+  });
+});

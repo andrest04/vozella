@@ -1,5 +1,6 @@
 export * from './prompt-builders';
 export * from './action-items';
+export * from './deadline-resolver';
 export * from './summary-splitter';
 export * from './answer-to-summary';
 export * from './suggested-title';

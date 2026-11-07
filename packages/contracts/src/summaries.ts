@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineEvent, defineRequest } from './channel';
-import { appSettingsSchema } from './library';
+import { actionItemSchema, appSettingsSchema } from './library';
 import { modelRowSchema } from './settings';
 
 /**
@@ -14,8 +14,6 @@ const meetingId = z.string().min(1).max(200);
 export const summaryCliKindSchema = z.enum(['ClaudeCode', 'Codex']);
 export type SummaryCliKindDto = z.infer<typeof summaryCliKindSchema>;
 export const summarySetupKindSchema = z.enum(['Local', 'ClaudeCode', 'Codex']);
-
-const actionItemSchema = z.object({ text: z.string(), isDone: z.boolean() });
 
 const templateOptionSchema = z.object({
   id: z.string(),

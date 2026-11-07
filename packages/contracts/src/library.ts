@@ -51,6 +51,34 @@ const jevSchema = z.object({
   analyzedAt: z.string(),
 });
 
+/** How a spoken deadline relates to the meeting day (core `DeadlineKind`). */
+export const deadlineKindSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('date'), date: z.iso.date() }),
+  z.object({
+    type: z.literal('weekday'),
+    weekday: z.enum(['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']),
+  }),
+  z.object({ type: z.literal('in_days'), days: z.number().int().min(0).max(3650) }),
+  z.object({ type: z.literal('next_week') }),
+  z.object({ type: z.literal('next_meeting') }),
+  z.object({ type: z.literal('unknown') }),
+]);
+
+export const actionItemDeadlineSchema = z.object({
+  quote: z.string(),
+  kind: deadlineKindSchema,
+  /** `YYYY-MM-DD` in the meeting's calendar, once resolved or confirmed. */
+  date: z.iso.date().optional(),
+});
+
+export const actionItemSchema = z.object({
+  text: z.string(),
+  isDone: z.boolean(),
+  owner: z.string().optional(),
+  deadline: actionItemDeadlineSchema.optional(),
+});
+export type ActionItemDto = z.infer<typeof actionItemSchema>;
+
 /** The full meeting, for the session screens. */
 export const meetingRecordSchema = z.object({
   id: guid,
@@ -70,7 +98,7 @@ export const meetingRecordSchema = z.object({
   brief: z.string().nullable(),
   transcript: z.string().nullable(),
   summary: z.string().nullable(),
-  actionItems: z.array(z.object({ text: z.string(), isDone: z.boolean() })).readonly(),
+  actionItems: z.array(actionItemSchema).readonly(),
   jevAnalysis: jevSchema.nullable(),
   notes: z.string().nullable(),
   followUp: z.string().nullable(),

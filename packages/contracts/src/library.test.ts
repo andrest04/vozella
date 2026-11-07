@@ -7,6 +7,8 @@ import {
   settingsUpdate,
   workspaceDispatch,
   workspaceActionSchema,
+  actionItemSchema,
+  meetingRecordSchema,
 } from './index';
 
 describe('library contracts', () => {
@@ -73,5 +75,59 @@ describe('library contracts', () => {
   it('set location takes a path or null', () => {
     expect(librarySetLocation.input.safeParse({ path: null }).success).toBe(true);
     expect(librarySetLocation.input.safeParse({}).success).toBe(false);
+  });
+});
+
+describe('action item contract (owner and deadline)', () => {
+  it('accepts the legacy shape and the optional owner and deadline', () => {
+    expect(actionItemSchema.safeParse({ text: 'a', isDone: false }).success).toBe(true);
+    const full = {
+      text: 'a',
+      isDone: false,
+      owner: 'Ana',
+      deadline: {
+        quote: 'el viernes',
+        kind: { type: 'weekday', weekday: 'fri' },
+        date: '2026-11-06',
+      },
+    };
+    expect(actionItemSchema.parse(full)).toEqual(full);
+    for (const kind of [
+      { type: 'date', date: '2026-12-01' },
+      { type: 'in_days', days: 3 },
+      { type: 'next_week' },
+      { type: 'next_meeting' },
+      { type: 'unknown' },
+    ]) {
+      expect(actionItemSchema.safeParse({ ...full, deadline: { quote: 'q', kind } }).success).toBe(
+        true,
+      );
+    }
+  });
+
+  it('rejects malformed deadlines', () => {
+    const item = (deadline: unknown) => ({ text: 'a', isDone: false, deadline });
+    for (const bad of [
+      { quote: 'q', kind: { type: 'soon' } },
+      { quote: 'q', kind: { type: 'weekday', weekday: 'fr' } },
+      { quote: 'q', kind: { type: 'in_days', days: -1 } },
+      { quote: 'q', kind: { type: 'next_week' }, date: '06/11/2026' },
+      { kind: { type: 'next_week' } },
+    ]) {
+      expect(actionItemSchema.safeParse(item(bad)).success).toBe(false);
+    }
+  });
+
+  it('carries owner and deadline on the meeting record', () => {
+    const shape = meetingRecordSchema.shape.actionItems;
+    const parsed = shape.parse([
+      {
+        text: 'a',
+        isDone: true,
+        owner: 'Ana',
+        deadline: { quote: 'q', kind: { type: 'next_meeting' } },
+      },
+    ]);
+    expect(parsed[0]?.owner).toBe('Ana');
   });
 });
