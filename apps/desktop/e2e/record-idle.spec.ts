@@ -55,6 +55,9 @@ async function setContentSize(width: number, height: number): Promise<void> {
       // The window's own minimum is 960x680; the narrow and short cases go under it on purpose,
       // with room below 300 for the rounding correction in resize().
       main?.setMinimumSize(200, 200);
+      // A maximized or full-screen window ignores setContentSize.
+      if (main?.isFullScreen()) main.setFullScreen(false);
+      if (main?.isMaximized()) main.unmaximize();
       main?.setContentSize(size.width, size.height);
     },
     { width, height },
@@ -68,13 +71,23 @@ async function setContentSize(width: number, height: number): Promise<void> {
  * (768 gives 770, 767 gives 768). Ask again by the difference until the page has the exact
  * viewport the checks name.
  */
+/** The largest miss the 125 % scale rounding produces; anything bigger is not rounding. */
+const MAX_ROUNDING_PX = 8;
+
 async function resize(width: number, height: number): Promise<void> {
   let ask: [number, number] = [width, height];
   for (let attempt = 0; attempt < 6; attempt += 1) {
     await setContentSize(...ask);
     const [actualWidth, actualHeight] = await settledViewport();
     if (actualWidth === width && actualHeight === height) break;
-    ask = [ask[0] + width - actualWidth, ask[1] + height - actualHeight];
+    // Only a few pixels off is the scale rounding worth correcting. A large miss means the read
+    // came from another layout (a snapped or not-yet-resized window), so ask for the target again.
+    const roundingOnly =
+      Math.abs(width - actualWidth) <= MAX_ROUNDING_PX &&
+      Math.abs(height - actualHeight) <= MAX_ROUNDING_PX;
+    ask = roundingOnly
+      ? [ask[0] + width - actualWidth, ask[1] + height - actualHeight]
+      : [width, height];
   }
   expect(await viewport()).toEqual([width, height]);
 }
