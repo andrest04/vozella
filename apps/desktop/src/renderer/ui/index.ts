@@ -25,6 +25,7 @@ export { ToastProvider, useToast, type ToastKind } from './Toast';
 export { Tooltip, TooltipProvider } from './Tooltip';
 export { Tree, type TreeNode, type TreeProps } from './Tree';
 export { EmptyState, SectionHeader, SettingRow } from './layout';
+export { pageColumn } from './page';
 export { cn } from './cn';
 export { AudioBars, type AudioBarsProps } from './AudioBars';
 export { useReducedMotion } from './use-reduced-motion';

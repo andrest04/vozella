@@ -212,7 +212,7 @@ export function TranscriptTab({
         role="region"
         aria-label={t('SessionPage_TabTranscript.Text')}
         tabIndex={0}
-        className="max-h-[calc(100vh-21rem)] min-h-40 overflow-y-auto overflow-x-hidden rounded-control py-1 ps-3 pe-2 text-ui-lg leading-6 text-ink select-text focus-visible:outline-2 focus-visible:outline-offset-2"
+        className="max-h-[calc(100vh-21rem)] min-h-40 max-w-reading overflow-y-auto overflow-x-hidden rounded-control py-1 ps-3 pe-2 text-ui-lg leading-6 text-ink select-text focus-visible:outline-2 focus-visible:outline-offset-2"
       >
         {lines.map((line) => (
           <Line

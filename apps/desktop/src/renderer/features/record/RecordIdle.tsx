@@ -64,7 +64,7 @@ export function RecordIdle({
     />
   );
   return (
-    <div className="flex max-w-[960px] flex-col gap-6" data-testid="record-idle" hidden={hidden}>
+    <div className="flex flex-col gap-6" data-testid="record-idle" hidden={hidden}>
       {asDocument ? (
         <div className="flex flex-col gap-2">
           {/* Pulled out by its padding, so the text lines up with the column and the edge does not. */}

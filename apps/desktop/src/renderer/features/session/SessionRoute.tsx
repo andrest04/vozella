@@ -217,7 +217,7 @@ export function SessionRoute() {
   }, [gate.runSetup, meetingId, session.contentKey, session.slide, t]);
 
   return (
-    <section className="mx-auto flex w-full max-w-[720px] flex-col gap-5 pb-10">
+    <section className="flex w-full flex-col gap-5 pb-10">
       <BackLink
         onBack={() => {
           navigateTo('History');

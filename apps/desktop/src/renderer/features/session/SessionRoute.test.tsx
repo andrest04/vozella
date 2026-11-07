@@ -268,12 +268,13 @@ describe('SessionRoute', () => {
     });
   });
 
-  it('keeps a long title on one truncated line inside the 720 px column (25)', async () => {
+  it('keeps a long title on one truncated line across the page column (25)', async () => {
     install({ titles: { [A]: 'x'.repeat(200), [B]: 'y' } });
     mount();
     const heading = await screen.findByRole('heading', { level: 1 });
     expect(heading.className).toContain('truncate');
-    expect(heading.closest('section')?.className).toMatch(/max-w-\[720px\]/);
+    // The header, actions and tabs take the shell's page column; only reading text is narrower.
+    expect(heading.closest('section')?.className).not.toMatch(/max-w-/);
   });
 
   it('falls to the empty state when the open meeting is deleted (B20)', async () => {

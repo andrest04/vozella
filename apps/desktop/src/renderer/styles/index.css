@@ -50,6 +50,11 @@
   --text-title: 30px;
   --text-title--line-height: 36px;
 
+  /* Page widths: a page fills the window up to 1152 px of content (max-w-page); reading text
+     (summary, transcript, notes) keeps a 900 px measure (max-w-reading), left-aligned. */
+  --container-page: 1152px;
+  --container-reading: 900px;
+
   /* Real overlays only: menus, popovers, dialogs, toasts. */
   --shadow-overlay: 0 6px 24px -6px color-mix(in srgb, var(--ink) 22%, transparent);
 

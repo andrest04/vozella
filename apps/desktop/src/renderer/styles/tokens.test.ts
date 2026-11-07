@@ -133,6 +133,15 @@ describe('geometry and motion (items 163 to 165)', () => {
   });
 });
 
+describe('page widths', () => {
+  const theme = block(indexCss, '@theme inline');
+
+  it('caps a page at 1152 px of content and reading text at a 900 px measure', () => {
+    expect(theme.get('--container-page')).toBe('1152px');
+    expect(theme.get('--container-reading')).toBe('900px');
+  });
+});
+
 function sources(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = path.join(dir, entry.name);

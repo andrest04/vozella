@@ -108,6 +108,24 @@ describe('SummaryTab reading view', () => {
   });
 });
 
+describe('SummaryTab reading measure', () => {
+  it('keeps the summary to the reading measure, left-aligned', async () => {
+    installSummariesApi(loaded());
+    mount();
+    const article = (await screen.findByTestId('TxtSummaryContent')).closest('article');
+    expect(article).toHaveClass('max-w-reading');
+    expect(article?.className).not.toMatch(/mx-auto/);
+  });
+
+  it('keeps the notes editor to the reading measure', async () => {
+    installSummariesApi(loaded());
+    mount();
+    await userEvent.click(await screen.findByRole('radio', { name: 'My notes' }));
+    const notes = screen.getByRole('textbox', { name: 'Your notes' });
+    expect(notes.parentElement).toHaveClass('max-w-reading');
+  });
+});
+
 describe('SummaryTab mode and notes', () => {
   it('starts on Enhanced and moves with the arrow keys', async () => {
     installSummariesApi(loaded());
