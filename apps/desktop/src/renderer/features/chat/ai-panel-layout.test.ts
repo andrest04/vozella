@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DOCK_MIN_CONTENT_WIDTH,
   PANEL_DEFAULT_WIDTH,
   PANEL_MAX_WIDTH,
   PANEL_MIN_WIDTH,
+  dockMaxWidth,
   isPanelToggle,
+  overlayMaxWidth,
   panelMode,
   parseStoredOpen,
   parseStoredWidth,
@@ -19,19 +22,45 @@ const key = (overrides: Partial<Parameters<typeof isPanelToggle>[0]>) => ({
 });
 
 describe('panelMode', () => {
-  it('docks while the content keeps at least 560 px beside the panel', () => {
-    expect(panelMode(940, 380)).toBe('dock');
-    expect(panelMode(1080, 520)).toBe('dock');
+  it('keeps 400 px for the content beside a docked panel', () => {
+    expect(DOCK_MIN_CONTENT_WIDTH).toBe(400);
   });
 
-  it('overlays when docking would leave the content under 560 px', () => {
-    expect(panelMode(939, 380)).toBe('overlay');
-    // The window minimum leaves 728 px beside the sidebar.
-    expect(panelMode(728, PANEL_MIN_WIDTH)).toBe('overlay');
+  it('docks while the content keeps at least 400 px beside the panel', () => {
+    expect(panelMode(780, 380)).toBe('dock');
+    expect(panelMode(920, 520)).toBe('dock');
+    // The window minimum leaves 728 px beside the sidebar: a narrow panel still docks there.
+    expect(panelMode(728, PANEL_MIN_WIDTH)).toBe('dock');
+  });
+
+  it('overlays when docking would leave the content under 400 px', () => {
+    expect(panelMode(779, 380)).toBe('overlay');
+    expect(panelMode(728, PANEL_DEFAULT_WIDTH)).toBe('overlay');
   });
 
   it('docks before the first measurement arrives', () => {
     expect(panelMode(null, 380)).toBe('dock');
+  });
+});
+
+describe('dockMaxWidth', () => {
+  it('stops the docked handle where the content would drop under its minimum', () => {
+    expect(dockMaxWidth(900)).toBe(500);
+    expect(dockMaxWidth(1200)).toBe(PANEL_MAX_WIDTH);
+  });
+
+  it('never goes under the panel minimum, and allows the maximum before a measurement', () => {
+    expect(dockMaxWidth(600)).toBe(PANEL_MIN_WIDTH);
+    expect(dockMaxWidth(null)).toBe(PANEL_MAX_WIDTH);
+  });
+});
+
+describe('overlayMaxWidth', () => {
+  it('lets the floating panel grow up to the shared width, within the panel limits', () => {
+    expect(overlayMaxWidth(450)).toBe(450);
+    expect(overlayMaxWidth(900)).toBe(PANEL_MAX_WIDTH);
+    expect(overlayMaxWidth(280)).toBe(PANEL_MIN_WIDTH);
+    expect(overlayMaxWidth(null)).toBe(PANEL_MAX_WIDTH);
   });
 });
 

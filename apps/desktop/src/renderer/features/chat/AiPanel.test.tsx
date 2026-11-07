@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { WorkspaceStateDto } from '@vozella/contracts';
-import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Providers } from '../library/library-test-kit';
@@ -501,16 +501,97 @@ describe('AiPanel overlay on narrow windows', () => {
     observer.resize(1200);
     expect(panel().dataset.mode).toBe('dock');
     expect(screen.getByRole('separator', { name: 'Resize AI panel' })).toBeTruthy();
-    observer.resize(900);
+    observer.resize(700);
     expect(panel().dataset.mode).toBe('overlay');
-    expect(screen.queryByRole('separator')).toBeNull();
+    // The floating panel brings its own handle, on its start edge.
+    const handles = screen.getAllByRole('separator', { name: 'Resize AI panel' });
+    expect(handles).toHaveLength(1);
+    expect(panel().contains(handles[0] ?? null)).toBe(true);
+  });
+
+  it('resizes the floating panel from its handle and remembers the width', async () => {
+    const observer = installResizeObserver();
+    window.localStorage.setItem(PANEL_OPEN_KEY, 'true');
+    install();
+    mount();
+    await waitFor(() => {
+      expect(bodyHidden()).toBe(false);
+    });
+    observer.resize(700);
+    const handle = screen.getByRole('separator', { name: 'Resize AI panel' });
+    expect(handle.getAttribute('aria-valuenow')).toBe('380');
+    expect(handle.getAttribute('aria-valuemin')).toBe('320');
+    expect(handle.getAttribute('aria-valuemax')).toBe('520');
+    handle.focus();
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(handle.getAttribute('aria-valuenow')).toBe('396');
+    expect(panel().style.width).toBe('396px');
+    expect(window.localStorage.getItem(PANEL_WIDTH_KEY)).toBe('396');
+    await userEvent.keyboard('{End}');
+    expect(window.localStorage.getItem(PANEL_WIDTH_KEY)).toBe('520');
+    await userEvent.dblClick(handle);
+    expect(window.localStorage.getItem(PANEL_WIDTH_KEY)).toBe('380');
+    expect(panel().dataset.mode).toBe('overlay');
+  });
+
+  it('caps the floating panel at the width it floats over', async () => {
+    const observer = installResizeObserver();
+    window.localStorage.setItem(PANEL_OPEN_KEY, 'true');
+    install();
+    mount();
+    await waitFor(() => {
+      expect(bodyHidden()).toBe(false);
+    });
+    observer.resize(450);
+    const handle = screen.getByRole('separator', { name: 'Resize AI panel' });
+    expect(handle.getAttribute('aria-valuemax')).toBe('450');
+    handle.focus();
+    await userEvent.keyboard('{End}');
+    expect(handle.getAttribute('aria-valuenow')).toBe('450');
+    expect(panel().style.width).toBe('450px');
+  });
+
+  it('docks once the floating panel is narrow enough, keeping focus on a handle', async () => {
+    const observer = installResizeObserver();
+    window.localStorage.setItem(PANEL_OPEN_KEY, 'true');
+    install();
+    mount();
+    await waitFor(() => {
+      expect(bodyHidden()).toBe(false);
+    });
+    // 728 px is the window minimum beside the sidebar: 380 floats, 320 leaves the page 408.
+    observer.resize(728);
+    expect(panel().dataset.mode).toBe('overlay');
+    screen.getByRole('separator', { name: 'Resize AI panel' }).focus();
+    await userEvent.keyboard('{Home}');
+    expect(panel().dataset.mode).toBe('dock');
+    const docked = screen.getByRole('separator', { name: 'Resize AI panel' });
+    expect(panel().contains(docked)).toBe(false);
+    expect(docked.getAttribute('aria-valuenow')).toBe('320');
+    await waitFor(() => {
+      expect(document.activeElement).toBe(docked);
+    });
+  });
+
+  it('keeps the floating panel open while its handle is dragged', async () => {
+    const observer = installResizeObserver();
+    install();
+    mount();
+    observer.resize(700);
+    await openFromLauncher();
+    const handle = screen.getByRole('separator', { name: 'Resize AI panel' });
+    fireEvent.pointerDown(handle, { button: 0, pointerId: 1, clientX: 400 });
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 360 });
+    fireEvent.pointerUp(handle, { pointerId: 1, clientX: 360 });
+    expect(bodyHidden()).toBe(false);
+    expect(window.localStorage.getItem(PANEL_WIDTH_KEY)).toBe('420');
   });
 
   it('closes with Escape and returns focus to the launcher', async () => {
     const observer = installResizeObserver();
     install();
     mount();
-    observer.resize(800);
+    observer.resize(700);
     await openFromLauncher();
     expect(panel().dataset.mode).toBe('overlay');
     await userEvent.keyboard('{Escape}');
@@ -524,7 +605,7 @@ describe('AiPanel overlay on narrow windows', () => {
     const observer = installResizeObserver();
     install();
     mount();
-    observer.resize(800);
+    observer.resize(700);
     await openFromLauncher();
     await userEvent.click(chip());
     expect(bodyHidden()).toBe(false);
