@@ -6,7 +6,7 @@ import { createLibraryFixture, tree, type LibraryFixture } from './library-test-
 
 /**
  * `fixtures/winui-library` was written by the C# JsonFolderRepository and MarkdownMeetingRepository
- * (MeetingLive.Core, run from a throwaway console project against a temp folder), not by hand.
+ * of the original WinUI app (run from a throwaway console project against a temp folder), not by hand.
  * Items 155 and 156: the TypeScript side reads it whole and writes it back byte for byte.
  */
 const source = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'winui-library');

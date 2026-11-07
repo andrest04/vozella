@@ -1,23 +1,4 @@
-## .NET
-bin/
-obj/
-*.user
-*.suo
-
-## Visual Studio
-.vs/
-*.userosscache
-*.sln.docstates
-
-## WinUI / MSIX packaging
-AppPackages/
-BundleArtifacts/
-Generated Files/
-*.appx
-*.appxbundle
-*.appxupload
-*.msix
-*.msixbundle
+## Signing certificates
 *.cer
 *.pfx
 
@@ -29,7 +10,7 @@ Generated Files/
 Thumbs.db
 .DS_Store
 
-## Local app data produced by MeetingLive at runtime (models, recordings, JSON store)
+## Local app data produced at runtime (models, recordings, JSON store)
 *.ggml
 *.gguf
 

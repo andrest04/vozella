@@ -3,7 +3,7 @@ import { formatEnded, formatHeader, formatLine } from '../transcription/stamp-fo
 import { NEMOTRON_EN_LINES, NEMOTRON_ES_LINES } from './fixtures/nemotron-live-lines';
 import { detectNewQuestion, questionKey } from './question-detector';
 
-/** Ported from MeetingLive.Core.Tests/Services/LiveQuestionDetectorTests.cs, plus es/en extras. */
+/** Ported from the original WinUI app's LiveQuestionDetectorTests, plus es/en extras. */
 
 const AGILE_ES = '¿Cuál es el tercer principio del manifiesto ágil?';
 const AGILE_EN = 'what is the third principle of the agile manifesto?';
