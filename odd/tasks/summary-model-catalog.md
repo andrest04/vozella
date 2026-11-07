@@ -27,9 +27,9 @@ Excluded: DeepSeek distills (reasoning, slow, lower faithfulness), Nemotron Nano
 
 ## Tasks
 - [x] C1 Verify candidates (read-only): exact HF GGUF repos, pinned commit URLs, byte sizes, SHA-256, licenses, llama.cpp b12063 architecture support, chat template quirks. Route: delegated explorer.
-- [ ] C2 Catalog + quality rank + `recommendedFor(hardware)` pick in core, with tests. Route: delegated.
-- [ ] C3 Legacy handling for removed models + settings UI "Recommended for your PC" badge, en/es i18n. Route: delegated.
-- [ ] C4 Real smoke test: each model loads in the sidecar and produces a summary. Route: delegated.
+- [x] C2 Catalog + quality rank + `recommendedFor(hardware)` pick in core, with tests. Route: delegated.
+- [x] C3 Legacy handling for removed models + settings UI "Recommended for your PC" badge, en/es i18n. Route: delegated.
+- [x] C4 Real smoke test: each model loads in the sidecar and produces a summary. Route: delegated.
 
 ## Progress
 - 2026-11-06: catalog approved by user.
@@ -44,5 +44,11 @@ Excluded: DeepSeek distills (reasoning, slow, lower faithfulness), Nemotron Nano
   - Open issue: without Llama 1B, the lightest model needs ~8 GB RAM at a 25k-token context; 4–6 GB PCs get no "runs well" option. Decide in C3.
   - Unverified: Gemma thinking default in the app; Gemma 12B actually loading at b12063 (C4).
 
+- 2026-11-07: C2 `3f6d496` (catalog of 7: the 6 approved + Llama 3.2 1B kept as basic; all URLs commit-pinned with sha256; `recommendedFor` = best rank that runs well, else best may-be-slow), C3 `38783d5` + `ee61f9e` (badge "Recommended for your PC"/"Recomendado para tu equipo", vendor names, legacy Gemma 4 E2B listed only when on disk, never downloadable), C4 `3820ad1` (opt-in real smoke test via `VOZELLA_LLAMA_BIN_DIR` + `VOZELLA_LLM_MODELS_DIR`). Delegated writer.
+- 2026-11-07: smoke test found Gemma 4 12B returned empty summaries (reasons under `--reasoning auto`); E4B also reasons on structured prompts → `0cc19fd` both start with `--reasoning off` (E4B 28 s → 10.7 s); legacy E2B same flag `18a5b88` (parent, inline). All 7 catalog models pass the real smoke test on cuda12 (RTX 3070 8 GB). `170798a`: recommendation uses the active llama runtime's GPU offload (`gpuOffloadFor`), predicted from the fallback chain before the first local run.
+- Checks: core 2125, contracts 69, platform 528 (+24 opt-in skipped), desktop 2285 pass; typecheck + lint pass; 4 touched e2e specs 22 pass.
+- Gaps: Llama 3.2 Community License "Built with Llama" notice not added (no third-party notices file exists; needs a user decision); local context still 4096 tokens (separate improvement).
+- 2026-11-07: full `pnpm check` + `pnpm test:e2e` before merge (delegated verifier).
+
 ## Next step
-C2 after `feat/action-item-deadlines` lands.
+Merge to main after the full checks.
