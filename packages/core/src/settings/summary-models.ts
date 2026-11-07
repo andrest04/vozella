@@ -122,6 +122,9 @@ export const SUMMARY_MODELS: readonly SummaryModelInfo[] = [
     sha256: '85a896a047553e842f25297ee5b031d64ff30147d9c4af17b1e4b394cd1fab87',
     minRamGb: 8,
     rank: 3,
+    // Reasons under llama.cpp's default `--reasoning auto` and can spend the whole budget on it,
+    // leaving an empty summary (2026-11-07 smoke test); summaries need the answer only.
+    serverArgs: ['--reasoning', 'off'],
     speedKey: 'ModelSpeedMedium',
     qualityKey: 'ModelQualityExcellent',
     useCaseKey: 'Ui_ModelUseCasePc8Gb',
@@ -178,6 +181,9 @@ export const SUMMARY_MODELS: readonly SummaryModelInfo[] = [
     sha256: '0a270ec9fe6b34f4a0d33992b6135117b484ebc4766ab76b51d4ae8c457e4c42',
     minRamGb: 16,
     rank: 1,
+    // Reasons under llama.cpp's default `--reasoning auto` and can spend the whole budget on it,
+    // leaving an empty summary (2026-11-07 smoke test); summaries need the answer only.
+    serverArgs: ['--reasoning', 'off'],
     speedKey: 'ModelSpeedSlowWithoutGpu',
     qualityKey: 'ModelQualityExcellent',
     useCaseKey: 'ModelUseCaseGpuOnly',

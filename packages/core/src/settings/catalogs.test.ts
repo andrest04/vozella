@@ -186,12 +186,22 @@ describe('summary model catalog', () => {
     );
   });
 
-  it('only Qwen3 8B needs server flags: thinking off', () => {
+  it('the models that think by default start with thinking off; the others get no flags', () => {
+    // Qwen3 8B is a hybrid thinking model; Gemma 4 E4B and 12B reason under llama.cpp's default
+    // `--reasoning auto` and can spend the whole budget on it (empty summary, 2026-11-07 smoke test).
     expect(known.filter((m) => m.serverArgs !== undefined).map((m) => m.fileName)).toEqual([
+      'gemma-4-E4B-it-Q4_K_M.gguf',
       'Qwen3-8B-Q4_K_M.gguf',
+      'gemma-4-12b-it-Q4_K_M.gguf',
     ]);
-    expect(serverArgsFor('Qwen3-8B-Q4_K_M.gguf')).toEqual(['--reasoning', 'off']);
-    expect(serverArgsFor('gemma-4-12b-it-Q4_K_M.gguf')).toEqual([]);
+    for (const file of [
+      'gemma-4-E4B-it-Q4_K_M.gguf',
+      'Qwen3-8B-Q4_K_M.gguf',
+      'gemma-4-12b-it-Q4_K_M.gguf',
+    ]) {
+      expect(serverArgsFor(file), file).toEqual(['--reasoning', 'off']);
+    }
+    expect(serverArgsFor('granite-4.0-micro-Q4_K_M.gguf')).toEqual([]);
     expect(serverArgsFor('nope.gguf')).toEqual([]);
     expect(serverArgsFor(null)).toEqual([]);
   });

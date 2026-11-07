@@ -172,9 +172,9 @@ describe('LocalLlmSummaryProvider server lifetime (B3)', () => {
     expect(argv.indexOf('--reasoning')).toBeGreaterThan(argv.indexOf('-np'));
   });
 
-  it('a Gemma model gets no reasoning flag: its handling stays as it was', async () => {
+  it('a model that does not think gets no reasoning flag', async () => {
     const { provider, created, model } = setup();
-    model.path = 'C:/models/gemma-4-12b-it-Q4_K_M.gguf';
+    model.path = 'C:/models/granite-4.0-micro-Q4_K_M.gguf';
     await provider.completePrompt('one', NEVER);
     expect((await infoOf(created[0]!)).argv).not.toContain('--reasoning');
   });
