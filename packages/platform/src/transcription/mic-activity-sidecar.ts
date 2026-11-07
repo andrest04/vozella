@@ -30,3 +30,12 @@ export function writeMicActivitySidecar(
 ): void {
   fs.writeFileSync(micActivityPathFor(audioPath), serializeMicActivity(ranges), 'utf8');
 }
+
+/** Removes the sidecar of a recording, if any. Best effort: a leftover only costs a label. */
+export function removeMicActivitySidecar(audioPath: string): void {
+  try {
+    fs.rmSync(micActivityPathFor(audioPath), { force: true });
+  } catch {
+    // A locked sidecar is replaced at the next stop of a take with a microphone.
+  }
+}

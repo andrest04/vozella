@@ -63,7 +63,11 @@ export function createAudioWorker(deps: AudioWorkerDeps): (raw: unknown) => Prom
       case 'recordStart':
         rt.recording.setListeners({
           onFrame: (frame) => {
-            deps.post({ type: 'recording-frame', pcm: frame.pcm });
+            deps.post({
+              type: 'recording-frame',
+              pcm: frame.pcm,
+              ...(frame.levels ? { levels: [...frame.levels] } : {}),
+            });
           },
           onMicrophoneLevel: (level) => {
             deps.post({ type: 'recording-level', level: toMeterPercent(level) });

@@ -12,6 +12,10 @@ import {
 } from '@vozella/core';
 import type { NativePorts } from '../native/create-native-ports';
 import { SystemPumpClock } from './system-pump-clock';
+import {
+  removeMicActivitySidecar,
+  writeMicActivitySidecar,
+} from '../transcription/mic-activity-sidecar';
 import { repairWavFile, WavFileWriter } from './wav-files';
 
 export interface AudioRuntimeOptions {
@@ -37,7 +41,12 @@ export function createAudioRuntime(options: AudioRuntimeOptions): AudioRuntime {
   const recording = new AudioCaptureService({
     sources: ports.audio,
     clock: new SystemPumpClock(),
-    createWriter: (file) => new WavFileWriter(file),
+    createWriter: (file) => {
+      // New audio at this path: the activity of whatever was there before no longer applies.
+      removeMicActivitySidecar(file);
+      return new WavFileWriter(file);
+    },
+    writeMicActivity: writeMicActivitySidecar,
     removeFile: (file) => {
       fs.rmSync(file, { force: true });
     },
@@ -56,7 +65,11 @@ export function createAudioRuntime(options: AudioRuntimeOptions): AudioRuntime {
       fs.mkdirSync(path.dirname(file), { recursive: true });
     },
     openDecoder: (file) => ports.openDecoder(file),
-    createWriter: (file) => new WavFileWriter(file),
+    createWriter: (file) => {
+      // Imported audio has no microphone activity.
+      removeMicActivitySidecar(file);
+      return new WavFileWriter(file);
+    },
     removeFile: (file) => {
       fs.rmSync(file, { force: true });
     },

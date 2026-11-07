@@ -91,6 +91,39 @@ describe('recording through the runtime', () => {
   }, 10_000);
 });
 
+describe('the microphone activity sidecar', () => {
+  const sidecar = (wav: string): string => wav.replace(/\.wav$/, '.mic.json');
+
+  it('is written next to a take that records a microphone', async () => {
+    const { runtime } = runtimeWith();
+    const target = path.join(dir, 'rec.wav');
+    await runtime.recording.start(target, systemLoopbackSources(true, null));
+    await sleep(300);
+    await runtime.recording.stop();
+    expect(JSON.parse(fs.readFileSync(sidecar(target), 'utf8'))).toMatchObject({ version: 1 });
+  }, 10_000);
+
+  it('is not written without a microphone, and a stale one at the path is removed', async () => {
+    const { runtime } = runtimeWith();
+    const target = path.join(dir, 'rec.wav');
+    fs.writeFileSync(sidecar(target), '{"version":1,"ranges":[[0,1000]]}');
+    await runtime.recording.start(target, systemLoopbackSources(false, null));
+    await sleep(300);
+    await runtime.recording.stop();
+    expect(fs.existsSync(sidecar(target))).toBe(false);
+  }, 10_000);
+
+  it('is removed when an import replaces the audio at the path', async () => {
+    const { runtime } = runtimeWith();
+    const source = path.join(dir, 'in.wav');
+    writeWav(source, { rate: 16_000, channels: 1, seconds: 0.2 });
+    const target = path.join(dir, 'out.wav');
+    fs.writeFileSync(sidecar(target), '{"version":1,"ranges":[[0,1000]]}');
+    await runtime.importAudio(source, target);
+    expect(fs.existsSync(sidecar(target))).toBe(false);
+  });
+});
+
 describe('import through the runtime', () => {
   it('converts stereo 44.1 kHz to 16 kHz mono PCM16 keeping the duration within 50 ms', async () => {
     const { runtime } = runtimeWith();
