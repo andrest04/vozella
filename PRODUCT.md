@@ -6,7 +6,7 @@
 
 web
 
-Electron desktop app (`apps/desktop`), Windows x64 only today; macOS is a possible later target. The landing page lives in `website/`. The original WinUI 3 app (`MeetingLive.*`) is kept intact but is not the target for new design work.
+Electron desktop app (`apps/desktop`), Windows x64 only today; macOS is a possible later target. The landing page lives in `website/`.
 
 ## Users
 
@@ -45,7 +45,7 @@ Vozella writes every meeting down. It records the user's microphone plus system 
 - Name: Vozella. Tagline: "Every meeting, written down."
 - Logo files in `docs/brand/` (light and dark tiles).
 - Voice, as used across the README and landing page: plain, short, factual sentences; says what happens to the user's data without hedging; no hype.
-- The legacy WinUI app keeps the name MeetingLive and its `Documents\MeetingLive` folder.
+- The legacy WinUI app (MeetingLive, removed from the repo) stored its data in `Documents\MeetingLive`; Vozella detects that folder and never writes to it during tests.
 
 ## Evidence on Hand
 

@@ -15,7 +15,6 @@ export default tseslint.config(
       '**/playwright-report/**',
       '**/resources/native/**',
       'native/**/index.d.ts',
-      'MeetingLive*/**',
       'website/**',
       'docs/**',
       'scripts/**',
