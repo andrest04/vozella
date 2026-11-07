@@ -30,6 +30,8 @@ export interface SettingsRuntimeDeps {
   readonly hardware?: HardwareProbe;
   readonly modelStore?: LocalModelStore;
   readonly cli?: CliPathProbe;
+  /** Whether the llama runtime in use offloads to the GPU; undefined until one is picked. */
+  readonly activeGpuOffload?: () => boolean | undefined;
 }
 
 /**
@@ -68,6 +70,7 @@ export class SettingsRuntime {
       cli: deps.cli ?? new PathCliProbe(),
       notices: this.notices,
       capabilities: this.capabilities,
+      ...(deps.activeGpuOffload ? { activeGpuOffload: deps.activeGpuOffload } : {}),
     });
     this.restart = new RestartService({ gates: this.exitGates, relaunch: deps.relaunch });
   }

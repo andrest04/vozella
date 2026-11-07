@@ -6,6 +6,7 @@ import {
   SummaryService,
   SummaryTabService,
   SUMMARY_MODELS,
+  type HardwareProfile,
   type Logger,
   type MeetingRecord,
   type ProviderResolution,
@@ -68,6 +69,8 @@ function setup(
     /** What the stubbed save dialog answers; null is a cancel. */
     savePath?: string | null;
     writeFails?: boolean;
+    hardware?: HardwareProfile;
+    activeGpuOffload?: () => boolean | undefined;
   } = {},
 ) {
   const handlers = new Map<string, (event: never, ...args: unknown[]) => unknown>();
@@ -108,7 +111,10 @@ function setup(
     }),
     resolver,
     models,
-    hardware: new FakeHardwareProbe({ totalRamGb: 16, gpuName: null, gpuVramGb: null }),
+    hardware: new FakeHardwareProbe(
+      options.hardware ?? { totalRamGb: 16, gpuName: null, gpuVramGb: null },
+    ),
+    ...(options.activeGpuOffload ? { activeGpuOffload: options.activeGpuOffload } : {}),
     cli: new FakeCliProbe(new Set(options.cli ?? [])),
     settings,
     runtime: { dispose },
@@ -346,6 +352,18 @@ describe('summaries setup flow', () => {
     store.files.add(last?.fileName ?? '');
     const second = ok(await call('summaries.hardware', {})) as { defaultFileName: string };
     expect(second.defaultFileName).toBe(last?.fileName);
+  });
+
+  it('the wizard rates and pre-selects for the llama runtime in use', async () => {
+    const hardware = { totalRamGb: 8, gpuName: 'NVIDIA GeForce RTX 3070', gpuVramGb: 8 };
+    const pick = async (activeGpuOffload?: () => boolean | undefined) => {
+      const { call } = setup({ hardware, ...(activeGpuOffload ? { activeGpuOffload } : {}) });
+      return (ok(await call('summaries.hardware', {})) as { defaultFileName: string })
+        .defaultFileName;
+    };
+    expect(await pick()).toBe('gemma-4-12b-it-Q4_K_M.gguf');
+    // Only the CPU build runs on this PC: the 8 GB of VRAM do not count.
+    expect(await pick(() => false)).toBe('gemma-4-E4B-it-Q4_K_M.gguf');
   });
 
   it('checks a CLI on PATH with its hint key', async () => {

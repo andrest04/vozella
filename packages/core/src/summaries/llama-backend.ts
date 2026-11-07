@@ -46,3 +46,16 @@ export function chooseBackend(
 ): LlamaBackend | null {
   return backendFallbackChain(hardware, cuda).find((b) => available.includes(b)) ?? null;
 }
+
+/**
+ * Whether the llama runtime can offload to the GPU, for `rateFor` and the "Recommended for your PC"
+ * pick. `active` is the answer of the runtime in use once one is picked; before that, the first
+ * backend the fallback chain would try decides (a GPU without a usable name only gets the cpu build).
+ */
+export function gpuOffloadFor(
+  hardware: Pick<HardwareProfile, 'gpuName' | 'gpuVramGb'>,
+  active: boolean | undefined,
+): boolean {
+  if (active !== undefined) return active;
+  return usesGpuOffload(backendFallbackChain(hardware)[0] ?? 'cpu');
+}

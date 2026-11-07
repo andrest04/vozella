@@ -53,6 +53,7 @@ interface Loaded {
  */
 export class LocalLlmHost {
   private loaded: Loaded | undefined;
+  private lastGpuOffload: boolean | undefined;
   private chain: Promise<unknown> = Promise.resolve();
 
   constructor(private readonly options: LocalLlmHostOptions) {}
@@ -61,12 +62,21 @@ export class LocalLlmHost {
     return this.loaded?.modelPath;
   }
 
+  /**
+   * Whether the runtime picked last offloads to the GPU; undefined until one is resolved. The model
+   * fit ratings read it, so a session that fell back to the CPU build stops counting the VRAM.
+   */
+  get gpuOffload(): boolean | undefined {
+    return this.lastGpuOffload;
+  }
+
   acquire(modelPath: string, cancel: CancelSignal): Promise<LocalLlmServer> {
     return this.serialized(async () => {
       const current = this.loaded;
       if (current?.modelPath === modelPath) return current.server;
       if (current) await this.stopLoaded(current);
       const runtime = await this.options.resolveRuntime(cancel);
+      this.lastGpuOffload = runtime.gpuOffload;
       const server = this.options.createServer();
       const next: Loaded = { modelPath, server };
       this.loaded = next;

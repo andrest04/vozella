@@ -10,6 +10,7 @@ import {
   CliToolError,
   cliExecutableName,
   defaultModelFileName,
+  gpuOffloadFor,
   describeFailed,
   findSummaryModel,
   formatFailure,
@@ -54,6 +55,8 @@ export interface SummariesControllerDeps {
   readonly settings: SettingsStore;
   /** Stops the local llama-server for good. Called on quit. */
   readonly runtime: { dispose(): Promise<void> };
+  /** Whether the llama runtime in use offloads to the GPU; undefined until one is picked. */
+  readonly activeGpuOffload?: () => boolean | undefined;
   readonly broadcast: Broadcast;
   readonly logger: Logger;
   /** Looks a string up in the current app language at the moment of use. */
@@ -324,7 +327,10 @@ export class SummariesController {
   /** The wizard's model step. A machine that cannot be read just has no fit badges. */
   async hardwareOptions() {
     const hardware: HardwareProfile | null = await this.deps.hardware.detect().catch(() => null);
-    const { rows } = await this.deps.models.rows(hardware);
+    const { rows } = await this.deps.models.rows(
+      hardware,
+      hardware ? { gpuOffload: gpuOffloadFor(hardware, this.deps.activeGpuOffload?.()) } : {},
+    );
     return { hardware, rows, defaultFileName: defaultModelFileName(rows) };
   }
 

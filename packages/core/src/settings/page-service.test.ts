@@ -16,6 +16,7 @@ function page(
     hardware?: HardwareProbe;
     models?: Set<string>;
     store?: InMemorySettingsStore;
+    activeGpuOffload?: () => boolean | undefined;
   } = {},
 ) {
   const store = options.store ?? new InMemorySettingsStore();
@@ -37,6 +38,7 @@ function page(
     cli: probe,
     notices,
     capabilities: { localModels: true },
+    ...(options.activeGpuOffload ? { activeGpuOffload: options.activeGpuOffload } : {}),
   });
   return { store, service, notices, files };
 }
@@ -180,6 +182,27 @@ describe('SettingsPageService.load', () => {
     const after = await service.load();
     expect(after.models.rows.map((row) => row.fileName)).not.toContain(legacy);
     expect(after.models.missingActiveId).toBe(legacy);
+  });
+
+  it('rates the models for the llama runtime in use: a CPU build cannot lean on the GPU', async () => {
+    const laptop: HardwareProbe = {
+      detect: () =>
+        Promise.resolve({ totalRamGb: 8, gpuName: 'NVIDIA GeForce RTX 3070', gpuVramGb: 8 }),
+    };
+    const pick = async (activeGpuOffload?: () => boolean | undefined) => {
+      const { service } = page({
+        hardware: laptop,
+        ...(activeGpuOffload ? { activeGpuOffload } : {}),
+      });
+      const { rows } = (await service.load()).models;
+      return rows.find((row) => row.recommended)?.displayName;
+    };
+    // No runtime picked yet: the CUDA build is the first choice, so the GPU counts.
+    expect(await pick()).toBe('Gemma 4 12B Instruct');
+    expect(await pick(() => undefined)).toBe('Gemma 4 12B Instruct');
+    expect(await pick(() => true)).toBe('Gemma 4 12B Instruct');
+    // The GPU builds failed their self-test and the CPU build runs: RAM alone decides.
+    expect(await pick(() => false)).toBe('Gemma 4 E4B Instruct');
   });
 
   it('carries the notices', async () => {

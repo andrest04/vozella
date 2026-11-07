@@ -1,4 +1,5 @@
 import { resolveUiLanguage, type UiLanguageTag } from '../i18n/ui-language';
+import { gpuOffloadFor } from '../summaries/llama-backend';
 import {
   resolveClaudeEffort,
   resolveClaudeModelId,
@@ -64,6 +65,11 @@ export interface SettingsPageDeps {
   readonly cli: CliPathProbe;
   readonly notices: SettingsNotices;
   readonly capabilities: SettingsCapabilities;
+  /**
+   * Whether the llama runtime in use offloads to the GPU; undefined until one is picked. The fit
+   * ratings and the recommendation follow it, so a CPU-only runtime does not count the VRAM.
+   */
+  readonly activeGpuOffload?: () => boolean | undefined;
 }
 
 /** Builds the page. Reads, never writes: opening Settings changes no setting. */
@@ -82,7 +88,10 @@ export class SettingsPageService {
     ]);
     const provider = resolveSummaryProviderKind(settings);
     const [models, cliStatus] = await Promise.all([
-      this.deps.models.rows(hardware),
+      this.deps.models.rows(
+        hardware,
+        hardware ? { gpuOffload: gpuOffloadFor(hardware, this.deps.activeGpuOffload?.()) } : {},
+      ),
       this.detectCli(provider),
     ]);
     const claudeModel = resolveClaudeModelId(settings);

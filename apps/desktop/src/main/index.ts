@@ -453,9 +453,14 @@ function main(): void {
       ? new FileFakeCliProbe(path.join(paths.appData, 'fake-cli'))
       : new FakeCliProbe(new Set(['claude']));
 
+  // Whether the llama runtime in use offloads to the GPU, for the model fit ratings and the
+  // "Recommended for your PC" pick. Unknown until the summary runtime picks a backend below.
+  let llamaGpuOffload: () => boolean | undefined = () => undefined;
+
   // Settings page services. In the fake native build the machine, the CLIs, the model downloads
   // are doubles, so nothing touches the network.
   const settings: SettingsRuntime = new SettingsRuntime({
+    activeGpuOffload: () => llamaGpuOffload(),
     store: library.settings,
     appDataDirectory: paths.appData,
     osLanguages: () => app.getPreferredSystemLanguages(),
@@ -748,6 +753,7 @@ function main(): void {
             }
           : { processJob: loadProcessJob() }),
       });
+      llamaGpuOffload = () => summaryRuntime.host.gpuOffload;
       const summaryPatchQueue = new PatchQueue();
       const summaryService = new ObservedSummaryService(
         {
@@ -790,6 +796,7 @@ function main(): void {
         cli: summaryCli,
         settings: library.settings,
         runtime: summaryRuntime,
+        activeGpuOffload: () => llamaGpuOffload(),
         broadcast,
         logger: logger.child('summaries'),
         t: (key, ...args) => locale.t(key, ...args),
