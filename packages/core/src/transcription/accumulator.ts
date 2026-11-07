@@ -1,9 +1,10 @@
 import type { AsrResult, AsrWord } from './asr-types';
+import { IDEA_PAUSE_MS, majoritySpeakerTag, smoothSpeakerTags } from './speaker-smoothing';
 import { formatHeader, formatLine } from './stamp-format';
 
+export { IDEA_PAUSE_MS } from './speaker-smoothing';
+
 const WINDOW_MS = 30_000;
-/** Silence between words that starts a new idea line for the same speaker. */
-export const IDEA_PAUSE_MS = 500;
 
 const splitWhitespace = (text: string): string[] => text.split(/\s+/).filter((t) => t.length > 0);
 
@@ -108,7 +109,8 @@ export class StreamingTranscriptAccumulator {
     text: string,
     commitTiming: boolean,
   ): { lines: string[]; bare: boolean } {
-    const words = result.words;
+    // Flicker and untagged words are cleaned first, so lines split on real turns only.
+    const words = smoothSpeakerTags(result.words);
     const first = words[0];
     const last = words[words.length - 1];
     let startMs: number;
@@ -126,11 +128,12 @@ export class StreamingTranscriptAccumulator {
     if (first === undefined) return { lines: untimedWindows(startMs, endMs, text), bare: false };
 
     const single = endMs - startMs <= WINDOW_MS && sameSpeaker(words) && !hasIdeaPause(words);
-    if (single) return { lines: [formatLine(startMs, endMs, text, first.speakerTag)], bare: false };
+    const label = majoritySpeakerTag(words);
+    if (single) return { lines: [formatLine(startMs, endMs, text, label)], bare: false };
 
     const resolved = resolveTokens(words, text);
     if (resolved.tokens.length === 0) {
-      return { lines: [formatLine(startMs, endMs, text, first.speakerTag)], bare: false };
+      return { lines: [formatLine(startMs, endMs, text, label)], bare: false };
     }
     const windows = buildWindows(words, resolved.tokens, startMs, endMs);
     const lines: string[] = [];
@@ -191,6 +194,7 @@ function buildWindows(
   let windowStart = firstWord.startMs;
   let windowSpeaker = firstWord.speakerTag;
   let current: string[] = [];
+  let currentWords: AsrWord[] = [];
   let previousWordEnd = firstWord.endMs;
 
   for (let i = 0; i < pairCount; i += 1) {
@@ -204,13 +208,15 @@ function buildWindows(
         startMs: windowStart,
         endMs: previousWordEnd,
         tokens: current,
-        speakerTag: windowSpeaker,
+        speakerTag: majoritySpeakerTag(currentWords),
       });
       current = [];
+      currentWords = [];
       windowStart = word.startMs;
       windowSpeaker = word.speakerTag;
     }
     current.push(tokens[i] ?? '');
+    currentWords.push(word);
     previousWordEnd = word.endMs;
   }
   if (current.length > 0) {
@@ -218,7 +224,7 @@ function buildWindows(
       startMs: windowStart,
       endMs: previousWordEnd,
       tokens: current,
-      speakerTag: windowSpeaker,
+      speakerTag: majoritySpeakerTag(currentWords),
     });
   }
   if (tokens.length > pairCount) {

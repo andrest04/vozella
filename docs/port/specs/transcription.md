@@ -209,6 +209,13 @@ Constructed with `recordedAt` (`default` means unknown). Constants: `WindowLengt
 7. If `tokens > pairCount`, extra tokens are appended to the last window (or form a window `(start, end, extra, speaker 0)` if none).
 8. Each window with non-empty joined text (tokens joined with a single space) yields `FormatLine(windowStart, windowEnd, text, speakerTag)`.
 
+**Port divergence: speaker smoothing (Electron port, `speaker-smoothing.ts`).** Sortformer tags every word on its own, so the C# rules above split a sentence whenever one word flickers to another speaker, and a line whose first word is untagged gets no label. Before step 4 the port cleans the word tags, working inside pause-free runs only (words closer than `IdeaPause`), so nothing is carried or merged across an idea pause:
+- Untagged fill: a word with tag 0 takes the previous tagged word's speaker in its run, or the next one when it leads the run. A run with no tagged word stays untagged.
+- Flicker: a speaker run shorter than `MIN_SPEAKER_RUN_WORDS = 2` words AND `MIN_SPEAKER_RUN_MS = 500 ms` (first word start to last word end) takes the surrounding speaker when both neighbors in the run agree, otherwise the longer neighbor (by duration, the previous one on a tie), or its only neighbor at the edge of a run. Consecutive short runs are absorbed as one group. A short run alone in its pause-free run stays.
+- Label: a line is labelled with the majority tag of its words (tags above 0; a tie goes to the speaker heard first). Step 4 and the no-token line use it instead of `Words[0].SpeakerTag`; after smoothing every window is single-speaker, so the windows keep their own speaker.
+
+Results with no tags, or a single speaker, are returned unchanged, so the output without diarization is identical to the C# rules. A real two-word interjection ("yes, sure") is kept; a single short word from another speaker inside someone's sentence is not.
+
 Untimed windows (`FormatUntimedWindows`, safety net for no-word results): if `duration <= 30 s` one line. Else tokens by whitespace; `windowCount = min(ceil(duration / 30 s), tokens)`; if <= 1 one line; else window i gets tokens `[i*N/W, (i+1)*N/W)` (integer division) and time range `start + duration*i/W` to `start + duration*(i+1)/W`, with the last window ending exactly at `end`. Speaker tags are never emitted for untimed windows.
 
 ### 3.7 Stamp format (`TranscriptStampFormatter`)
