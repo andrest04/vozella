@@ -13,6 +13,10 @@ test.skip(packaged, NO_GALLERY);
 test.describe.configure({ timeout: 150_000 });
 
 const SMALL = 'Llama-3.2-1B-Instruct-Q4_K_M.gguf';
+/** The fake hardware (16 GB RAM and an 8 GB GPU) is recommended Gemma 4 12B, the best that runs well. */
+const RECOMMENDED = 'gemma-4-12b-it-Q4_K_M.gguf';
+/** Left the catalog; still listed for a user who has the file. */
+const LEGACY = 'gemma-4-E2B-it-Q4_K_M.gguf';
 
 interface Session {
   readonly launched: LaunchedApp;
@@ -94,7 +98,7 @@ test.describe('with a GPU and a slow download', () => {
     await expect(page.getByTestId('BtnEngineLocal')).toBeVisible();
   });
 
-  test('Local models shows the hardware line, the rows and their fit', async () => {
+  test('Local models shows the hardware line, the rows, their fit and the pick for this PC', async () => {
     const { page } = session;
     await page.getByTestId('BtnEngineLocal').click();
     await expect(page.getByText('Choose a model to generate summaries')).toBeVisible();
@@ -102,11 +106,17 @@ test.describe('with a GPU and a slow download', () => {
       'Detected: 16 GB RAM, GPU Fake GPU (8 GB VRAM)',
     );
     const list = page.getByTestId('ListModelOptions');
-    await expect(list.getByRole('radio')).toHaveCount(4);
+    await expect(list.getByRole('radio')).toHaveCount(7);
     await expect(list.getByText('Llama 3.2 1B Instruct')).toBeVisible();
     await expect(list.getByText(/0\.8 GB download/)).toBeVisible();
+    for (const vendor of ['Meta', 'IBM', 'Alibaba', 'Google']) {
+      await expect(list.getByText(vendor, { exact: true }).first()).toBeAttached();
+    }
     await expect(list.getByText('Runs well on this PC').first()).toBeVisible();
-    await expect(list.getByRole('radio').first()).toBeChecked();
+    await expect(list.getByText('Recommended for your PC')).toHaveCount(1);
+    const pick = list.getByRole('radio', { name: /Gemma 4 12B Instruct/ });
+    await expect(pick).toBeChecked();
+    await expect(pick).toHaveAccessibleName(/Recommended for your PC/);
     expect(await serious(page)).toEqual([]);
   });
 
@@ -114,7 +124,7 @@ test.describe('with a GPU and a slow download', () => {
     const { page, settings } = session;
     await page.getByTestId('BtnDownloadModel').click();
     const status = page.getByTestId('TxtDownloadStatus');
-    await expect(status).toContainText('Downloading Llama 3.2 1B Instruct (');
+    await expect(status).toContainText('Downloading Gemma 4 12B Instruct (');
     await expect(page.getByRole('progressbar')).toBeVisible();
     await expect(status).toContainText('(10%)');
     expect(await serious(page)).toEqual([]);
@@ -148,7 +158,7 @@ test.describe('with a GPU and a slow download', () => {
     await page.getByTestId('BtnDownloadModel').click();
     await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 20_000 });
     expect(settings()).toMatchObject({
-      selectedSummaryModelId: SMALL,
+      selectedSummaryModelId: RECOMMENDED,
       selectedSummaryProvider: 'Local',
     });
   });
@@ -168,7 +178,10 @@ test.describe('with a GPU and a slow download', () => {
 test.describe('without a GPU and with a model on disk', () => {
   let session: Session;
   test.beforeAll(async () => {
-    session = await start({ VOZELLA_FAKE_NO_GPU: '1', VOZELLA_FAKE_MODEL_PRESENT: SMALL });
+    session = await start({
+      VOZELLA_FAKE_NO_GPU: '1',
+      VOZELLA_FAKE_MODEL_PRESENT: `${SMALL},${LEGACY}`,
+    });
   });
   test.afterAll(async () => {
     await session.launched.close();
@@ -185,6 +198,13 @@ test.describe('without a GPU and with a model on disk', () => {
     // The downloaded model is marked and is the default selection.
     const row = page.getByRole('radio', { name: /Llama 3\.2 1B Instruct \(downloaded\)/ });
     await expect(row).toBeChecked();
+    // A legacy model on disk is still offered, says why, and is never the pick for this PC.
+    const legacy = page.getByRole('radio', { name: /Gemma 4 E2B Instruct \(downloaded\)/ });
+    await expect(legacy).toBeVisible();
+    await expect(legacy).toHaveAccessibleName(
+      /Previous model, kept because it is already on this PC/,
+    );
+    await expect(legacy).not.toHaveAccessibleName(/Recommended for your PC/);
     expect(await serious(page)).toEqual([]);
   });
 

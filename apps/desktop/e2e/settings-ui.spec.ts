@@ -47,28 +47,38 @@ test('opening the page writes nothing and shows the saved choices', async () => 
 
 test('a local model downloads, becomes active and is removed', async () => {
   const group = page.getByRole('radiogroup', { name: 'Summary models' });
-  const gemma = group.getByRole('radio', { name: /Gemma 4 E2B Instruct/ });
-  await expect(gemma).toBeDisabled();
+  const granite = group.getByRole('radio', { name: /Granite 4\.0 Micro/ });
+  await expect(granite).toBeDisabled();
+  await expect(granite).toHaveAccessibleName(/IBM/);
   await expect(group.getByText('Runs well on this PC').first()).toBeVisible();
   await expect(group.getByText('Download to use').first()).toBeVisible();
-  await expect(group.getByText('Fast · Quality Very good · 3.1 GB download')).toBeVisible();
+  await expect(group.getByText('Fast · Quality Good · 2.1 GB download')).toBeVisible();
+  // 16 GB RAM and an 8 GB GPU: one pick, the best model that runs well.
+  await expect(group.getByText('Recommended for your PC')).toHaveCount(1);
+  await expect(group.getByRole('radio', { name: /Gemma 4 12B Instruct/ })).toHaveAccessibleName(
+    /Recommended for your PC/,
+  );
+  // The legacy Gemma 4 E2B is not offered to someone who never downloaded it.
+  await expect(group.getByRole('radio', { name: /Gemma 4 E2B/ })).toHaveCount(0);
 
   const row = group
     .locator(':scope > div')
-    .filter({ has: page.getByRole('radio', { name: /Gemma 4 E2B Instruct/ }) });
+    .filter({ has: page.getByRole('radio', { name: /Granite 4\.0 Micro/ }) });
   await row.getByRole('button', { name: 'Download' }).click();
-  await expect(gemma).toBeEnabled();
-  await gemma.click();
-  await expect(gemma).toBeChecked();
-  await expect.poll(() => settingsFile().selectedSummaryModelId).toBe('gemma-4-E2B-it-Q4_K_M.gguf');
+  await expect(granite).toBeEnabled();
+  await granite.click();
+  await expect(granite).toBeChecked();
+  await expect
+    .poll(() => settingsFile().selectedSummaryModelId)
+    .toBe('granite-4.0-micro-Q4_K_M.gguf');
   await expect(row.getByText('Active', { exact: true })).toBeVisible();
 
   await row.getByRole('button', { name: 'Delete' }).click();
-  const confirm = page.getByRole('dialog', { name: 'Delete Gemma 4 E2B Instruct?' });
+  const confirm = page.getByRole('dialog', { name: 'Delete Granite 4.0 Micro?' });
   await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
-  await expect(page.getByText('Gemma 4 E2B Instruct deleted.')).toBeAttached();
-  await expect(gemma).toBeDisabled();
-  await expect(gemma).not.toBeChecked();
+  await expect(page.getByText('Granite 4.0 Micro deleted.')).toBeAttached();
+  await expect(granite).toBeDisabled();
+  await expect(granite).not.toBeChecked();
   await expect.poll(() => settingsFile().selectedSummaryModelId).toBeNull();
 });
 

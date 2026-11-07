@@ -51,10 +51,10 @@ for (const theme of ['light', 'dark'] as const) {
     const group = page.getByRole('radiogroup', { name: 'Summary models' });
     if (theme === 'light') {
       const row = group.locator(':scope > div').filter({
-        has: page.getByRole('radio', { name: /Gemma 4 E2B Instruct/ }),
+        has: page.getByRole('radio', { name: /Granite 4\.0 Micro/ }),
       });
       await row.getByRole('button', { name: 'Download' }).click();
-      await page.getByRole('radio', { name: /Gemma 4 E2B Instruct/ }).click();
+      await page.getByRole('radio', { name: /Granite 4\.0 Micro/ }).click();
     }
     await shot(`settings-local-${theme}`);
 

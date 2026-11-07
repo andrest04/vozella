@@ -236,6 +236,49 @@ describe('Settings page', () => {
     }
   });
 
+  it('badges only the model recommended for this PC, shows vendors and the legacy model', async () => {
+    install({
+      'settings.getPage': () =>
+        pageDto({
+          models: {
+            rows: [
+              model('a.gguf', 'Model A', { vendor: 'IBM' }),
+              model('c.gguf', 'Model C', { vendor: 'Alibaba', recommended: true }),
+              model('e2b.gguf', 'Old model', {
+                vendor: 'Google',
+                legacy: true,
+                downloaded: true,
+                active: true,
+                useCaseKey: 'Ui_ModelUseCaseLegacy',
+              }),
+            ],
+            missingActiveId: null,
+          },
+        }),
+    });
+    mount();
+    const group = await screen.findByRole('radiogroup', { name: 'Summary models' });
+    expect(within(group).getAllByText('Recommended for your PC')).toHaveLength(1);
+    const picked = within(group).getByRole('radio', { name: /Model C/ });
+    expect(picked).toHaveAccessibleName(/Recommended for your PC/);
+    // The pick replaces its "runs well" label; the other rows keep their fit label.
+    expect(picked).not.toHaveAccessibleName(/Runs well on this PC/);
+    expect(within(group).getByRole('radio', { name: /Model A/ })).toHaveAccessibleName(
+      /Runs well on this PC/,
+    );
+    for (const vendor of ['IBM', 'Alibaba', 'Google']) {
+      expect(within(group).getByText(vendor)).toBeVisible();
+    }
+    const legacy = within(group).getByRole('radio', { name: /Old model/ });
+    expect(legacy).toBeChecked();
+    expect(legacy).toHaveAccessibleName(/Previous model/);
+    expect(legacy).not.toHaveAccessibleName(/Recommended for your PC/);
+    expect(
+      within(group).getByText('Previous model, kept because it is already on this PC'),
+    ).toBeVisible();
+    expect(within(group).getByRole('button', { name: 'Delete Old model' })).toBeVisible();
+  });
+
   it('hides Set up once a model is active, and for the CLI providers (S20)', async () => {
     install({
       'settings.getPage': () =>

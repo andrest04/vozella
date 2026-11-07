@@ -199,6 +199,8 @@
   "Ui_ModelUseCasePc8Gb": "Equipos con 8 GB o más de RAM",
   "Ui_ModelUseCasePc12Gb": "Equipos con 12 GB o más de RAM",
   "Ui_ModelUseCaseLegacy": "Modelo anterior; se conserva porque ya está en este equipo",
+  "Ui_ModelRecommendedForPc": "Recomendado para tu equipo",
+  "Ui_ModelLegacy": "Modelo anterior",
   "Ui_ErrorYouTubeUrl": "Ese enlace no es de un video de YouTube.",
   "Ui_StatusDownloadingYouTube": "Descargando el audio de YouTube…",
   "Ui_ErrorYtDlpInstall": "No se pudo preparar el descargador de YouTube. Revisa tu conexión e inténtalo de nuevo.",
