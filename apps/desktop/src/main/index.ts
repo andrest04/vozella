@@ -754,6 +754,7 @@ function main(): void {
           queue: summaryPatchQueue,
           meetings: library.meetings,
           settings: library.settings,
+          nextSessionDates: library.settings,
           resolver: summaryRuntime.resolver,
           clock: new SystemClock(),
           notifyMeetingChanged: (id) => {
@@ -781,6 +782,7 @@ function main(): void {
           selectMeeting: (id) => {
             workspace.selectMeeting(id);
           },
+          nextSessionDates: library.settings,
         }),
         resolver: summaryRuntime.resolver,
         models: settings.models,
@@ -791,6 +793,18 @@ function main(): void {
         broadcast,
         logger: logger.child('summaries'),
         t: (key, ...args) => locale.t(key, ...args),
+        // Action item deadlines: the `.ics` export goes where the user picks, Documents by default.
+        pickIcsExportPath: async (defaultFileName) => {
+          const options = {
+            defaultPath: path.join(app.getPath('documents'), defaultFileName),
+            filters: [{ name: 'iCalendar', extensions: ['ics'] }],
+          };
+          const result = mainWindow
+            ? await dialog.showSaveDialog(mainWindow, options)
+            : await dialog.showSaveDialog(options);
+          return result.canceled || !result.filePath ? null : result.filePath;
+        },
+        writeTextFile: (file, text) => writeFileAtomic(file, text),
       });
       registerSummariesHandlers({
         server: {

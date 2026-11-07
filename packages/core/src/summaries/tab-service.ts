@@ -1,9 +1,12 @@
 import type { TranslateFn } from '../i18n/translator';
-import type { ActionItem, MeetingRecord } from '../library/meeting';
-import type { MeetingRepository } from '../library/ports';
+import { isIsoDay, type ActionItem, type MeetingRecord } from '../library/meeting';
+import type { MeetingRepository, NextSessionDateStore } from '../library/ports';
 import { noteTemplateOptions } from '../settings/note-templates';
 import { renderActionItems } from './action-items';
+import { buildActionItemsIcs, icsFileName } from './action-items-ics';
 import { summaryFromAnswer, type SummaryContent } from './answer-to-summary';
+import { withResolvedDeadlines } from './deadline-resolver';
+import { nextSessionKey, rememberedNextSessionDate, usableNextSessionDate } from './next-session';
 import { templateIdToStore } from './template-instructions';
 import { PatchQueue } from './patch-queue';
 import {
@@ -39,6 +42,34 @@ export type ToggleResult =
   /** `message` is the localized `Error_SaveActionItem` sentence for the status line. */
   | { readonly status: 'failed'; readonly message: string; readonly detail: string };
 
+export type SetActionItemDateResult =
+  | { readonly status: 'saved'; readonly actionItems: readonly ActionItem[] }
+  | { readonly status: 'not-found' | 'out-of-range' | 'invalid-date' }
+  /** `message` is the localized `Error_SaveActionItem` sentence for the status line. */
+  | { readonly status: 'failed'; readonly message: string; readonly detail: string };
+
+export type SetNextSessionDateResult =
+  /** `filled` counts the `next_meeting` items that got the date. */
+  | {
+      readonly status: 'saved';
+      readonly actionItems: readonly ActionItem[];
+      readonly filled: number;
+    }
+  /** `invalid-date` also covers a date on or before the meeting's own day. */
+  | { readonly status: 'not-found' | 'invalid-date' }
+  | { readonly status: 'failed'; readonly message: string; readonly detail: string };
+
+export type ActionItemsIcsResult =
+  | {
+      readonly status: 'ready';
+      readonly text: string;
+      readonly count: number;
+      /** A safe default name for the save dialog, from the meeting title. */
+      readonly fileName: string;
+    }
+  /** None of the chosen items has a date. */
+  | { readonly status: 'empty' | 'not-found' };
+
 export type SetTemplateResult =
   | { readonly status: 'saved' | 'unchanged' | 'not-found' }
   | { readonly status: 'failed'; readonly detail: string };
@@ -72,6 +103,8 @@ export interface SummaryTabServiceDeps {
   readonly selectMeeting: (id: string) => void;
   /** Shared with other writers of the same meeting so their patches stay ordered. */
   readonly queue?: PatchQueue;
+  /** Remembered next-session dates per meeting title. Without it nothing is remembered. */
+  readonly nextSessionDates?: NextSessionDateStore;
 }
 
 interface ListedMeeting {
@@ -213,6 +246,78 @@ export class SummaryTabService {
   }
 
   /**
+   * Sets or clears (null) the confirmed date of one action item. An item without a deadline gets a
+   * hand-picked one (blank quote, `date` kind). Clearing keeps the quote and kind. Queued (B5).
+   */
+  setActionItemDate(
+    meetingId: string,
+    index: number,
+    date: string | null,
+  ): Promise<SetActionItemDateResult> {
+    if (date !== null && !isIsoDay(date)) return Promise.resolve({ status: 'invalid-date' });
+    return this.queue
+      .run(meetingId, async (): Promise<SetActionItemDateResult> => {
+        const fresh = await this.deps.meetings.get(meetingId);
+        if (fresh === null) return { status: 'not-found' };
+        const target = Number.isInteger(index) ? fresh.actionItems[index] : undefined;
+        if (target === undefined) return { status: 'out-of-range' };
+        const changed = withDate(target, date);
+        const actionItems = fresh.actionItems.map((item, i) =>
+          i === index ? changed : { ...item },
+        );
+        if (changed !== target) await this.deps.meetings.save({ ...fresh, actionItems });
+        return { status: 'saved', actionItems };
+      })
+      .catch((error: unknown): SetActionItemDateResult => this.saveFailed(error));
+  }
+
+  /**
+   * Answers "when is the next session?": remembers the date for the meeting title and fills it on
+   * this meeting's `next_meeting` items that have no date yet. The date must be after the meeting
+   * day. Queued (B5); the meeting is only written when an item changed.
+   */
+  setNextSessionDate(meetingId: string, date: string): Promise<SetNextSessionDateResult> {
+    if (!isIsoDay(date)) return Promise.resolve({ status: 'invalid-date' });
+    return this.queue
+      .run(meetingId, async (): Promise<SetNextSessionDateResult> => {
+        const fresh = await this.deps.meetings.get(meetingId);
+        if (fresh === null) return { status: 'not-found' };
+        if (usableNextSessionDate(date, fresh.recordedAt) === undefined) {
+          return { status: 'invalid-date' };
+        }
+        await this.deps.nextSessionDates?.rememberNextSessionDate(
+          nextSessionKey(fresh.title),
+          date,
+        );
+        let filled = 0;
+        const actionItems = fresh.actionItems.map((item) => {
+          const deadline = item.deadline;
+          if (deadline?.kind.type !== 'next_meeting' || deadline.date !== undefined) {
+            return { ...item };
+          }
+          filled += 1;
+          return { ...item, deadline: { ...deadline, date } };
+        });
+        if (filled > 0) await this.deps.meetings.save({ ...fresh, actionItems });
+        return { status: 'saved', actionItems, filled };
+      })
+      .catch((error: unknown): SetNextSessionDateResult => this.saveFailed(error));
+  }
+
+  private saveFailed(error: unknown): {
+    readonly status: 'failed';
+    readonly message: string;
+    readonly detail: string;
+  } {
+    const detail = errorText(error);
+    return {
+      status: 'failed',
+      message: this.deps.translate('Error_SaveActionItem', detail),
+      detail,
+    };
+  }
+
+  /**
    * Remembers the picker's choice on the record. Only a built-in template is stored; `auto` and
    * unknown ids clear it, as a generate does. Queued with the other writes (B5).
    */
@@ -254,17 +359,56 @@ export class SummaryTabService {
                 actionItems: request.actionItems.map((item) => ({ ...item })),
               };
         if (next === null) return { status: 'empty' };
-        await this.deps.meetings.save({
-          ...fresh,
-          summary: next.summary,
-          actionItems: next.actionItems,
-        });
+        // New items from an answer get their dates like a generate; a restore stays exact.
+        const actionItems =
+          request.kind === 'answer'
+            ? withResolvedDeadlines(
+                next.actionItems,
+                fresh.recordedAt,
+                await rememberedNextSessionDate(
+                  this.deps.nextSessionDates,
+                  fresh.title,
+                  fresh.recordedAt,
+                ),
+              )
+            : next.actionItems;
+        await this.deps.meetings.save({ ...fresh, summary: next.summary, actionItems });
         return { status: 'saved', previous };
       })
       .catch((error: unknown): ReplaceSummaryResult => ({
         status: 'failed',
         detail: errorText(error),
       }));
+  }
+
+  /**
+   * The `.ics` text for the chosen items (by index; unknown and repeated indexes are ignored).
+   * Only items with a date become events. The save dialog and the write belong to the shell.
+   */
+  async actionItemsIcs(
+    meetingId: string,
+    indexes: readonly number[],
+    now: Date,
+    /** The description labels in the app language; the builder's English ones when omitted. */
+    labels?: { readonly owner: string; readonly meeting: string },
+  ): Promise<ActionItemsIcsResult> {
+    const record = await this.deps.meetings.get(meetingId);
+    if (record === null) return { status: 'not-found' };
+    const chosen = [...new Set(indexes)]
+      .sort((a, b) => a - b)
+      .flatMap((index) => {
+        const item = record.actionItems[index];
+        return item?.deadline?.date === undefined ? [] : [{ index, item }];
+      });
+    if (chosen.length === 0) return { status: 'empty' };
+    const { text, count } = buildActionItemsIcs({
+      meetingTitle: record.title,
+      items: chosen,
+      now,
+      uidSeed: record.id,
+      ...(labels === undefined ? {} : { labels }),
+    });
+    return { status: 'ready', text, count, fileName: icsFileName(record.title) };
   }
 
   /** Item 99. The clipboard write belongs to the shell. */
@@ -290,6 +434,20 @@ export class SummaryTabService {
       return null;
     }
   }
+}
+
+/** The item with `date` set or cleared; the same object when nothing changes. */
+function withDate(item: ActionItem, date: string | null): ActionItem {
+  const deadline = item.deadline;
+  if (date === null) {
+    if (deadline?.date === undefined) return item;
+    return { ...item, deadline: { quote: deadline.quote, kind: deadline.kind } };
+  }
+  if (deadline?.date === date) return item;
+  return {
+    ...item,
+    deadline: deadline ? { ...deadline, date } : { quote: '', kind: { type: 'date', date }, date },
+  };
 }
 
 function mostRecent(items: readonly ListedMeeting[]): ListedMeeting | null {

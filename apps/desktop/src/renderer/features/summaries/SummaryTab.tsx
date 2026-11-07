@@ -2,10 +2,13 @@ import { useCallback, useEffect, useMemo, useState, type RefObject } from 'react
 import { useI18n } from '../../i18n/I18nProvider';
 import { useChatLinks } from '../chat/use-chat-links';
 import { formatMeetingDate } from '../library/format';
+import type { ActionItemsListProps } from './ActionItemsList';
 import { DraftMessage } from './DraftMessage';
 import { RegenerateDialog } from './RegenerateDialog';
 import { SummaryActionBar, SummaryStatusLine } from './SummaryActionBar';
 import { SummaryTabView, type SummaryTabLabels } from './SummaryTabView';
+import { formatDueDate } from './summary-tab-model';
+import { useActionItemsExport } from './use-action-items-export';
 import { useSummaryGeneration, type RunSetup } from './use-summary-generation';
 import { useSummaryTab } from './use-summary-tab';
 
@@ -66,13 +69,53 @@ export function SummaryTab({
       notesPlaceholder: t('SummaryPage_Notes.PlaceholderText'),
       empty: t('SummaryPage_Empty.Text'),
       emptyCta: t('SummaryPage_EmptyCta.Content'),
-      actionItems: t('SummaryPage_ActionItems.Text'),
       related: t('SummaryPage_RelatedMeetings.Text'),
       loading: t('Ui_Loading'),
       dismiss: t('Ui_Close'),
       readyToGenerate: t('Ui_SummaryReadyToGenerate'),
     }),
     [t],
+  );
+
+  const calendar = useActionItemsExport(state?.meetingId ?? null, t);
+  const meetingTitle = state?.title ?? '';
+  // One message at a time in the draft slot: a newer copy result replaces an export result.
+  const clearCalendarMessage = calendar.clear;
+  useEffect(() => {
+    if (generation.draft !== null) clearCalendarMessage();
+  }, [generation.draft, clearCalendarMessage]);
+  const actionItemsProps = useMemo<Omit<ActionItemsListProps, 'items'>>(
+    () => ({
+      labels: {
+        heading: t('SummaryPage_ActionItems.Text'),
+        addDate: t('Ui_ActionItemAddDate'),
+        changeDate: (date) => t('Ui_ActionItemChangeDate', date),
+        dateFor: (text) => t('Ui_ActionItemDateFor', text),
+        clearDate: t('Ui_ActionItemClearDate'),
+        nextSessionQuestion: t('Ui_NextSessionQuestion'),
+        nextSessionHint: t('Ui_NextSessionHint', meetingTitle),
+        nextSessionSave: t('Ui_NextSessionSave'),
+        nextSessionInvalid: t('Ui_NextSessionInvalid'),
+        exportIcs: t('Ui_ActionItemsExportIcs'),
+        exportNone: t('Ui_ActionItemsExportNone'),
+      },
+      onToggle: model.toggleAction,
+      onSetDate: model.setActionDate,
+      onSaveNextSession: model.setNextSessionDate,
+      onExport: calendar.exportIcs,
+      exporting: calendar.exporting,
+      formatDate: (isoDay) => formatDueDate(isoDay, locale, Date.now()),
+    }),
+    [
+      t,
+      locale,
+      meetingTitle,
+      model.toggleAction,
+      model.setActionDate,
+      model.setNextSessionDate,
+      calendar.exportIcs,
+      calendar.exporting,
+    ],
   );
 
   const related = useMemo(
@@ -128,7 +171,7 @@ export function SummaryTab({
         hasSummary={flags.hasSummary}
         isEmpty={flags.isEmpty}
         actionItems={model.actionItems}
-        onToggleAction={model.toggleAction}
+        actionItemsProps={actionItemsProps}
         related={related}
         onOpenRelated={onOpenRelated}
         onRecord={onRecord}
@@ -183,7 +226,7 @@ export function SummaryTab({
             busy={generation.generating}
           />
         }
-        draft={<DraftMessage message={generation.draft} />}
+        draft={<DraftMessage message={calendar.message ?? generation.draft} />}
       />
       <RegenerateDialog
         open={generation.regenerateOpen}

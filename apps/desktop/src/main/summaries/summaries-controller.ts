@@ -43,6 +43,9 @@ export interface SummariesControllerDeps {
     | 'copyText'
     | 'setTemplate'
     | 'replaceSummary'
+    | 'setActionItemDate'
+    | 'setNextSessionDate'
+    | 'actionItemsIcs'
   >;
   readonly resolver: Pick<SummaryProviderResolver, 'resolveSummaryProvider'>;
   readonly models: Pick<LocalModelsService, 'rows' | 'download' | 'cancel'>;
@@ -55,7 +58,18 @@ export interface SummariesControllerDeps {
   readonly logger: Logger;
   /** Looks a string up in the current app language at the moment of use. */
   readonly t: TranslateFn;
+  /** The save dialog for the `.ics` export; null when the user cancels. */
+  readonly pickIcsExportPath: (defaultFileName: string) => Promise<string | null>;
+  /** Writes the export (atomically in the app). */
+  readonly writeTextFile: (file: string, text: string) => Promise<void>;
+  /** The export moment (`DTSTAMP`). Defaults to the system clock. */
+  readonly now?: () => Date;
 }
+
+export type ExportIcsResult =
+  | { readonly status: 'exported'; readonly count: number }
+  | { readonly status: 'cancelled' | 'empty' }
+  | { readonly status: 'failed'; readonly message: string };
 
 /** What the recording pipeline learns from the summary stage. */
 export type PipelineSummaryResult =
@@ -134,6 +148,45 @@ export class SummariesController {
     const result = await this.deps.tab.replaceSummary(meetingId, source);
     if (result.status === 'saved') this.announce(meetingId, false);
     return result;
+  }
+
+  // -------------------------------------------------- action item deadlines
+
+  setActionItemDate(meetingId: string, index: number, date: string | null) {
+    return this.deps.tab.setActionItemDate(meetingId, index, date);
+  }
+
+  setNextSessionDate(meetingId: string, date: string) {
+    return this.deps.tab.setNextSessionDate(meetingId, date);
+  }
+
+  /**
+   * Builds the calendar for the chosen items, asks where to save it (default name from the
+   * meeting title) and writes it. No dated item answers `empty` without a dialog.
+   */
+  async exportActionItemsIcs(
+    meetingId: string,
+    indexes: readonly number[],
+  ): Promise<ExportIcsResult> {
+    try {
+      const now = this.deps.now?.() ?? new Date();
+      const ics = await this.deps.tab.actionItemsIcs(meetingId, indexes, now, {
+        owner: this.deps.t('Ui_IcsOwnerLabel'),
+        meeting: this.deps.t('Ui_IcsMeetingLabel'),
+      });
+      if (ics.status !== 'ready') {
+        return ics.status === 'empty'
+          ? { status: 'empty' }
+          : { status: 'failed', message: this.deps.t('Ui_SummaryMeetingGone') };
+      }
+      const target = await this.deps.pickIcsExportPath(ics.fileName);
+      if (target === null) return { status: 'cancelled' };
+      await this.deps.writeTextFile(target, ics.text);
+      return { status: 'exported', count: ics.count };
+    } catch (error) {
+      this.deps.logger.error('action items could not be exported', { error });
+      return { status: 'failed', message: messageOf(error) };
+    }
   }
 
   // ------------------------------------------------------------- generation

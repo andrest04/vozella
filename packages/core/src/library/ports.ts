@@ -51,6 +51,15 @@ export interface SettingsStore {
   update(patch: Partial<AppSettings>): Promise<AppSettings>;
 }
 
+/**
+ * Port: the next-session date (`YYYY-MM-DD`) the user gave for a meeting series, keyed by the
+ * normalized meeting title (`nextSessionKey`). Adapter: JsonSettingsStore (`settings.json`).
+ */
+export interface NextSessionDateStore {
+  loadNextSessionDate(titleKey: string): Promise<string | null>;
+  rememberNextSessionDate(titleKey: string, date: string): Promise<void>;
+}
+
 /** Port: other modules report meetings they are recording or processing. */
 export interface MeetingBusyProbe {
   isBusy(meetingId: string): boolean;

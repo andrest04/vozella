@@ -11,7 +11,10 @@ import {
   summariesLoadTab,
   summariesProgress,
   summariesProviderStatus,
+  summariesExportActionItemsIcs,
   summariesReplaceSummary,
+  summariesSetActionItemDate,
+  summariesSetNextSessionDate,
   summariesToggleAction,
 } from './index';
 
@@ -133,5 +136,56 @@ describe('summaries.replaceSummary (T4)', () => {
     }
     expect(output.safeParse({ status: 'failed', detail: 'locked' }).success).toBe(true);
     expect(output.safeParse({ status: 'saved' }).success).toBe(false);
+  });
+});
+
+describe('action item deadlines (T4)', () => {
+  it('registers the date and export channels', () => {
+    for (const name of [
+      'summaries.setActionItemDate',
+      'summaries.setNextSessionDate',
+      'summaries.exportActionItemsIcs',
+    ]) {
+      expect(Object.keys(requestChannels)).toContain(name);
+    }
+  });
+
+  it('setActionItemDate takes a real day or null', () => {
+    const input = summariesSetActionItemDate.input;
+    expect(input.safeParse({ meetingId: 'm', index: 0, date: '2026-11-13' }).success).toBe(true);
+    expect(input.safeParse({ meetingId: 'm', index: 0, date: null }).success).toBe(true);
+    expect(input.safeParse({ meetingId: 'm', index: 0, date: '2026-02-30' }).success).toBe(false);
+    expect(input.safeParse({ meetingId: 'm', index: -1, date: null }).success).toBe(false);
+    const output = summariesSetActionItemDate.output;
+    expect(output.safeParse({ status: 'saved', actionItems: [] }).success).toBe(true);
+    for (const status of ['not-found', 'out-of-range', 'invalid-date']) {
+      expect(output.safeParse({ status }).success).toBe(true);
+    }
+    expect(output.safeParse({ status: 'failed', message: 'm', detail: 'd' }).success).toBe(true);
+  });
+
+  it('setNextSessionDate takes a real day and answers the filled count', () => {
+    const input = summariesSetNextSessionDate.input;
+    expect(input.safeParse({ meetingId: 'm', date: '2026-11-13' }).success).toBe(true);
+    expect(input.safeParse({ meetingId: 'm', date: null }).success).toBe(false);
+    const output = summariesSetNextSessionDate.output;
+    expect(output.safeParse({ status: 'saved', actionItems: [], filled: 2 }).success).toBe(true);
+    expect(output.safeParse({ status: 'saved', actionItems: [] }).success).toBe(false);
+    for (const status of ['not-found', 'invalid-date']) {
+      expect(output.safeParse({ status }).success).toBe(true);
+    }
+  });
+
+  it('exportActionItemsIcs takes item indexes and answers four outcomes', () => {
+    const input = summariesExportActionItemsIcs.input;
+    expect(input.safeParse({ meetingId: 'm', indexes: [0, 2] }).success).toBe(true);
+    expect(input.safeParse({ meetingId: 'm', indexes: [-1] }).success).toBe(false);
+    const output = summariesExportActionItemsIcs.output;
+    expect(output.safeParse({ status: 'exported', count: 2 }).success).toBe(true);
+    expect(output.safeParse({ status: 'failed', message: 'disk full' }).success).toBe(true);
+    for (const status of ['cancelled', 'empty']) {
+      expect(output.safeParse({ status }).success).toBe(true);
+    }
+    expect(output.safeParse({ status: 'exported' }).success).toBe(false);
   });
 });

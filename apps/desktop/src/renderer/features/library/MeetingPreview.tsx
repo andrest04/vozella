@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
 import { Button, Skeleton, Tabs } from '../../ui';
 import { MarkdownView } from '../summaries/MarkdownView';
+import { formatDueDate } from '../summaries/summary-tab-model';
 import { formatMeetingSpan } from './format';
 import type { MeetingTab } from './search-results';
 import type { MeetingPreviewState } from './use-meeting-preview';
@@ -26,7 +27,7 @@ function PreviewFact({ label, value }: { readonly label: string; readonly value:
 }
 
 function SummaryContent({ record }: { readonly record: MeetingRecordDto }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   return (
     <div className={`flex flex-col gap-5 ${READING}`}>
       {hasText(record.summary) ? <MarkdownView source={record.summary} /> : null}
@@ -35,7 +36,15 @@ function SummaryContent({ record }: { readonly record: MeetingRecordDto }) {
           <h3 className="text-ui font-medium text-ink">{t('SummaryPage_ActionItems.Text')}</h3>
           <ul className="flex list-disc flex-col gap-1 ps-5 text-read text-ink">
             {record.actionItems.map((item, index) => (
-              <li key={index}>{item.text}</li>
+              <li key={index}>
+                {item.text}
+                {item.deadline?.date === undefined ? null : (
+                  <span className="text-ui text-ink-muted">
+                    {' · '}
+                    {formatDueDate(item.deadline.date, locale, Date.now())}
+                  </span>
+                )}
+              </li>
             ))}
           </ul>
         </section>
