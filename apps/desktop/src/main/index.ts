@@ -77,6 +77,7 @@ import {
   Tray,
 } from 'electron';
 import { resolveAppVersion } from './bootstrap/app-version';
+import { builtDevVersion } from './bootstrap/dev-version';
 import {
   bootstrapDataRoots,
   resolveGuardInput,
@@ -234,7 +235,9 @@ function main(): void {
     return;
   }
 
-  const appVersion = resolveAppVersion(__dirname, '1.0.0.0');
+  // An unpackaged run shows the last tag, the commits since it and the sha (About, logs).
+  const packageVersion = resolveAppVersion(__dirname, '1.0.0.0');
+  const appVersion = app.isPackaged ? packageVersion : (builtDevVersion() ?? packageVersion);
   const fakeNative = isFakeNative(process.env);
   const devServerUrl = app.isPackaged ? undefined : process.env.ELECTRON_RENDERER_URL;
   const trusted: TrustedOrigins = {

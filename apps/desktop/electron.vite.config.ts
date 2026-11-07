@@ -1,9 +1,28 @@
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'electron-vite';
 import type { Plugin } from 'vite';
+import { readDevVersion } from './src/main/bootstrap/dev-version';
 import { buildCsp } from './src/main/security/csp';
+
+/** What an unpackaged run shows in About; git runs once per build or dev start. */
+function devVersion(): string {
+  const manifest = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8')) as {
+    version: string;
+  };
+  return readDevVersion(
+    (args) =>
+      execFileSync('git', args, {
+        cwd: __dirname,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }),
+    manifest.version,
+  );
+}
 
 /** Puts the Content-Security-Policy in the page itself, strict in builds, looser in dev. */
 function cspPlugin(): Plugin {
@@ -27,6 +46,8 @@ function cspPlugin(): Plugin {
 // it loads its own .node binary, so it stays external and ships as a dependency.
 export default defineConfig({
   main: {
+    // Packaged builds ignore it and show the version the release workflow wrote.
+    define: { __VOZELLA_DEV_VERSION__: JSON.stringify(devVersion()) },
     build: {
       externalizeDeps: { include: ['koffi'] },
       rollupOptions: {

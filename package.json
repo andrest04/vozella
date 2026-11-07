@@ -16,7 +16,7 @@
     "test:e2e": "pnpm build && pnpm --filter @vozella/desktop test:e2e",
     "typecheck": "pnpm -r --workspace-concurrency=1 run typecheck",
     "lint": "eslint . && prettier --check \"apps/**/*.{ts,tsx,mjs,json,html}\" \"packages/**/*.{ts,json}\" \"native/**/*.{json,mjs}\" \"*.{json,mjs}\" && pnpm --filter @vozella/native lint",
-    "test": "pnpm -r run test",
+    "test": "node --test \"scripts/*.test.mjs\" && pnpm -r run test",
     "format": "prettier --write \"apps/**/*.{ts,tsx,mjs,json,html}\" \"packages/**/*.{ts,json}\" \"native/**/*.{json,mjs}\" \"*.{json,mjs}\"",
     "check": "pnpm typecheck && pnpm lint && pnpm test"
   },
