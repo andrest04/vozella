@@ -10,6 +10,10 @@ The product is named **Vozella**. Internal names (namespaces, projects, package 
 
 `apps/desktop`, `packages/*`, and `native/*` are the Electron port of this app. For those paths, follow `docs/port/stack.md`; the WinUI skill routing and the "Playwright does not apply" rule below cover only `MeetingLive.*`. Load these from `.atl/skill-registry.md` as they apply: `frontend-design`, `accessibility`, `vitest`, `playwright-best-practices`, `rust-best-practices`, `design-patterns`, `work-unit-commits`.
 
+## Strings
+
+User-facing text lives in `apps/desktop/src/renderer/i18n/locales/`: `en.json` / `es.json` (the strings carried over from the original app, keys unchanged) and `ui.en.json` / `ui.es.json` (the hand-written `Ui_` strings). Edit these JSON files directly; nothing generates them. Add every key to both locales with the same `{0}` placeholders — `apps/desktop/src/main/i18n-catalog-checks.test.ts` enforces key parity, order, non-empty values, and placeholder sets. Do not hardcode UI strings.
+
 ## Hard gate: every change MUST go through skills
 
 This is not optional. **Do not write, edit, test, review, package, or ship MeetingLive code without first loading the matching `SKILL.md` files.** Ad-hoc implementation is a quality failure.
