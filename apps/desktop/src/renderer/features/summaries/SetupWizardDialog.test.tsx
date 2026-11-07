@@ -15,12 +15,15 @@ afterEach(() => {
 const row = (fileName: string, displayName: string, extra: Partial<ModelRowDto> = {}) => ({
   fileName,
   displayName,
+  vendor: 'Meta',
   fileSizeGb: 0.81,
   minRamGb: 4,
   speedKey: 'ModelSpeedFast',
   qualityKey: 'ModelQualityGood',
   useCaseKey: 'ModelUseCaseModestPcs',
   fit: 'Recommended' as const,
+  recommended: false,
+  legacy: false,
   downloaded: false,
   active: false,
   downloading: false,
@@ -201,6 +204,28 @@ describe('SetupWizardDialog: model list', () => {
   it('selects the first row when nothing is downloaded', async () => {
     await open();
     expect(screen.getByRole('radio', { name: /Small model/ })).toBeChecked();
+  });
+
+  it('badges the model recommended for this PC, pre-selects it, and names each vendor', async () => {
+    const rows = [
+      row('one.gguf', 'Small model', { vendor: 'Meta' }),
+      row('two.gguf', 'Middle model', { vendor: 'IBM', recommended: true }),
+      row('three.gguf', 'Large model', { vendor: 'Google', fit: 'NotRecommended' }),
+    ];
+    await open({
+      'summaries.hardware': () => ({ ...hardwareAnswer(rows), defaultFileName: 'two.gguf' }),
+    });
+    const list = screen.getByTestId('ListModelOptions');
+    expect(within(list).getAllByText('Recommended for your PC')).toHaveLength(1);
+    const picked = within(list).getByRole('radio', { name: /Middle model/ });
+    expect(picked).toBeChecked();
+    expect(picked).toHaveAccessibleName(/Recommended for your PC/);
+    // The pick drops its "runs well" label; the other rows keep their fit label.
+    expect(within(list).getAllByText('Runs well on this PC')).toHaveLength(1);
+    expect(within(list).getByText('Too heavy for this PC')).toBeVisible();
+    for (const vendor of ['Meta', 'IBM', 'Google']) {
+      expect(within(list).getByText(vendor)).toBeVisible();
+    }
   });
 
   it('never uses the signal color for a fit badge', async () => {

@@ -4,7 +4,9 @@ import { ignored, messageOf, type CommitOutcome } from './commands';
 import type { LocalModelStore } from './ports';
 import {
   findSummaryModel,
+  LEGACY_SUMMARY_MODELS,
   rateFor,
+  recommendedFor,
   SUMMARY_MODELS,
   type FitRating,
   type HardwareProfile,
@@ -37,6 +39,8 @@ export type DeleteOutcome =
 export interface ModelRow {
   readonly fileName: string;
   readonly displayName: string;
+  /** The publisher, e.g. Meta or IBM. A brand, never translated. */
+  readonly vendor: string;
   readonly fileSizeGb: number;
   readonly minRamGb: number;
   readonly speedKey: string;
@@ -44,6 +48,10 @@ export interface ModelRow {
   readonly useCaseKey: string;
   /** Null when the hardware could not be read. */
   readonly fit: FitRating | null;
+  /** The one "Recommended for your PC" pick (`recommendedFor`); none when hardware is unknown. */
+  readonly recommended: boolean;
+  /** A model that left the catalog: listed only while on disk, never downloaded again. */
+  readonly legacy: boolean;
   readonly downloaded: boolean;
   /** The selected model, only while its file is there (B7). */
   readonly active: boolean;
@@ -88,22 +96,29 @@ export class LocalModelsService {
   async rows(hardware: HardwareProfile | null, rate: RateOptions = {}): Promise<ModelRows> {
     const settings = await this.deps.settings.load();
     const selected = settings.selectedSummaryModelId;
+    const pick = hardware ? recommendedFor(hardware, rate) : null;
     const rows: ModelRow[] = [];
     let selectedUsable = false;
-    for (const model of SUMMARY_MODELS) {
+    for (const model of [...SUMMARY_MODELS, ...LEGACY_SUMMARY_MODELS]) {
       const downloaded = await this.deps.store.isDownloaded(model);
+      const legacy = model.legacy === true;
+      // A legacy model is only there for the users who already have it.
+      if (legacy && !downloaded) continue;
       const active = downloaded && model.fileName === selected;
       selectedUsable ||= active;
       const transfer = this.transfers.get(model.fileName);
       rows.push({
         fileName: model.fileName,
         displayName: model.displayName,
+        vendor: model.vendor,
         fileSizeGb: model.fileSizeGb,
         minRamGb: model.minRamGb,
         speedKey: model.speedKey,
         qualityKey: model.qualityKey,
         useCaseKey: model.useCaseKey,
         fit: hardware ? rateFor(model, hardware, rate) : null,
+        recommended: pick?.fileName === model.fileName,
+        legacy,
         downloaded,
         active,
         downloading: transfer !== undefined,
@@ -123,6 +138,7 @@ export class LocalModelsService {
   download(fileName: string): Promise<DownloadOutcome> {
     const model = findSummaryModel(fileName);
     if (!model) return Promise.resolve({ status: 'ignored', reason: 'unknown-model' });
+    if (model.legacy === true) return this.legacyDownload(model);
     const running = this.transfers.get(fileName);
     if (running) return running.outcome;
     const transfer: Transfer = {
@@ -135,6 +151,13 @@ export class LocalModelsService {
       this.transfers.delete(fileName);
     });
     return transfer.outcome;
+  }
+
+  /** A legacy file is never fetched again: present counts as downloaded, absent as unknown. */
+  private async legacyDownload(model: SummaryModelInfo): Promise<DownloadOutcome> {
+    return (await this.deps.store.isDownloaded(model))
+      ? { status: 'ignored', reason: 'already-downloaded' }
+      : { status: 'ignored', reason: 'unknown-model' };
   }
 
   private async run(model: SummaryModelInfo, transfer: Transfer): Promise<DownloadOutcome> {

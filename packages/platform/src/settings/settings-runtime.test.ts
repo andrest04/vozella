@@ -211,6 +211,29 @@ describe('LocalModelStore contract', () => {
 });
 
 describe('SettingsRuntime.warmUp', () => {
+  it('rates the models for the llama runtime in use: a CPU build does not count the VRAM', async () => {
+    const active: { gpuOffload?: boolean } = {};
+    const runtimeWith = new SettingsRuntime({
+      store: new JsonSettingsStore({ settingsFilePath: path.join(dir, 'settings.json') }),
+      appDataDirectory: dir,
+      osLanguages: () => ['en-US'],
+      relaunch: () => undefined,
+      notifyModel: () => undefined,
+      hardware: new FakeHardwareProbe({
+        totalRamGb: 8,
+        gpuName: 'NVIDIA GeForce RTX 3070',
+        gpuVramGb: 8,
+      }),
+      cli: new FakeCliProbe(new Set()),
+      activeGpuOffload: () => active.gpuOffload,
+    });
+    const pick = async () =>
+      (await runtimeWith.page.load()).models.rows.find((row) => row.recommended)?.displayName;
+    expect(await pick()).toBe('Gemma 4 12B Instruct');
+    active.gpuOffload = false;
+    expect(await pick()).toBe('Gemma 4 E4B Instruct');
+  });
+
   it('starts the hardware query once, so the first page load finds it done', async () => {
     let queries = 0;
     const runtimeWith = new SettingsRuntime({

@@ -1,6 +1,6 @@
 import type { ModelRowDto } from '@vozella/contracts';
 import { FIT_LABEL_KEYS } from '@vozella/core';
-import { CircleAlert, CircleCheck, Clock } from 'lucide-react';
+import { Award, CircleAlert, CircleCheck, Clock } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import type { StringKey, Translate } from '../../i18n/translate';
@@ -32,6 +32,21 @@ function FitBadge({ fit }: { readonly fit: Fit }): ReactNode {
   );
 }
 
+/** The one "Recommended for your PC" pick: full ink border and an icon, never a color. */
+function RecommendedBadge(): ReactNode {
+  const t = useT();
+  return (
+    <Badge tone="outline" className="border-ink text-ink">
+      <Icon icon={Award} size={12} />
+      {t('Ui_ModelRecommendedForPc')}
+    </Badge>
+  );
+}
+
+/** The pick's badge says it runs well, so it drops that fit label; a pick that may be slow keeps it. */
+const shownFit = (row: ModelRowDto): Fit | null =>
+  row.fit && !(row.recommended && row.fit === 'Recommended') ? row.fit : null;
+
 /** "Detected: 16 GB RAM, GPU X (8 GB VRAM)" or the no-GPU line (item 129). */
 export function hardwareLine(hardware: HardwareSummaryDto, t: Translate): string {
   return hardware.gpuVramGb !== null && hardware.gpuVramGb > 0
@@ -39,7 +54,7 @@ export function hardwareLine(hardware: HardwareSummaryDto, t: Translate): string
     : t('Hardware_NoGpu', hardware.totalRamGb);
 }
 
-/** The model list: name, use case, speed and quality line, size and fit (item 130). */
+/** The model list: name and vendor, use case, speed and quality line, size and fit (item 130). */
 export function ModelPicker({
   hardware,
   rows,
@@ -56,29 +71,41 @@ export function ModelPicker({
   readonly onSelect: (fileName: string) => void;
 }): ReactNode {
   const t = useT();
-  const options: RadioOption[] = rows.map((row) => ({
-    value: row.fileName,
-    disabled,
-    label: (
-      <span className="font-medium">
-        {row.downloaded ? t('Model_Downloaded', row.displayName) : row.displayName}
-      </span>
-    ),
-    description: (
-      <span className="flex flex-col">
-        <span>{t(row.useCaseKey as StringKey)}</span>
-        <span>
-          {t(
-            'Model_SpeedQuality',
-            t(row.speedKey as StringKey),
-            t(row.qualityKey as StringKey),
-            row.fileSizeGb,
-          )}
+  const options: RadioOption[] = rows.map((row) => {
+    const fit = shownFit(row);
+    return {
+      value: row.fileName,
+      disabled,
+      label: (
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="font-medium">
+            {row.downloaded ? t('Model_Downloaded', row.displayName) : row.displayName}
+          </span>{' '}
+          <span className="text-ink-muted">{row.vendor}</span>
+          {row.recommended ? (
+            <>
+              {' '}
+              <RecommendedBadge />
+            </>
+          ) : null}
         </span>
-      </span>
-    ),
-    trailing: row.fit ? <FitBadge fit={row.fit} /> : undefined,
-  }));
+      ),
+      description: (
+        <span className="flex flex-col">
+          <span>{t(row.useCaseKey as StringKey)}</span>
+          <span>
+            {t(
+              'Model_SpeedQuality',
+              t(row.speedKey as StringKey),
+              t(row.qualityKey as StringKey),
+              row.fileSizeGb,
+            )}
+          </span>
+        </span>
+      ),
+      trailing: fit ? <FitBadge fit={fit} /> : undefined,
+    };
+  });
 
   return (
     <section className="flex flex-col gap-3" aria-labelledby="wizard-model-heading">

@@ -3,6 +3,7 @@ import {
   LLAMA_BACKENDS,
   backendFallbackChain,
   chooseBackend,
+  gpuOffloadFor,
   isGpuBackend,
   usesGpuOffload,
 } from './llama-backend';
@@ -56,5 +57,20 @@ describe('llama backend choice', () => {
     expect(isGpuBackend('cpu')).toBe(false);
     expect(usesGpuOffload('vulkan')).toBe(true);
     expect(usesGpuOffload('cpu')).toBe(false);
+  });
+});
+
+describe('gpuOffloadFor: can the llama runtime use the GPU, for the fit rating', () => {
+  it('the runtime in use decides once it is known', () => {
+    expect(gpuOffloadFor(hw('NVIDIA GeForce RTX 3070', 8), false)).toBe(false);
+    expect(gpuOffloadFor(hw(null, null), true)).toBe(true);
+  });
+
+  it('before any runtime is picked, the first backend the chain would try decides', () => {
+    expect(gpuOffloadFor(hw('NVIDIA GeForce RTX 3070', 8), undefined)).toBe(true);
+    expect(gpuOffloadFor(hw('AMD Radeon RX 7600', 8), undefined)).toBe(true);
+    // VRAM without a name: no GPU build can be chosen for it, so only the CPU build runs.
+    expect(gpuOffloadFor(hw('  ', 8), undefined)).toBe(false);
+    expect(gpuOffloadFor(hw(null, null), undefined)).toBe(false);
   });
 });

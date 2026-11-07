@@ -1,4 +1,5 @@
-import { CONTEXT_TOKENS, type CancelSignal } from '@vozella/core';
+import nodePath from 'node:path';
+import { CONTEXT_TOKENS, serverArgsFor, type CancelSignal } from '@vozella/core';
 import type {
   ChatDelta,
   ChatMessage,
@@ -29,7 +30,15 @@ export interface LocalLlmHostOptions {
   createServer(): LocalLlmServer;
   resolveRuntime(cancel: CancelSignal): Promise<LocalLlmRuntime>;
   readonly contextTokens?: number;
+  /**
+   * Flags a model needs (Qwen3 8B: thinking off). Defaults to the catalog entry whose file name is
+   * the path's base name, which is how the model store names files.
+   */
+  serverArgsFor?(modelPath: string): readonly string[];
 }
+
+const catalogServerArgs = (modelPath: string): readonly string[] =>
+  serverArgsFor(nodePath.basename(modelPath));
 
 interface Loaded {
   readonly modelPath: string;
@@ -44,6 +53,7 @@ interface Loaded {
  */
 export class LocalLlmHost {
   private loaded: Loaded | undefined;
+  private lastGpuOffload: boolean | undefined;
   private chain: Promise<unknown> = Promise.resolve();
 
   constructor(private readonly options: LocalLlmHostOptions) {}
@@ -52,12 +62,21 @@ export class LocalLlmHost {
     return this.loaded?.modelPath;
   }
 
+  /**
+   * Whether the runtime picked last offloads to the GPU; undefined until one is resolved. The model
+   * fit ratings read it, so a session that fell back to the CPU build stops counting the VRAM.
+   */
+  get gpuOffload(): boolean | undefined {
+    return this.lastGpuOffload;
+  }
+
   acquire(modelPath: string, cancel: CancelSignal): Promise<LocalLlmServer> {
     return this.serialized(async () => {
       const current = this.loaded;
       if (current?.modelPath === modelPath) return current.server;
       if (current) await this.stopLoaded(current);
       const runtime = await this.options.resolveRuntime(cancel);
+      this.lastGpuOffload = runtime.gpuOffload;
       const server = this.options.createServer();
       const next: Loaded = { modelPath, server };
       this.loaded = next;
@@ -68,7 +87,12 @@ export class LocalLlmHost {
           contextTokens: this.options.contextTokens ?? CONTEXT_TOKENS,
           gpuLayers: runtime.gpuOffload ? 'auto' : 0,
           // One slot: the whole context belongs to the one request in flight.
-          extraArgs: ['-np', '1', ...(runtime.extraArgs ?? [])],
+          extraArgs: [
+            '-np',
+            '1',
+            ...(runtime.extraArgs ?? []),
+            ...(this.options.serverArgsFor?.(modelPath) ?? catalogServerArgs(modelPath)),
+          ],
           argsPrefix: runtime.argsPrefix,
           healthTimeoutMs: runtime.healthTimeoutMs,
           cancel,

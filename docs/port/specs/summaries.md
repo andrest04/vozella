@@ -697,6 +697,26 @@ Ordered by ascending `MinRamGb`. All Q4_K_M GGUF. `FileName` is the stable id an
 
 Speed, quality and use-case labels are resolved from the Core string catalog at read time, in the current UI culture (so the list is built once per process in the culture active at first access, bug B20).
 
+**Port change (2026-11-07, `odd/tasks/summary-model-catalog.md`).** The Electron port replaces the table above with seven models from four vendors (`packages/core/src/settings/summary-models.ts`). Every URL is pinned to a repository commit (`/resolve/<40-hex>/`), and every entry pins `sizeBytes` and `sha256`. `rank` is a research-based quality order (1 best), not our own evaluation.
+
+| FileName | Display name | Vendor | Size GB | Min RAM GB | Rank | Server args |
+|---|---|---|---|---|---|---|
+| `Llama-3.2-1B-Instruct-Q4_K_M.gguf` | Llama 3.2 1B Instruct | Meta | 0.81 | 4 | 7 | |
+| `Llama-3.2-3B-Instruct-Q4_K_M.gguf` | Llama 3.2 3B Instruct | Meta | 2.02 | 8 | 6 | |
+| `granite-4.0-micro-Q4_K_M.gguf` | Granite 4.0 Micro | IBM | 2.10 | 8 | 5 | |
+| `gemma-4-E4B-it-Q4_K_M.gguf` | Gemma 4 E4B Instruct | Google | 4.98 | 8 | 3 | `--reasoning off` |
+| `Qwen3-4B-Instruct-2507-Q4_K_M.gguf` | Qwen3 4B Instruct 2507 | Alibaba | 2.50 | 12 | 4 | |
+| `Qwen3-8B-Q4_K_M.gguf` | Qwen3 8B | Alibaba | 5.03 | 16 | 2 | `--reasoning off` |
+| `gemma-4-12b-it-Q4_K_M.gguf` | Gemma 4 12B Instruct | Google | 7.12 | 16 | 1 | `--reasoning off` |
+
+- **Recommended for your PC.** `recommendedFor(hardware, rateOptions)` picks the best-ranked model whose `rateFor` is `Recommended`; if none, the best `MayBeSlow`; else none. Exactly one row carries `recommended: true`, and the setup wizard pre-selects it when no model is on disk yet (first downloaded, else recommended, else first `Recommended` fit, else first row).
+- **Runtime-aware fit.** The Settings page (`SettingsPageService`) and the wizard (`SummariesController.hardwareOptions`) rate models with `gpuOffload = gpuOffloadFor(hardware, active)`: `active` is `LocalLlmHost.gpuOffload`, the answer of the llama runtime picked in this session (undefined until the first local run). Before that, the first backend of the fallback chain decides (cuda/vulkan offload; a GPU with VRAM but no usable name only gets the cpu build). A session that fell back to the CPU build therefore stops counting the VRAM for the ratings and the recommendation.
+- **Legacy Gemma 4 E2B.** `gemma-4-E2B-it-Q4_K_M.gguf` left the catalog. It lives in `LEGACY_SUMMARY_MODELS`: `findSummaryModel` still knows it, so a saved selection, the model path and delete keep working. It is listed (last, `legacy: true`) only while its file is on disk, is never recommended, and a download request answers `ignored/unknown-model` (or `already-downloaded` when the file is there).
+- **Server args.** `LocalLlmHost` appends the entry's `serverArgs`, looked up by the model file name, after the shared `-np 1` and runtime flags. Qwen3 8B (hybrid thinking) and Gemma 4 E4B and 12B (they reason under the default `--reasoning auto`) start with `--reasoning off`; the other models get no flag.
+- **UI.** Settings (`LocalModels`) and the setup wizard (`ModelPicker`) show the vendor after each name and one "Recommended for your PC" badge (`Ui_ModelRecommendedForPc`, ink border and icon, inside the radio's accessible name). The pick drops its "Runs well on this PC" fit label, which the badge implies; a pick that only "May be slow" keeps it; every other row keeps its fit label. A legacy row carries a "Previous model" badge (`Ui_ModelLegacy`) and the `Ui_ModelUseCaseLegacy` line, and keeps its Delete button.
+- **Real smoke test.** `packages/platform/src/llama/summary-models.real.test.ts` loads every catalog model whose file (with its pinned size) is in `VOZELLA_LLM_MODELS_DIR` into the llama-server build under `VOZELLA_LLAMA_BIN_DIR` (`VOZELLA_LLM_BACKEND` picks one, default cuda12 then cpu), summarizes a three-line Spanish transcript, and checks there is no `<think>` text and no hidden reasoning (generated tokens no more than the visible answer plus 8). Skipped without both variables. Without `--reasoning off`, Qwen3 8B generated 231 tokens (894 characters of reasoning) for a one-sentence answer; with it, 22. Run 2026-11-07 on llama.cpp b12063 cuda12 (RTX 3070 Laptop, 8 GB): all seven catalog models pass (Granite and Qwen3 4B also on cpu). Gemma 4 E4B and 12B reason under the default `--reasoning auto`: 12B spent 257 tokens (909 characters of reasoning) on a one-sentence answer and returned an empty summary (`LocalEmpty`); E4B answered a short question directly but reasoned on a summary-shaped prompt (782 tokens, 2194 characters of reasoning). Both now start with `--reasoning off`; with it 12B passes (19 generated tokens) and E4B's summary took 10.7 s instead of 28 s.
+- Labels for the new tiers are hand-written `Ui_` keys (`Ui_ModelQualityBasic`, `Ui_ModelUseCasePc8Gb`, `Ui_ModelUseCasePc12Gb`, `Ui_ModelUseCaseLegacy`), because `en.json` and `es.json` are generated from the WinUI resources.
+
 ### 3.7 CLI providers (`ClaudeCodeCliSummaryProvider`, `CodexCliSummaryProvider`, `CliToolProviderBase`, `CliInvocation`)
 
 Both providers extend one base that supplies four values: executable name, timeout, argument string, display name. They run `RunRequiredStdoutAsync` (2.5) with the prompt on stdin.

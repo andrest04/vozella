@@ -387,8 +387,16 @@ describe('LocalModelsService: rows', () => {
     store.files.add(first.fileName);
     await settings.update({ selectedSummaryModelId: second.fileName });
     const rows = await service.rows({ totalRamGb: 16, gpuName: null, gpuVramGb: null });
-    expect(rows.rows.map((r) => r.active)).toEqual([false, false, false, false]);
-    expect(rows.rows.map((r) => r.downloaded)).toEqual([false, true, false, false]);
+    expect(rows.rows.every((r) => !r.active)).toBe(true);
+    expect(rows.rows.map((r) => r.downloaded)).toEqual([
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+    ]);
     expect(rows.missingActiveId).toBe(second.fileName);
   });
 
@@ -402,6 +410,9 @@ describe('LocalModelsService: rows', () => {
       'Recommended',
       'Recommended',
       'Recommended',
+      'Recommended',
+      'NotRecommended',
+      'NotRecommended',
       'NotRecommended',
     ]);
     expect(rows.rows[2]).toMatchObject({
@@ -409,6 +420,85 @@ describe('LocalModelsService: rows', () => {
       active: true,
       downloaded: true,
     });
+  });
+
+  it('flags exactly one row "Recommended for your PC" and carries the vendor', async () => {
+    const { service } = models();
+    const { rows } = await service.rows({ totalRamGb: 8, gpuName: null, gpuVramGb: null });
+    expect(rows.filter((r) => r.recommended).map((r) => r.displayName)).toEqual([
+      'Gemma 4 E4B Instruct',
+    ]);
+    expect(rows.map((r) => r.vendor)).toEqual([
+      'Meta',
+      'Meta',
+      'IBM',
+      'Google',
+      'Alibaba',
+      'Alibaba',
+      'Google',
+    ]);
+    expect(rows.every((r) => !r.legacy)).toBe(true);
+  });
+
+  it('the pick follows the runtime: a CPU build cannot lean on the GPU', async () => {
+    const { service } = models();
+    const gpu = { totalRamGb: 8, gpuName: 'NVIDIA GeForce RTX 4060', gpuVramGb: 8 };
+    const pick = async (gpuOffload: boolean) =>
+      (await service.rows(gpu, { gpuOffload })).rows.find((r) => r.recommended)?.displayName;
+    expect(await pick(true)).toBe('Gemma 4 12B Instruct');
+    expect(await pick(false)).toBe('Gemma 4 E4B Instruct');
+  });
+
+  it('no pick when the hardware could not be read', async () => {
+    const { service } = models();
+    expect((await service.rows(null)).rows.some((r) => r.recommended)).toBe(false);
+  });
+});
+
+describe('LocalModelsService: legacy Gemma 4 E2B', () => {
+  const E2B = 'gemma-4-E2B-it-Q4_K_M.gguf';
+
+  it('is not listed while its file is absent', async () => {
+    const { service } = models();
+    const { rows } = await service.rows({ totalRamGb: 16, gpuName: null, gpuVramGb: null });
+    expect(rows.map((r) => r.fileName)).not.toContain(E2B);
+  });
+
+  it('is listed last, marked legacy, never recommended, and stays active when selected', async () => {
+    const { service, settings, store } = models();
+    store.files.add(E2B);
+    await settings.update({ selectedSummaryModelId: E2B });
+    const { rows, missingActiveId } = await service.rows({
+      totalRamGb: 64,
+      gpuName: null,
+      gpuVramGb: null,
+    });
+    expect(missingActiveId).toBeNull();
+    expect(rows.at(-1)).toMatchObject({
+      fileName: E2B,
+      vendor: 'Google',
+      legacy: true,
+      recommended: false,
+      downloaded: true,
+      active: true,
+    });
+    expect(rows).toHaveLength(SUMMARY_MODELS.length + 1);
+  });
+
+  it('can be selected and deleted, but never downloaded', async () => {
+    const { service, settings, store } = models();
+    expect(await service.download(E2B)).toEqual({ status: 'ignored', reason: 'unknown-model' });
+    expect(store.started).toEqual([]);
+    store.files.add(E2B);
+    expect(await service.select(E2B)).toMatchObject({ status: 'saved' });
+    expect(await service.download(E2B)).toEqual({
+      status: 'ignored',
+      reason: 'already-downloaded',
+    });
+    expect(await service.delete(E2B)).toMatchObject({ status: 'deleted' });
+    expect((await settings.load()).selectedSummaryModelId).toBeNull();
+    expect(store.files.has(E2B)).toBe(false);
+    expect(store.started).toEqual([]);
   });
 
   it('an id that is not in the catalog is reported as missing too', async () => {

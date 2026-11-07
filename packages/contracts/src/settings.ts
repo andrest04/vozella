@@ -46,6 +46,8 @@ const providerOptionsSchema = z.object({
 export const modelRowSchema = z.object({
   fileName: z.string(),
   displayName: z.string(),
+  /** The publisher (Meta, IBM, Alibaba, Google). A brand, never translated. */
+  vendor: z.string(),
   fileSizeGb: z.number(),
   minRamGb: z.number(),
   /** Catalog keys. The page looks the text up in its language when it draws. */
@@ -53,6 +55,10 @@ export const modelRowSchema = z.object({
   qualityKey: z.string(),
   useCaseKey: z.string(),
   fit: z.enum(['Recommended', 'MayBeSlow', 'NotRecommended']).nullable(),
+  /** The one "Recommended for your PC" row: the best-ranked model that runs well here. */
+  recommended: z.boolean(),
+  /** A model that left the catalog; listed only while its file is on disk. */
+  legacy: z.boolean(),
   downloaded: z.boolean(),
   active: z.boolean(),
   downloading: z.boolean(),

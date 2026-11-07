@@ -197,7 +197,7 @@ describe('settings handlers', () => {
 
   it('downloads a model with progress events, selects it and deletes it', async () => {
     const t = await setup();
-    const file = 'gemma-4-E2B-it-Q4_K_M.gguf';
+    const file = 'granite-4.0-micro-Q4_K_M.gguf';
     const done = await t.call('settings.models.download', { fileName: file });
     expect(done.value).toEqual({ status: 'done' });
     const progress = t.events
@@ -233,6 +233,18 @@ describe('settings handlers', () => {
     });
     expect(out.value).toEqual({ status: 'failed', message: 'HTTP 503' });
     expect(t.events.at(-1)?.payload).toMatchObject({ type: 'failed', message: 'HTTP 503' });
+  });
+
+  it('never downloads the legacy Gemma 4 E2B: it left the catalog', async () => {
+    const t = await setup();
+    const out = await t.call('settings.models.download', {
+      fileName: 'gemma-4-E2B-it-Q4_K_M.gguf',
+    });
+    expect(out.value).toEqual({ status: 'ignored', reason: 'unknown-model' });
+    const page = (await t.call('settings.getPage')).value as {
+      models: { rows: { fileName: string }[] };
+    };
+    expect(page.models.rows.map((r) => r.fileName)).not.toContain('gemma-4-E2B-it-Q4_K_M.gguf');
   });
 
   it('refuses to touch a file that is not in the catalog', async () => {

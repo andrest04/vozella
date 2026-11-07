@@ -46,9 +46,10 @@ test.describe('local engine and the full tab round trip', () => {
     const options = await page.evaluate(() => window.vozella.invoke('summaries.hardware', {}));
     expect(options.rows.length).toBeGreaterThan(1);
     expect(options.rows.some((row) => row.downloaded)).toBe(false);
-    expect(options.defaultFileName).toBe(
-      options.rows.find((row) => row.fit === 'Recommended')?.fileName ?? options.rows[0]?.fileName,
-    );
+    // Nothing downloaded yet: the default is the one row marked "Recommended for your PC".
+    const recommended = options.rows.filter((row) => row.recommended);
+    expect(recommended).toHaveLength(1);
+    expect(options.defaultFileName).toBe(recommended[0]?.fileName);
 
     const chosen = await page.evaluate(
       (fileName) => window.vozella.invoke('summaries.chooseLocalModel', { fileName }),

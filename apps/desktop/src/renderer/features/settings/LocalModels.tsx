@@ -1,15 +1,18 @@
 import type { ModelRowDto } from '@vozella/contracts';
 import { FIT_LABEL_KEYS } from '@vozella/core';
+import { Award } from 'lucide-react';
 import { useState } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
 import type { StringKey } from '../../i18n/translate';
-import { Badge, Button, Progress, RadioGroup, type RadioOption } from '../../ui';
+import { Badge, Button, Icon, Progress, RadioGroup, type RadioOption } from '../../ui';
 import { ConfirmDialog } from '../library/dialogs';
 
 /**
  * The local summary models, in catalog order: which one is active, and download, cancel and delete
- * (spec 2.4). A model can be chosen only once its file is on this PC, and its row says so. Deleting asks nothing, as in
- * the WinUI page; a running download can be cancelled.
+ * (spec 2.4). One row is badged "Recommended for your PC"; it drops its "runs well" label, which the
+ * badge implies. A legacy model (left the catalog, still on disk) says so and can be deleted. A
+ * model can be chosen only once its file is on this PC, and its row says so. Deleting asks
+ * nothing, as in the WinUI page; a running download can be cancelled.
  */
 export function LocalModels({
   rows,
@@ -47,14 +50,25 @@ export function LocalModels({
       disabled: !row.downloaded,
       label: (
         <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="font-medium">{row.displayName}</span>
-          {row.fit ? <Badge tone="outline">{t(FIT_LABEL_KEYS[row.fit] as StringKey)}</Badge> : null}
+          <span className="font-medium">{row.displayName}</span>{' '}
+          <span className="text-ink-muted">{row.vendor}</span>
+          {row.recommended ? (
+            <Badge tone="outline" className="border-ink text-ink">
+              <Icon icon={Award} size={12} />
+              {t('Ui_ModelRecommendedForPc')}
+            </Badge>
+          ) : null}
+          {row.fit && !(row.recommended && row.fit === 'Recommended') ? (
+            <Badge tone="outline">{t(FIT_LABEL_KEYS[row.fit] as StringKey)}</Badge>
+          ) : null}
+          {row.legacy ? <Badge tone="outline">{t('Ui_ModelLegacy')}</Badge> : null}
           {row.active ? <Badge tone="neutral">{t('Settings_Active.Content')}</Badge> : null}
         </span>
       ),
       description: (
         <span className="flex flex-col gap-1.5">
           <span>{speedQuality}</span>
+          {row.legacy ? <span>{t(row.useCaseKey as StringKey)}</span> : null}
           {!row.downloaded && !row.downloading ? <span>{t('Ui_ModelDownloadToUse')}</span> : null}
           {percent !== null ? (
             <Progress

@@ -50,7 +50,7 @@ test('the settings page services work in the real app, on a throwaway data root'
     expect(file).toMatchObject({ selectedSummaryProvider: 'ClaudeCode', uiLanguage: 'es' });
 
     // A model downloads (fake files), becomes active and is removed again.
-    const model = 'gemma-4-E2B-it-Q4_K_M.gguf';
+    const model = 'granite-4.0-micro-Q4_K_M.gguf';
     expect(
       await page.evaluate(
         (fileName) => window.vozella.invoke('settings.models.download', { fileName }),
