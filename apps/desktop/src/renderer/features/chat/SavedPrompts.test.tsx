@@ -203,14 +203,14 @@ describe('running a saved prompt', () => {
     mount();
     const chips = await screen.findByTestId('ListMeetingChatStarters');
     await waitFor(() => {
-      expect(within(chips).getAllByRole('button')[0]).toHaveTextContent('Risk review 1');
+      expect(within(chips).getAllByTestId('BtnChatStarter')[0]).toHaveTextContent('Risk review 1');
     });
     const labels = within(chips)
-      .getAllByRole('button')
+      .getAllByTestId('BtnChatStarter')
       .map((b) => b.textContent);
     expect(labels).toHaveLength(4);
     expect(labels.slice(0, 2)).toEqual(['Risk review 1', 'Risk review 2']);
-    await user.click(first(within(chips).getAllByRole('button')));
+    await user.click(first(within(chips).getAllByTestId('BtnChatStarter')));
     await waitFor(() => {
       expect(api.calls('chat.send')).toHaveLength(1);
     });
@@ -299,9 +299,9 @@ describe('running a saved prompt', () => {
     mount();
     const chips = await screen.findByTestId('ListMeetingChatStarters');
     await waitFor(() => {
-      expect(within(chips).getAllByRole('button')[0]).toHaveTextContent('Risk review 1');
+      expect(within(chips).getAllByTestId('BtnChatStarter')[0]).toHaveTextContent('Risk review 1');
     });
-    await user.click(first(within(chips).getAllByRole('button')));
+    await user.click(first(within(chips).getAllByTestId('BtnChatStarter')));
     await waitFor(() => {
       expect(box()).toHaveValue('List the risks, take 1.');
     });

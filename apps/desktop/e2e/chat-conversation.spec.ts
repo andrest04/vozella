@@ -51,7 +51,9 @@ test('ask a question: Thinking, then streamed Markdown, copy and New chat', asyn
   try {
     await page.getByRole('navigation').getByRole('link', { name: 'Record' }).click();
     await openPanel(page);
-    await expect(page.getByTestId('ListMeetingChatStarters').getByRole('button')).toHaveCount(3);
+    await expect(
+      page.getByTestId('ListMeetingChatStarters').getByTestId('BtnChatStarter'),
+    ).toHaveCount(3);
     await expect(page.getByTestId('BtnMeetingChatSend')).toBeDisabled();
     await shot(page, 'chat-conversation-empty-light');
 
@@ -92,7 +94,7 @@ test('a starter chip sends its prompt at once and stop returns the draft', async
   try {
     await page.getByRole('navigation').getByRole('link', { name: 'Record' }).click();
     await openPanel(page);
-    await page.getByTestId('ListMeetingChatStarters').getByRole('button').first().click();
+    await page.getByTestId('ListMeetingChatStarters').getByTestId('BtnChatStarter').first().click();
     const list = page.getByTestId('ListMeetingChat');
     await expect(list.getByText('Thinking…')).toBeVisible();
     await page.getByTestId('BtnMeetingChatStop').click();
