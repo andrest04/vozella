@@ -10,8 +10,9 @@ import { ConfirmDialog } from '../library/dialogs';
 /**
  * The local summary models, in catalog order: which one is active, and download, cancel and delete
  * (spec 2.4). One row is badged "Recommended for your PC"; it drops its "runs well" label, which the
- * badge implies. A legacy model (left the catalog, still on disk) says so and can be deleted. A model can be chosen only once its file is on this PC, and its row says so. Deleting asks nothing, as in
- * the WinUI page; a running download can be cancelled.
+ * badge implies. A legacy model (left the catalog, still on disk) says so and can be deleted. A
+ * model can be chosen only once its file is on this PC, and its row says so. Deleting asks
+ * nothing, as in the WinUI page; a running download can be cancelled.
  */
 export function LocalModels({
   rows,
