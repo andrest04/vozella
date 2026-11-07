@@ -10,14 +10,18 @@ export interface TextLine {
   readonly kind: 'committed' | 'interim';
   /** The start of the stamp (`mm:ss.ff`), or null for a bare line. */
   readonly start: string | null;
-  readonly speaker: number | null;
+  /** Sortformer speaker number, `'you'` for the local user (`[ You ]`), or null. */
+  readonly speaker: LiveSpeaker | null;
   readonly text: string;
   readonly starred: boolean;
 }
 
+export type LiveSpeaker = number | 'you';
+
 export type LiveLine = HeaderLine | TextLine;
 
-const STAMPED = /^(\* )?\[(\d+:\d{2}\.\d{2})-\d+:\d{2}\.\d{2}\](?: \[ Speaker-(\d+) \])? ?(.*)$/;
+const STAMPED =
+  /^(\* )?\[(\d+:\d{2}\.\d{2})-\d+:\d{2}\.\d{2}\](?: \[ (?:Speaker-(\d+)|(You)) \])? ?(.*)$/;
 const HEADER = /^(Recorded|Ended) /;
 
 export const splitLines = (text: string): string[] =>
@@ -41,8 +45,8 @@ export function liveLinesFrom(displayText: string, committedCount: number): Live
     return {
       kind,
       start: match[2] ?? null,
-      speaker: match[3] === undefined ? null : Number(match[3]),
-      text: (match[4] ?? '').trim(),
+      speaker: match[4] !== undefined ? 'you' : match[3] === undefined ? null : Number(match[3]),
+      text: (match[5] ?? '').trim(),
       starred: match[1] !== undefined,
     };
   });

@@ -72,10 +72,10 @@ function install(first: string | null | undefined, gate?: Promise<void>): Fake {
   return fake;
 }
 
-function mount(hasAudio = false) {
+function mount(hasAudio = false, locale: 'en' | 'es' = 'en') {
   const ref: { current: CopySource | null } = { current: null };
   const view = render(
-    <I18nProvider>
+    <I18nProvider initialLocale={locale}>
       <TooltipProvider>
         <TranscriptTab meetingId={ID} copySourceRef={ref} hasAudio={hasAudio} />
       </TooltipProvider>
@@ -136,6 +136,15 @@ describe('TranscriptTab', () => {
     const lines = [...box.querySelectorAll('p')].map((p) => p.textContent);
     expect(lines.join('\n')).toBe(STORED);
     expect(lines[3]?.startsWith('* [00:04.52-00:09.10]')).toBe(true);
+  });
+
+  it('shows the local user label in the UI language; copy still gives the stored text', async () => {
+    const stored = '[00:00.00-00:01.00] [ You ] Hola.';
+    install(stored);
+    const { ref } = mount(false, 'es');
+    const box = await screen.findByTestId('TxtTranscriptContent');
+    expect(box.querySelector('p')?.textContent).toBe('[00:00.00-00:01.00] [ Tú ] Hola.');
+    await expect(ref.current?.()).resolves.toBe(stored);
   });
 
   it('keeps blank lines as lines', async () => {

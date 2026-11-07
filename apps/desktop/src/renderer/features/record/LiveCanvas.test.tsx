@@ -81,6 +81,20 @@ describe('LiveCanvas heading, badge and placeholder (items 104, 105, 64)', () =>
     expect(screen.getByText('S2')).toBeVisible();
   });
 
+  it('names the local user You, in the UI language', () => {
+    const text = '[00:00.00-00:01.00] [ You ] Hola';
+    mount({ text, committedLines: 1 });
+    expect(screen.getByText('You')).toBeVisible();
+    cleanup();
+    render(
+      <Providers locale="es">
+        <LiveCanvas {...base} text={text} committedLines={1} />
+      </Providers>,
+    );
+    expect(screen.getByText('Tú')).toBeVisible();
+    expect(screen.queryByText(/\[ You \]/)).toBeNull();
+  });
+
   it('marks a starred line with a screen reader label', () => {
     mount({ text: stamp(0, 'Decision', true), committedLines: 1 });
     expect(screen.getByText('Highlight', { selector: '.sr-only' })).toBeInTheDocument();

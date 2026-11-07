@@ -49,6 +49,17 @@ describe('liveLines', () => {
     });
   });
 
+  it('reads the local user label as you, not as a speaker number or text', () => {
+    const line = '* [00:01.00-00:02.00] [ You ] Hola a todos.';
+    expect(liveLines(line, line)[0]).toEqual({
+      kind: 'committed',
+      start: '00:01.00',
+      speaker: 'you',
+      text: 'Hola a todos.',
+      starred: true,
+    });
+  });
+
   it('accepts minutes past 59', () => {
     const line = '[125:03.20-125:05.00] late';
     expect(liveLines(line, line)[0]).toMatchObject({ start: '125:03.20', text: 'late' });
