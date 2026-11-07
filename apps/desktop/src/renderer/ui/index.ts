@@ -18,6 +18,7 @@ export { RadioGroup, type RadioOption } from './RadioGroup';
 export { Select, type Option, type SelectProps } from './Select';
 export { Skeleton, SkeletonText } from './Skeleton';
 export { Splitter, type SplitterProps } from './Splitter';
+export { SplitterHandle, type SplitterHandleProps } from './SplitterHandle';
 export { Switch, type SwitchProps } from './Switch';
 export { Tabs, type TabItem, type TabsProps } from './Tabs';
 export { ToastProvider, useToast, type ToastKind } from './Toast';

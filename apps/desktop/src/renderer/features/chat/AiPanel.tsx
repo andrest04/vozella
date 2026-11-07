@@ -11,7 +11,8 @@ import {
 import type { ChatScopeDecision } from '@vozella/core';
 import { readStored, writeStored } from '../../app/preference-storage';
 import { useT } from '../../i18n/I18nProvider';
-import { Icon, IconButton, Splitter, cn } from '../../ui';
+import { Icon, IconButton, Splitter, SplitterHandle, cn } from '../../ui';
+import { clampSize } from '../../ui/splitter-logic';
 import { AiLauncher } from './AiLauncher';
 import { LiveBadge } from './LiveBadge';
 import {
@@ -21,6 +22,7 @@ import {
   PANEL_WIDTH_KEY,
   dockMaxWidth,
   isPanelToggle,
+  overlayMaxWidth,
   panelMode,
   parseStoredOpen,
   parseStoredWidth,
@@ -80,6 +82,9 @@ export function AiPanelArea({ children, body }: AiPanelAreaProps) {
   const area = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLElement>(null);
   const launcher = useRef<HTMLButtonElement>(null);
+  const overlayHandle = useRef<HTMLDivElement>(null);
+  // Set when a resize from the floating handle docks the panel, so focus follows to the docked one.
+  const focusDockedHandle = useRef(false);
   const focusAfter = useRef<FocusAfter>(null);
   const available = useObservedWidth(area);
   // In Live scope the panel shows the detected question, unless the Record dock already does.
@@ -145,6 +150,19 @@ export function AiPanelArea({ children, body }: AiPanelAreaProps) {
     };
   }, [overlay, setOpen]);
 
+  const resize = useCallback((next: number): void => {
+    setWidth(next);
+    writeStored(PANEL_WIDTH_KEY, String(next));
+  }, []);
+
+  // Shrinking the floating panel can make it fit beside the page; it docks there, and the
+  // keyboard user keeps a focused handle.
+  useEffect(() => {
+    if (!docked || !focusDockedHandle.current) return;
+    focusDockedHandle.current = false;
+    area.current?.querySelector<HTMLElement>(':scope > div > [role="separator"]')?.focus();
+  }, [docked]);
+
   const startNewChat = (): void => {
     void window.vozella
       .invoke('chat.newChat', {})
@@ -155,6 +173,7 @@ export function AiPanelArea({ children, body }: AiPanelAreaProps) {
   };
 
   const label = scopeLabel(t, decision, name);
+  const overlayMax = overlayMaxWidth(available);
 
   const aside = (
     <aside
@@ -179,6 +198,26 @@ export function AiPanelArea({ children, body }: AiPanelAreaProps) {
         'forced-colors:border-[CanvasText]',
       )}
     >
+      {overlay ? (
+        // Inside the panel, so dragging it never counts as a click outside that closes it.
+        <SplitterHandle
+          ref={overlayHandle}
+          fixedPane="end"
+          label={t('Ui_AiPanelResize')}
+          controls={PANEL_ID}
+          size={clampSize(width, PANEL_MIN_WIDTH, overlayMax)}
+          defaultSize={PANEL_DEFAULT_WIDTH}
+          minSize={PANEL_MIN_WIDTH}
+          maxSize={overlayMax}
+          onSizeChange={(next) => {
+            focusDockedHandle.current =
+              panelMode(available, next) === 'dock' &&
+              document.activeElement === overlayHandle.current;
+            resize(next);
+          }}
+          className="absolute inset-y-0 -start-px"
+        />
+      ) : null}
       {/* Empty chrome: drags the window and sits behind the caption buttons. */}
       <div className="app-drag h-10 shrink-0" />
       <div className="flex h-10 shrink-0 items-center gap-1 ps-4 pe-2">
@@ -237,13 +276,10 @@ export function AiPanelArea({ children, body }: AiPanelAreaProps) {
         collapsed={!docked}
         label={t('Ui_AiPanelResize')}
         defaultSize={PANEL_DEFAULT_WIDTH}
-        initialSize={width}
+        size={width}
         minSize={PANEL_MIN_WIDTH}
         maxSize={dockMaxWidth(available)}
-        onSizeChange={(next) => {
-          setWidth(next);
-          writeStored(PANEL_WIDTH_KEY, String(next));
-        }}
+        onSizeChange={resize}
         first={children}
         second={aside}
       />

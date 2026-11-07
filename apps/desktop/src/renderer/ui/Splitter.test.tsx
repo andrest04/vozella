@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Splitter } from './Splitter';
@@ -50,6 +50,36 @@ describe('Splitter with the fixed pane at the end', () => {
     await userEvent.dblClick(handle);
     expect(handle.getAttribute('aria-valuenow')).toBe('380');
     expect(onSizeChange).toHaveBeenLastCalledWith(380);
+  });
+
+  it('follows a controlled size from its owner', () => {
+    const { rerender } = mount({ size: 400 });
+    const handle = screen.getByRole('separator', { name: 'Resize panel' });
+    expect(handle.getAttribute('aria-valuenow')).toBe('400');
+    rerender(
+      <Splitter
+        label="Resize panel"
+        fixedPane="end"
+        defaultSize={380}
+        size={460}
+        minSize={320}
+        maxSize={520}
+        first={<div>content</div>}
+        second={<div>panel</div>}
+      />,
+    );
+    expect(handle.getAttribute('aria-valuenow')).toBe('460');
+    expect(screen.getByText('panel').parentElement?.style.width).toBe('460px');
+  });
+
+  it('drags the end pane bigger when the pointer moves toward the start', () => {
+    const { onSizeChange } = mount();
+    const handle = screen.getByRole('separator', { name: 'Resize panel' });
+    fireEvent.pointerDown(handle, { button: 0, pointerId: 1, clientX: 600 });
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 560 });
+    fireEvent.pointerUp(handle, { pointerId: 1, clientX: 560 });
+    expect(onSizeChange).toHaveBeenLastCalledWith(460);
+    expect(handle.getAttribute('aria-valuenow')).toBe('460');
   });
 
   it('drops the handle and the pane box while collapsed, keeping the content mounted', () => {

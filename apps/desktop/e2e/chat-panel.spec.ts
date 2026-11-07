@@ -155,10 +155,18 @@ test('on a narrow window the panel floats over the page and Escape closes it', a
   // The window minimum leaves 728 px beside the sidebar: less than 400 plus the 380 panel.
   await resize(960, 700);
   await expect(panel()).toHaveAttribute('data-mode', 'overlay');
-  await expect(page.getByRole('separator', { name: 'Resize AI panel' })).toHaveCount(0);
   const content = await page.locator('#content').boundingBox();
   expect(content?.width).toBeGreaterThan(700);
   await shot('chat-panel-overlay-light');
+  // The floating panel resizes from its own handle on its left edge.
+  const handle = panel().getByRole('separator', { name: 'Resize AI panel' });
+  await handle.focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(handle).toHaveAttribute('aria-valuenow', '396');
+  await expect.poll(async () => (await panel().boundingBox())?.width).toBeCloseTo(396, 0);
+  await expect(panel()).toHaveAttribute('data-mode', 'overlay');
+  await handle.dblclick();
+  await expect(handle).toHaveAttribute('aria-valuenow', '380');
   await composer().focus();
   await page.keyboard.press('Escape');
   await expect(panel()).toBeHidden();
