@@ -1,6 +1,5 @@
 import { resolveAccentKey, resolveIconKey } from '@vozella/core';
-import type { MeetingListItemDto } from '@vozella/contracts';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
 import type { StringKey } from '../../i18n/translate';
 import { Button, ConfirmDialog, EmptyState, Notice, Skeleton, cn } from '../../ui';
@@ -10,28 +9,16 @@ import { matchLibraryShortcut } from '../../app/shortcuts';
 import { RenameDialog } from '../session/RenameDialog';
 import { MoveDialog, NameDialog, PersonalityDialog } from './dialogs';
 import {
-  clearDropRequest,
-  clearFolderRequest,
   refreshLibrary,
   rememberScroll,
   setCursor,
   setFilters,
   useLibraryStore,
-  type FolderRequest,
 } from './library-store';
 import { folderIdOfView } from './library-store';
 import { folderMenuEntries } from './LibraryFolders';
-import {
-  EMPTY_CHECKS,
-  checkAll,
-  extendChecks,
-  keepLive,
-  setGroup,
-  toggleCheck,
-  type Checks,
-} from './library-selection';
 import { ListHeader } from './ListHeader';
-import { MeetingGrid, type MeetingGridHandle } from './MeetingGrid';
+import { MeetingGrid } from './MeetingGrid';
 import { FilterButton, FilterChips } from './MeetingFilterControls';
 import { NO_FILTERS, filterKey, isFiltering, type MeetingFilters } from './meeting-filters';
 import { MeetingPreview } from './MeetingPreview';
@@ -39,43 +26,16 @@ import { describeSkipped } from './format';
 import { HEADER_ROW_PX, MEETING_ROW_PX, nextCursor } from './logbook';
 import { tabOfHit } from './search-results';
 import { UndoOffer } from './UndoOffer';
+import { useBulkActions } from './use-bulk-actions';
+import {
+  confirmText,
+  useLibraryDialogs,
+  useMeetingRename,
+  type ConfirmDialogState,
+} from './use-library-dialogs';
+import { useListFocus } from './use-list-focus';
 import { useMeetingPreview } from './use-meeting-preview';
 import { useLibrary, type StatusMessage } from './use-library';
-
-type DialogState =
-  | { readonly kind: 'newFolder' }
-  | { readonly kind: 'rename'; readonly folderId: string; readonly name: string }
-  | { readonly kind: 'personality'; readonly folderId: string }
-  | { readonly kind: 'deleteFolder'; readonly folderId: string; readonly name: string }
-  | { readonly kind: 'move'; readonly meeting: MeetingListItemDto }
-  | { readonly kind: 'deleteMeeting'; readonly meeting: MeetingListItemDto }
-  /** `refused`: the Recycle Bin said no. Otherwise it was asked for directly, with Shift+Delete. */
-  | {
-      readonly kind: 'deleteMeetingPermanently';
-      readonly meeting: MeetingListItemDto;
-      readonly refused: boolean;
-    }
-  | { readonly kind: 'moveMany'; readonly meetings: readonly MeetingListItemDto[] }
-  | { readonly kind: 'deleteMany'; readonly meetingIds: readonly string[] }
-  | {
-      readonly kind: 'deleteManyPermanently';
-      readonly meetingIds: readonly string[];
-      readonly refused: boolean;
-    }
-  | { readonly kind: 'renameMeeting'; readonly meeting: MeetingListItemDto };
-
-/** One move that can be taken back: where each meeting was, grouped by that place. */
-interface UndoMove {
-  readonly message: string;
-  readonly restore: readonly {
-    readonly folderId: string | null;
-    readonly meetingIds: readonly string[];
-  }[];
-}
-
-type BulkWork = { readonly kind: 'moving' | 'deleting'; readonly count: number } | null;
-
-const FOCUS_RETRY_MS = 250;
 
 /** From this width of the content the preview sits beside the list; below it a click opens. */
 export const PANED_LAYOUT_PX = 760;
@@ -104,7 +64,6 @@ export function LibraryRoute() {
   const { t, locale } = useI18n();
   const library = useLibrary(locale, t('Library_Inbox'));
   const { ref: layoutRef, wide } = useWideLayout();
-  const [dialog, setDialog] = useState<DialogState | null>(null);
   const [startupError, setStartupError] = useState<string | null>(null);
   const [skippedDismissed, setSkippedDismissed] = useState(false);
 
@@ -122,36 +81,12 @@ export function LibraryRoute() {
     label: crumb.folderId === null ? t('Library_Inbox') : folderName(crumb.folderId),
   }));
 
-  const runFolderAction = (request: FolderRequest): void => {
-    if (request.kind === 'new') setDialog({ kind: 'newFolder' });
-    else if (request.kind === 'rename') {
-      setDialog({ kind: 'rename', folderId: request.folderId, name: folderName(request.folderId) });
-    } else if (request.kind === 'personality') {
-      setDialog({ kind: 'personality', folderId: request.folderId });
-    } else if (library.canDeleteFolder(request.folderId)) {
-      setDialog({
-        kind: 'deleteFolder',
-        folderId: request.folderId,
-        name: folderName(request.folderId),
-      });
-    } else {
-      library.showStatus({ key: 'LibraryDeleteFolder_NotEmpty', args: [] });
-    }
-  };
-
-  // The sidebar cannot open dialogs: it leaves the request here, also from another screen.
-  const folderRequest = useLibraryStore((state) => state.folderRequest);
-  const runRequest = useRef(runFolderAction);
-  runRequest.current = runFolderAction;
-  useEffect(() => {
-    if (!folderRequest) return;
-    clearFolderRequest();
-    runRequest.current(folderRequest);
-  }, [folderRequest]);
-
-  const closeDialog = (): void => {
-    setDialog(null);
-  };
+  const dialogs = useLibraryDialogs({
+    folderName,
+    canDeleteFolder: library.canDeleteFolder,
+    showStatus: library.showStatus,
+  });
+  const { dialog, shown, openDialog, closeDialog, runFolderAction } = dialogs;
   const dialogChrome = {
     cancelLabel: '',
     closeLabel: t('Ui_Close'),
@@ -159,11 +94,6 @@ export function LibraryRoute() {
       if (!open) closeDialog();
     },
   };
-
-  // Keep the last dialog's data while it fades out, so its text does not blank first.
-  const lastDialog = useRef(dialog);
-  if (dialog) lastDialog.current = dialog;
-  const shown = dialog ?? lastDialog.current;
   const personalityFolder =
     shown?.kind === 'personality'
       ? (library.folders.find((f) => f.id === shown.folderId) ?? null)
@@ -186,106 +116,37 @@ export function LibraryRoute() {
     const next = nextCursor(useLibraryStore.getState().cursorId, previous, listedIds);
     if (next !== useLibraryStore.getState().cursorId) setCursor(next);
   }, [listedIds, wide, library.isLoading, cursorId, layoutRef]);
-  // Checks belong to one list: another view or another search starts with none.
-  const [checks, setChecks] = useState<Checks>(EMPTY_CHECKS);
-  const [bulkWork, setBulkWork] = useState<BulkWork>(null);
   const viewKey = `${library.view.kind}-${String(folderIdOfView(library.view))}`;
   const filters = useLibraryStore((state) => state.filters);
   const filtering = isFiltering(filters);
   const filtersKey = filterKey(filters);
-  useEffect(() => {
-    setChecks(EMPTY_CHECKS);
-  }, [viewKey, library.query, filtersKey]);
-  useEffect(() => {
-    setChecks((current) => keepLive(current, listedIds));
-  }, [listedIds]);
-  const checkedMeetings = useMemo(
-    () => library.meetings.filter((m) => checks.checked.has(m.id)),
-    [library.meetings, checks.checked],
-  );
-
-  const onExtendChecks = useCallback(
-    (fromId: string, toId: string): void => {
-      setChecks((current) => extendChecks(current, listedIds, fromId, toId));
-    },
-    [listedIds],
-  );
-
-  /** A row action from a checked row applies to all the checked ones, and alone otherwise. */
-  const targetsOf = (meeting: MeetingListItemDto): readonly MeetingListItemDto[] =>
-    checks.checked.has(meeting.id) ? checkedMeetings : [meeting];
-
-  const askMove = (targets: readonly MeetingListItemDto[]): void => {
-    const [only] = targets;
-    if (!only) return;
-    if (targets.length === 1) setDialog({ kind: 'move', meeting: only });
-    else setDialog({ kind: 'moveMany', meetings: targets });
-  };
-
-  const askDelete = (targets: readonly MeetingListItemDto[], permanent: boolean): void => {
-    const [only] = targets;
-    if (!only) return;
-    if (targets.length > 1) {
-      const meetingIds = targets.map((m) => m.id);
-      setDialog(
-        permanent
-          ? { kind: 'deleteManyPermanently', meetingIds, refused: false }
-          : { kind: 'deleteMany', meetingIds },
-      );
-      return;
-    }
-    void library.beginDelete(only.id).then((allowed) => {
-      if (!allowed) return;
-      setDialog(
-        permanent
-          ? { kind: 'deleteMeetingPermanently', meeting: only, refused: false }
-          : { kind: 'deleteMeeting', meeting: only },
-      );
-    });
-  };
 
   // After a keyboard delete the row with the focus is gone: the focus goes on to its neighbor.
-  const gridRef = useRef<MeetingGridHandle>(null);
+  const { gridRef, setFromKeyboard, afterWork } = useListFocus({
+    dialogOpen: dialog !== null,
+    cursorId,
+    listedIds,
+  });
   const searchRef = useRef<HTMLInputElement>(null);
-  const fromKeyboard = useRef(false);
-  const wantsListFocus = useRef(false);
-  const [workDone, setWorkDone] = useState(0);
-  const afterWork = (): void => {
-    if (fromKeyboard.current) wantsListFocus.current = true;
-    setWorkDone((count) => count + 1);
-  };
-  useEffect(() => {
-    if (!wantsListFocus.current || dialog !== null) return;
-    if (cursorId === null || !listedIds.includes(cursorId)) return;
-    const take = (): void => {
-      const active = document.activeElement;
-      const lost = !active || active === document.body || active.closest('[role="dialog"]');
-      if (lost) gridRef.current?.focusCursor();
-    };
-    take();
-    // A dialog that is still fading gives the focus back when it ends, to a row that may be gone.
-    const again = setTimeout(take, FOCUS_RETRY_MS);
-    wantsListFocus.current = false;
-    fromKeyboard.current = false;
-    return () => {
-      clearTimeout(again);
-    };
-  }, [cursorId, listedIds, dialog, workDone]);
 
-  // Ctrl+A on a list the second stage is still filling waits for the whole list.
-  const selectAllPending = useRef(false);
-  useEffect(() => {
-    selectAllPending.current = false;
-  }, [viewKey, library.query, filtersKey]);
-  useEffect(() => {
-    if (!selectAllPending.current || library.searching) return;
-    selectAllPending.current = false;
-    setChecks(checkAll(listedIds));
-  }, [library.searching, listedIds]);
-  const onSelectAll = (): void => {
-    if (library.searching) selectAllPending.current = true;
-    else setChecks(checkAll(listedIds));
-  };
+  const bulk = useBulkActions({
+    library,
+    listedIds,
+    t,
+    listKey: `${viewKey}|${library.query}|${filtersKey}`,
+    openDialog,
+    afterWork,
+  });
+  const { checks, bulkWork, undoMove } = bulk;
+
+  const rename = useMeetingRename({
+    t,
+    refresh: refreshLibrary,
+    onRenamed: () => {
+      closeDialog();
+      afterWork();
+    },
+  });
 
   const onRowKey = (
     action: 'toggle' | 'rename' | 'delete' | 'deletePermanently' | 'clear',
@@ -293,19 +154,19 @@ export function LibraryRoute() {
   ): void => {
     const meeting = library.meetings.find((m) => m.id === id);
     if (action === 'clear') {
-      if (checks.checked.size > 0) setChecks(EMPTY_CHECKS);
+      if (checks.checked.size > 0) bulk.clearChecks();
       else library.setQuery('');
     } else if (!meeting) {
       return;
     } else if (action === 'toggle') {
-      setChecks((current) => toggleCheck(current, id));
+      bulk.toggleCheck(id);
     } else if (action === 'rename') {
-      fromKeyboard.current = true;
-      setRenameProblem(null);
-      setDialog({ kind: 'renameMeeting', meeting });
+      setFromKeyboard(true);
+      rename.clearProblem();
+      openDialog({ kind: 'renameMeeting', meeting });
     } else {
-      fromKeyboard.current = true;
-      askDelete(targetsOf(meeting), action === 'deletePermanently');
+      setFromKeyboard(true);
+      bulk.askDelete(bulk.targetsOf(meeting), action === 'deletePermanently');
     }
   };
 
@@ -323,111 +184,34 @@ export function LibraryRoute() {
     };
   }, []);
 
-  const [renameProblem, setRenameProblem] = useState<string | null>(null);
-  const [renameBusy, setRenameBusy] = useState(false);
-  const renameMeeting = async (id: string, title: string): Promise<void> => {
-    setRenameBusy(true);
-    try {
-      const { status } = await window.vozella.invoke('session.rename', { id, title });
-      if (status === 'blocked') {
-        setRenameProblem(t('Ui_SessionRenameBlockedText'));
+  /** What yes does in each confirmation. */
+  const runConfirm = (confirmed: ConfirmDialogState): void => {
+    switch (confirmed.kind) {
+      case 'deleteFolder':
+        void library.deleteFolder(confirmed.folderId);
+        return;
+      case 'deleteMany':
+        void bulk.runDeleteMany(confirmed.meetingIds, 'trash');
+        return;
+      case 'deleteManyPermanently':
+        void bulk.runDeleteMany(confirmed.meetingIds, 'permanent');
+        return;
+      case 'deleteMeeting': {
+        const { meeting } = confirmed;
+        void library.deleteMeeting(meeting.id).then((outcome) => {
+          if (outcome === 'trash-failed') {
+            openDialog({ kind: 'deleteMeetingPermanently', meeting, refused: true });
+          }
+          afterWork();
+        });
         return;
       }
-      // This channel does not announce a change, so the list asks for itself.
-      await refreshLibrary();
-      setDialog(null);
-      afterWork();
-    } catch (error) {
-      setRenameProblem(
-        t('Ui_SessionRenameFailedText', error instanceof Error ? error.message : ''),
-      );
-    } finally {
-      setRenameBusy(false);
+      case 'deleteMeetingPermanently':
+        void library.deleteMeeting(confirmed.meeting.id, 'permanent').then(afterWork);
+        return;
     }
   };
-
-  const [undoMove, setUndoMove] = useState<UndoMove | null>(null);
-  const dismissUndo = useCallback(() => {
-    setUndoMove(null);
-  }, []);
-
-  /** Offers the way back from a move that happened. A folder that is gone reads as the Inbox. */
-  const offerUndo = (moved: readonly MeetingListItemDto[], folderId: string | null): void => {
-    const [first] = moved;
-    if (!first) return;
-    const groups = new Map<string | null, string[]>();
-    for (const meeting of moved) {
-      const known = library.folders.some((f) => f.id === meeting.folderId);
-      const from = known ? meeting.folderId : null;
-      groups.set(from, [...(groups.get(from) ?? []), meeting.id]);
-    }
-    const place = library.destinations.find((d) => d.folderId === folderId)?.path ?? '';
-    setUndoMove({
-      message:
-        moved.length === 1
-          ? t('Ui_LibraryMovedOne', first.title, place)
-          : t('Ui_LibraryMovedMany', String(moved.length), place),
-      restore: [...groups].map(([from, meetingIds]) => ({ folderId: from, meetingIds })),
-    });
-  };
-
-  const runMoveMany = async (
-    meetings: readonly MeetingListItemDto[],
-    folderId: string | null,
-  ): Promise<void> => {
-    const moving = meetings.filter((m) => m.folderId !== folderId);
-    if (moving.length === 0) return;
-    setUndoMove(null);
-    // One meeting is too quick to report, and "Moving 1 meetings" is not a sentence.
-    if (moving.length > 1) setBulkWork({ kind: 'moving', count: moving.length });
-    const failed = await library.moveMeetings(
-      moving.map((m) => m.id),
-      folderId,
-    );
-    setBulkWork(null);
-    setChecks((current) => keepLive(current, failed));
-    offerUndo(
-      moving.filter((m) => !failed.includes(m.id)),
-      folderId,
-    );
-    afterWork();
-  };
-
-  const runUndo = async (undo: UndoMove): Promise<void> => {
-    setUndoMove(null);
-    for (const { folderId, meetingIds } of undo.restore) {
-      await library.moveMeetings(meetingIds, folderId);
-    }
-  };
-
-  // A drop in the sidebar leaves its request here, like its folder actions.
-  const dropRequest = useLibraryStore((state) => state.dropRequest);
-  const runDrop = useRef(runMoveMany);
-  runDrop.current = runMoveMany;
-  useEffect(() => {
-    if (!dropRequest) return;
-    clearDropRequest();
-    const { meetings } = useLibraryStore.getState();
-    const wanted = new Set(dropRequest.meetingIds);
-    void runDrop.current(
-      meetings.filter((m) => wanted.has(m.id)),
-      dropRequest.folderId,
-    );
-  }, [dropRequest]);
-
-  const runDeleteMany = async (
-    meetingIds: readonly string[],
-    mode: 'trash' | 'permanent',
-  ): Promise<void> => {
-    setBulkWork({ kind: 'deleting', count: meetingIds.length });
-    const { failed, refused } = await library.deleteMeetings(meetingIds, mode);
-    setBulkWork(null);
-    setChecks((current) => keepLive(current, [...failed, ...refused]));
-    if (refused.length > 0) {
-      setDialog({ kind: 'deleteManyPermanently', meetingIds: refused, refused: true });
-    }
-    afterWork();
-  };
+  const confirm = dialogs.confirm === null ? null : confirmText(dialogs.confirm);
 
   // A chip that goes takes the focus with it, so the focus goes to the button that made it.
   const filterButtonRef = useRef<HTMLButtonElement>(null);
@@ -611,14 +395,14 @@ export function LibraryRoute() {
             deleteLabel={t('HistoryRow_Delete')}
             clearLabel={t('Ui_LibraryBulkClear')}
             onMove={() => {
-              askMove(checkedMeetings);
+              bulk.askMove(bulk.checkedMeetings);
             }}
             onDelete={() => {
-              fromKeyboard.current = false;
-              askDelete(checkedMeetings, false);
+              setFromKeyboard(false);
+              bulk.askDelete(bulk.checkedMeetings, false);
             }}
             onClear={() => {
-              setChecks(EMPTY_CHECKS);
+              bulk.clearChecks();
             }}
           />
         ) : null}
@@ -630,9 +414,9 @@ export function LibraryRoute() {
               undoLabel={t('Ui_LibraryUndo')}
               dismissLabel={t('Ui_LibraryUndoDismiss')}
               onUndo={() => {
-                void runUndo(undoMove);
+                void bulk.runUndo(undoMove);
               }}
-              onDismiss={dismissUndo}
+              onDismiss={bulk.dismissUndo}
             />
           ) : null}
           {library.isLoading ? (
@@ -671,11 +455,11 @@ export function LibraryRoute() {
               initialScrollOffset={useLibraryStore.getState().scrollOffset}
               checked={checks.checked}
               onToggleCheck={(id) => {
-                setChecks((current) => toggleCheck(current, id));
+                bulk.toggleCheck(id);
               }}
-              onExtendChecks={onExtendChecks}
+              onExtendChecks={bulk.onExtendChecks}
               onSetDayChecks={(ids, on) => {
-                setChecks((current) => setGroup(current, ids, on));
+                bulk.setDayChecks(ids, on);
               }}
               onCursorChange={setCursor}
               onScrollOffsetChange={rememberScroll}
@@ -686,15 +470,15 @@ export function LibraryRoute() {
                 library.openMeeting(id, 'Summary');
               }}
               onMove={(meeting) => {
-                fromKeyboard.current = false;
-                askMove(targetsOf(meeting));
+                setFromKeyboard(false);
+                bulk.askMove(bulk.targetsOf(meeting));
               }}
               onDelete={(meeting) => {
-                fromKeyboard.current = false;
-                askDelete(targetsOf(meeting), false);
+                setFromKeyboard(false);
+                bulk.askDelete(bulk.targetsOf(meeting), false);
               }}
               onRowKey={onRowKey}
-              onSelectAll={onSelectAll}
+              onSelectAll={bulk.selectAll}
             />
           ) : emptyMessage ? (
             <div className="px-4">
@@ -779,20 +563,6 @@ export function LibraryRoute() {
           }
         }}
       />
-      <ConfirmDialog
-        {...dialogChrome}
-        open={dialog?.kind === 'deleteFolder'}
-        title={t('LibraryDeleteFolder_Title')}
-        description={t(
-          'LibraryDeleteFolder_Content',
-          shown?.kind === 'deleteFolder' ? shown.name : '',
-        )}
-        cancelLabel={t('LibraryDeleteFolder_Cancel')}
-        primaryLabel={t('LibraryDeleteFolder_Primary')}
-        onConfirm={() => {
-          if (dialog?.kind === 'deleteFolder') void library.deleteFolder(dialog.folderId);
-        }}
-      />
       <MoveDialog
         {...dialogChrome}
         open={dialog?.kind === 'move'}
@@ -805,7 +575,7 @@ export function LibraryRoute() {
           if (dialog?.kind !== 'move') return;
           const { meeting } = dialog;
           void library.moveMeeting(meeting.id, folderId).then((moved) => {
-            if (moved && meeting.folderId !== folderId) offerUndo([meeting], folderId);
+            if (moved && meeting.folderId !== folderId) bulk.offerUndo([meeting], folderId);
           });
         }}
       />
@@ -821,87 +591,27 @@ export function LibraryRoute() {
         destinations={library.destinations}
         currentFolderId={null}
         onMove={(folderId) => {
-          if (dialog?.kind === 'moveMany') void runMoveMany(dialog.meetings, folderId);
+          if (dialog?.kind === 'moveMany') void bulk.runMoveMany(dialog.meetings, folderId);
         }}
       />
       <ConfirmDialog
         {...dialogChrome}
-        open={dialog?.kind === 'deleteMany'}
-        title={t(
-          'Ui_LibraryDeleteManyTitle',
-          String(shown?.kind === 'deleteMany' ? shown.meetingIds.length : 0),
-        )}
-        description={t('Ui_LibraryDeleteManyContent')}
-        cancelLabel={t('HistoryDelete_Cancel')}
-        primaryLabel={t('HistoryDelete_Primary')}
+        open={dialogs.confirmOpen}
+        title={confirm ? text(confirm.title) : ''}
+        description={confirm ? text(confirm.description) : ''}
+        cancelLabel={confirm ? t(confirm.cancel) : ''}
+        primaryLabel={confirm ? t(confirm.primary) : ''}
         onConfirm={() => {
-          if (dialog?.kind === 'deleteMany') void runDeleteMany(dialog.meetingIds, 'trash');
-        }}
-      />
-      <ConfirmDialog
-        {...dialogChrome}
-        open={dialog?.kind === 'deleteManyPermanently'}
-        title={t('Ui_LibraryDeletePermanentTitle')}
-        description={t(
-          shown?.kind === 'deleteManyPermanently' && !shown.refused
-            ? 'Ui_LibraryDeleteManyPermanent'
-            : 'Ui_LibraryDeleteManyRefused',
-          String(shown?.kind === 'deleteManyPermanently' ? shown.meetingIds.length : 0),
-        )}
-        cancelLabel={t('HistoryDelete_Cancel')}
-        primaryLabel={t('Ui_LibraryDeletePermanentPrimary')}
-        onConfirm={() => {
-          if (dialog?.kind === 'deleteManyPermanently') {
-            void runDeleteMany(dialog.meetingIds, 'permanent');
-          }
-        }}
-      />
-      <ConfirmDialog
-        {...dialogChrome}
-        open={dialog?.kind === 'deleteMeeting'}
-        title={t('HistoryDelete_Title')}
-        description={t(
-          'Ui_LibraryDeleteContent',
-          shown?.kind === 'deleteMeeting' ? shown.meeting.title : '',
-        )}
-        cancelLabel={t('HistoryDelete_Cancel')}
-        primaryLabel={t('HistoryDelete_Primary')}
-        onConfirm={() => {
-          if (dialog?.kind !== 'deleteMeeting') return;
-          const { meeting } = dialog;
-          void library.deleteMeeting(meeting.id).then((outcome) => {
-            if (outcome === 'trash-failed') {
-              setDialog({ kind: 'deleteMeetingPermanently', meeting, refused: true });
-            }
-            afterWork();
-          });
-        }}
-      />
-      <ConfirmDialog
-        {...dialogChrome}
-        open={dialog?.kind === 'deleteMeetingPermanently'}
-        title={t('Ui_LibraryDeletePermanentTitle')}
-        description={t(
-          shown?.kind === 'deleteMeetingPermanently' && !shown.refused
-            ? 'Ui_LibraryDeletePermanentDirect'
-            : 'Ui_LibraryDeletePermanentContent',
-          shown?.kind === 'deleteMeetingPermanently' ? shown.meeting.title : '',
-        )}
-        cancelLabel={t('HistoryDelete_Cancel')}
-        primaryLabel={t('Ui_LibraryDeletePermanentPrimary')}
-        onConfirm={() => {
-          if (dialog?.kind === 'deleteMeetingPermanently') {
-            void library.deleteMeeting(dialog.meeting.id, 'permanent').then(afterWork);
-          }
+          if (dialogs.confirmOpen && dialogs.confirm) runConfirm(dialogs.confirm);
         }}
       />
       <RenameDialog
         open={dialog?.kind === 'renameMeeting'}
         currentTitle={shown?.kind === 'renameMeeting' ? shown.meeting.title : ''}
-        problem={renameProblem}
-        busy={renameBusy}
+        problem={rename.problem}
+        busy={rename.busy}
         onSubmit={(title) => {
-          if (dialog?.kind === 'renameMeeting') void renameMeeting(dialog.meeting.id, title);
+          if (dialog?.kind === 'renameMeeting') void rename.rename(dialog.meeting.id, title);
         }}
         onClose={closeDialog}
       />
