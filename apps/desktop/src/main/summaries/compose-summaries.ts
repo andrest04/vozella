@@ -7,6 +7,7 @@ import {
   isCliProvider,
   PatchQueue,
   SummaryTabService,
+  type ApiKeyStore,
   type CliPathProbe,
   type HardwareProbe,
   type Logger,
@@ -38,6 +39,8 @@ export interface ComposeSummariesDeps {
   readonly hardware: HardwareProbe;
   readonly models: SummaryRuntimeDeps['models'];
   readonly cli: CliPathProbe;
+  /** The app's one API key store (BYOK): readiness and the HTTP providers read keys from it. */
+  readonly apiKeys: ApiKeyStore;
   /** The Settings page's model downloads, shared with the summaries page. */
   readonly settingsModels: SettingsRuntime['models'];
   /** `<app data>\LlamaRuntime`. */
@@ -65,6 +68,8 @@ export interface ComposeSummariesDeps {
 
 export interface ComposedSummaries {
   readonly runtime: SummaryRuntime;
+  /** The API key store the runtime reads, for the Settings key channels. */
+  readonly apiKeys: ApiKeyStore;
   /** Shared with transcription: summary and transcript patches to one meeting never race. */
   readonly patchQueue: PatchQueue;
   readonly service: ObservedSummaryService;
@@ -82,6 +87,7 @@ export function composeSummaries(deps: ComposeSummariesDeps): ComposedSummaries 
     models: deps.models,
     llamaRoot: deps.llamaRoot,
     cli: deps.cli,
+    apiKeys: deps.apiKeys,
     ...(deps.fakeNative
       ? {
           providerOverride: (kind) =>
@@ -167,6 +173,7 @@ export function composeSummaries(deps: ComposeSummariesDeps): ComposedSummaries 
   });
   return {
     runtime: summaryRuntime,
+    apiKeys: deps.apiKeys,
     patchQueue: summaryPatchQueue,
     service: summaryService,
     controller: summaries,

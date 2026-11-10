@@ -6,6 +6,7 @@ import {
   findSummaryModel,
   RecordingPipeline,
   SummaryStage,
+  type ApiKeyStore,
   type CliPathProbe,
   type Logger,
   type LocalModelStore,
@@ -35,6 +36,8 @@ export interface ComposeRecordingDeps {
   readonly resolver: SummaryProviderResolver;
   readonly summaryModels: LocalModelStore;
   readonly cli: CliPathProbe;
+  /** The app's API key store: an API engine that requires a key is ready only with one saved. */
+  readonly apiKeys?: Pick<ApiKeyStore, 'has'>;
   readonly settings: SettingsStore;
   readonly workspace: Workspace;
   readonly broadcast: Broadcast;
@@ -124,6 +127,7 @@ export function composeRecording(deps: ComposeRecordingDeps): RecordingService {
         return model === null ? Promise.resolve(false) : deps.summaryModels.isDownloaded(model);
       },
       cliOnPath: (kind) => deps.cli.isOnPath(cliExecutableName(kind)),
+      apiKeySet: (kind) => deps.apiKeys?.has(kind) ?? Promise.resolve(false),
       engineReady: async () => (await deps.transcription.status()).ready,
     },
     pipeline,

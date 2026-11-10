@@ -39,11 +39,13 @@ import {
   nativeTheme,
   net,
   protocol,
+  safeStorage,
   screen,
   session,
   shell,
   Tray,
 } from 'electron';
+import { composeApiKeys } from './api-keys/compose-api-keys';
 import { resolveAppVersion } from './bootstrap/app-version';
 import { builtDevVersion } from './bootstrap/dev-version';
 import {
@@ -402,6 +404,14 @@ function main(): void {
   // "Recommended for your PC" pick. Unknown until the summary runtime picks a backend below.
   let llamaGpuOffload: () => boolean | undefined = () => undefined;
 
+  // The one API key store (BYOK): encrypted with safeStorage under the app data root, in memory
+  // in the fake native build. Summaries, recording readiness and the key channels share it.
+  const apiKeys = composeApiKeys({
+    fakeNative,
+    appDataDirectory: paths.appData,
+    cipher: safeStorage,
+  });
+
   // Machine probes and Settings page services. In the fake native build the machine, the CLIs,
   // the model downloads are doubles, so nothing touches the network.
   const { hardware, summaryModels, summaryCli, settings } = composeSettings({
@@ -665,6 +675,7 @@ function main(): void {
         hardware,
         models: summaryModels,
         cli: summaryCli,
+        apiKeys,
         settingsModels: settings.models,
         llamaRoot: path.join(paths.appData, 'LlamaRuntime'),
         fakeNative,
@@ -776,6 +787,7 @@ function main(): void {
         resolver: summaryRuntime.resolver,
         summaryModels,
         cli: summaryCli,
+        apiKeys,
         settings: library.settings,
         workspace,
         broadcast,
