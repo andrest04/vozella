@@ -2,7 +2,7 @@
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Providers } from '../library/library-test-kit';
+import { Providers } from '../../app/test-providers';
 import { RetranscribeButton, RetranscribeStatus } from './RetranscribeControl';
 import { installTranscriptionApi } from './transcription-test-kit';
 import { useRetranscription } from './use-retranscription';

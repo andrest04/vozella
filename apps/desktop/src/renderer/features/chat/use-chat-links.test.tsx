@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Providers } from '../library/library-test-kit';
+import { Providers } from '../../app/test-providers';
 import { MarkdownView } from '../markdown/MarkdownView';
-import { peekTranscriptReveal } from '../session/transcript-reveal';
+import { peekTranscriptReveal } from './transcript-reveal';
 import { classifyChatLink, useChatLinks } from './use-chat-links';
 
 const ID = 'a0000000000040008000000000000000';

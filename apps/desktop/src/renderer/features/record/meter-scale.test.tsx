@@ -3,7 +3,7 @@ import { toMeterPercent } from '@vozella/core';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { MicrophoneSection } from '../audio/MicrophoneSection';
-import { Providers } from '../library/library-test-kit';
+import { Providers } from '../../app/test-providers';
 import { RecordingLevel } from './RecordingLevel';
 
 type Listener = (payload: unknown) => void;

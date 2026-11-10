@@ -4,7 +4,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '../../app/theme';
-import { Providers } from '../library/library-test-kit';
+import { Providers } from '../../app/test-providers';
 import { SettingsRoute } from './SettingsRoute';
 import { resetSettingsPageCache } from './use-settings-page';
 import { readFileSync } from 'node:fs';

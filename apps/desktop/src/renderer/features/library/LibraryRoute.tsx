@@ -6,7 +6,7 @@ import { Button, ConfirmDialog, EmptyState, Notice, Skeleton, cn } from '../../u
 import { Breadcrumbs } from './Breadcrumbs';
 import { BulkBar } from './BulkBar';
 import { matchLibraryShortcut } from '../../app/shortcuts';
-import { RenameDialog } from '../session/RenameDialog';
+import { RenameDialog } from './RenameDialog';
 import { MoveDialog, NameDialog, PersonalityDialog } from './dialogs';
 import {
   refreshLibrary,

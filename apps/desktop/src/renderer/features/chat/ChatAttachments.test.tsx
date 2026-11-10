@@ -3,8 +3,8 @@ import type { ChatAttachmentDto, ChatAttachmentListDto, ChatStateDto } from '@vo
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Providers } from '../library/library-test-kit';
-import { DialogHost } from '../shell/dialog-service';
+import { Providers } from '../../app/test-providers';
+import { DialogHost } from '../../app/dialog-service';
 import { ChatBody } from './ChatBody';
 
 vi.mock('../ai-provider/ProviderGateDialogs', () => ({ ProviderGateDialogs: () => null }));

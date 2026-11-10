@@ -3,9 +3,9 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { formatMeetingDate } from './format';
+import { Providers } from '../../app/test-providers';
 import {
   LibraryScreen,
-  Providers,
   stubLayout,
   folderRecord,
   installFakeApi,

@@ -9,10 +9,7 @@ import {
   type FolderRecord,
   type MeetingRecord,
 } from '@vozella/core';
-import { useEffect, type ReactNode } from 'react';
-import { I18nProvider } from '../../i18n/I18nProvider';
-import type { Locale } from '../../i18n/translate';
-import { TooltipProvider } from '../../ui';
+import { useEffect } from 'react';
 import { connectLibrary } from './library-store';
 import { LibraryFolders } from './LibraryFolders';
 import { LibraryRoute } from './LibraryRoute';
@@ -200,14 +197,6 @@ export function installFakeApi(options: { startupError?: string | null } = {}) {
   Object.defineProperty(window, 'vozella', { value: api, configurable: true, writable: true });
 
   return { meetings, folders, busy, workspace, calls, actions, emit, service, runner };
-}
-
-export function Providers({ children, locale = 'en' }: { children: ReactNode; locale?: Locale }) {
-  return (
-    <I18nProvider initialLocale={locale}>
-      <TooltipProvider delay={0}>{children}</TooltipProvider>
-    </I18nProvider>
-  );
 }
 
 /** jsdom has no layout: the grid needs a height to decide which rows to render. */

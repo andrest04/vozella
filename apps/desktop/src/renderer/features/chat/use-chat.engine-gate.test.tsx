@@ -3,7 +3,7 @@ import type { ChatScopeDto, ChatSendOutcomeDto } from '@vozella/contracts';
 import { act, cleanup, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Providers } from '../library/library-test-kit';
+import { Providers } from '../../app/test-providers';
 import type { ProviderGate } from '../ai-provider/use-provider-gate';
 import { useChat } from './use-chat';
 

@@ -2,8 +2,7 @@ import { tryParseMeetingCitation } from '@vozella/core';
 import { Play } from 'lucide-react';
 import { createContext, useContext, type MouseEvent, type ReactNode } from 'react';
 import { useT } from '../../i18n/I18nProvider';
-import { Icon, cn } from '../../ui';
-import { formatClock } from '../session/use-audio-player';
+import { Icon, cn, formatClock } from '../../ui';
 import { decodedHref, parseBlocks, type Block, type Inline } from './markdown';
 
 /** Lets a host take over link clicks (chat citations, external links). Absent: default navigation. */

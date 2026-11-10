@@ -2,7 +2,7 @@ import { RouterProvider } from '@tanstack/react-router';
 import { I18nProvider, useT } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/translate';
 import { ToastProvider, TooltipProvider } from '../ui';
-import { DialogHost } from '../features/shell/dialog-service';
+import { DialogHost } from './dialog-service';
 import { router } from './router';
 import { ThemeProvider } from './theme';
 

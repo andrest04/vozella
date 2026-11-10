@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useT } from '../../i18n/I18nProvider';
-import { useDialogs } from './dialog-service';
+import { useDialogs } from '../../app/dialog-service';
 
 const SHOWN_KEY = 'vozella.startupNoticeShown';
 

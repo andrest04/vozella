@@ -3,7 +3,7 @@ import type { WorkspaceStateDto } from '@vozella/contracts';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Providers } from '../library/library-test-kit';
+import { Providers } from '../../app/test-providers';
 import { PANEL_OPEN_KEY, PANEL_WIDTH_KEY } from './ai-panel-layout';
 import { AiPanelArea } from './AiPanel';
 
