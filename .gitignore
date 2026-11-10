@@ -38,3 +38,8 @@ target/
 
 # Impeccable critique snapshots (local working state)
 .impeccable/critique/
+
+## Local-only agent skills (not part of the repo)
+.agents/skills/electron-best-practices/
+.agents/skills/electron-builder/
+.agents/skills/impeccable/
