@@ -320,6 +320,16 @@ test('the library is panes that scroll on their own, under the title bar and ove
 
 test('no serious accessibility violations on the library, its dialogs and the data card', async () => {
   const check = async (): Promise<void> => {
+    // Contrast is only meaningful at rest: let enter and exit animations settle first, skipping
+    // endless ones such as spinners.
+    await page.evaluate(() =>
+      Promise.all(
+        document
+          .getAnimations()
+          .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
+          .map((animation) => animation.finished.catch(() => undefined)),
+      ),
+    );
     // AxeBuilder opens a second page, which Electron does not support: inject axe directly.
     await page.evaluate(axe.source);
     const results = await page.evaluate(() =>
@@ -355,6 +365,7 @@ test('no serious accessibility violations on the library, its dialogs and the da
     await expect(page.getByRole('dialog', { name: 'New folder' })).toBeVisible();
     await check();
     await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: 'New folder' })).toHaveCount(0);
 
     await goTo('Settings');
     await expect(page.getByRole('heading', { level: 2, name: 'Data' })).toBeVisible();
