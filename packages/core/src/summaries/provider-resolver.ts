@@ -4,13 +4,14 @@ import {
   resolveSummaryProviderKind,
   type SummaryProviderKind,
 } from '../library/settings';
+import type { CliProviderKind } from '../library/settings';
 import { cliExecutableName } from '../settings/cli-providers';
 import type { CliPathProbe, LocalModelStore } from '../settings/ports';
 import { findSummaryModel } from '../settings/summary-models';
 import type { SummaryProvider } from './provider';
 import type { SummaryProviderFactory } from './provider-factory';
 
-export type SetupKind = 'Local' | 'ClaudeCode' | 'Codex';
+export type SetupKind = 'Local' | CliProviderKind;
 
 /**
  * The answer of the readiness gate (spec 2.7). It is a value, never a dialog: the caller decides

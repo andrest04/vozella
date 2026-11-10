@@ -3,6 +3,7 @@
  * the files; this module names the limits, the kinds, and how their text is packed for the model.
  * File text is untrusted data: it is neutralized like meeting text and never read as instructions.
  */
+import { isCliEngine } from '../settings/cli-providers';
 import type { ProviderId } from '../summaries/provider';
 import { neutralizeStructure, singleLine } from './context-packer';
 import { scoreWindows, splitTextChunks } from './transcript-retrieval';
@@ -119,9 +120,6 @@ export interface ChatAttachmentSource {
   /** Copies the ready images to a fresh directory for one send; null when there are none. */
   stageImages(ids: readonly string[]): Promise<StagedImages | null>;
 }
-
-export const isCliEngine = (providerId: ProviderId | undefined): boolean =>
-  providerId === 'claude-code' || providerId === 'codex';
 
 /** Room for files: CLI engines share the 120k total with the meeting; local gets a fixed share. */
 export function attachmentBudgetFor(

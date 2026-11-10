@@ -1,12 +1,6 @@
 import type { SettingsStore } from '../library/ports';
-import {
-  isProviderAvailable,
-  resolveClaudeEffort,
-  resolveClaudeModelId,
-  resolveCodexEffort,
-  resolveCodexModelId,
-  type SummaryProviderKind,
-} from '../library/settings';
+import { isProviderAvailable, type SummaryProviderKind } from '../library/settings';
+import { CLI_ENGINES } from '../settings/cli-providers';
 import {
   createClaudeCodeProvider,
   createClaudeCodeWebSearchProvider,
@@ -57,17 +51,16 @@ export class SummaryProviderFactory {
     }
     const settings = await this.deps.settings.load();
     const webSearch = options.webSearch === true;
+    const engine = CLI_ENGINES[kind];
+    const cliOptions = {
+      model: engine.resolveModel(settings),
+      effort: engine.resolveEffort(settings),
+    };
     if (kind === 'ClaudeCode') {
       const make = webSearch ? createClaudeCodeWebSearchProvider : createClaudeCodeProvider;
-      return make(this.deps.runner, {
-        model: resolveClaudeModelId(settings),
-        effort: resolveClaudeEffort(settings),
-      });
+      return make(this.deps.runner, cliOptions);
     }
     const make = webSearch ? createCodexWebSearchProvider : createCodexProvider;
-    return make(this.deps.runner, {
-      model: resolveCodexModelId(settings),
-      effort: resolveCodexEffort(settings),
-    });
+    return make(this.deps.runner, cliOptions);
   }
 }

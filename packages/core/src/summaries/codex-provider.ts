@@ -1,12 +1,13 @@
+import { CLI_ENGINES } from '../settings/cli-providers';
 import type { CliProviderOptions } from './claude-code-provider';
 import type { CliProcessRunner } from './cli-failure';
 import { codexExecArgs } from './cli-invocation';
 import { CliToolProvider } from './cli-provider';
 
 export class CodexSummaryProvider extends CliToolProvider {
-  readonly id = 'codex' as const;
-  protected readonly executable = 'codex';
-  protected readonly displayName = 'Codex';
+  readonly id = CLI_ENGINES.Codex.providerId;
+  protected readonly executable = CLI_ENGINES.Codex.executable;
+  protected readonly displayName = CLI_ENGINES.Codex.displayName;
 
   constructor(
     runner: CliProcessRunner,

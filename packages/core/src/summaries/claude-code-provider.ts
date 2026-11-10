@@ -1,3 +1,4 @@
+import { CLI_ENGINES } from '../settings/cli-providers';
 import type { CliProcessRunner } from './cli-failure';
 import { claudePrintArgs } from './cli-invocation';
 import { CliToolProvider } from './cli-provider';
@@ -12,9 +13,9 @@ export interface CliProviderOptions {
 }
 
 export class ClaudeCodeSummaryProvider extends CliToolProvider {
-  readonly id = 'claude-code' as const;
-  protected readonly executable = 'claude';
-  protected readonly displayName = 'Claude Code';
+  readonly id = CLI_ENGINES.ClaudeCode.providerId;
+  protected readonly executable = CLI_ENGINES.ClaudeCode.executable;
+  protected readonly displayName = CLI_ENGINES.ClaudeCode.displayName;
 
   constructor(
     runner: CliProcessRunner,
