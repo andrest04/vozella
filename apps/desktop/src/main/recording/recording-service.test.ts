@@ -224,10 +224,10 @@ function build(options: Options = {}) {
         options.audioDirectoryError
           ? Promise.reject(options.audioDirectoryError)
           : Promise.resolve(
-          folderId !== null && folders[folderId] !== undefined
-            ? path.join(root, folders[folderId])
-            : inbox,
-        ),
+              folderId !== null && folders[folderId] !== undefined
+                ? path.join(root, folders[folderId])
+                : inbox,
+            ),
       folderExists: (id) => Promise.resolve(folders[id] !== undefined),
       ownsMarkdown: (id, p) => Promise.resolve(options.ownsMarkdown?.(id, p) ?? false),
     },
