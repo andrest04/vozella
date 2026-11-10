@@ -1,8 +1,8 @@
 import type { RecordingSetupDto } from '@vozella/contracts';
 import { useCallback, useRef, useState, type ReactNode } from 'react';
-import { ProviderGateDialogs } from '../summaries/ProviderGateDialogs';
-import { SetupWizardDialog } from '../summaries/SetupWizardDialog';
-import { useProviderGate } from '../summaries/use-provider-gate';
+import { ProviderGateDialogs } from '../ai-provider/ProviderGateDialogs';
+import { SetupWizardDialog } from '../ai-provider/SetupWizardDialog';
+import { useProviderGate } from '../ai-provider/use-provider-gate';
 import { EngineSetupDialog } from '../transcription/EngineSetupDialog';
 import { SetupDialog } from './SetupDialog';
 import { refreshSetup, setNotice } from './use-recording';

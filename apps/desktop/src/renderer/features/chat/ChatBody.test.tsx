@@ -7,7 +7,7 @@ import { Providers } from '../library/library-test-kit';
 import { DialogHost } from '../shell/dialog-service';
 import { ChatBody } from './ChatBody';
 
-vi.mock('../summaries/ProviderGateDialogs', () => ({
+vi.mock('../ai-provider/ProviderGateDialogs', () => ({
   ProviderGateDialogs: ({
     gate,
   }: {

@@ -8,7 +8,7 @@ import { DialogHost } from '../shell/dialog-service';
 import { AiPanelArea } from './AiPanel';
 import { ChatBody } from './ChatBody';
 
-vi.mock('../summaries/ProviderGateDialogs', () => ({ ProviderGateDialogs: () => null }));
+vi.mock('../ai-provider/ProviderGateDialogs', () => ({ ProviderGateDialogs: () => null }));
 
 type Listener = (payload: unknown) => void;
 

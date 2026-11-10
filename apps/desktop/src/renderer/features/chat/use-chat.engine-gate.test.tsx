@@ -4,7 +4,7 @@ import { act, cleanup, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Providers } from '../library/library-test-kit';
-import type { ProviderGate } from '../summaries/use-provider-gate';
+import type { ProviderGate } from '../ai-provider/use-provider-gate';
 import { useChat } from './use-chat';
 
 const SCOPE: ChatScopeDto = {

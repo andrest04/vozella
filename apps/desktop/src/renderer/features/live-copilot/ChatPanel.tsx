@@ -11,7 +11,7 @@ import {
   cn,
   useReducedMotion,
 } from '../../ui';
-import { MarkdownView, type LinkHandler } from '../summaries/MarkdownView';
+import { MarkdownView, type LinkHandler } from '../markdown/MarkdownView';
 
 export const PANEL_SLIDE_MS = 220;
 const SLIDE_DIP = 16;
