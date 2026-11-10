@@ -1,16 +1,12 @@
 import { resolveUiLanguage, UI_LANGUAGE_TAGS } from '../i18n/ui-language';
 import {
-  resolveClaudeEffort,
-  resolveClaudeModelId,
-  resolveCodexEffort,
-  resolveCodexModelId,
   resolveSummaryProviderKind,
   isProviderAvailable,
   SUMMARY_PROVIDERS,
   type AppSettings,
   type SettingsStore,
 } from '../library';
-import { CLAUDE_EFFORTS, CODEX_EFFORTS, CLAUDE_MODELS, CODEX_MODELS } from './inference-options';
+import { cliEngineByExecutable, type CliExecutable } from './cli-providers';
 import {
   normalizeLanguageCode,
   resolveMeetingLanguageCode,
@@ -41,7 +37,8 @@ export const ignored = (reason: IgnoredReason): CommitOutcome => ({ status: 'ign
 export const messageOf = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
-export type CliOptionProvider = 'claude' | 'codex';
+/** The model and effort pickers are keyed by the engine's executable name. */
+export type CliOptionProvider = CliExecutable;
 export type CliOptionField = 'model' | 'effort';
 
 export interface SettingsCommandsDeps {
@@ -125,8 +122,8 @@ export class SettingsCommands {
   }
 
   private choices(provider: CliOptionProvider, field: CliOptionField): readonly string[] {
-    if (provider === 'claude') return field === 'model' ? CLAUDE_MODELS : CLAUDE_EFFORTS;
-    return field === 'model' ? CODEX_MODELS : CODEX_EFFORTS;
+    const engine = cliEngineByExecutable(provider);
+    return field === 'model' ? engine.models : engine.efforts;
   }
 
   private currentValue(
@@ -134,10 +131,8 @@ export class SettingsCommands {
     provider: CliOptionProvider,
     field: CliOptionField,
   ): string | null {
-    if (provider === 'claude') {
-      return field === 'model' ? resolveClaudeModelId(s) : resolveClaudeEffort(s);
-    }
-    return field === 'model' ? resolveCodexModelId(s) : resolveCodexEffort(s);
+    const engine = cliEngineByExecutable(provider);
+    return field === 'model' ? engine.resolveModel(s) : engine.resolveEffort(s);
   }
 
   private patchFor(
@@ -145,22 +140,15 @@ export class SettingsCommands {
     field: CliOptionField,
     value: string,
   ): Partial<AppSettings> {
-    if (provider === 'claude') {
-      return field === 'model' ? { selectedClaudeModelId: value } : { selectedClaudeEffort: value };
-    }
-    return field === 'model' ? { selectedCodexModelId: value } : { selectedCodexEffort: value };
+    const engine = cliEngineByExecutable(provider);
+    return { [field === 'model' ? engine.modelSetting : engine.effortSetting]: value };
   }
 
   private feedbackFor(next: AppSettings, provider: CliOptionProvider): Feedback | null {
-    if (provider === 'claude') {
-      return {
-        key: 'Xai_FeedbackModel',
-        args: [modelAndEffort(resolveClaudeModelId(next), resolveClaudeEffort(next))],
-      };
-    }
+    const engine = cliEngineByExecutable(provider);
     return {
       key: 'Xai_FeedbackModel',
-      args: [modelAndEffort(resolveCodexModelId(next), resolveCodexEffort(next))],
+      args: [modelAndEffort(engine.resolveModel(next), engine.resolveEffort(next))],
     };
   }
 
