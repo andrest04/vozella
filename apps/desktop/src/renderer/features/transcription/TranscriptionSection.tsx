@@ -3,8 +3,16 @@ import { INSTALL_STAGE_LABEL_KEYS, LIVE_DROP_WARNING_PERCENT } from '@vozella/co
 import { useState } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
 import type { StringKey, Translate } from '../../i18n/translate';
-import { Badge, Button, Notice, Progress, SectionHeader, SettingRow, Switch } from '../../ui';
-import { ConfirmDialog } from '../../ui';
+import {
+  Badge,
+  Button,
+  ConfirmDialog,
+  Notice,
+  Progress,
+  SectionHeader,
+  SettingRow,
+  Switch,
+} from '../../ui';
 import { overallPercent } from './live-lines';
 import { useEngineActions } from './use-engine-actions';
 import { useEngineInstall } from './use-engine-install';
