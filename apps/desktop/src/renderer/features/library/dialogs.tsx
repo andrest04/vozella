@@ -117,57 +117,6 @@ export function NameDialog({
   );
 }
 
-export interface ConfirmDialogProps extends DialogChrome {
-  readonly description: string;
-  readonly primaryLabel: string;
-  readonly onConfirm: () => void;
-}
-
-/** A destructive confirmation. Cancel has the focus, so Enter never deletes by accident. */
-export function ConfirmDialog({
-  open,
-  onOpenChange,
-  title,
-  description,
-  cancelLabel,
-  closeLabel,
-  primaryLabel,
-  onConfirm,
-}: ConfirmDialogProps) {
-  const cancelRef = useRef<HTMLButtonElement>(null);
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={onOpenChange}
-      title={title}
-      description={description}
-      closeLabel={closeLabel}
-      initialFocus={cancelRef}
-      actions={
-        <>
-          <Button
-            ref={cancelRef}
-            onClick={() => {
-              onOpenChange(false);
-            }}
-          >
-            {cancelLabel}
-          </Button>
-          <Button
-            variant="primary"
-            onClick={() => {
-              onConfirm();
-              onOpenChange(false);
-            }}
-          >
-            {primaryLabel}
-          </Button>
-        </>
-      }
-    />
-  );
-}
-
 export interface MoveDialogProps extends DialogChrome {
   readonly primaryLabel: string;
   readonly destinations: readonly { readonly folderId: string | null; readonly path: string }[];

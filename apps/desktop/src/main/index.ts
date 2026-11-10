@@ -21,6 +21,8 @@ import {
 import {
   ATTACHMENT_EXTENSIONS,
   ChatService,
+  CLI_ENGINES,
+  isCliProvider,
   MeetingBusyRegistry,
   PatchQueue,
   resolveTemplateInstructions,
@@ -750,7 +752,7 @@ function main(): void {
           ? {
               providerOverride: (kind) =>
                 new FakeSummaryProvider(
-                  kind === 'ClaudeCode' ? 'claude-code' : kind === 'Codex' ? 'codex' : 'local',
+                  isCliProvider(kind) ? CLI_ENGINES[kind].providerId : 'local',
                   fakeSummaryOptionsFromEnv(process.env),
                 ),
             }

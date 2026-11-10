@@ -1,3 +1,4 @@
+import { isCliEngine } from '../settings/cli-providers';
 import type { ProviderId } from '../summaries/provider';
 import { MEETING_LINK_PREFIX } from './meeting-link';
 import type { ChatScopeKind } from './scope-resolver';
@@ -22,9 +23,7 @@ export const LOCAL_PRIOR_TURN_LIMITS: PriorTurnLimits = { messages: 4, chars: 60
 
 /** CLI engines keep the long history; local, or an engine that does not say, the short one. */
 export const priorTurnLimitsFor = (providerId: ProviderId | undefined): PriorTurnLimits =>
-  providerId === 'claude-code' || providerId === 'codex'
-    ? CLI_PRIOR_TURN_LIMITS
-    : LOCAL_PRIOR_TURN_LIMITS;
+  isCliEngine(providerId) ? CLI_PRIOR_TURN_LIMITS : LOCAL_PRIOR_TURN_LIMITS;
 export const REWRITE_NOTES_INSTRUCTION =
   'Rewrite the notes from the packed meeting and return the rewritten notes as markdown. Do not save the file.';
 

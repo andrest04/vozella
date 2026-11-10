@@ -8,7 +8,7 @@ import { sendFailedFailure } from '@vozella/core';
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { toCoreT } from './chat-core-t';
 import { useT } from '../../i18n/I18nProvider';
-import type { ProviderGate } from '../summaries/use-provider-gate';
+import type { ProviderGate } from '../ai-provider/use-provider-gate';
 import { setLocalSendActive } from './chat-local-send';
 import { INITIAL_VIEW, chatViewReducer, restoreDraft, type ChatViewState } from './chat-view-model';
 

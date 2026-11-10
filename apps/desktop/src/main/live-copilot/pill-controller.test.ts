@@ -987,6 +987,136 @@ describe('drag and snap', () => {
   });
 });
 
+describe('animation phases', () => {
+  it('ignores the chat button during the entrance and accepts it once the entrance ends', async () => {
+    const t = setup({ animations: true });
+    await startRecording(t);
+    expect(t.controller.setExpanded(true).expanded).toBe(false);
+    t.clock.advance(400);
+    expect(t.controller.setExpanded(true).expanded).toBe(true);
+  });
+
+  it('ignores the chat button during the exit', async () => {
+    const t = setup({ animations: true });
+    await startRecording(t);
+    t.clock.advance(400);
+    t.controller.setMainWindowActive(true);
+    await flush();
+    expect(t.win().win.isVisible()).toBe(true);
+    expect(t.controller.setExpanded(true).expanded).toBe(false);
+    t.clock.advance(400);
+    expect(t.win().win.isVisible()).toBe(false);
+  });
+
+  it('ignores the chat button during a snap and accepts it once the snap ends', async () => {
+    const t = setup({ animations: true });
+    await startRecording(t);
+    t.clock.advance(400);
+    t.win().drag({ x: 700, y: 10, width: 80, height: 256 });
+    t.win().endDrag();
+    expect(t.controller.setExpanded(true).expanded).toBe(false);
+    t.clock.advance(300);
+    expect(t.controller.setExpanded(true).expanded).toBe(true);
+  });
+
+  it('ignores the chat button during a drag and accepts it after the drop', async () => {
+    const t = setup();
+    await startRecording(t);
+    t.win().drag({ x: 1300, y: 300, width: 80, height: 256 });
+    expect(t.controller.setExpanded(true).expanded).toBe(false);
+    t.win().endDrag();
+    expect(t.controller.setExpanded(true).expanded).toBe(true);
+  });
+
+  it('a hide during a snap finishes the snap at once, saves that dock, then leaves', async () => {
+    const t = setup({ animations: true });
+    await startRecording(t);
+    t.clock.advance(400);
+    t.win().drag({ x: 100, y: 300, width: 80, height: 256 });
+    t.win().endDrag();
+    t.clock.advance(60);
+    t.controller.setMainWindowActive(true);
+    await flush();
+    expect(t.store.save).toHaveBeenCalledTimes(1);
+    expect(t.store.save).toHaveBeenCalledWith(expect.objectContaining({ edge: 'Left' }));
+    t.clock.advance(400);
+    expect(t.win().win.isVisible()).toBe(false);
+    expect(t.win().win.getBounds()).toMatchObject({ x: 8, width: 80, height: 256 });
+    expect(t.win().states().at(-1)).toMatchObject({ contentOpacity: 1, opacity: 1 });
+  });
+
+  it('after a show cancels the exit, the resumed entrance ends and presses work again', async () => {
+    const t = setup({ animations: true });
+    await startRecording(t);
+    t.clock.advance(400);
+    t.controller.setMainWindowActive(true);
+    await flush();
+    t.clock.advance(80);
+    t.controller.setMainWindowActive(false);
+    await flush();
+    expect(t.controller.setExpanded(true).expanded).toBe(false); // still entering
+    t.clock.advance(1000);
+    expect(t.controller.setExpanded(true).expanded).toBe(true);
+    t.controller.setExpanded(false);
+    expect(t.win().drag({ x: 1300, y: 300, width: 80, height: 256 })).toBe(false);
+  });
+
+  it('a window closed during a snap leaves no phase behind for the next window', async () => {
+    const t = setup({ animations: true });
+    await startRecording(t);
+    t.clock.advance(400);
+    t.win().drag({ x: 100, y: 300, width: 80, height: 256 });
+    t.win().endDrag();
+    t.clock.advance(60);
+    t.win().win.close();
+    await bounce(t);
+    t.clock.advance(400);
+    const next = t.windows[1];
+    expect(next?.win.isVisible()).toBe(true);
+    expect(next?.drag({ x: 1300, y: 300, width: 80, height: 256 })).toBe(false);
+    next?.endDrag();
+    t.clock.advance(400);
+    expect(t.controller.setExpanded(true).expanded).toBe(true);
+  });
+
+  it('an animated hide during a drag ends the drag: the drop does not snap the leaving pill back', async () => {
+    const t = setup({ animations: true });
+    await startRecording(t);
+    t.clock.advance(400);
+    t.win().drag({ x: 700, y: 10, width: 80, height: 256 });
+    t.controller.setMainWindowActive(true);
+    await flush();
+    t.win().endDrag();
+    t.clock.advance(1000);
+    expect(t.win().win.isVisible()).toBe(false);
+    expect(t.controller.state.edge).toBe('Right');
+    expect(t.store.save).not.toHaveBeenCalled();
+    // Nothing is left stuck: the next show enters and presses work after it.
+    t.controller.setMainWindowActive(false);
+    await flush();
+    t.clock.advance(400);
+    expect(t.win().win.getBounds()).toEqual(RIGHT_DOCKED);
+    expect(t.controller.setExpanded(true).expanded).toBe(true);
+  });
+
+  it('with animations off, a hide during a drag still snaps the hidden window on the drop', async () => {
+    const t = setup();
+    await startRecording(t);
+    t.win().drag({ x: 700, y: 10, width: 80, height: 256 });
+    t.controller.setMainWindowActive(true);
+    await flush();
+    expect(t.win().win.isVisible()).toBe(false);
+    // The hide moved the window back to its dock, so the drop snaps from there.
+    t.win().endDrag();
+    t.clock.advance(600);
+    expect(t.store.save).toHaveBeenCalledWith(expect.objectContaining({ edge: 'Right' }));
+    t.controller.setMainWindowActive(false);
+    await flush();
+    expect(t.win().win.isVisible()).toBe(true);
+    expect(t.win().win.getBounds()).toEqual(RIGHT_DOCKED);
+  });
+});
+
 describe('re-dock on system changes', () => {
   it('re-docks once, deferred, when the OS moved the window by more than 2 px', async () => {
     const t = setup();

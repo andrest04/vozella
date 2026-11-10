@@ -11,8 +11,8 @@ import {
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { isThemePreference, useTheme } from '../../app/theme';
-import { SetupWizardDialog } from '../summaries/SetupWizardDialog';
-import type { WizardMode } from '../summaries/wizard-state';
+import { SetupWizardDialog } from '../ai-provider/SetupWizardDialog';
+import type { WizardMode } from '../ai-provider/wizard-state';
 import {
   Badge,
   Button,

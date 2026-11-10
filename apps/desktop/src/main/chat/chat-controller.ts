@@ -18,7 +18,7 @@ import type {
   ProviderSource,
   SummaryProviderResolver,
 } from '@vozella/core';
-import { sendFailedFailure, type TranslateFn } from '@vozella/core';
+import { sendFailedFailure, summaryKindOf, type TranslateFn } from '@vozella/core';
 import type { ChatAttachmentStore } from '@vozella/platform';
 import type { Broadcast } from '../summaries/summaries-controller';
 
@@ -72,8 +72,6 @@ export function allowedExternalUrl(raw: string): string | null {
   return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null;
 }
 
-const ENGINE_KIND = { 'claude-code': 'ClaudeCode', codex: 'Codex', local: 'Local' } as const;
-
 /**
  * Chat's provider comes from the summaries resolver, so one setting picks the engine for both. A
  * saved prompt's engine asks the resolver for that kind instead, for that send only (Phase 5).
@@ -86,7 +84,7 @@ export function chatProviderSource(
       const gate =
         engine === undefined
           ? await resolver.resolveSummaryProvider()
-          : await resolver.resolveSummaryProvider({ kind: ENGINE_KIND[engine] });
+          : await resolver.resolveSummaryProvider({ kind: summaryKindOf(engine) });
       if (gate.status === 'ready') return { status: 'ready', provider: gate.provider };
       if (gate.status === 'needs-setup') return { status: 'needs-setup', kind: gate.kind };
       return { status: 'unavailable' };

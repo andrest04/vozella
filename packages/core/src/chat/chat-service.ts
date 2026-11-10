@@ -3,12 +3,12 @@ import { CancelSource } from '../cancel';
 import type { Clock } from '../clock';
 import type { TranslateFn } from '../i18n/translator';
 import type { Logger } from '../logging';
+import { isCliEngine, readsImagesFromDisk } from '../settings/cli-providers';
 import type { CliPromptOptions } from '../summaries/cli-provider';
 import type { ProviderId } from '../summaries/provider';
 import type { SetupKind } from '../summaries/provider-resolver';
 import {
   attachmentBudgetFor,
-  isCliEngine,
   packAttachments,
   type ChatAttachmentSource,
   type ResolvedAttachments,
@@ -344,7 +344,7 @@ export class ChatService {
           images:
             staged === null
               ? null
-              : { names: staged.names, readFromDisk: provider.id === 'claude-code' },
+              : { names: staged.names, readFromDisk: readsImagesFromDisk(provider.id) },
         },
       );
 

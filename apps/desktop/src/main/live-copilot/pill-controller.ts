@@ -127,6 +127,9 @@ function collapsedLayout(window: Rect): Layout {
   };
 }
 
+/** What the pill is doing on screen; `idle` is docked and still. */
+type PillPhase = 'idle' | 'entering' | 'exiting' | 'snapping' | 'dragging';
+
 const errorText = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
@@ -163,10 +166,13 @@ export class PillController {
   private expectedRect: Rect | null = null;
 
   // Motion.
-  private entering = false;
-  private exiting = false;
-  private snapping = false;
-  private dragging = false;
+  /**
+   * The one animation or gesture in progress. The entrance, the exit, a snap and a drag exclude
+   * each other, so one field holds them and a mixed state cannot exist. `handingOff` (above) is not
+   * a phase: it is true only inside the synchronous start handoff, an input to the visibility rule
+   * that can coincide with any phase. `redockQueued` is a pending timer, also orthogonal.
+   */
+  private phase: PillPhase = 'idle';
   private redockQueued = false;
   private opacity = 1;
   private contentOpacity = 1;
@@ -216,7 +222,7 @@ export class PillController {
       return this.state;
     }
     // A press during the entrance, exit, snap or drag is ignored like the drag is (bug 18).
-    if (this.entering || this.exiting || this.snapping || this.dragging) return this.state;
+    if (this.phase !== 'idle') return this.state;
     this.expanded = expanded;
     this.dock();
     return this.state;
@@ -305,14 +311,14 @@ export class PillController {
     await win.whenLoaded();
     if (!this.isWanted() || win.isDestroyed()) return;
     // Already on screen and not leaving: nothing to do (no re-dock, no animation).
-    if (win.isVisible() && !this.exiting) return;
+    if (win.isVisible() && this.phase !== 'exiting') return;
 
-    const resumedFrom = this.exiting ? win.getBounds() : null;
+    const resumedFrom = this.phase === 'exiting' ? win.getBounds() : null;
     const resumedOpacity = this.opacity;
     this.completeSnap();
     this.stopTween();
-    this.exiting = false;
-    this.entering = false;
+    // A drag is the OS move loop, not a tween: it is left for its drop to end.
+    if (this.phase === 'entering' || this.phase === 'exiting') this.phase = 'idle';
     this.opacity = 1;
     this.contentOpacity = 1;
     this.dock();
@@ -328,7 +334,7 @@ export class PillController {
       if (win?.isVisible()) this.dock();
     }
     const win = this.live();
-    if (!win || !win.isVisible() || this.exiting) return;
+    if (!win || !win.isVisible() || this.phase === 'exiting') return;
     this.completeSnap();
     this.cancelSave?.();
     this.cancelSave = null;
@@ -348,7 +354,7 @@ export class PillController {
       this.maybeRunHint();
       return;
     }
-    this.entering = true;
+    this.phase = 'entering';
     const startOpacity = resumedFrom ? resumedOpacity : 0;
     const from = resumedFrom ?? this.slideRect(docked);
     this.opacity = startOpacity;
@@ -365,7 +371,7 @@ export class PillController {
       },
       () => {
         this.opacity = 1;
-        this.entering = false;
+        if (this.phase === 'entering') this.phase = 'idle';
         this.expectedRect = win.getBounds();
         this.push();
         this.maybeRunHint();
@@ -376,7 +382,8 @@ export class PillController {
   private playExit(win: PillWindowPort): void {
     const docked = this.dockedWindow;
     const finish = (): void => {
-      this.exiting = false;
+      // Without animations the exit is never a phase, so a drag in progress stays one.
+      if (this.phase === 'exiting') this.phase = 'idle';
       if (this.wantVisible) return;
       win.hide();
       this.opacity = 1;
@@ -390,7 +397,10 @@ export class PillController {
       finish();
       return;
     }
-    this.exiting = true;
+    // A hide that lands during a drag ends the drag here: its drop must not snap the leaving
+    // window back on screen (`onMoved` only snaps from the dragging phase).
+    if (this.phase === 'dragging') this.dragShift = null;
+    this.phase = 'exiting';
     const from = win.getBounds();
     const to = this.slideRect(from);
     this.runTween(
@@ -441,10 +451,7 @@ export class PillController {
       if (this.window !== win) return;
       this.window = null;
       this.placed = false;
-      this.entering = false;
-      this.exiting = false;
-      this.snapping = false;
-      this.dragging = false;
+      this.phase = 'idle';
       this.dragShift = null;
       this.stopTween();
       this.cancelHint();
@@ -588,12 +595,12 @@ export class PillController {
     const win = this.live();
     if (!win) return;
     // Presses during the entrance, the exit and a snap are ignored (bug 18 keeps the rule, spec 2.7).
-    if (this.entering || this.exiting || this.snapping || !win.isVisible()) {
+    if ((this.phase !== 'idle' && this.phase !== 'dragging') || !win.isVisible()) {
       event.preventDefault();
       return;
     }
-    if (!this.dragging) {
-      this.dragging = true;
+    if (this.phase === 'idle') {
+      this.phase = 'dragging';
       this.cancelHint();
       if (this.expanded) {
         // Close the panel at once. The capsule stays where it is, so the window becomes the
@@ -617,8 +624,8 @@ export class PillController {
   }
 
   private onMoved(): void {
-    if (!this.dragging) return;
-    this.dragging = false;
+    if (this.phase !== 'dragging') return;
+    this.phase = 'idle';
     this.dragShift = null;
     const win = this.live();
     if (!win) return;
@@ -633,7 +640,7 @@ export class PillController {
     this.edge = plan.edge;
     this.along = plan.along;
     this.dockTouched = true;
-    this.snapping = true;
+    this.phase = 'snapping';
     // The plan's target is the capsule; the window also carries the gutter.
     const target = outset(plan.target, GUTTER_DIP);
     const framed = { ...plan, target };
@@ -657,8 +664,8 @@ export class PillController {
 
   /** Opacity 1 and an instant dock; used when the snap tween ends and when something cuts it short. */
   private completeSnap(): void {
-    if (!this.snapping) return;
-    this.snapping = false;
+    if (this.phase !== 'snapping') return;
+    this.phase = 'idle';
     this.stopTween();
     this.contentOpacity = 1;
     this.dock();
@@ -667,16 +674,14 @@ export class PillController {
   private onDisplayChanged(): void {
     const win = this.live();
     if (!win?.isVisible()) return;
-    if (this.dragging || this.entering || this.exiting || this.snapping || this.redockQueued) {
-      return;
-    }
+    if (this.phase !== 'idle' || this.redockQueued) return;
     if (!this.expectedRect || !shouldRedock(this.expectedRect, win.getBounds())) return;
     this.redockQueued = true;
     this.deps.clock.setTimeout(() => {
       this.redockQueued = false;
       const current = this.live();
       if (!current?.isVisible()) return;
-      if (this.dragging || this.entering || this.exiting || this.snapping) return;
+      if (this.phase !== 'idle') return;
       if (!this.expectedRect || !shouldRedock(this.expectedRect, current.getBounds())) return;
       try {
         this.dock();
@@ -726,7 +731,8 @@ export class PillController {
   /** Pending until the pill is on screen and not entering or leaving. */
   private maybeRunHint(): void {
     const win = this.live();
-    if (!this.hintPending || !win || !win.isVisible() || this.entering || this.exiting) return;
+    if (!this.hintPending || !win?.isVisible()) return;
+    if (this.phase === 'entering' || this.phase === 'exiting') return;
     this.hintPending = false;
     this.hintShowing = true;
     win.send(pillHint, {

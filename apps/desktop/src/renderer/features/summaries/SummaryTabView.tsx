@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Button, Notice, Skeleton, SkeletonText, Textarea } from '../../ui';
 import { ActionItemsList, type ActionItemsListProps } from './ActionItemsList';
-import { MarkdownView, type LinkHandler } from './MarkdownView';
+import { MarkdownView, type LinkHandler } from '../markdown/MarkdownView';
 import { ModeSwitch } from './ModeSwitch';
 import { RelatedMeetings, type RelatedMeetingView } from './RelatedMeetings';
 import type { ActionItemDto, NotesMode } from './summary-tab-model';

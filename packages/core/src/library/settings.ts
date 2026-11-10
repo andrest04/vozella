@@ -182,6 +182,20 @@ const blank = (value: string | null): boolean => value === null || value.trim() 
 
 export const SUMMARY_PROVIDERS = ['Local', 'ClaudeCode', 'Codex', 'Xai'] as const;
 export type SummaryProviderKind = (typeof SUMMARY_PROVIDERS)[number];
+
+/**
+ * The summary kinds backed by a CLI engine. Their per-engine facts live in the `CLI_ENGINES` table
+ * (settings/cli-providers), which is type-checked against this list. The list sits here, not
+ * there, because that table imports the model and effort resolvers from this module.
+ */
+export const CLI_PROVIDER_KINDS = [
+  'ClaudeCode',
+  'Codex',
+] as const satisfies readonly SummaryProviderKind[];
+export type CliProviderKind = (typeof CLI_PROVIDER_KINDS)[number];
+
+export const isCliProvider = (kind: string | null | undefined): kind is CliProviderKind =>
+  CLI_PROVIDER_KINDS.some((cli) => cli === kind);
 /**
  * 'Xai' stays a known value so an old settings file still loads and re-saves, but the provider was
  * removed (owner decision 2026-11-03, may return later). It is never mapped to Local.
@@ -251,8 +265,7 @@ export function resolveLiveQuestionsMode(
 ): LiveQuestionsMode {
   const chosen = LIVE_QUESTIONS_MODES.find((mode) => mode === s.liveQuestions);
   if (chosen !== undefined) return chosen;
-  const cli = s.selectedSummaryProvider === 'ClaudeCode' || s.selectedSummaryProvider === 'Codex';
-  return cli ? 'rules+ai' : 'rules';
+  return isCliProvider(s.selectedSummaryProvider) ? 'rules+ai' : 'rules';
 }
 
 export function disabledCalendarIdsAsSet(s: AppSettings): ReadonlySet<string> {

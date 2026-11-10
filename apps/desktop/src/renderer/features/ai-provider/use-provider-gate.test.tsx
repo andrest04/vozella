@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 import { Providers } from '../library/library-test-kit';
 import { ProviderGateDialogs, ProviderUnavailableNotice } from './ProviderGateDialogs';
-import { installSummariesApi } from './summaries-test-kit';
+import { installSummariesApi } from '../summaries/summaries-test-kit';
 import { decideSurface, useProviderGate, type SetupRequest } from './use-provider-gate';
 
 afterEach(() => {

@@ -1,6 +1,7 @@
 import type { FolderRecord } from '../library/folder';
 import type { MeetingRecord } from '../library/meeting';
 import { parseOffsetDate } from '../library/offset-date';
+import { isCliEngine } from '../settings/cli-providers';
 import type { ProviderId } from '../summaries/provider';
 import type { ChatScopeKind } from './scope-resolver';
 import { cutPrefix, cutTail } from './text-cut';
@@ -52,9 +53,7 @@ export const CLI_CONTEXT_BUDGET: ContextBudget = {
 
 /** CLI engines get the large budget; local, or an engine that does not say, the small one. */
 export const contextBudgetFor = (providerId: ProviderId | undefined): ContextBudget =>
-  providerId === 'claude-code' || providerId === 'codex'
-    ? CLI_CONTEXT_BUDGET
-    : LOCAL_CONTEXT_BUDGET;
+  isCliEngine(providerId) ? CLI_CONTEXT_BUDGET : LOCAL_CONTEXT_BUDGET;
 
 export interface PackOptions {
   /** Defaults to the local budget. */

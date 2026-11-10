@@ -9,7 +9,7 @@ import { ChatBody } from './ChatBody';
 
 // Phase 5: saved prompts in the `/` menu, the chips, the dialogs, and "Save as prompt".
 
-vi.mock('../summaries/ProviderGateDialogs', () => ({ ProviderGateDialogs: () => null }));
+vi.mock('../ai-provider/ProviderGateDialogs', () => ({ ProviderGateDialogs: () => null }));
 
 beforeAll(() => {
   Element.prototype.scrollIntoView = vi.fn();
