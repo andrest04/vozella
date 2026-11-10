@@ -144,6 +144,7 @@ interface Options {
   fileTimeMs?: number | null;
   ownsMarkdown?: (meetingId: string, markdownPath: string) => boolean;
   onRecordingStarted?: () => void;
+  audioDirectoryError?: Error;
 }
 
 function build(options: Options = {}) {
@@ -220,11 +221,13 @@ function build(options: Options = {}) {
     controller,
     library: {
       audioDirectory: (folderId) =>
-        Promise.resolve(
-          folderId !== null && folders[folderId] !== undefined
-            ? path.join(root, folders[folderId])
-            : inbox,
-        ),
+        options.audioDirectoryError
+          ? Promise.reject(options.audioDirectoryError)
+          : Promise.resolve(
+              folderId !== null && folders[folderId] !== undefined
+                ? path.join(root, folders[folderId])
+                : inbox,
+            ),
       folderExists: (id) => Promise.resolve(folders[id] !== undefined),
       ownsMarkdown: (id, p) => Promise.resolve(options.ownsMarkdown?.(id, p) ?? false),
     },
@@ -989,7 +992,57 @@ describe('RecordingService import (2.12)', () => {
     });
     expect(notReady.host.methods()).not.toContain('importAudio');
   });
+
+  it('an unexpected failure shows Error_ImportAudio, restores the preview and frees the session', async () => {
+    const t = build({ audioDirectoryError: new Error('disk gone') });
+    t.controller.startPreview('mic-1', 'record');
+    const result = await t.service.importAudio(picked);
+    expect(result).toEqual({
+      started: false,
+      reason: 'failed',
+      message: { key: 'Error_ImportAudio', args: ['disk gone'], severity: 'error' },
+    });
+    expect(t.service.gate.phase).toBe('Idle');
+    expect(t.controller.previewState).toEqual({ owner: 'record', deviceId: 'mic-1' });
+    expect(t.service.cancelProcessing(null)).toBe(false);
+  });
+
+  it('one take at a time: a start while an import converts is busy, and the import still saves', async () => {
+    const t = build();
+    const held = holdImport(t);
+    const importing = t.service.importAudio(picked);
+    await vi.waitFor(() => {
+      expect(held.converting()).toBe(true);
+    });
+    expect(t.service.gate.phase).toBe('Preparing');
+    expect(t.service.getState().status[0]).toMatchObject({ key: 'Status_Importing' });
+    expect(await t.service.start(sources)).toMatchObject({ started: false, reason: 'busy' });
+    expect(await t.service.importAudio(picked)).toMatchObject({ reason: 'busy' });
+    held.release();
+    expect(await importing).toEqual({ started: true, meetingId: 'meeting-1' });
+    await t.service.completion;
+    expect(t.store.saves.at(-1)?.audioFilePath).toMatch(/Call\.wav$/);
+    expect(t.service.gate.phase).toBe('Idle');
+  });
 });
+
+/** Holds the import conversion until the returned call, then lets it write the WAV. */
+function holdImport(t: ReturnType<typeof build>): { converting(): boolean; release(): void } {
+  let release: (() => void) | null = null;
+  const original = t.host.call.bind(t.host);
+  t.host.call = <T>(call: AudioRpcCall): Promise<T> => {
+    if (call.method !== 'importAudio') return original<T>(call);
+    return new Promise<void>((resolve) => {
+      release = resolve;
+    }).then(() => original<T>(call));
+  };
+  return {
+    converting: () => release !== null,
+    release: () => {
+      release?.();
+    },
+  };
+}
 
 describe('RecordingService import from YouTube', () => {
   const link = { title: 'Talk', folderId: null, url: 'https://youtu.be/dQw4w9WgXcQ' };

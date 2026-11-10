@@ -12,16 +12,13 @@ import {
 } from '@vozella/contracts';
 import {
   buildSetupSnapshot,
-  CancelSource,
   evaluateSetup,
   HighlightedLiveText,
-  parseYouTubeUrl,
   RecordingRuns,
   RecordingSessionGate,
   decideRecordingHandoff,
   recordingStatusText,
   startFailureMessage,
-  type CancelSignal,
   type CaptureNotice,
   type Logger,
   type Message,
@@ -38,8 +35,16 @@ import {
 import type { PreviewOwner } from '../audio/audio-controller';
 import type { RecordingTakes } from '../audio/recording-take';
 import { allocateAudioPath } from './audio-path';
-import { convertForImport, type ImportConversion } from './import-run';
-import { youTubeFailure, type YouTubeAudioPort } from './youtube-import';
+import {
+  ImportRun,
+  type ImportRequest,
+  type ImportResult,
+  type ImportUrlRequest,
+} from './import-run';
+import { describeError as describe, typed } from './recording-message';
+import type { YouTubeAudioPort } from './youtube-import';
+
+export type { ImportRequest, ImportResult, ImportUrlRequest } from './import-run';
 
 type Broadcast = <C extends EventChannel>(channel: C, payload: PayloadInputOf<C>) => void;
 
@@ -141,42 +146,6 @@ export interface StartOptions {
   readonly meetingId?: string | null;
 }
 
-export interface ImportRequest {
-  readonly title: string;
-  readonly folderId: string | null;
-  readonly path: string;
-}
-
-export interface ImportUrlRequest {
-  readonly title: string;
-  readonly folderId: string | null;
-  readonly url: string;
-}
-
-/** The file an import converts, or why there is none (a failed or cancelled download). */
-type PreparedImport =
-  | { readonly ok: true; readonly path: string; readonly fileTimeMs: number | null }
-  | { readonly ok: false; readonly cancelled: boolean; readonly message: Message };
-
-/** Where an import's audio comes from: a picked file or a YouTube download. */
-interface ImportSource {
-  /** The status shown from the start of the import until the conversion begins. */
-  readonly status: Message;
-  prepare(meetingId: string, cancel: CancelSignal): Promise<PreparedImport>;
-  /** Runs once the import is over, whatever the outcome, when `prepare` was called. */
-  release?(meetingId: string): void;
-}
-
-const IMPORTING_STATUS: Message = { key: 'Status_Importing', args: [] };
-
-export type ImportResult =
-  | { readonly started: true; readonly meetingId: string }
-  | {
-      readonly started: false;
-      readonly reason: 'busy' | 'not-ready' | 'failed' | 'cancelled';
-      readonly message: RecordingMessageDto | null;
-    };
-
 export type StartResult =
   | { readonly started: true; readonly meetingId: string; readonly recordedAtMs: number }
   | {
@@ -226,7 +195,8 @@ export class RecordingService {
   private retry: PipelineRequest | null = null;
   /** The notes of the take whose first save failed: the release clears the live ones (B-11). */
   private retryNotes = '';
-  private importCancel: CancelSource | null = null;
+  /** The file and YouTube imports, on the same session gate as a take (one take at a time). */
+  private readonly imports: ImportRun;
   private preparingSettled: Promise<void> = Promise.resolve();
   private readonly canvas = new HighlightedLiveText();
   private readonly offs: (() => void)[] = [];
@@ -263,6 +233,50 @@ export class RecordingService {
         },
       },
       schedule: deps.schedule,
+    });
+    this.imports = new ImportRun({
+      gate: this.gate,
+      setTakeStatus: (message) => {
+        this.runs.setTakeStatus(message);
+      },
+      host: {
+        beginTake: (meetingId, requestedTitle) => {
+          this.runs.beginTake({ meetingId });
+          this.notes = '';
+          this.retry = null;
+          this.fallbackNotice = null;
+          this.title =
+            requestedTitle.trim() === '' ? deps.defaultTitle(deps.nowMs()) : requestedTitle;
+          return this.title;
+        },
+        holdPreview: () => {
+          this.previewToRestore = deps.controller.previewState;
+          deps.controller.stopPreview();
+        },
+        restorePreview: () => {
+          this.restorePreview();
+        },
+        publish: () => {
+          this.publish();
+        },
+        trackPreparing: () => this.trackPreparing(),
+        process: async (request, folderId) => {
+          this.take = null;
+          this.frozenElapsedMs = 0;
+          const folder = await this.resolveFolder(folderId);
+          this.gate.markProcessing();
+          const run = this.runs.startRun({ meetingId: request.meetingId });
+          void this.runPipeline(run, { ...request, folderId: folder });
+        },
+      },
+      setup: deps.setup,
+      controller: deps.controller,
+      library: deps.library,
+      files: deps.files,
+      youtube: deps.youtube,
+      logger: deps.logger,
+      nowMs: deps.nowMs,
+      newId: deps.newId,
     });
     this.offs.push(
       this.runs.subscribe(() => {
@@ -732,189 +746,21 @@ export class RecordingService {
 
   /** The processing bar's Cancel. With a meeting id it stops the background summary (B-21). */
   cancelProcessing(meetingId: string | null): boolean {
-    if (meetingId === null && this.importCancel !== null) {
-      this.importCancel.cancel();
-      return true;
-    }
+    if (meetingId === null && this.imports.cancel()) return true;
     if (meetingId !== null) return this.deps.pipeline.cancelBackgroundSummary(meetingId);
     return this.runs.cancelActiveRun();
   }
 
   // -- import (2.12) ----------------------------------------------------------------------------
 
-  /**
-   * Imports an audio file through the same pipeline as a take: same gate and readiness checks, the
-   * file converted to the take WAV, then a request with no live draft, pause or highlights (172).
-   */
+  /** Spec 2.12: a picked audio file, through the same pipeline as a take (ImportRun). */
   importAudio(request: ImportRequest, options: StartOptions = {}): Promise<ImportResult> {
-    const { files } = this.deps;
-    return this.runImport(request, options, {
-      status: IMPORTING_STATUS,
-      prepare: () =>
-        Promise.resolve({
-          ok: true,
-          path: request.path,
-          fileTimeMs: files.fileTimeMs(request.path),
-        }),
-    });
+    return this.imports.importAudio(request, options);
   }
 
-  /**
-   * Imports the audio of a YouTube video: yt-dlp downloads it into a temp folder under the import's
-   * cancel, then it goes through the file import. The temp folder is always removed. The meeting
-   * time is the import time: the downloaded file's time means nothing.
-   */
+  /** The audio of a YouTube video, downloaded then imported like a file (ImportRun). */
   importUrl(request: ImportUrlRequest, options: StartOptions = {}): Promise<ImportResult> {
-    const video = parseYouTubeUrl(request.url);
-    if (video === null) {
-      return Promise.resolve({
-        started: false,
-        reason: 'failed',
-        message: typed({ key: 'Ui_ErrorYouTubeUrl', args: [] }),
-      });
-    }
-    const { youtube, logger } = this.deps;
-    return this.runImport(request, options, {
-      status: { key: 'Ui_StatusDownloadingYouTube', args: [] },
-      prepare: async (meetingId, cancel) => {
-        try {
-          await youtube.ensure(cancel);
-          // Once per session and before the download: a stale yt-dlp is the usual failure.
-          await youtube.update();
-          const path = await youtube.download(video.url, youtube.workDirectory(meetingId), cancel);
-          return { ok: true, path, fileTimeMs: null };
-        } catch (error) {
-          const failure = youTubeFailure(error, cancel);
-          if (!failure.cancelled) {
-            logger.warn('the YouTube download failed', { error: describe(error) });
-          }
-          return { ok: false, ...failure };
-        }
-      },
-      release: (meetingId) => {
-        youtube.removeDirectory(youtube.workDirectory(meetingId));
-      },
-    });
-  }
-
-  /** The import steps shared by a file and a link: gate, readiness, status, conversion, run. */
-  private async runImport(
-    request: { readonly title: string; readonly folderId: string | null },
-    options: StartOptions,
-    source: ImportSource,
-  ): Promise<ImportResult> {
-    const { deps } = this;
-    if (!this.gate.tryBeginPreparing()) return { started: false, reason: 'busy', message: null };
-    const preparingDone = this.trackPreparing();
-    let previewStopped = false;
-    let releaseFor: string | null = null;
-    const cancel = new CancelSource();
-    try {
-      const { readiness } = await evaluateSetup(deps.setup);
-      if (!readiness.canRecord) return { started: false, reason: 'not-ready', message: null };
-
-      const meetingId = options.meetingId ?? deps.newId();
-      this.runs.beginTake({ meetingId: options.meetingId ?? null });
-      this.notes = '';
-      this.retry = null;
-      this.fallbackNotice = null;
-      this.title = request.title.trim() === '' ? deps.defaultTitle(deps.nowMs()) : request.title;
-      const title = this.title;
-      const directory = await deps.library.audioDirectory(request.folderId);
-      // 173: the status, and the idle meter stops for the length of the import.
-      this.runs.setTakeStatus(source.status);
-      this.previewToRestore = deps.controller.previewState;
-      deps.controller.stopPreview();
-      previewStopped = true;
-      this.importCancel = cancel;
-      this.publish();
-
-      releaseFor = meetingId;
-      const prepared = await source.prepare(meetingId, cancel);
-      const outcome = prepared.ok
-        ? await this.convertImport(meetingId, directory, title, prepared, source.status, cancel)
-        : prepared;
-      if (!outcome.ok) {
-        this.runs.setTakeStatus(outcome.message);
-        this.restorePreview();
-        previewStopped = false;
-        return {
-          started: false,
-          reason: outcome.cancelled ? 'cancelled' : 'failed',
-          message: typed(outcome.message),
-        };
-      }
-
-      this.take = null;
-      this.frozenElapsedMs = 0;
-      const folder = await this.resolveFolder(request.folderId);
-      this.gate.markProcessing();
-      const run = this.runs.startRun({ meetingId });
-      void this.runPipeline(run, {
-        meetingId,
-        audioPath: outcome.path,
-        recordedAtMs: outcome.recordedAtMs,
-        endedAtMs: outcome.endedAtMs,
-        title,
-        liveDraft: null,
-        pausedDurationMs: 0,
-        folderId: folder,
-        highlightsMs: [],
-      });
-      previewStopped = false;
-      return { started: true, meetingId };
-    } catch (error) {
-      deps.logger.warn('the import failed', { error: describe(error) });
-      const message: Message = { key: 'Error_ImportAudio', args: [describe(error)] };
-      this.runs.setTakeStatus(message);
-      if (previewStopped) this.restorePreview();
-      return { started: false, reason: 'failed', message: typed(message) };
-    } finally {
-      if (releaseFor !== null) source.release?.(releaseFor);
-      this.importCancel = null;
-      // A no-op once processing started.
-      this.gate.cancelPreparing();
-      this.publish();
-      preparingDone();
-    }
-  }
-
-  /** Converts the prepared file to the take WAV (spec 2.12 steps 5 and 6). */
-  private convertImport(
-    meetingId: string,
-    directory: string,
-    title: string,
-    prepared: { readonly path: string; readonly fileTimeMs: number | null },
-    status: Message,
-    cancel: CancelSource,
-  ): Promise<ImportConversion> {
-    const { deps } = this;
-    if (status.key !== IMPORTING_STATUS.key) {
-      this.runs.setTakeStatus(IMPORTING_STATUS);
-      this.publish();
-    }
-    return convertForImport(
-      {
-        convert: (source, destination) => deps.controller.importAudio(source, destination),
-        cancelConversion: () => {
-          deps.controller.cancelImport();
-        },
-        allocate: (name, atMs) =>
-          allocateAudioPath({
-            directory,
-            title: name,
-            atMs,
-            ownsMarkdown: (markdownPath) => deps.library.ownsMarkdown(meetingId, markdownPath),
-          }),
-        wavDurationSeconds: (file) => deps.files.wavDurationSeconds(file),
-        remove: (file) => {
-          deps.files.remove(file);
-        },
-        nowMs: deps.nowMs,
-      },
-      { source: prepared.path, title, fileTimeMs: prepared.fileTimeMs },
-      cancel,
-    );
+    return this.imports.importUrl(request, options);
   }
 
   /**
@@ -1028,27 +874,7 @@ class StartFailure extends Error {
   }
 }
 
-function describe(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 function failureMessage(error: unknown): Message {
   const code = error instanceof StartFailure ? error.code : null;
   return startFailureMessage(code ?? undefined, describe(error));
-}
-
-/** A status entry with its severity: from the notice itself, else from the catalog key. */
-function typed(message: Message | CaptureNotice): RecordingMessageDto {
-  const severity =
-    'severity' in message
-      ? message.severity
-      : message.key.startsWith('Error_') ||
-          message.key.startsWith('Ui_Error') ||
-          message.key === 'Ui_ProcessLoopbackUnsupported' ||
-          message.key === 'Ui_TranscriptionEngineUnavailable'
-        ? 'error'
-        : message.key === 'Ui_SummaryProviderXaiRemoved'
-          ? 'warning'
-          : 'info';
-  return { key: message.key, args: [...message.args], severity };
 }
