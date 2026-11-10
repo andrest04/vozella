@@ -10,6 +10,7 @@ import * as session from './session';
 import * as settings from './settings';
 import * as summaries from './summaries';
 import * as transcription from './transcription';
+import * as updates from './updates';
 
 /** No input. An object keeps room to add optional fields without breaking callers. */
 const empty = z.object({}).strict();
@@ -208,6 +209,8 @@ export const requestChannels = {
   [session.sessionGetView.name]: session.sessionGetView,
   [session.sessionRename.name]: session.sessionRename,
   [session.sessionRevealFile.name]: session.sessionRevealFile,
+  [updates.updatesGetState.name]: updates.updatesGetState,
+  [updates.updatesInstall.name]: updates.updatesInstall,
 } as const;
 
 export const eventChannels = {
@@ -246,6 +249,7 @@ export const eventChannels = {
   [chat.chatChunk.name]: chat.chatChunk,
   [chat.chatStateChanged.name]: chat.chatStateChanged,
   [chat.chatPromptsChanged.name]: chat.chatPromptsChanged,
+  [updates.updatesStateChanged.name]: updates.updatesStateChanged,
 } as const;
 
 export type RequestChannels = typeof requestChannels;

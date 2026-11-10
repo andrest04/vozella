@@ -32,6 +32,7 @@
     "@tiptap/pm": "^3.32.2",
     "@tiptap/react": "^3.32.2",
     "@tiptap/starter-kit": "^3.32.2",
+    "electron-updater": "6.8.11",
     "koffi": "3.3.6",
     "lucide-react": "1.66.0",
     "tailwindcss": "4.3.3",
