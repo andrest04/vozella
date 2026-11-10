@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Providers, meetingRecord } from './library-test-kit';
+import { Providers } from '../../app/test-providers';
+import { meetingRecord } from './library-test-kit';
 import { MeetingPreview } from './MeetingPreview';
 
 beforeEach(() => {

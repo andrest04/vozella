@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useMemo, useState, type RefObject } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useChatLinks } from '../chat/use-chat-links';
-import { formatMeetingDate } from '../library/format';
+import { formatDueDate, formatMeetingDate } from '../library/format';
 import type { ActionItemsListProps } from './ActionItemsList';
 import { DraftMessage } from './DraftMessage';
 import { RegenerateDialog } from './RegenerateDialog';
 import { SummaryActionBar, SummaryStatusLine } from './SummaryActionBar';
 import { SummaryTabView, type SummaryTabLabels } from './SummaryTabView';
-import { formatDueDate } from './summary-tab-model';
 import { useActionItemsExport } from './use-action-items-export';
 import { useSummaryGeneration, type RunSetup } from './use-summary-generation';
 import { useSummaryTab } from './use-summary-tab';

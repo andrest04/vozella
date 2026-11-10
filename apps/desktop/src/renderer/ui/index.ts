@@ -28,6 +28,7 @@ export { Tree, type TreeNode, type TreeProps } from './Tree';
 export { EmptyState, SectionHeader, SettingRow } from './layout';
 export { pageColumn } from './page';
 export { cn } from './cn';
+export { formatClock } from './clock';
 export { AudioBars, type AudioBarsProps } from './AudioBars';
 export { useReducedMotion } from './use-reduced-motion';
 export { Pulse, type PulseProps } from './Pulse';

@@ -9,7 +9,8 @@ import {
   useLibraryStore,
 } from './library-store';
 import { LibraryFolders, type SidebarLocation } from './LibraryFolders';
-import { Providers, folderRecord, installFakeApi, meetingRecord } from './library-test-kit';
+import { Providers } from '../../app/test-providers';
+import { folderRecord, installFakeApi, meetingRecord } from './library-test-kit';
 
 const UNI = '11111111-1111-4111-8111-111111111111';
 const CALC = '22222222-2222-4222-8222-222222222222';

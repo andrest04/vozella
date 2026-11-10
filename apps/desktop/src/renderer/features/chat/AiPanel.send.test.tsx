@@ -3,8 +3,8 @@ import type { ChatSendOutcomeDto, WorkspaceStateDto } from '@vozella/contracts';
 import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Providers } from '../library/library-test-kit';
-import { DialogHost } from '../shell/dialog-service';
+import { Providers } from '../../app/test-providers';
+import { DialogHost } from '../../app/dialog-service';
 import { AiPanelArea } from './AiPanel';
 import { ChatBody } from './ChatBody';
 

@@ -2,10 +2,10 @@
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Providers } from '../library/library-test-kit';
+import { Providers } from '../../app/test-providers';
 import { CliSetupDialog } from './CliSetupDialog';
 import { SetupWizardDialog } from './SetupWizardDialog';
-import { installSummariesApi } from '../summaries/summaries-test-kit';
+import { installProviderApi } from './ai-provider-test-kit';
 
 afterEach(() => {
   cleanup();
@@ -20,7 +20,7 @@ const checkAnswer = (found: boolean, kind: 'claude' | 'codex' = 'claude') => ({
 
 describe('CliSetupDialog', () => {
   it('names the CLI, shows the executable and the install hint, and offers Retry and Cancel', async () => {
-    installSummariesApi();
+    installProviderApi();
     render(
       <Providers>
         <CliSetupDialog open kind="ClaudeCode" onFinished={vi.fn()} />
@@ -39,7 +39,7 @@ describe('CliSetupDialog', () => {
   });
 
   it('keeps the npm command as plain text for Codex', async () => {
-    installSummariesApi();
+    installProviderApi();
     render(
       <Providers>
         <CliSetupDialog open kind="Codex" onFinished={vi.fn()} />
@@ -56,7 +56,7 @@ describe('CliSetupDialog', () => {
 
   it('a Retry that misses keeps the dialog open with the still-missing line (item 140)', async () => {
     const onFinished = vi.fn();
-    const api = installSummariesApi({ 'summaries.checkCli': () => checkAnswer(false) });
+    const api = installProviderApi({ 'summaries.checkCli': () => checkAnswer(false) });
     render(
       <Providers>
         <CliSetupDialog open kind="ClaudeCode" onFinished={onFinished} />
@@ -78,7 +78,7 @@ describe('CliSetupDialog', () => {
   it('Retry that finds the CLI closes with true, after a miss', async () => {
     const onFinished = vi.fn();
     let found = false;
-    installSummariesApi({ 'summaries.checkCli': () => checkAnswer(found) });
+    installProviderApi({ 'summaries.checkCli': () => checkAnswer(found) });
     render(
       <Providers>
         <CliSetupDialog open kind="ClaudeCode" onFinished={onFinished} />
@@ -95,7 +95,7 @@ describe('CliSetupDialog', () => {
 
   it('Cancel finishes with false', async () => {
     const onFinished = vi.fn();
-    installSummariesApi();
+    installProviderApi();
     render(
       <Providers>
         <CliSetupDialog open kind="Codex" onFinished={onFinished} />
@@ -106,7 +106,7 @@ describe('CliSetupDialog', () => {
   });
 
   it('says the same in Spanish', async () => {
-    installSummariesApi({ 'summaries.checkCli': () => checkAnswer(false) });
+    installProviderApi({ 'summaries.checkCli': () => checkAnswer(false) });
     render(
       <Providers locale="es">
         <CliSetupDialog open kind="ClaudeCode" onFinished={vi.fn()} />
@@ -120,8 +120,8 @@ describe('CliSetupDialog', () => {
 });
 
 describe('wizard CLI check panel', () => {
-  const mountWizard = (handlers: Parameters<typeof installSummariesApi>[0]) => {
-    const api = installSummariesApi(handlers);
+  const mountWizard = (handlers: Parameters<typeof installProviderApi>[0]) => {
+    const api = installProviderApi(handlers);
     const onFinished = vi.fn();
     render(
       <Providers>

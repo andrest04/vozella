@@ -4,9 +4,9 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { connectLibrary, useLibraryStore } from './library-store';
 import { LibraryRoute } from './LibraryRoute';
+import { Providers } from '../../app/test-providers';
 import {
   LibraryScreen,
-  Providers,
   folderRecord,
   installFakeApi,
   meetingRecord,

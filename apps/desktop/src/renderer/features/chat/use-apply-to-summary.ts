@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useT } from '../../i18n/I18nProvider';
-import { useDialogs } from '../shell/dialog-service';
+import { useDialogs } from '../../app/dialog-service';
 
 interface SummaryContent {
   readonly summary: string | null;

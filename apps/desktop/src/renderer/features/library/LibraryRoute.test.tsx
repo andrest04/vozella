@@ -4,9 +4,9 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { formatMeetingTime } from './format';
 import { useLibraryStore } from './library-store';
+import { Providers } from '../../app/test-providers';
 import {
   LibraryScreen,
-  Providers,
   stubLayout,
   folderRecord,
   installFakeApi,

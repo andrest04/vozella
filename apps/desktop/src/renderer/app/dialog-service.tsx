@@ -8,8 +8,8 @@ import {
   type Context,
   type ReactNode,
 } from 'react';
-import { useT } from '../../i18n/I18nProvider';
-import { Button, Dialog } from '../../ui';
+import { useT } from '../i18n/I18nProvider';
+import { Button, Dialog } from '../ui';
 
 export interface ConfirmRequest {
   readonly title: string;

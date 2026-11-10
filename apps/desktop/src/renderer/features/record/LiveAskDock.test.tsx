@@ -2,7 +2,7 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { Providers } from '../library/library-test-kit';
+import { Providers } from '../../app/test-providers';
 import { AnswerCard } from './AnswerCard';
 import { LiveAskDock } from './LiveAskDock';
 import { applyAnswer, IDLE_ANSWER, resetLiveAskStore } from './use-live-ask';

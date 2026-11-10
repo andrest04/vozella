@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
 import { Button, Skeleton, Tabs } from '../../ui';
 import { MarkdownView } from '../markdown/MarkdownView';
-import { formatDueDate } from '../summaries/summary-tab-model';
+import { formatDueDate } from './format';
 import { formatMeetingSpan } from './format';
 import type { MeetingTab } from './search-results';
 import type { MeetingPreviewState } from './use-meeting-preview';

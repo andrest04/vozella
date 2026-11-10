@@ -1,3 +1,4 @@
+import type { PillStateDto } from '@vozella/contracts';
 import type { Logger, SettingsStore } from '@vozella/core';
 import type { BrowserWindow } from 'electron';
 import { screen, systemPreferences, type Display } from 'electron';
@@ -7,6 +8,8 @@ import {
   pillWindowOptions,
   PILL_ENTRY_URL,
 } from '../windows/pill-window';
+import type { IpcServerDeps } from '../ipc/ipc-server';
+import { registerPillHandlers } from '../ipc/pill-handlers';
 import { PillController, type PillDisplay, type PillScreenPort } from './pill-controller';
 import { PillDockStore } from './pill-dock-store';
 
@@ -87,5 +90,51 @@ export function composePill(deps: ComposePillDeps): PillController {
       },
     },
     logger,
+  });
+}
+
+/** What `pill.ready` answers in the moment between the pill closing and the app quitting. */
+export const NO_PILL_STATE: PillStateDto = {
+  visible: false,
+  expanded: false,
+  edge: 'Right',
+  vertical: true,
+  animationsEnabled: false,
+  opacity: 1,
+  contentOpacity: 1,
+  window: { width: 80, height: 256 },
+  capsule: { x: 8, y: 8, width: 64, height: 240 },
+  panel: null,
+};
+
+export interface ComposePillHandlersDeps {
+  readonly server: IpcServerDeps;
+  /** The pill of the current main window; undefined once that window closed. */
+  readonly getPill: () => PillController | undefined;
+  readonly recording: {
+    getState(): { readonly isPaused: boolean };
+    pause(): Promise<unknown>;
+    resume(): Promise<unknown>;
+    stop(): Promise<unknown>;
+  };
+  readonly openApp: () => void;
+  /** The pill page just loaded: replay the live ask state it missed. */
+  readonly republishLiveAsk: () => void;
+}
+
+/** The pill buttons wired to the recording service and the pill controller. */
+export function composePillHandlers(deps: ComposePillHandlersDeps): void {
+  registerPillHandlers(deps.server, {
+    togglePause: async () => {
+      if (deps.recording.getState().isPaused) await deps.recording.resume();
+      else await deps.recording.pause();
+    },
+    stop: async () => {
+      await deps.recording.stop();
+    },
+    openApp: deps.openApp,
+    setExpanded: (expanded) => deps.getPill()?.setExpanded(expanded) ?? NO_PILL_STATE,
+    state: () => deps.getPill()?.state ?? NO_PILL_STATE,
+    ready: deps.republishLiveAsk,
   });
 }

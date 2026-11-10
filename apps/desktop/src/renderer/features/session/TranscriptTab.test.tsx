@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import { TooltipProvider } from '../../ui';
 import { TranscriptTab, type CopySource } from './TranscriptTab';
-import { peekTranscriptReveal, requestTranscriptReveal } from './transcript-reveal';
+import { peekTranscriptReveal, requestTranscriptReveal } from '../chat/transcript-reveal';
 
 const ID = '11111111-1111-4111-8111-111111111111';
 const OTHER = '22222222-2222-4222-8222-222222222222';

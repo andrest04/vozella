@@ -3,8 +3,8 @@ import type { ChatPromptDto, ChatSendOutcomeDto, ChatStateDto } from '@vozella/c
 import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { Providers } from '../library/library-test-kit';
-import { DialogHost } from '../shell/dialog-service';
+import { Providers } from '../../app/test-providers';
+import { DialogHost } from '../../app/dialog-service';
 import { ChatBody } from './ChatBody';
 
 // Phase 5: saved prompts in the `/` menu, the chips, the dialogs, and "Save as prompt".
