@@ -455,24 +455,36 @@ describe('FileLocalModelStore', () => {
   it('B18: a dropped transfer keeps the .part and the next call resumes with a Range request', async () => {
     const full = Buffer.from('GGUF');
     const ranges: (string | undefined)[] = [];
+    const directory = path.join(dir, 'SummaryModels');
+    const part = path.join(directory, `${model.fileName}.part`);
+    const partSize = (): number => (fs.existsSync(part) ? fs.statSync(part).size : 0);
     const server = await serve((req, res, hit) => {
       ranges.push(req.headers.range);
       if (hit === 1) {
         res.writeHead(200, { 'content-length': 4 });
         res.write(full.subarray(0, 2));
-        setTimeout(() => res.destroy(), 20);
+        // Drop the connection only once the client has the first two bytes on disk. A fixed
+        // delay raced the client opening the .part file on slow CI runners, and a destroyed
+        // socket discards chunks the client has not read yet.
+        const poll = setInterval(() => {
+          if (partSize() >= 2) {
+            clearInterval(poll);
+            res.destroy();
+          }
+        }, 5);
+        res.on('close', () => {
+          clearInterval(poll);
+        });
         return;
       }
       res.writeHead(206, { 'content-length': 2 });
       res.end(full.subarray(2));
     });
     try {
-      const directory = path.join(dir, 'SummaryModels');
       const store = new FileLocalModelStore({ directory, urlFor: () => server.url });
       await expect(
         store.download(model, () => undefined, new CancelSource().signal),
       ).rejects.toThrow();
-      const part = path.join(directory, `${model.fileName}.part`);
       expect(fs.readFileSync(part, 'utf8')).toBe('GG');
       expect(await store.isDownloaded(model)).toBe(false);
       await store.download(model, () => undefined, new CancelSource().signal);
