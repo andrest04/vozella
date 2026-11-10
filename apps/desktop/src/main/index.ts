@@ -4,7 +4,6 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { Worker } from 'node:worker_threads';
 import { pathToFileURL } from 'node:url';
 import {
   libraryChanged,
@@ -15,51 +14,18 @@ import {
   type AppInfo,
   type EventChannel,
   type PayloadInputOf,
-  type PillStateDto,
   type ThemePreference,
 } from '@vozella/contracts';
+import { MeetingBusyRegistry, Workspace } from '@vozella/core';
 import {
-  ATTACHMENT_EXTENSIONS,
-  ChatService,
-  CLI_ENGINES,
-  isCliProvider,
-  MeetingBusyRegistry,
-  PatchQueue,
-  resolveTemplateInstructions,
-  SummaryTabService,
-  Workspace,
-  type HardwareProbe,
-} from '@vozella/core';
-import {
-  ChatAttachmentStore,
-  createThreadedDocumentExtractor,
-  fakeEngineOptionsFromEnv,
-  SteppedModelStore,
-  SteppedRuntimeStore,
-  FakeCliProbe,
-  FileFakeCliProbe,
-  FakeHardwareProbe,
-  FakeSpeechEngine,
-  fakeAsrPhrasesFromEnv,
-  FakeSummaryProvider,
   JsonWindowStateStore,
-  JsonChatPromptStore,
-  writeFileAtomic,
-  fakeSummaryOptionsFromEnv,
-  FileLocalModelStore,
-  PathCliProbe,
   createNativePorts,
-  SummaryRuntime,
   ForbiddenDataRootError,
-  LibraryChatReader,
   LibraryRuntime,
   readWavDurationSeconds,
   recoverCrashedRecordings,
   RotatingFileLogger,
-  SettingsRuntime,
   SystemClock,
-  SystemHardwareProbe,
-  TranscriptionRuntime,
   type RunMode,
 } from '@vozella/platform';
 import {
@@ -96,30 +62,19 @@ import { installGlobalErrorHandling } from './errors/global-errors';
 import { LocaleState, resolveStartupLanguage } from './i18n/locale-state';
 import { mainCatalogs } from './i18n/main-catalogs';
 import { registerHandlers } from './ipc/handlers';
+import type { IpcServerDeps } from './ipc/ipc-server';
 import { createFlagFileScanner, fakeCallFlagPath } from './detection/fake-call-scanner';
 import { MeetingDetectionController } from './detection/meeting-detection-controller';
 import { createPopupHandle } from './detection/popup-handle';
-import { composePill } from './live-copilot/compose-pill';
+import { composePill, composePillHandlers } from './live-copilot/compose-pill';
 import type { PillController } from './live-copilot/pill-controller';
-import { registerPillHandlers } from './ipc/pill-handlers';
 import { registerMeetingPromptHandlers } from './ipc/meeting-prompt-handlers';
 import { AudioController } from './audio/audio-controller';
 import { registerAudioHandlers } from './ipc/audio-handlers';
-import { registerTranscriptionHandlers } from './ipc/transcription-handlers';
-import { registerSessionHandlers } from './ipc/session-handlers';
-import { registerSummariesHandlers } from './ipc/summaries-handlers';
-import { ObservedSummaryService } from './summaries/observed-summary-service';
-import { SummariesController } from './summaries/summaries-controller';
-import { ChatController, chatProviderSource } from './chat/chat-controller';
-import { recordingProviderSource } from './chat/chat-prompt-log';
-import { ChatPromptsController } from './chat/chat-prompts-controller';
-import { registerChatHandlers } from './ipc/chat-handlers';
-import { registerChatPromptHandlers } from './ipc/chat-prompts-handlers';
-import {
-  fakeModelScriptFromEnv,
-  ScriptedFakeModelStore,
-} from './summaries/scripted-fake-model-store';
-import { TranscriptionController } from './transcription/transcription-controller';
+import { composeChat } from './chat/compose-chat';
+import { composeSettings } from './settings/compose-settings';
+import { composeSummaries } from './summaries/compose-summaries';
+import { composeTranscription } from './transcription/compose-transcription';
 import { AsrWorkerHost } from './workers/asr-worker-host';
 import { createAppIconProvider } from './audio/app-icon';
 import { RecordingTakes } from './audio/recording-take';
@@ -137,7 +92,7 @@ import { registerRecordingHandlers } from './ipc/recording-handlers';
 import { LiveAsk, type LiveChatContext } from './recording/live-ask-handlers';
 import { bridgeWorkspace, registerLibraryHandlers } from './ipc/library-handlers';
 import { sendEvent } from './ipc/ipc-server';
-import { modelEventBridge, registerSettingsHandlers } from './ipc/settings-handlers';
+import { registerSettingsHandlers } from './ipc/settings-handlers';
 import { buildCsp } from './security/csp';
 import { mimeTypeFor, resolveAppAssetPath } from './security/app-protocol';
 import { parseMediaId, serveMeetingAudio } from './security/media-route';
@@ -161,6 +116,7 @@ import {
   windowBackground,
   type ResolvedTheme,
 } from './windows/title-bar-theme';
+import { windowDialogs } from './window-dialogs';
 import { AudioWorkerHost } from './workers/audio-worker-host';
 import { forkUtilityWorker } from './workers/electron-worker-process';
 import { resolveNativeAddonPath } from './workers/native-addon-path';
@@ -249,6 +205,14 @@ function main(): void {
   let mainWindow: BrowserWindow | undefined;
   /** The live copilot pill; made with the main window and closed with it. */
   let pill: PillController | undefined;
+  /** File dialogs parented to the main window while it exists. */
+  const dialogs = windowDialogs(() => mainWindow);
+  /** Every request channel checks its sender against the app's own windows first. */
+  const ipcServer: IpcServerDeps = {
+    ipc: ipcMain,
+    logger,
+    isTrusted: (event: IpcEventLike) => isTrustedIpcSender(event, windowIds, trusted),
+  };
 
   logger.info('starting', {
     version: app.getVersion(),
@@ -417,13 +381,10 @@ function main(): void {
     busy,
     openPath: (target) => shell.openPath(target),
     pickFolder: async (defaultPath) => {
-      const options = {
+      const result = await dialogs.showOpenDialog({
         defaultPath,
-        properties: ['openDirectory' as const, 'createDirectory' as const],
-      };
-      const result = mainWindow
-        ? await dialog.showOpenDialog(mainWindow, options)
-        : await dialog.showOpenDialog(options);
+        properties: ['openDirectory', 'createDirectory'],
+      });
       return result.canceled ? null : (result.filePaths[0] ?? null);
     },
     version: appVersion,
@@ -437,34 +398,15 @@ function main(): void {
     },
   });
 
-  // One hardware read per process, shared by the Settings page and the transcription engine.
-  const hardware: HardwareProbe = fakeNative
-    ? new FakeHardwareProbe(
-        process.env.VOZELLA_FAKE_NO_GPU === '1'
-          ? { totalRamGb: 16, gpuName: null, gpuVramGb: null }
-          : { totalRamGb: 16, gpuName: 'Fake GPU', gpuVramGb: 8 },
-      )
-    : new SystemHardwareProbe();
-
-  // The model folder and the CLI probe are shared by the Settings page and the summary module.
-  const summaryModels = fakeNative
-    ? new ScriptedFakeModelStore(fakeModelScriptFromEnv(process.env))
-    : new FileLocalModelStore({ directory: path.join(paths.appData, 'SummaryModels') });
-  // A test that sets VOZELLA_FAKE_CLI_FILES decides what is installed by putting files in
-  // <app data>/fake-cli, so it can flip the answer while the app runs.
-  const summaryCli = !fakeNative
-    ? new PathCliProbe()
-    : process.env.VOZELLA_FAKE_CLI_FILES === '1'
-      ? new FileFakeCliProbe(path.join(paths.appData, 'fake-cli'))
-      : new FakeCliProbe(new Set(['claude']));
-
   // Whether the llama runtime in use offloads to the GPU, for the model fit ratings and the
   // "Recommended for your PC" pick. Unknown until the summary runtime picks a backend below.
   let llamaGpuOffload: () => boolean | undefined = () => undefined;
 
-  // Settings page services. In the fake native build the machine, the CLIs, the model downloads
-  // are doubles, so nothing touches the network.
-  const settings: SettingsRuntime = new SettingsRuntime({
+  // Machine probes and Settings page services. In the fake native build the machine, the CLIs,
+  // the model downloads are doubles, so nothing touches the network.
+  const { hardware, summaryModels, summaryCli, settings } = composeSettings({
+    fakeNative,
+    env: process.env,
     activeGpuOffload: () => llamaGpuOffload(),
     store: library.settings,
     appDataDirectory: paths.appData,
@@ -486,10 +428,7 @@ function main(): void {
         },
       });
     },
-    notifyModel: modelEventBridge(broadcast),
-    hardware,
-    cli: summaryCli,
-    modelStore: summaryModels,
+    broadcast,
   });
 
   /** The kill-on-close job that leaves no llama-server behind. Without it the sidecar watchdog runs. */
@@ -656,29 +595,17 @@ function main(): void {
         info,
         setThemePreference,
         nativeSelfTest: () => audio.ping(),
-        server: {
-          ipc: ipcMain,
-          logger,
-          isTrusted: (event: IpcEventLike) => isTrustedIpcSender(event, windowIds, trusted),
-        },
+        server: ipcServer,
       });
       registerSettingsHandlers({
-        server: {
-          ipc: ipcMain,
-          logger,
-          isTrusted: (event: IpcEventLike) => isTrustedIpcSender(event, windowIds, trusted),
-        },
+        server: ipcServer,
         runtime: settings,
         locale,
         broadcast,
         onSummaryProviderSaved: () => liveAsk.refreshWebSupport(),
       });
       libraryWrites = registerLibraryHandlers({
-        server: {
-          ipc: ipcMain,
-          logger,
-          isTrusted: (event: IpcEventLike) => isTrustedIpcSender(event, windowIds, trusted),
-        },
+        server: ipcServer,
         runtime: library,
         workspace,
         broadcast,
@@ -716,23 +643,16 @@ function main(): void {
         },
       });
       registerAudioHandlers({
-        server: {
-          ipc: ipcMain,
-          logger,
-          isTrusted: (event: IpcEventLike) => isTrustedIpcSender(event, windowIds, trusted),
-        },
+        server: ipcServer,
         controller: audioController,
         takes: recordingTakes,
         appIcon: createAppIconProvider((exePath) => app.getFileIcon(exePath, { size: 'normal' })),
         pickAudioFile: async (extensions) => {
-          const options = {
+          const result = await dialogs.showOpenDialog({
             defaultPath: app.getPath('downloads'),
-            properties: ['openFile' as const],
+            properties: ['openFile'],
             filters: [{ name: 'Audio', extensions: extensions.map((e) => e.replace('.', '')) }],
-          };
-          const result = mainWindow
-            ? await dialog.showOpenDialog(mainWindow, options)
-            : await dialog.showOpenDialog(options);
+          });
           return result.canceled ? null : (result.filePaths[0] ?? null);
         },
       });
@@ -740,147 +660,57 @@ function main(): void {
         audioController.dispose();
       });
 
-      // Summaries: one runtime owns the providers and the single local llama-server. The fake
-      // native build answers every engine with a double, so e2e needs no model or CLI.
-      const summaryRuntime = new SummaryRuntime({
-        settings: library.settings,
+      const summaries = composeSummaries({
+        library,
         hardware,
         models: summaryModels,
+        cli: summaryCli,
+        settingsModels: settings.models,
         llamaRoot: path.join(paths.appData, 'LlamaRuntime'),
-        cli: summaryCli,
-        ...(fakeNative
-          ? {
-              providerOverride: (kind) =>
-                new FakeSummaryProvider(
-                  isCliProvider(kind) ? CLI_ENGINES[kind].providerId : 'local',
-                  fakeSummaryOptionsFromEnv(process.env),
-                ),
-            }
-          : { processJob: loadProcessJob() }),
-      });
-      llamaGpuOffload = () => summaryRuntime.host.gpuOffload;
-      const summaryPatchQueue = new PatchQueue();
-      const summaryService = new ObservedSummaryService(
-        {
-          queue: summaryPatchQueue,
-          meetings: library.meetings,
-          settings: library.settings,
-          nextSessionDates: library.settings,
-          resolver: summaryRuntime.resolver,
-          clock: new SystemClock(),
-          notifyMeetingChanged: (id) => {
-            workspace.notifyMeetingChanged(id);
-          },
-          busy,
-          placeholderFormats: [mainCatalogs.en, mainCatalogs.es].flatMap((catalog) => {
-            const format = catalog.MeetingTitleFormat;
-            return format === undefined ? [] : [format];
-          }),
+        fakeNative,
+        env: process.env,
+        loadProcessJob,
+        publishGpuOffload: (read) => {
+          llamaGpuOffload = read;
         },
-        () => {
-          broadcast(libraryChanged, { reason: 'meeting' });
-        },
-      );
-      // A meeting being summarized cannot be re-transcribed, deleted or moved from under the run.
-      busy.register({ isBusy: (id) => summaryService.isGenerating(id) });
-      const summaries = new SummariesController({
-        service: summaryService,
-        tab: new SummaryTabService({
-          queue: summaryPatchQueue,
-          meetings: library.meetings,
-          translate: (key, ...args) => locale.t(key, ...args),
-          getSelectedMeetingId: () => workspace.state.selectedMeetingId,
-          selectMeeting: (id) => {
-            workspace.selectMeeting(id);
-          },
-          nextSessionDates: library.settings,
-        }),
-        resolver: summaryRuntime.resolver,
-        models: settings.models,
-        hardware,
-        cli: summaryCli,
-        settings: library.settings,
-        runtime: summaryRuntime,
         activeGpuOffload: () => llamaGpuOffload(),
+        busy,
+        workspace,
         broadcast,
         logger: logger.child('summaries'),
-        t: (key, ...args) => locale.t(key, ...args),
-        // Action item deadlines: the `.ics` export goes where the user picks, Documents by default.
-        pickIcsExportPath: async (defaultFileName) => {
-          const options = {
-            defaultPath: path.join(app.getPath('documents'), defaultFileName),
-            filters: [{ name: 'iCalendar', extensions: ['ics'] }],
-          };
-          const result = mainWindow
-            ? await dialog.showSaveDialog(mainWindow, options)
-            : await dialog.showSaveDialog(options);
-          return result.canceled || !result.filePath ? null : result.filePath;
-        },
-        writeTextFile: (file, text) => writeFileAtomic(file, text),
-      });
-      registerSummariesHandlers({
-        server: {
-          ipc: ipcMain,
-          logger,
-          isTrusted: (event: IpcEventLike) => isTrustedIpcSender(event, windowIds, trusted),
-        },
-        controller: summaries,
+        translate: (key, ...args) => locale.t(key, ...args),
+        server: ipcServer,
+        dialogs,
+        documentsDirectory: () => app.getPath('documents'),
         writeClipboard: (text) => {
           return clipboard.writeText(text);
         },
+        stopOnExit,
+        onWillQuit: (run) => {
+          app.on('will-quit', run);
+        },
       });
-      // No llama-server may outlive the app: kill it now, then let it end cleanly.
-      stopOnExit(() => {
-        void summaries.dispose();
-      });
-      app.on('will-quit', () => {
-        void summaries.dispose();
-      });
+      const summaryRuntime = summaries.runtime;
 
-      // Chat: one in-memory conversation; the engine is whichever one the summaries resolver picks.
-      const chatReader = new LibraryChatReader({
-        meetings: library.meetings,
-        folders: library.folders,
-      });
       // The live ask is built with the recording below; until then Live has no digest to add.
       let liveChatContext: () => LiveChatContext = () => ({
         digest: null,
         title: null,
         notes: null,
       });
-      // Attached files: paths stay here; the page holds ids. Image copies for one send go to temp.
-      const chatAttachments = new ChatAttachmentStore({
-        translate: (key, ...args) => locale.t(key, ...args),
+      const { service: chatService } = composeChat({
+        library,
+        resolver: summaryRuntime.resolver,
         logger: logger.child('chat'),
-        tempRoot: app.getPath('temp'),
-        // PDF, Word and PowerPoint are parsed in a worker thread, never on this one.
-        extractor: createThreadedDocumentExtractor(
-          () => new Worker(path.join(__dirname, 'workers', 'extract.js')),
-        ),
-      });
-      const chatPromptLog = fakeNative ? process.env.VOZELLA_FAKE_CHAT_PROMPT_LOG : undefined;
-      const chatProviders = chatPromptLog
-        ? // E2E double: each prompt and the engine that answers it go to a file the spec reads.
-          recordingProviderSource(chatProviderSource(summaryRuntime.resolver), (prompt, engine) => {
-            fs.appendFileSync(
-              chatPromptLog,
-              `${prompt}\n<<<ENGINE ${engine ?? 'local'}>>>\n<<<END>>>\n`,
-            );
-          })
-        : chatProviderSource(summaryRuntime.resolver);
-      const chatService = new ChatService({
-        meetings: chatReader,
-        providers: chatProviders,
-        attachments: chatAttachments,
-        clock: new SystemClock(),
         translate: (key, ...args) => locale.t(key, ...args),
-        newId: () => randomUUID(),
-        logger: logger.child('chat'),
         uiLanguage: () => locale.tag,
-      });
-      const chat = new ChatController({
-        service: chatService,
-        findMeetingId: (id) => chatReader.findMeetingId(id),
+        liveContext: () => liveChatContext(),
+        broadcast,
+        server: ipcServer,
+        dialogs,
+        tempDirectory: () => app.getPath('temp'),
+        documentsDirectory: () => app.getPath('documents'),
+        workersDirectory: path.join(__dirname, 'workers'),
         writeClipboard: (text) => {
           return clipboard.writeText(text);
         },
@@ -896,158 +726,30 @@ function main(): void {
             );
           return Promise.resolve();
         },
-        broadcast,
-        translate: (key, ...args) => locale.t(key, ...args),
-        logger: logger.child('chat'),
-        liveContext: () => liveChatContext(),
-        attachments: chatAttachments,
-        pickAttachments: async () => {
-          const options = {
-            properties: ['openFile' as const, 'multiSelections' as const],
-            filters: [
-              { name: locale.t('Ui_ChatAttachFilter'), extensions: [...ATTACHMENT_EXTENSIONS] },
-            ],
-          };
-          const result = mainWindow
-            ? await dialog.showOpenDialog(mainWindow, options)
-            : await dialog.showOpenDialog(options);
-          return result.canceled ? [] : result.filePaths;
-        },
-      });
-      registerChatHandlers({
-        server: {
-          ipc: ipcMain,
-          logger,
-          isTrusted: (event: IpcEventLike) => isTrustedIpcSender(event, windowIds, trusted),
-        },
-        controller: chat,
+        promptLogFile: fakeNative ? process.env.VOZELLA_FAKE_CHAT_PROMPT_LOG : undefined,
       });
 
-      // Saved prompts (Phase 5): chat-prompts.json in app data, export and import through dialogs.
-      const promptsFilter = { name: locale.t('Ui_ChatPromptsFileFilter'), extensions: ['json'] };
-      const chatPrompts = new ChatPromptsController({
-        store: new JsonChatPromptStore({
-          filePath: library.paths.chatPromptsFilePath,
-          newId: () => randomUUID(),
-          logger: logger.child('chat'),
-        }),
-        broadcast,
-        logger: logger.child('chat'),
-        pickExportPath: async () => {
-          const options = {
-            defaultPath: path.join(
-              app.getPath('documents'),
-              `${locale.t('Ui_ChatPromptsFileName')}.vozella-prompts.json`,
-            ),
-            filters: [promptsFilter],
-          };
-          const result = mainWindow
-            ? await dialog.showSaveDialog(mainWindow, options)
-            : await dialog.showSaveDialog(options);
-          return result.canceled || !result.filePath ? null : result.filePath;
-        },
-        pickImportPath: async () => {
-          const options = { properties: ['openFile' as const], filters: [promptsFilter] };
-          const result = mainWindow
-            ? await dialog.showOpenDialog(mainWindow, options)
-            : await dialog.showOpenDialog(options);
-          return result.canceled ? null : (result.filePaths[0] ?? null);
-        },
-        readText: async (file) => {
-          // A prompts file is small; anything over 2 MB is refused before it is read.
-          const stat = await fs.promises.stat(file);
-          if (!stat.isFile() || stat.size > 2_000_000) throw new Error('not a prompts file');
-          return fs.promises.readFile(file, 'utf8');
-        },
-        writeText: (file, text) => writeFileAtomic(file, text),
-      });
-      registerChatPromptHandlers({
-        server: {
-          ipc: ipcMain,
-          logger,
-          isTrusted: (event: IpcEventLike) => isTrustedIpcSender(event, windowIds, trusted),
-        },
-        controller: chatPrompts,
-      });
-
-      // Transcription: the engine runs in its own process; the controller serves the pages and
-      // gives the recording module the live pass and the offline pass.
-      const transcription = new TranscriptionRuntime({
-        transcriptionModelsDirectory: library.paths.transcriptionModelsDirectory,
-        nemoSpeechDirectory: library.paths.nemoSpeechDirectory,
-        engine: fakeNative
-          ? new FakeSpeechEngine(
-              Math.max(0, Number(process.env.VOZELLA_FAKE_ASR_OFFLINE_PUSH_MS) || 0),
-              fakeAsrPhrasesFromEnv(process.env),
-            )
-          : asr,
-        hardware: () => hardware.detect(),
-        logger: logger.child('transcription'),
-        ...(fakeNative
-          ? {
-              stores: (() => {
-                const options = fakeEngineOptionsFromEnv(process.env);
-                return {
-                  models: new SteppedModelStore(options),
-                  runtimes: new SteppedRuntimeStore(options),
-                };
-              })(),
-            }
-          : {}),
-      });
-      const transcriptionController = new TranscriptionController({
-        runtime: transcription,
-        settings: library.settings,
-        meetings: library.meetings,
+      const transcriptionController = composeTranscription({
+        library,
+        asr,
+        fakeNative,
+        env: process.env,
+        hardware,
+        audio,
         busy,
+        workspace,
         broadcast,
         logger: logger.child('transcription'),
-        t: (key, ...args) => locale.t(key, ...args),
-        onRecordingFrames: (listener) =>
-          audio.onPush((event) => {
-            if (event.type === 'recording-frame') listener(event.pcm, event.levels);
-          }),
-        // Same rule as the session view: a zero-byte or unreadable recording is no audio (B20).
+        translate: (key, ...args) => locale.t(key, ...args),
         fileExists: (file) => hasAudioBytes(file),
-        queue: summaryPatchQueue,
-        isCaptureActive: () => workspace.state.isCaptureActive,
-        onMeetingChanged: (id) => {
-          workspace.notifyMeetingChanged(id);
+        queue: summaries.patchQueue,
+        summarize: (request, cancel) => summaries.controller.summarizeForPipeline(request, cancel),
+        formatFailure: (error) => summaries.controller.formatError(error),
+        reveal: (file) => {
+          shell.showItemInFolder(file);
         },
-        // Re-transcription also regenerates the summary (the recording module reuses the same hook).
-        summarize: (request, cancel) => summaries.summarizeForPipeline(request, cancel),
-        templateInstructions: (record) =>
-          Promise.resolve(resolveTemplateInstructions(record.noteTemplateId)),
-        formatFailure: (error) => summaries.formatError(error),
-      });
-      registerTranscriptionHandlers({
-        server: {
-          ipc: ipcMain,
-          logger,
-          isTrusted: (event: IpcEventLike) => isTrustedIpcSender(event, windowIds, trusted),
-        },
-        controller: transcriptionController,
-      });
-      registerSessionHandlers({
-        server: {
-          ipc: ipcMain,
-          logger,
-          isTrusted: (event: IpcEventLike) => isTrustedIpcSender(event, windowIds, trusted),
-        },
-        meetings: library.meetings,
-        workspace,
-        runnerState: () => transcriptionController.retranscription,
-        // A zero-byte or unreadable recording counts as no audio (B20).
-        fileExists: (file) => hasAudioBytes(file),
-        // Explorer selects the file; Finder reveals it.
-        reveal: {
-          reveal: (file) => {
-            shell.showItemInFolder(file);
-          },
-        },
-      });
-      stopOnExit(() => {
-        transcriptionController.dispose();
+        server: ipcServer,
+        stopOnExit,
       });
 
       // Recording: the service owns a take from Record to the saved summary.
@@ -1056,7 +758,7 @@ function main(): void {
         resolver: summaryRuntime.resolver,
         recording: () => recording.liveAskContext,
         broadcast,
-        formatFailure: (error) => summaries.formatError(error),
+        formatFailure: (error) => summaries.controller.formatError(error),
         nowMs: () => Date.now(),
         // The rolling digest never loads the local model; it runs only when it is already up, and
         // skips its update while a local chat answer streams, so the two never share the model.
@@ -1070,7 +772,7 @@ function main(): void {
         controller: audioController,
         takes: recordingTakes,
         transcription: transcriptionController,
-        summaryService,
+        summaryService: summaries.service,
         resolver: summaryRuntime.resolver,
         summaryModels,
         cli: summaryCli,
@@ -1084,7 +786,7 @@ function main(): void {
           MeetingTitleFormat: mainCatalogs[tag].MeetingTitleFormat ?? '',
           MeetingTitleDateFormat: mainCatalogs[tag].MeetingTitleDateFormat ?? '',
         }),
-        formatFailure: (error) => summaries.formatError(error),
+        formatFailure: (error) => summaries.controller.formatError(error),
         wavDurationSeconds: readWavDurationSeconds,
         // yt-dlp is downloaded on first use beside the other runtimes; downloads go to temp.
         youtube: createYouTubeAudio({
@@ -1119,11 +821,7 @@ function main(): void {
       settings.exitGates.register(() => closeGuard.mayClose());
       mayExit = () => settings.exitGates.mayExit();
       registerRecordingHandlers({
-        server: {
-          ipc: ipcMain,
-          logger,
-          isTrusted: (event: IpcEventLike) => isTrustedIpcSender(event, windowIds, trusted),
-        },
+        server: ipcServer,
         service: recording,
         closeDialogs,
         liveAsk,
@@ -1142,30 +840,17 @@ function main(): void {
         getMainWindow: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null),
         dismissMeetingPopup: () => detection?.dismiss(),
       });
-      registerPillHandlers(
-        {
-          ipc: ipcMain,
-          logger,
-          isTrusted: (event: IpcEventLike) => isTrustedIpcSender(event, windowIds, trusted),
+      composePillHandlers({
+        server: ipcServer,
+        getPill: () => pill,
+        recording,
+        openApp: () => {
+          activateMainWindow(mainWindow);
         },
-        {
-          togglePause: async () => {
-            if (recording.getState().isPaused) await recording.resume();
-            else await recording.pause();
-          },
-          stop: async () => {
-            await recording.stop();
-          },
-          openApp: () => {
-            activateMainWindow(mainWindow);
-          },
-          setExpanded: (expanded) => pill?.setExpanded(expanded) ?? NO_PILL_STATE,
-          state: () => pill?.state ?? NO_PILL_STATE,
-          ready: () => {
-            liveAsk.republish();
-          },
+        republishLiveAsk: () => {
+          liveAsk.republish();
         },
-      );
+      });
 
       const iconInput = {
         isPackaged: app.isPackaged,
@@ -1288,22 +973,15 @@ function main(): void {
 
       // Meeting call detection: polls the open windows and shows the floating popup. Started
       // once the main window exists, stopped on quit.
-      registerMeetingPromptHandlers(
-        {
-          ipc: ipcMain,
-          logger,
-          isTrusted: (event: IpcEventLike) => isTrustedIpcSender(event, windowIds, trusted),
+      registerMeetingPromptHandlers(ipcServer, {
+        startTakingNotes: () => detection?.startTakingNotes(),
+        dismiss: () => detection?.dismiss(),
+        neverAgain: async () => {
+          await detection?.neverAgain();
         },
-        {
-          startTakingNotes: () => detection?.startTakingNotes(),
-          dismiss: () => detection?.dismiss(),
-          neverAgain: async () => {
-            await detection?.neverAgain();
-          },
-          hover: (inside) => detection?.hover(inside),
-          isShown: () => detection?.isShown ?? false,
-        },
-      );
+        hover: (inside) => detection?.hover(inside),
+        isShown: () => detection?.isShown ?? false,
+      });
       // Detection is a convenience: a missing addon is logged and must not stop the app.
       const watchers = await startup.run('watchers', () => startMeetingDetection(), {
         silent: true,
@@ -1326,20 +1004,6 @@ function main(): void {
       );
     });
 }
-
-/** What `pill.ready` answers in the moment between the pill closing and the app quitting. */
-const NO_PILL_STATE: PillStateDto = {
-  visible: false,
-  expanded: false,
-  edge: 'Right',
-  vertical: true,
-  animationsEnabled: false,
-  opacity: 1,
-  contentOpacity: 1,
-  window: { width: 80, height: 256 },
-  capsule: { x: 8, y: 8, width: 64, height: 240 },
-  panel: null,
-};
 
 function serveRendererFromAppScheme(
   resolveAudio: (meetingId: string) => Promise<string | null>,
