@@ -3,7 +3,7 @@ import type { SourcePickerStateDto } from '@vozella/contracts';
 import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
-import { Providers } from '../library/library-test-kit';
+import { Providers } from '../../app/test-providers';
 import { SourcesPanel } from './SourcesPanel';
 
 type Listener = (payload: unknown) => void;

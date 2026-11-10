@@ -2,7 +2,7 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Providers } from '../library/library-test-kit';
+import { Providers } from '../../app/test-providers';
 import { CallPromptBar } from './CallPromptBar';
 
 type Listener = (payload: unknown) => void;

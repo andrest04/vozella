@@ -1,28 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  awaitsNextSession,
-  exportableIndexes,
-  formatDueDate,
-  type ActionItemDto,
-} from './summary-tab-model';
-
-const NOW = new Date(2026, 10, 6).getTime();
-
-describe('formatDueDate', () => {
-  it('shows a short local weekday, day and month without the year in the current year', () => {
-    expect(formatDueDate('2026-11-13', 'en', NOW)).toBe('Fri 13 Nov');
-    expect(formatDueDate('2026-11-13', 'es', NOW)).toBe('vie 13 nov');
-  });
-
-  it('adds the year when the date is in another year', () => {
-    expect(formatDueDate('2027-01-08', 'en', NOW)).toBe('Fri 8 Jan 2027');
-  });
-
-  it('gives nothing for a value that is not a calendar day', () => {
-    expect(formatDueDate('2026-02-30', 'en', NOW)).toBe('');
-    expect(formatDueDate('soon', 'en', NOW)).toBe('');
-  });
-});
+import { awaitsNextSession, exportableIndexes, type ActionItemDto } from './summary-tab-model';
 
 describe('action item deadline helpers', () => {
   const items: ActionItemDto[] = [

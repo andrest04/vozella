@@ -1,7 +1,7 @@
 import { Pause, Play } from 'lucide-react';
 import { useT } from '../../i18n/I18nProvider';
-import { IconButton } from '../../ui';
-import { formatClock, type AudioPlayer } from './use-audio-player';
+import { IconButton, formatClock } from '../../ui';
+import type { AudioPlayer } from './use-audio-player';
 
 /**
  * Play, scrubber and clock for the saved audio. The one <audio> element lives here, hidden

@@ -2,9 +2,9 @@
 import { act, cleanup, render, renderHook, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
-import { Providers } from '../library/library-test-kit';
+import { Providers } from '../../app/test-providers';
 import { ProviderGateDialogs, ProviderUnavailableNotice } from './ProviderGateDialogs';
-import { installSummariesApi } from '../summaries/summaries-test-kit';
+import { installProviderApi } from './ai-provider-test-kit';
 import { decideSurface, useProviderGate, type SetupRequest } from './use-provider-gate';
 
 afterEach(() => {
@@ -35,8 +35,8 @@ function Harness({ onRun }: { onRun: (gate: ReturnType<typeof useProviderGate>) 
   );
 }
 
-function mount(handlers: Parameters<typeof installSummariesApi>[0] = {}) {
-  const api = installSummariesApi({
+function mount(handlers: Parameters<typeof installProviderApi>[0] = {}) {
+  const api = installProviderApi({
     'summaries.hardware': () => ({
       hardware: { totalRamGb: 16, gpuName: null, gpuVramGb: null },
       rows: [],
@@ -142,7 +142,7 @@ describe('useProviderGate', () => {
   });
 
   it('leaving the page while a dialog is open releases the caller', async () => {
-    installSummariesApi();
+    installProviderApi();
     const { result, unmount } = renderHook(() => useProviderGate(), { wrapper: Providers });
     let pending: Promise<string> | undefined;
     act(() => {

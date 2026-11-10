@@ -3,9 +3,9 @@ import type { ModelRowDto } from '@vozella/contracts';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Providers } from '../library/library-test-kit';
+import { Providers } from '../../app/test-providers';
 import { SetupWizardDialog, type SetupWizardDialogProps } from './SetupWizardDialog';
-import { installSummariesApi } from '../summaries/summaries-test-kit';
+import { installProviderApi } from './ai-provider-test-kit';
 
 afterEach(() => {
   cleanup();
@@ -53,10 +53,10 @@ const hardwareAnswer = (rows: readonly ModelRowDto[] = ROWS, hardware = NO_GPU) 
 
 function mount(
   props: Partial<SetupWizardDialogProps> = {},
-  handlers: Parameters<typeof installSummariesApi>[0] = {},
+  handlers: Parameters<typeof installProviderApi>[0] = {},
   locale: 'en' | 'es' = 'en',
 ) {
-  const api = installSummariesApi({
+  const api = installProviderApi({
     'summaries.hardware': () => hardwareAnswer(),
     'summaries.cancelLocalModel': () => ({ cancelled: true }),
     ...handlers,
@@ -70,7 +70,7 @@ function mount(
   return { api, onFinished, view };
 }
 
-const called = (api: ReturnType<typeof installSummariesApi>, name: string) =>
+const called = (api: ReturnType<typeof installProviderApi>, name: string) =>
   api.calls.filter((call) => call.name === name);
 
 describe('SetupWizardDialog: chooser', () => {
@@ -159,7 +159,7 @@ describe('SetupWizardDialog: local-only mode (B33)', () => {
 });
 
 describe('SetupWizardDialog: model list', () => {
-  const open = async (handlers: Parameters<typeof installSummariesApi>[0] = {}) => {
+  const open = async (handlers: Parameters<typeof installProviderApi>[0] = {}) => {
     const mounted = mount({ mode: 'local-only' }, handlers);
     await screen.findByText('Choose a model to generate summaries');
     return mounted;
@@ -236,7 +236,7 @@ describe('SetupWizardDialog: model list', () => {
 });
 
 describe('SetupWizardDialog: downloading', () => {
-  const start = async (handlers: Parameters<typeof installSummariesApi>[0] = {}) => {
+  const start = async (handlers: Parameters<typeof installProviderApi>[0] = {}) => {
     const mounted = mount({ mode: 'local-only' }, handlers);
     await screen.findByText('Choose a model to generate summaries');
     return mounted;

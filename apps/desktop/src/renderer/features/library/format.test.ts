@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { describeSkipped, formatMeetingDate, formatMeetingSpan } from './format';
+import { describeSkipped, formatDueDate, formatMeetingDate, formatMeetingSpan } from './format';
+
+const DUE_NOW = new Date(2026, 10, 6).getTime();
 
 describe('describeSkipped', () => {
   it('names the file and the reason, from either kind of path', () => {
@@ -64,5 +66,21 @@ describe('formatMeetingSpan', () => {
   it('is capitalized in Spanish and null for bad text', () => {
     expect(formatMeetingSpan(local('10:30'), null, now, 'es')?.day).toMatch(/^Martes/);
     expect(formatMeetingSpan('not a date', null, now, 'en')).toBeNull();
+  });
+});
+
+describe('formatDueDate', () => {
+  it('shows a short local weekday, day and month without the year in the current year', () => {
+    expect(formatDueDate('2026-11-13', 'en', DUE_NOW)).toBe('Fri 13 Nov');
+    expect(formatDueDate('2026-11-13', 'es', DUE_NOW)).toBe('vie 13 nov');
+  });
+
+  it('adds the year when the date is in another year', () => {
+    expect(formatDueDate('2027-01-08', 'en', DUE_NOW)).toBe('Fri 8 Jan 2027');
+  });
+
+  it('gives nothing for a value that is not a calendar day', () => {
+    expect(formatDueDate('2026-02-30', 'en', DUE_NOW)).toBe('');
+    expect(formatDueDate('soon', 'en', DUE_NOW)).toBe('');
   });
 });

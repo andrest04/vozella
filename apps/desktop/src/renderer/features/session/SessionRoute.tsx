@@ -9,7 +9,7 @@ import { useProviderGate } from '../ai-provider/use-provider-gate';
 import { RetranscribeButton, RetranscribeStatus } from '../transcription/RetranscribeControl';
 import { useRetranscription } from '../transcription/use-retranscription';
 import { CopyNotice } from './CopyNotice';
-import { RenameDialog } from './RenameDialog';
+import { RenameDialog } from '../library/RenameDialog';
 import { BackLink, SessionHeader } from './SessionHeader';
 import { TranscriptTab, type CopySource } from './TranscriptTab';
 import { useSession } from './use-session';

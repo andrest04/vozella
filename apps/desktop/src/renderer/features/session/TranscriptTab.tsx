@@ -7,7 +7,7 @@ import {
   toLines,
   type TranscriptLine,
 } from './transcript-lines';
-import { completeTranscriptReveal, usePendingTranscriptReveal } from './transcript-reveal';
+import { completeTranscriptReveal, usePendingTranscriptReveal } from '../chat/transcript-reveal';
 import { AudioBar } from './AudioBar';
 import { audioUrl, useAudioPlayer } from './use-audio-player';
 import { useTranscript } from './use-transcript';

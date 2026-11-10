@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { Profiler, type ProfilerOnRenderCallback } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Providers } from '../library/library-test-kit';
+import { Providers } from '../../app/test-providers';
 import { LiveCanvas, type LiveCanvasProps } from './LiveCanvas';
 
 afterEach(() => {

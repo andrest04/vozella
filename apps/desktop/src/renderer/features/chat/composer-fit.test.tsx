@@ -2,7 +2,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Providers } from '../library/library-test-kit';
+import { Providers } from '../../app/test-providers';
 import { Composer } from './Composer';
 import { composerFit } from './composer-fit';
 

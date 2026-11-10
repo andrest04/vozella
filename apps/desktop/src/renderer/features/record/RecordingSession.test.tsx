@@ -3,7 +3,7 @@ import type { RecordingStateDto } from '@vozella/contracts';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Providers } from '../library/library-test-kit';
+import { Providers } from '../../app/test-providers';
 import { RecordingSession, type RecordingSessionProps } from './RecordingSession';
 
 type Listener = (payload: unknown) => void;
