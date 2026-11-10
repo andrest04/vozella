@@ -351,5 +351,20 @@
   "Ui_ActionItemsExportEmpty": "Ninguno de estos elementos tiene fecha todavía.",
   "Ui_ActionItemsExportFailed": "No se pudo guardar el archivo de calendario: {0}",
   "Ui_IcsOwnerLabel": "Responsable",
-  "Ui_IcsMeetingLabel": "Reunión"
+  "Ui_IcsMeetingLabel": "Reunión",
+  "Ui_ApiOpenAiName": "OpenAI",
+  "Ui_ApiAnthropicName": "Anthropic",
+  "Ui_ApiGeminiName": "Google Gemini",
+  "Ui_ApiOpenAiCompatibleName": "Compatible con OpenAI",
+  "Ui_ApiKeyMissing": "{0} necesita tu clave de API. Agrégala en Configuración.",
+  "Ui_ApiKeyInvalid": "{0} no aceptó tu clave de API. Revísala en Configuración.",
+  "Ui_ApiQuotaExceeded": "Tu cuenta de {0} se quedó sin crédito o cuota. Revisa tu plan con {0}.",
+  "Ui_ApiRateLimited": "{0} está recibiendo demasiadas solicitudes ahora. Vuelve a intentarlo en un minuto.",
+  "Ui_ApiNetwork": "No se pudo conectar con {0}. Revisa tu conexión a internet o la dirección en Configuración.",
+  "Ui_ApiTimedOut": "{0} tardó demasiado en responder. Vuelve a intentarlo.",
+  "Ui_ApiEmptyOutput": "{0} devolvió una respuesta vacía. Vuelve a intentarlo.",
+  "Ui_ApiModelNotFound": "{0} no reconoce el modelo elegido. Elige otro modelo en Configuración.",
+  "Ui_ApiUnknown": "{0} no pudo terminar.",
+  "Ui_ApiSetupIncomplete": "{0} necesita una dirección y un modelo. Termina de configurarlo en Configuración.",
+  "Ui_ChatAttachImagesApi": "Este motor todavía no lee imágenes. Esta respuesta no las tuvo en cuenta."
 }

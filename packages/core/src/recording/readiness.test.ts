@@ -71,8 +71,10 @@ describe('parseSummaryProvider (B-20, one rule)', () => {
     expect(parseSummaryProvider('ClaudeCode')).toBe('ClaudeCode');
     expect(parseSummaryProvider('Codex')).toBe('Codex');
     expect(parseSummaryProvider('Xai')).toBe('Xai');
+    expect(parseSummaryProvider('Gemini')).toBe('Gemini');
+    expect(parseSummaryProvider('OpenAiCompatible')).toBe('OpenAiCompatible');
   });
-  it.each([null, undefined, '', '   ', 'local', 'CODEX', '1', '0', 'Gemini'])(
+  it.each([null, undefined, '', '   ', 'local', 'CODEX', '1', '0', 'gemini', 'Mistral'])(
     'treats %j as not chosen',
     (value) => {
       expect(parseSummaryProvider(value)).toBeNull();
@@ -144,6 +146,26 @@ describe('evaluateSetup (resolver)', () => {
     expect(
       (await evaluateSetup(portsFor({ settings: codex, cli: ['Codex'] }))).readiness.canRecord,
     ).toBe(true);
+  });
+  it('an API key engine is ready once its key (or endpoint and model) is set, never via PATH', async () => {
+    const openAi = { selectedSummaryProvider: 'OpenAi' };
+    const noKey = await evaluateSetup(portsFor({ settings: openAi, cli: ['ClaudeCode'] }));
+    expect(noKey.facts.apiSummarySelected).toBe(true);
+    expect(noKey.readiness.canRecord).toBe(false);
+    const keyed = await evaluateSetup({
+      ...portsFor({ settings: openAi }),
+      apiKeySet: (kind) => Promise.resolve(kind === 'OpenAi'),
+    });
+    expect(keyed.readiness.canRecord).toBe(true);
+    const compatible = {
+      selectedSummaryProvider: 'OpenAiCompatible',
+      openAiCompatibleBaseUrl: 'http://localhost:11434/v1',
+    };
+    expect((await evaluateSetup(portsFor({ settings: compatible }))).readiness.canRecord).toBe(
+      false,
+    );
+    const withModel = { ...compatible, selectedOpenAiCompatibleModelId: 'llama3.1' };
+    expect((await evaluateSetup(portsFor({ settings: withModel }))).readiness.canRecord).toBe(true);
   });
   it('Xai is never ready and flags the removal, whatever else is installed', async () => {
     const { facts, readiness } = await evaluateSetup(

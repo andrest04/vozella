@@ -1,7 +1,10 @@
 import {
+  ApiProviderError,
   SummaryProviderFactory,
   SummaryProviderResolver,
   usesGpuOffload,
+  type ApiKeyStore,
+  type ApiProviderBuilder,
   type CancelSignal,
   type CliPathProbe,
   type CliProcessRunner,
@@ -20,6 +23,14 @@ import { createProcessGuard, type ProcessJobPort } from '../llama/process-guard'
 import { PathCliProbe } from '../settings/path-cli-probe';
 import { NodeCliProcessRunner } from './cli-process-runner';
 
+/** No key is saved anywhere until the key store is wired. */
+const NO_API_KEYS: Pick<ApiKeyStore, 'has'> = { has: () => Promise.resolve(false) };
+
+/** Placeholder until the HTTP providers exist. */
+const apiProvidersNotWired: ApiProviderBuilder = (engine) => {
+  throw new ApiProviderError(engine.displayName, 'Unknown', 'API providers are not wired yet.');
+};
+
 export interface SummaryRuntimeDeps {
   /** The single settings reader and writer (B2, B19). */
   readonly settings: SettingsStore;
@@ -34,6 +45,10 @@ export interface SummaryRuntimeDeps {
   readonly cli?: CliPathProbe;
   /** The fake native build: a double for every engine. Null falls through to the real one. */
   readonly providerOverride?: (kind: SummaryProviderKind) => SummaryProvider | null;
+  /** Saved API keys (BYOK). Until wired, no API engine has a key. */
+  readonly apiKeys?: Pick<ApiKeyStore, 'has'>;
+  /** Builds the HTTP providers of the API key engines. Until wired, building one fails. */
+  readonly apiProviderBuilder?: ApiProviderBuilder;
   /** Replacements for tests. */
   readonly createServer?: () => LocalLlmServer;
   readonly resolveRuntime?: (cancel: CancelSignal) => Promise<LocalLlmRuntime>;
@@ -67,12 +82,14 @@ export class SummaryRuntime {
       ...(deps.providerOverride ? { override: deps.providerOverride } : {}),
       createLocal: (modelPath) =>
         new LocalLlmSummaryProvider({ host: this.host, modelPath: () => modelPath }),
+      apiProviderBuilder: deps.apiProviderBuilder ?? apiProvidersNotWired,
     });
     this.resolver = new SummaryProviderResolver({
       settings: deps.settings,
       cli,
       models: deps.models,
       factory: this.factory,
+      apiKeys: deps.apiKeys ?? NO_API_KEYS,
     });
   }
 

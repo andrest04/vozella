@@ -4,8 +4,16 @@ import { formatOffsetDate, type OffsetDate } from '../library/offset-date';
 import type { SummaryEnhancementContext } from './prompt-builders';
 import { splitSummaryResponse } from './summary-splitter';
 
-/** Spec 2.1. xAI is gone (S07), so only these three engines exist. */
-export const PROVIDER_IDS = ['local', 'claude-code', 'codex'] as const;
+/** Spec 2.1. xAI is gone (S07). Local, the two CLI engines, then the four API key engines. */
+export const PROVIDER_IDS = [
+  'local',
+  'claude-code',
+  'codex',
+  'openai',
+  'anthropic',
+  'gemini',
+  'openai-compatible',
+] as const;
 export type ProviderId = (typeof PROVIDER_IDS)[number];
 
 export interface SummarizeRequest {

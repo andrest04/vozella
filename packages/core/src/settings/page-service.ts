@@ -11,7 +11,9 @@ import {
   type SettingsStore,
   type SummaryProviderKind,
 } from '../library';
-import { isCliProvider } from '../library/settings';
+import type { ApiKeyStore } from '../api-keys/api-key-store';
+import { API_PROVIDER_KINDS, isCliProvider, type ApiProviderKind } from '../library/settings';
+import { API_ENGINES } from './api-providers';
 import { cliExecutableName } from './cli-providers';
 import {
   CLAUDE_EFFORTS,
@@ -38,6 +40,17 @@ export interface ProviderOptions {
   readonly effortOptions: readonly string[];
 }
 
+/** One API key engine on the page. The key itself never leaves the main process. */
+export interface ApiEngineOptions {
+  readonly keySet: boolean;
+  /** The saved model, else the default; empty when the engine has none. */
+  readonly model: string;
+  /** Suggestions, plus the saved model when it is not on the list (B13). */
+  readonly modelOptions: readonly string[];
+  /** The endpoint of the compatible engine; null for the others or when none is saved. */
+  readonly baseUrl: string | null;
+}
+
 /** Everything the Settings page needs from the local phase of its load. Nothing here touches the network. */
 export interface SettingsPageSnapshot {
   readonly settings: AppSettings;
@@ -45,6 +58,7 @@ export interface SettingsPageSnapshot {
   readonly provider: SummaryProviderKind;
   readonly claude: ProviderOptions;
   readonly codex: ProviderOptions;
+  readonly api: Readonly<Record<ApiProviderKind, ApiEngineOptions>>;
   /** For the selected CLI provider only; null for Local and a removed provider. */
   readonly cliStatus: CliStatus | null;
   readonly transcriptionLanguage: string;
@@ -71,6 +85,8 @@ export interface SettingsPageDeps {
    * ratings and the recommendation follow it, so a CPU-only runtime does not count the VRAM.
    */
   readonly activeGpuOffload?: () => boolean | undefined;
+  /** Whether a key is saved per API engine. Without it, no key reads as set. */
+  readonly apiKeys?: Pick<ApiKeyStore, 'has'>;
 }
 
 /** Builds the page. Reads, never writes: opening Settings changes no setting. */
@@ -88,12 +104,13 @@ export class SettingsPageService {
       this.deps.hardware.detect().catch(() => null),
     ]);
     const provider = resolveSummaryProviderKind(settings);
-    const [models, cliStatus] = await Promise.all([
+    const [models, cliStatus, api] = await Promise.all([
       this.deps.models.rows(
         hardware,
         hardware ? { gpuOffload: gpuOffloadFor(hardware, this.deps.activeGpuOffload?.()) } : {},
       ),
       this.detectCli(provider),
+      this.apiOptions(settings),
     ]);
     const claudeModel = resolveClaudeModelId(settings);
     const claudeEffort = resolveClaudeEffort(settings);
@@ -115,6 +132,7 @@ export class SettingsPageService {
         modelOptions: optionsIncluding(CODEX_MODELS, codexModel),
         effortOptions: optionsIncluding(CODEX_EFFORTS, codexEffort),
       },
+      api,
       cliStatus,
       transcriptionLanguage: resolveMeetingLanguageCode(settings.transcriptionLanguage),
       summaryLanguage: resolveSummaryLanguageCode(settings.summaryLanguage),
@@ -124,6 +142,26 @@ export class SettingsPageService {
       capabilities: this.deps.capabilities,
       notices: this.deps.notices.pending(),
     };
+  }
+
+  private async apiOptions(
+    settings: AppSettings,
+  ): Promise<Readonly<Record<ApiProviderKind, ApiEngineOptions>>> {
+    const entries = await Promise.all(
+      API_PROVIDER_KINDS.map(async (kind) => {
+        const engine = API_ENGINES[kind];
+        const model = engine.resolveModel(settings);
+        const keySet = (await this.deps.apiKeys?.has(kind)) ?? false;
+        const options: ApiEngineOptions = {
+          keySet,
+          model,
+          modelOptions: model === '' ? engine.models : optionsIncluding(engine.models, model),
+          baseUrl: engine.defaultBaseUrl === null ? engine.resolveBaseUrl(settings) : null,
+        };
+        return [kind, options] as const;
+      }),
+    );
+    return Object.fromEntries(entries) as Record<ApiProviderKind, ApiEngineOptions>;
   }
 
   /** Looks for the program again, so installing it while Settings is open is noticed (B15). */

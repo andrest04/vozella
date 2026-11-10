@@ -39,6 +39,12 @@ export interface AppSettings {
   readonly liveCopilotPillAlong: number | null;
   /** Port addition: live question detection, `off`, `rules` or `rules+ai`. Null is the default. */
   readonly liveQuestions: string | null;
+  /** Port additions (BYOK): the model per API key engine, and the compatible endpoint URL. */
+  readonly selectedOpenAiModelId: string | null;
+  readonly selectedAnthropicModelId: string | null;
+  readonly selectedGeminiModelId: string | null;
+  readonly selectedOpenAiCompatibleModelId: string | null;
+  readonly openAiCompatibleBaseUrl: string | null;
 }
 
 type Kind = 'string' | 'bool-true' | 'bool-false' | 'strings' | 'number';
@@ -74,13 +80,25 @@ const FIELDS: readonly (readonly [keyof AppSettings, Kind])[] = [
   ['liveCopilotPillEdge', 'string'],
   ['liveCopilotPillAlong', 'number'],
   ['liveQuestions', 'string'],
+  ['selectedOpenAiModelId', 'string'],
+  ['selectedAnthropicModelId', 'string'],
+  ['selectedGeminiModelId', 'string'],
+  ['selectedOpenAiCompatibleModelId', 'string'],
+  ['openAiCompatibleBaseUrl', 'string'],
 ];
 
 /**
  * Port additions the WinUI app does not know. They are written only once set, so a file the
  * user never changed them in keeps the WinUI property set.
  */
-const OMITTED_WHEN_NULL: ReadonlySet<string> = new Set(['liveQuestions']);
+const OMITTED_WHEN_NULL: ReadonlySet<string> = new Set([
+  'liveQuestions',
+  'selectedOpenAiModelId',
+  'selectedAnthropicModelId',
+  'selectedGeminiModelId',
+  'selectedOpenAiCompatibleModelId',
+  'openAiCompatibleBaseUrl',
+]);
 
 /** The raw document: every key in the file, known or not. */
 export type RawSettings = Readonly<Record<string, unknown>>;
@@ -180,7 +198,16 @@ export function serializeSettings(raw: RawSettings, newline: '\r\n' | '\n' = '\r
 
 const blank = (value: string | null): boolean => value === null || value.trim() === '';
 
-export const SUMMARY_PROVIDERS = ['Local', 'ClaudeCode', 'Codex', 'Xai'] as const;
+export const SUMMARY_PROVIDERS = [
+  'Local',
+  'ClaudeCode',
+  'Codex',
+  'Xai',
+  'OpenAi',
+  'Anthropic',
+  'Gemini',
+  'OpenAiCompatible',
+] as const;
 export type SummaryProviderKind = (typeof SUMMARY_PROVIDERS)[number];
 
 /**
@@ -196,6 +223,26 @@ export type CliProviderKind = (typeof CLI_PROVIDER_KINDS)[number];
 
 export const isCliProvider = (kind: string | null | undefined): kind is CliProviderKind =>
   CLI_PROVIDER_KINDS.some((cli) => cli === kind);
+
+/**
+ * The summary kinds backed by an HTTP API with the user's own key (BYOK). Their per-engine facts
+ * live in the `API_ENGINES` table (settings/api-providers), type-checked against this list.
+ */
+export const API_PROVIDER_KINDS = [
+  'OpenAi',
+  'Anthropic',
+  'Gemini',
+  'OpenAiCompatible',
+] as const satisfies readonly SummaryProviderKind[];
+export type ApiProviderKind = (typeof API_PROVIDER_KINDS)[number];
+
+export const isApiProvider = (kind: string | null | undefined): kind is ApiProviderKind =>
+  API_PROVIDER_KINDS.some((api) => api === kind);
+
+/** A remote engine runs off the device: a CLI or an API key engine. */
+export const isRemoteProvider = (
+  kind: string | null | undefined,
+): kind is CliProviderKind | ApiProviderKind => isCliProvider(kind) || isApiProvider(kind);
 /**
  * 'Xai' stays a known value so an old settings file still loads and re-saves, but the provider was
  * removed (owner decision 2026-11-03, may return later). It is never mapped to Local.
@@ -256,16 +303,16 @@ export const LIVE_QUESTIONS_MODES = ['off', 'rules', 'rules+ai'] as const;
 export type LiveQuestionsMode = (typeof LIVE_QUESTIONS_MODES)[number];
 
 /**
- * Live question detection. An unset or unknown value is `rules+ai` when a CLI engine (Claude Code
- * or Codex) is the summary engine, so the check costs a few seconds of a tool already in use, and
- * `rules` otherwise, so a local model is never loaded just to check a question.
+ * Live question detection. An unset or unknown value is `rules+ai` when a remote engine (a CLI or
+ * an API key engine) is the summary engine, so the check costs a few seconds of a tool already in
+ * use, and `rules` otherwise, so a local model is never loaded just to check a question.
  */
 export function resolveLiveQuestionsMode(
   s: Pick<AppSettings, 'liveQuestions' | 'selectedSummaryProvider'>,
 ): LiveQuestionsMode {
   const chosen = LIVE_QUESTIONS_MODES.find((mode) => mode === s.liveQuestions);
   if (chosen !== undefined) return chosen;
-  return isCliProvider(s.selectedSummaryProvider) ? 'rules+ai' : 'rules';
+  return isRemoteProvider(s.selectedSummaryProvider) ? 'rules+ai' : 'rules';
 }
 
 export function disabledCalendarIdsAsSet(s: AppSettings): ReadonlySet<string> {

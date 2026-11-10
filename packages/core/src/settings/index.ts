@@ -1,3 +1,4 @@
+export * from './api-providers';
 export * from './cli-providers';
 export * from './commands';
 export * from './inference-options';

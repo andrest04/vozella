@@ -13,7 +13,30 @@ const meetingId = z.string().min(1).max(200);
 
 export const summaryCliKindSchema = z.enum(['ClaudeCode', 'Codex']);
 export type SummaryCliKindDto = z.infer<typeof summaryCliKindSchema>;
-export const summarySetupKindSchema = z.enum(['Local', 'ClaudeCode', 'Codex']);
+export const summaryApiKindSchema = z.enum(['OpenAi', 'Anthropic', 'Gemini', 'OpenAiCompatible']);
+export type SummaryApiKindDto = z.infer<typeof summaryApiKindSchema>;
+export const summarySetupKindSchema = z.enum([
+  'Local',
+  'ClaudeCode',
+  'Codex',
+  ...summaryApiKindSchema.options,
+]);
+/** Why an engine is not ready. `key-missing` and `base-url-missing` are for API key engines. */
+export const summarySetupReasonSchema = z.enum([
+  'model-missing',
+  'cli-missing',
+  'key-missing',
+  'base-url-missing',
+]);
+export const summaryProviderIdSchema = z.enum([
+  'local',
+  'claude-code',
+  'codex',
+  'openai',
+  'anthropic',
+  'gemini',
+  'openai-compatible',
+]);
 
 const templateOptionSchema = z.object({
   id: z.string(),
@@ -73,7 +96,7 @@ export const generateOutcomeSchema = z.discriminatedUnion('status', [
     titleChanged: z.boolean(),
     summary: z.string(),
     actionItems: z.array(actionItemSchema).readonly(),
-    providerId: z.enum(['local', 'claude-code', 'codex']),
+    providerId: summaryProviderIdSchema,
   }),
   z.object({ status: z.literal('no-transcript') }),
   z.object({ status: z.literal('not-found') }),
@@ -81,7 +104,7 @@ export const generateOutcomeSchema = z.discriminatedUnion('status', [
   z.object({
     status: z.literal('needs-setup'),
     kind: summarySetupKindSchema,
-    reason: z.enum(['model-missing', 'cli-missing']),
+    reason: summarySetupReasonSchema,
   }),
   z.object({ status: z.literal('unavailable'), reason: z.literal('xai-removed') }),
   z.object({ status: z.literal('cancelled') }),
@@ -258,7 +281,7 @@ export const summariesProviderStatus = defineRequest('summaries.providerStatus',
     z.object({
       status: z.literal('needs-setup'),
       kind: summarySetupKindSchema,
-      reason: z.enum(['model-missing', 'cli-missing']),
+      reason: summarySetupReasonSchema,
     }),
     z.object({ status: z.literal('unavailable'), reason: z.literal('xai-removed') }),
   ]),

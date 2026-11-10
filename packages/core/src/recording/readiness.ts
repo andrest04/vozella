@@ -1,5 +1,11 @@
-import type { AppSettings, CliProviderKind, SummaryProviderKind } from '../library/settings';
-import { isCliProvider, SUMMARY_PROVIDERS } from '../library/settings';
+import type {
+  ApiProviderKind,
+  AppSettings,
+  CliProviderKind,
+  SummaryProviderKind,
+} from '../library/settings';
+import { isApiProvider, isCliProvider, SUMMARY_PROVIDERS } from '../library/settings';
+import { API_ENGINES, apiSetupGap } from '../settings/api-providers';
 import { findSummaryModel } from '../settings/summary-models';
 
 /** Readiness gate for Record and Import (spec 3.2). Pure rules plus a fact gatherer behind ports. */
@@ -11,6 +17,10 @@ export interface ReadinessInput {
   readonly localSummarySelected: boolean;
   readonly localModelDownloaded: boolean;
   readonly cliOnPath: boolean;
+  /** An API key engine (BYOK) is the summary engine. */
+  readonly apiSummarySelected?: boolean;
+  /** That engine has what it needs: endpoint, key where required, model. */
+  readonly apiConfigured?: boolean;
 }
 
 export interface Readiness {
@@ -22,9 +32,11 @@ export interface Readiness {
 }
 
 export function evaluateReadiness(input: ReadinessInput): Readiness {
+  const remoteReady =
+    input.apiSummarySelected === true ? input.apiConfigured === true : input.cliOnPath;
   const summaryReady =
     input.summaryProviderChosen &&
-    (input.localSummarySelected ? input.localModelDownloaded : input.cliOnPath);
+    (input.localSummarySelected ? input.localModelDownloaded : remoteReady);
   return {
     liveRequired: input.liveTranscriptionEnabled,
     // Live streaming shares the offline engine, so turning live off never waives it.
@@ -52,6 +64,11 @@ export interface RecordingSetupPorts {
   cliOnPath(kind: CliProviderKind): Promise<boolean>;
   /** The Nemotron model is on disk and the CUDA or CPU runtime is ready. */
   engineReady(): Promise<boolean>;
+  /**
+   * A key is saved for the API engine. Optional until the key store is wired; without it an API
+   * engine that requires a key is not ready.
+   */
+  apiKeySet?(kind: ApiProviderKind): Promise<boolean>;
 }
 
 export interface SetupFacts extends ReadinessInput {
@@ -78,6 +95,9 @@ export async function gatherSetupFacts(ports: RecordingSetupPorts): Promise<Setu
     findSummaryModel(modelId) !== null &&
     (await ports.localModelFileExists(modelId));
   const cliOnPath = isCliProvider(provider) ? await ports.cliOnPath(provider) : false;
+  const apiConfigured = isApiProvider(provider)
+    ? await apiEngineConfigured(ports, settings, provider)
+    : false;
   const removed = provider === 'Xai';
   return {
     provider,
@@ -89,7 +109,19 @@ export async function gatherSetupFacts(ports: RecordingSetupPorts): Promise<Setu
     localSummarySelected: provider === 'Local',
     localModelDownloaded,
     cliOnPath,
+    apiSummarySelected: isApiProvider(provider),
+    apiConfigured,
   };
+}
+
+async function apiEngineConfigured(
+  ports: RecordingSetupPorts,
+  settings: AppSettings,
+  kind: ApiProviderKind,
+): Promise<boolean> {
+  const engine = API_ENGINES[kind];
+  const hasKey = engine.requiresKey ? ((await ports.apiKeySet?.(kind)) ?? false) : false;
+  return apiSetupGap(engine, settings, hasKey) === null;
 }
 
 export async function evaluateSetup(ports: RecordingSetupPorts): Promise<SetupEvaluation> {

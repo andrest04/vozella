@@ -1,6 +1,9 @@
 import { isCliProvider, type SummaryProviderKind } from '../library/settings';
 
-/** Only the two CLI providers can search the web. Local ignores the flag (xAI is gone). */
+/**
+ * Only the two CLI providers can search the web. Local and the API key engines ignore the flag
+ * (web search stays CLI-only; xAI is gone).
+ */
 export function supportsWebSearch(kind: SummaryProviderKind): boolean {
   return isCliProvider(kind);
 }

@@ -69,6 +69,14 @@ async function restoreDefaultEngine(previous: string | null | undefined): Promis
 
 const newRequestId = (): string => `req-${crypto.randomUUID()}`;
 
+type SetupKindDto = Extract<ChatSendOutcomeDto, { status: 'setup-required' }>['kind'];
+
+/** The gate opens by engine kind; the reason only says what that engine misses. */
+function setupReasonFor(kind: SetupKindDto): 'model-missing' | 'cli-missing' | 'key-missing' {
+  if (kind === 'Local') return 'model-missing';
+  return kind === 'ClaudeCode' || kind === 'Codex' ? 'cli-missing' : 'key-missing';
+}
+
 /**
  * The conversation as the page sees it: optimistic rows, the stream, the provider gate and the
  * rollbacks. Main owns the real conversation; this hook mirrors it and answers for one send.
@@ -167,7 +175,7 @@ export function useChat(
           const keptDefault = options.engine === undefined ? undefined : await readDefaultEngine();
           const result = await latest.current.gate.runSetup({
             kind: outcome.kind,
-            reason: outcome.kind === 'Local' ? 'model-missing' : 'cli-missing',
+            reason: setupReasonFor(outcome.kind),
           });
           if (options.engine !== undefined) await restoreDefaultEngine(keptDefault);
           if (result === 'completed') {

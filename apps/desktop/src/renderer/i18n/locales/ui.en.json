@@ -351,5 +351,20 @@
   "Ui_ActionItemsExportEmpty": "None of these items has a date yet.",
   "Ui_ActionItemsExportFailed": "Could not save the calendar file: {0}",
   "Ui_IcsOwnerLabel": "Owner",
-  "Ui_IcsMeetingLabel": "Meeting"
+  "Ui_IcsMeetingLabel": "Meeting",
+  "Ui_ApiOpenAiName": "OpenAI",
+  "Ui_ApiAnthropicName": "Anthropic",
+  "Ui_ApiGeminiName": "Google Gemini",
+  "Ui_ApiOpenAiCompatibleName": "OpenAI-compatible",
+  "Ui_ApiKeyMissing": "{0} needs your API key. Add it in Settings.",
+  "Ui_ApiKeyInvalid": "{0} did not accept your API key. Check it in Settings.",
+  "Ui_ApiQuotaExceeded": "Your {0} account is out of credit or quota. Check your plan with {0}.",
+  "Ui_ApiRateLimited": "{0} is receiving too many requests right now. Try again in a minute.",
+  "Ui_ApiNetwork": "Could not reach {0}. Check your internet connection or the address in Settings.",
+  "Ui_ApiTimedOut": "{0} took too long to answer. Try again.",
+  "Ui_ApiEmptyOutput": "{0} returned an empty answer. Try again.",
+  "Ui_ApiModelNotFound": "{0} does not know the selected model. Pick another model in Settings.",
+  "Ui_ApiUnknown": "{0} could not finish.",
+  "Ui_ApiSetupIncomplete": "{0} needs an address and a model. Finish setting it up in Settings.",
+  "Ui_ChatAttachImagesApi": "This engine does not read images yet. This answer left them out."
 }

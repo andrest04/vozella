@@ -1,7 +1,9 @@
 import path from 'node:path';
 import { libraryChanged } from '@vozella/contracts';
 import {
+  API_ENGINES,
   CLI_ENGINES,
+  isApiProvider,
   isCliProvider,
   PatchQueue,
   SummaryTabService,
@@ -84,7 +86,11 @@ export function composeSummaries(deps: ComposeSummariesDeps): ComposedSummaries 
       ? {
           providerOverride: (kind) =>
             new FakeSummaryProvider(
-              isCliProvider(kind) ? CLI_ENGINES[kind].providerId : 'local',
+              isCliProvider(kind)
+                ? CLI_ENGINES[kind].providerId
+                : isApiProvider(kind)
+                  ? API_ENGINES[kind].providerId
+                  : 'local',
               fakeSummaryOptionsFromEnv(deps.env),
             ),
         }

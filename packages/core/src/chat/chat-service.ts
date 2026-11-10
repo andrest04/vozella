@@ -3,6 +3,7 @@ import { CancelSource } from '../cancel';
 import type { Clock } from '../clock';
 import type { TranslateFn } from '../i18n/translator';
 import type { Logger } from '../logging';
+import { isRemoteEngine } from '../settings/api-providers';
 import { isCliEngine, readsImagesFromDisk } from '../settings/cli-providers';
 import type { CliPromptOptions } from '../summaries/cli-provider';
 import type { ProviderId } from '../summaries/provider';
@@ -319,12 +320,14 @@ export class ChatService {
       const source = this.deps.attachments;
       const files = ids.length > 0 && source ? await source.resolve(ids) : NO_FILES;
       if (wasStopped()) return cancelled();
-      // Only CLI engines see images; the local model is text only, so it answers without them.
+      // Only CLI engines see images. The local model is text only, and API engines do not get
+      // them yet (v1), so both answer without them.
       const cli = isCliEngine(provider.id);
+      const remote = isRemoteEngine(provider.id);
       let notice: string | null = null;
       if (files.imageNames.length > 0 && source) {
         if (cli) staged = await source.stageImages(ids);
-        else notice = t('Ui_ChatAttachImagesLocal');
+        else notice = t(remote ? 'Ui_ChatAttachImagesApi' : 'Ui_ChatAttachImagesLocal');
       }
       if (wasStopped()) return cancelled();
 
@@ -348,7 +351,7 @@ export class ChatService {
         },
       );
 
-      this.localStreaming = !cli;
+      this.localStreaming = !remote;
       const answer = await this.stream(
         provider,
         prompt,

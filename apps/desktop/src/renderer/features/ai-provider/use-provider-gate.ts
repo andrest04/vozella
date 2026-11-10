@@ -1,10 +1,11 @@
-import type { SummaryCliKindDto } from '@vozella/contracts';
+import type { SummaryApiKindDto, SummaryCliKindDto } from '@vozella/contracts';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 /** What a `needs-setup` or `unavailable` outcome from the summary service asks for. */
 export interface SetupRequest {
-  readonly kind: 'Local' | SummaryCliKindDto | 'Xai';
-  readonly reason: 'model-missing' | 'cli-missing' | 'unavailable';
+  readonly kind: 'Local' | SummaryCliKindDto | SummaryApiKindDto | 'Xai';
+  readonly reason:
+    'model-missing' | 'cli-missing' | 'key-missing' | 'base-url-missing' | 'unavailable';
 }
 
 /** `completed` means the engine is ready now; anything else leaves the summary alone. */
@@ -14,6 +15,7 @@ export type RunSetup = (request: SetupRequest) => Promise<'completed' | 'cancell
 export type GateSurface =
   | { readonly surface: 'wizard' }
   | { readonly surface: 'cli'; readonly kind: SummaryCliKindDto }
+  | { readonly surface: 'settings' }
   | { readonly surface: 'notice' };
 
 export function decideSurface(request: SetupRequest): GateSurface {
@@ -23,6 +25,12 @@ export function decideSurface(request: SetupRequest): GateSurface {
     case 'ClaudeCode':
     case 'Codex':
       return { surface: 'cli', kind: request.kind };
+    // API key engines are set up in Settings (key, model, endpoint); no dialog of their own yet.
+    case 'OpenAi':
+    case 'Anthropic':
+    case 'Gemini':
+    case 'OpenAiCompatible':
+      return { surface: 'settings' };
     case 'Xai':
       return { surface: 'notice' };
   }
@@ -70,6 +78,10 @@ export function useProviderGate(): ProviderGate {
       setUnavailable(true);
       return Promise.resolve('cancelled');
     }
+    if (decision.surface === 'settings') {
+      navigateToSettings();
+      return Promise.resolve('cancelled');
+    }
     // One dialog at a time: a second request while one is open is cancelled.
     if (pending.current) return Promise.resolve('cancelled');
     return new Promise((resolve) => {
@@ -96,9 +108,13 @@ export function useProviderGate(): ProviderGate {
     }, []),
     openSettings: useCallback(() => {
       setUnavailable(false);
-      void window.vozella.invoke('workspace.dispatch', {
-        action: { type: 'navigateTo', tag: 'Settings' },
-      });
+      navigateToSettings();
     }, []),
   };
+}
+
+function navigateToSettings(): void {
+  void window.vozella.invoke('workspace.dispatch', {
+    action: { type: 'navigateTo', tag: 'Settings' },
+  });
 }

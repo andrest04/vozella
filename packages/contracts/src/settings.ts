@@ -12,7 +12,18 @@ const empty = z.object({}).strict();
 
 export const uiLanguageTagSchema = z.enum(['en-US', 'es']);
 export const catalogLocaleSchema = z.enum(['en', 'es']);
-export const summaryProviderSchema = z.enum(['Local', 'ClaudeCode', 'Codex', 'Xai']);
+export const summaryProviderSchema = z.enum([
+  'Local',
+  'ClaudeCode',
+  'Codex',
+  'Xai',
+  'OpenAi',
+  'Anthropic',
+  'Gemini',
+  'OpenAiCompatible',
+]);
+export const apiProviderKindSchema = z.enum(['OpenAi', 'Anthropic', 'Gemini', 'OpenAiCompatible']);
+export type ApiProviderKindDto = z.infer<typeof apiProviderKindSchema>;
 export type SummaryProviderDto = z.infer<typeof summaryProviderSchema>;
 export const cliStatusSchema = z.enum(['detected', 'missing']);
 
@@ -43,6 +54,17 @@ const providerOptionsSchema = z.object({
   effortOptions: z.array(z.string()).readonly(),
 });
 
+/** One API key engine on the page: whether a key is set, never the key. */
+const apiEngineOptionsSchema = z
+  .object({
+    keySet: z.boolean(),
+    model: z.string(),
+    modelOptions: z.array(z.string()).readonly(),
+    baseUrl: z.string().nullable(),
+  })
+  .strict();
+export type ApiEngineOptionsDto = z.infer<typeof apiEngineOptionsSchema>;
+
 export const modelRowSchema = z.object({
   fileName: z.string(),
   displayName: z.string(),
@@ -72,6 +94,12 @@ export const settingsPageSchema = z.object({
   provider: summaryProviderSchema,
   claude: providerOptionsSchema,
   codex: providerOptionsSchema,
+  api: z.object({
+    OpenAi: apiEngineOptionsSchema,
+    Anthropic: apiEngineOptionsSchema,
+    Gemini: apiEngineOptionsSchema,
+    OpenAiCompatible: apiEngineOptionsSchema,
+  }),
   cliStatus: cliStatusSchema.nullable(),
   transcriptionLanguage: z.string(),
   summaryLanguage: z.string(),
@@ -118,6 +146,16 @@ export const settingsSetCliOption = defineRequest('settings.setCliOption', {
   input: z.object({
     provider: z.enum(['claude', 'codex']),
     field: z.enum(['model', 'effort']),
+    value: z.string().max(300),
+  }),
+  output: commitOutcomeSchema,
+});
+
+/** The model id of an API key engine, or the endpoint of the compatible one (http or https). */
+export const settingsSetApiOption = defineRequest('settings.setApiOption', {
+  input: z.object({
+    kind: apiProviderKindSchema,
+    field: z.enum(['model', 'baseUrl']),
     value: z.string().max(300),
   }),
   output: commitOutcomeSchema,
