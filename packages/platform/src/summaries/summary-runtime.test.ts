@@ -15,6 +15,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { LlamaSidecar } from '../llama/llama-sidecar';
 import type { ProcessGuard } from '../llama/process-guard';
 import { FAKE_SERVER, pidAlive, waitUntil } from '../llama/test-fixtures/orphan-harness';
+import { OpenAiChatProvider } from '../api-providers/openai-chat-provider';
+import { FakeApiKeyStore } from '../fakes/fake-api-key-store';
 import { JsonSettingsStore } from '../library/json-settings-store';
 import { SummaryRuntime } from './summary-runtime';
 
@@ -49,7 +51,7 @@ afterEach(async () => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
-function build(onPath: readonly string[] = ['claude', 'codex']) {
+function build(onPath: readonly string[] = ['claude', 'codex'], apiKeys?: FakeApiKeyStore) {
   const settings = new JsonSettingsStore({ settingsFilePath: settingsFile });
   const runner = new RecordingRunner();
   const cli: CliPathProbe = { isOnPath: (e) => Promise.resolve(onPath.includes(e)) };
@@ -71,6 +73,7 @@ function build(onPath: readonly string[] = ['claude', 'codex']) {
     llamaRoot: path.join(root, 'LlamaRuntime'),
     runner,
     cli,
+    ...(apiKeys ? { apiKeys } : {}),
     createServer: () => {
       const sidecar = new LlamaSidecar({ guard: noGuard, healthPollMs: 25, killGraceMs: 500 });
       created.push(sidecar);
@@ -255,6 +258,24 @@ describe('SummaryRuntime on a real settings.json', () => {
       status: 'needs-setup',
       reason: 'cli-missing',
     });
+  });
+});
+
+describe('SummaryRuntime API key engines', () => {
+  it('without a saved key the engine needs setup with key-missing', async () => {
+    const t = build(undefined, new FakeApiKeyStore());
+    fs.writeFileSync(settingsFile, JSON.stringify({ selectedSummaryProvider: 'OpenAi' }));
+    const resolved = await t.runtime.resolver.resolveSummaryProvider();
+    expect(resolved).toMatchObject({ status: 'needs-setup', reason: 'key-missing' });
+  });
+
+  it('with a saved key the real HTTP provider is built', async () => {
+    const t = build(undefined, new FakeApiKeyStore({ OpenAi: 'sk-test' }));
+    fs.writeFileSync(settingsFile, JSON.stringify({ selectedSummaryProvider: 'OpenAi' }));
+    const resolved = await t.runtime.resolver.resolveSummaryProvider();
+    if (resolved.status !== 'ready') throw new Error('not ready');
+    expect(resolved.provider).toBeInstanceOf(OpenAiChatProvider);
+    expect(resolved.provider.id).toBe('openai');
   });
 });
 

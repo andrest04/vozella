@@ -1,5 +1,4 @@
 import {
-  ApiProviderError,
   SummaryProviderFactory,
   SummaryProviderResolver,
   usesGpuOffload,
@@ -14,6 +13,7 @@ import {
   type SummaryProvider,
   type SummaryProviderKind,
 } from '@vozella/core';
+import { createApiProviderBuilder } from '../api-providers/api-provider-builder';
 import { selectWorkingBackend } from '../llama/backend-choice';
 import { LlamaRuntimeManager } from '../llama/llama-runtime-manager';
 import { LlamaSidecar } from '../llama/llama-sidecar';
@@ -23,12 +23,10 @@ import { createProcessGuard, type ProcessJobPort } from '../llama/process-guard'
 import { PathCliProbe } from '../settings/path-cli-probe';
 import { NodeCliProcessRunner } from './cli-process-runner';
 
-/** No key is saved anywhere until the key store is wired. */
-const NO_API_KEYS: Pick<ApiKeyStore, 'has'> = { has: () => Promise.resolve(false) };
-
-/** Placeholder until the HTTP providers exist. */
-const apiProvidersNotWired: ApiProviderBuilder = (engine) => {
-  throw new ApiProviderError(engine.displayName, 'Unknown', 'API providers are not wired yet.');
+/** Without a key store no key is saved: key engines report `key-missing`. */
+const NO_API_KEYS: Pick<ApiKeyStore, 'has' | 'get'> = {
+  has: () => Promise.resolve(false),
+  get: () => Promise.resolve(null),
 };
 
 export interface SummaryRuntimeDeps {
@@ -45,9 +43,9 @@ export interface SummaryRuntimeDeps {
   readonly cli?: CliPathProbe;
   /** The fake native build: a double for every engine. Null falls through to the real one. */
   readonly providerOverride?: (kind: SummaryProviderKind) => SummaryProvider | null;
-  /** Saved API keys (BYOK). Until wired, no API engine has a key. */
-  readonly apiKeys?: Pick<ApiKeyStore, 'has'>;
-  /** Builds the HTTP providers of the API key engines. Until wired, building one fails. */
+  /** Saved API keys (BYOK), the app's one store. Without it no API engine has a key. */
+  readonly apiKeys?: Pick<ApiKeyStore, 'has' | 'get'>;
+  /** Replaces the HTTP providers of the API key engines (tests). Defaults to the real adapters. */
   readonly apiProviderBuilder?: ApiProviderBuilder;
   /** Replacements for tests. */
   readonly createServer?: () => LocalLlmServer;
@@ -69,6 +67,7 @@ export class SummaryRuntime {
 
   constructor(private readonly deps: SummaryRuntimeDeps) {
     const cli = deps.cli ?? new PathCliProbe();
+    const apiKeys = deps.apiKeys ?? NO_API_KEYS;
     this.runner = deps.runner ?? new NodeCliProcessRunner();
     this.runtimeManager = new LlamaRuntimeManager({ root: deps.llamaRoot });
     const guard = createProcessGuard(deps.processJob);
@@ -82,14 +81,14 @@ export class SummaryRuntime {
       ...(deps.providerOverride ? { override: deps.providerOverride } : {}),
       createLocal: (modelPath) =>
         new LocalLlmSummaryProvider({ host: this.host, modelPath: () => modelPath }),
-      apiProviderBuilder: deps.apiProviderBuilder ?? apiProvidersNotWired,
+      apiProviderBuilder: deps.apiProviderBuilder ?? createApiProviderBuilder({ keys: apiKeys }),
     });
     this.resolver = new SummaryProviderResolver({
       settings: deps.settings,
       cli,
       models: deps.models,
       factory: this.factory,
-      apiKeys: deps.apiKeys ?? NO_API_KEYS,
+      apiKeys,
     });
   }
 
