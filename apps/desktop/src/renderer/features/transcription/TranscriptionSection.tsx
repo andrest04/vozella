@@ -1,16 +1,15 @@
 import type { EngineStatusDto } from '@vozella/contracts';
 import { INSTALL_STAGE_LABEL_KEYS, LIVE_DROP_WARNING_PERCENT } from '@vozella/core';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
 import type { StringKey, Translate } from '../../i18n/translate';
 import { Badge, Button, Notice, Progress, SectionHeader, SettingRow, Switch } from '../../ui';
 import { ConfirmDialog } from '../../ui';
 import { overallPercent } from './live-lines';
+import { useEngineActions } from './use-engine-actions';
 import { useEngineInstall } from './use-engine-install';
 import { useEngineStatus } from './use-engine-status';
-
-const errorText = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error);
+import { useSpeakerModel } from './use-speaker-model';
 
 /**
  * Settings, Transcription (spec 2.6): the engine (download, delete, which processor it runs on),
@@ -22,121 +21,17 @@ export function TranscriptionSection() {
   const { t, locale } = useI18n();
   const { status, refresh } = useEngineStatus();
   const install = useEngineInstall();
-  const [engineNote, setEngineNote] = useState<string | null>(null);
-  const [speakerNote, setSpeakerNote] = useState<string | null>(null);
-  const [speakerBusy, setSpeakerBusy] = useState<'download' | 'delete' | null>(null);
-  const [speakerPercent, setSpeakerPercent] = useState(0);
   // Deletes ask first; the outcome is spoken through one polite live region.
   const [confirming, setConfirming] = useState<'engine' | 'speaker' | null>(null);
   const [announcement, setAnnouncement] = useState('');
-  const speakerRunning = useRef(false);
+  const engine = useEngineActions({ start: install.start, refresh, announce: setAnnouncement });
+  const speaker = useSpeakerModel({ refresh, announce: setAnnouncement });
   // The recognizer snapshot only counts while it still matches the current settings.
   const speakerModelMissing =
     status !== null &&
     status.usage?.diarization === 'model-missing' &&
     status.speakerLabelsEnabled &&
     !status.speakerModelInstalled;
-  const alive = useRef(true);
-
-  useEffect(() => {
-    alive.current = true;
-    const off = window.vozella.on('transcription.installProgress', (progress) => {
-      if (alive.current && progress.stage === 'speaker-model' && speakerRunning.current) {
-        setSpeakerPercent(Math.round(progress.percent));
-      }
-    });
-    return () => {
-      alive.current = false;
-      off();
-    };
-  }, []);
-
-  const { start } = install;
-  const downloadEngine = useCallback(async () => {
-    setEngineNote(null);
-    const outcome = await start();
-    if (outcome.status === 'failed') {
-      setEngineNote(t('Error_DownloadFailedCaption', outcome.message));
-    }
-    await refresh();
-  }, [start, refresh, t]);
-
-  const deleteEngine = useCallback(async () => {
-    setEngineNote(null);
-    try {
-      const { outcome } = await window.vozella.invoke('transcription.deleteEngine', {});
-      if (outcome === 'RuntimeInUse') setEngineNote(t('Error_EngineDeleteInUse'));
-      else if (outcome === 'Incomplete') setEngineNote(t('Error_EngineDeleteIncomplete'));
-      else if (alive.current) setAnnouncement(t('Ui_EngineDeleted'));
-    } catch (error) {
-      setEngineNote(t('Error_DownloadFailedCaption', errorText(error)));
-    }
-    await refresh();
-  }, [refresh, t]);
-
-  /** Runs one speaker model action; `action` answers the failure message or null. */
-  const runSpeakerAction = useCallback(
-    async (action: () => Promise<string | null>, kind: 'download' | 'delete' = 'download') => {
-      if (speakerRunning.current) return;
-      speakerRunning.current = true;
-      setSpeakerBusy(kind);
-      setSpeakerPercent(0);
-      setSpeakerNote(null);
-      let failure: string | null;
-      try {
-        failure = await action();
-      } catch (error) {
-        failure = errorText(error);
-      }
-      speakerRunning.current = false;
-      if (alive.current) {
-        setSpeakerBusy(null);
-        setSpeakerPercent(0);
-        setSpeakerNote(
-          failure === null
-            ? null
-            : kind === 'delete'
-              ? t('Ui_SpeakerDeleteFailed', failure)
-              : `${t('Error_DownloadFailedCaption', failure)} ${t('Ui_SpeakerModelFailed')}`,
-        );
-      }
-      await refresh();
-    },
-    [refresh, t],
-  );
-
-  const setLive = (enabled: boolean): void => {
-    void window.vozella
-      .invoke('transcription.setLiveEnabled', { enabled })
-      .catch(() => undefined)
-      .then(refresh);
-  };
-
-  const setSpeakerLabels = (enabled: boolean): void => {
-    void runSpeakerAction(
-      async () => {
-        const result = await window.vozella.invoke('transcription.setSpeakerLabels', { enabled });
-        return result.status === 'failed' ? result.message : null;
-      },
-      enabled ? 'download' : 'delete',
-    );
-  };
-
-  const downloadSpeakerModel = (): void => {
-    void runSpeakerAction(async () => {
-      const result = await window.vozella.invoke('transcription.downloadSpeakerModel', {});
-      return result.status === 'failed' ? result.message : null;
-    });
-  };
-
-  const deleteSpeakerModel = (): void => {
-    void runSpeakerAction(async () => {
-      const result = await window.vozella.invoke('transcription.deleteSpeakerModel', {});
-      if (result.status === 'failed') return result.message;
-      if (alive.current) setAnnouncement(t('Ui_SpeakerDeleted'));
-      return null;
-    }, 'delete');
-  };
 
   const ask = (what: 'engine' | 'speaker'): void => {
     setAnnouncement('');
@@ -160,7 +55,7 @@ export function TranscriptionSection() {
             <span className="block">{t('Ui_EngineDescription')}</span>
             {status ? (
               <span className="block pt-1" data-testid="acceleration-caption">
-                {engineNote ?? backendCaption(status, t)}
+                {engine.note ?? backendCaption(status, t)}
               </span>
             ) : null}
           </>
@@ -175,7 +70,7 @@ export function TranscriptionSection() {
           disabled={status === null || status.ready || installing}
           aria-label={`${t('Settings_DownloadEngine.Content')} ${t('Settings_NemotronCard.Header')}`}
           onClick={() => {
-            void downloadEngine();
+            void engine.download();
           }}
         >
           {t('Settings_DownloadEngine.Content')}
@@ -184,7 +79,7 @@ export function TranscriptionSection() {
         {anyEngineFile ? (
           <Button
             variant="quiet"
-            disabled={installing || speakerBusy !== null}
+            disabled={installing || speaker.busy !== null}
             aria-label={`${t('Settings_DeleteEngine.Content')} ${t('Settings_NemotronCard.Header')}`}
             onClick={() => {
               ask('engine');
@@ -224,7 +119,7 @@ export function TranscriptionSection() {
             label={liveOn ? t('Ui_SwitchOn') : t('Ui_SwitchOff')}
             checked={liveOn}
             disabled={status === null || liveUnavailable}
-            onCheckedChange={setLive}
+            onCheckedChange={engine.setLive}
           />
         )}
       </SettingRow>
@@ -237,16 +132,16 @@ export function TranscriptionSection() {
         {({ titleId }) => (
           <>
             <Button
-              disabled={status === null || status.speakerModelInstalled || speakerBusy !== null}
+              disabled={status === null || status.speakerModelInstalled || speaker.busy !== null}
               aria-label={`${t('Settings_DownloadSpeakers.Content')} ${t('Ui_SpeakerModel')}`}
-              onClick={downloadSpeakerModel}
+              onClick={speaker.download}
             >
               {t('Settings_DownloadSpeakers.Content')}
             </Button>
             {status?.speakerModelInstalled ? (
               <Button
                 variant="quiet"
-                disabled={speakerBusy !== null}
+                disabled={speaker.busy !== null}
                 aria-label={`${t('Settings_DeleteSpeakers.Content')} ${t('Ui_SpeakerModel')}`}
                 onClick={() => {
                   ask('speaker');
@@ -260,25 +155,25 @@ export function TranscriptionSection() {
               className="pl-2"
               label={status?.speakerLabelsEnabled ? t('Ui_SwitchOn') : t('Ui_SwitchOff')}
               checked={status?.speakerLabelsEnabled ?? false}
-              disabled={status === null || speakerBusy !== null}
-              onCheckedChange={setSpeakerLabels}
+              disabled={status === null || speaker.busy !== null}
+              onCheckedChange={speaker.setLabels}
             />
           </>
         )}
       </SettingRow>
-      {speakerBusy !== null || speakerNote || speakerModelMissing ? (
+      {speaker.busy !== null || speaker.note || speakerModelMissing ? (
         <div className="flex flex-col gap-2.5 border-b border-hairline py-3">
-          {speakerBusy === 'download' ? (
+          {speaker.busy === 'download' ? (
             <Progress
               className="max-w-sm"
               label={t('Ui_SpeakerDownloading')}
-              value={speakerPercent}
+              value={speaker.percent}
               showValue
             />
           ) : null}
-          {speakerNote ? (
+          {speaker.note ? (
             <p className="text-ui-lg text-ink" role="status">
-              {speakerNote}
+              {speaker.note}
             </p>
           ) : null}
           {speakerModelMissing ? (
@@ -306,8 +201,8 @@ export function TranscriptionSection() {
             : 'Settings_DeleteEngine.Content',
         )}
         onConfirm={() => {
-          if (confirming === 'speaker') deleteSpeakerModel();
-          else if (confirming === 'engine') void deleteEngine();
+          if (confirming === 'speaker') speaker.remove();
+          else if (confirming === 'engine') void engine.remove();
         }}
       />
     </div>
