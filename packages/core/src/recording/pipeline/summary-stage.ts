@@ -1,6 +1,8 @@
 import { CancelSource, type CancelSignal } from '../../cancel';
 import type { TranslateFn } from '../../i18n/translator';
 import type { SettingsStore } from '../../library/ports';
+import { isCliProvider } from '../../library/settings';
+import { CLI_ENGINES } from '../../settings/cli-providers';
 import { CliToolError } from '../../summaries/cli-failure';
 import { formatFailure } from '../../summaries/cli-failure-messages';
 import type { SummaryProviderResolver } from '../../summaries/provider-resolver';
@@ -35,8 +37,6 @@ export type SummaryStageOutcome =
   | { readonly kind: 'summary-failed'; readonly message: Message }
   /** The background summary was cancelled. The saved transcript is kept. */
   | { readonly kind: 'summary-cancelled'; readonly message: Message };
-
-const DISPLAY_NAMES = { ClaudeCode: 'Claude Code', Codex: 'Codex' } as const;
 
 /** Spec 3.7 steps 5 to 10. The transcript of the take is already saved when this runs. */
 export class SummaryStage {
@@ -152,7 +152,7 @@ export class SummaryStage {
           ? t('Ui_SummaryLocalModelMissing')
           : formatFailure(
               new CliToolError(
-                outcome.kind === 'Codex' ? DISPLAY_NAMES.Codex : DISPLAY_NAMES.ClaudeCode,
+                CLI_ENGINES[isCliProvider(outcome.kind) ? outcome.kind : 'ClaudeCode'].displayName,
                 'NotInstalled',
               ),
               t,

@@ -11,7 +11,8 @@ import {
   type SettingsStore,
   type SummaryProviderKind,
 } from '../library';
-import { cliExecutableName, isCliProvider } from './cli-providers';
+import { isCliProvider } from '../library/settings';
+import { cliExecutableName } from './cli-providers';
 import {
   CLAUDE_EFFORTS,
   CLAUDE_MODELS,

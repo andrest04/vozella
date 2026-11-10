@@ -1,5 +1,5 @@
-import type { AppSettings, SummaryProviderKind } from '../library/settings';
-import { SUMMARY_PROVIDERS } from '../library/settings';
+import type { AppSettings, CliProviderKind, SummaryProviderKind } from '../library/settings';
+import { isCliProvider, SUMMARY_PROVIDERS } from '../library/settings';
 import { findSummaryModel } from '../settings/summary-models';
 
 /** Readiness gate for Record and Import (spec 3.2). Pure rules plus a fact gatherer behind ports. */
@@ -49,7 +49,7 @@ export interface RecordingSetupPorts {
   /** The file for a summary model exists in the models folder. */
   localModelFileExists(fileName: string): Promise<boolean>;
   /** The CLI executable resolves on PATH. Sign-in is not checked. */
-  cliOnPath(kind: 'ClaudeCode' | 'Codex'): Promise<boolean>;
+  cliOnPath(kind: CliProviderKind): Promise<boolean>;
   /** The Nemotron model is on disk and the CUDA or CPU runtime is ready. */
   engineReady(): Promise<boolean>;
 }
@@ -77,8 +77,7 @@ export async function gatherSetupFacts(ports: RecordingSetupPorts): Promise<Setu
     modelId.trim() !== '' &&
     findSummaryModel(modelId) !== null &&
     (await ports.localModelFileExists(modelId));
-  const cliOnPath =
-    provider === 'ClaudeCode' || provider === 'Codex' ? await ports.cliOnPath(provider) : false;
+  const cliOnPath = isCliProvider(provider) ? await ports.cliOnPath(provider) : false;
   const removed = provider === 'Xai';
   return {
     provider,

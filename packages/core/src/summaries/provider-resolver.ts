@@ -4,7 +4,8 @@ import {
   resolveSummaryProviderKind,
   type SummaryProviderKind,
 } from '../library/settings';
-import { cliExecutableName, type CliProviderKind } from '../settings/cli-providers';
+import type { CliProviderKind } from '../library/settings';
+import { cliExecutableName } from '../settings/cli-providers';
 import type { CliPathProbe, LocalModelStore } from '../settings/ports';
 import { findSummaryModel } from '../settings/summary-models';
 import type { SummaryProvider } from './provider';

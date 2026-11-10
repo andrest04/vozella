@@ -1,3 +1,4 @@
+import { CLI_ENGINES } from '../settings/cli-providers';
 import { findSummaryModel } from '../settings/summary-models';
 import type { Readiness, SetupFacts } from './readiness';
 
@@ -38,9 +39,8 @@ export function summaryCaption(provider: SetupFacts['provider'], modelId: string
         : ref('RecordingSetup_SummaryLocalModel', model.displayName);
     }
     case 'ClaudeCode':
-      return ref('Cli_ClaudeName');
     case 'Codex':
-      return ref('Cli_CodexName');
+      return ref(CLI_ENGINES[provider].nameKey);
     default:
       return ref('RecordingSetup_SummaryNotChosen');
   }

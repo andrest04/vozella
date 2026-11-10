@@ -1,15 +1,15 @@
 import {
+  isCliProvider,
   resolveClaudeEffort,
   resolveClaudeModelId,
   resolveCodexEffort,
   resolveCodexModelId,
   type AppSettings,
+  type CliProviderKind,
   type SummaryProviderKind,
 } from '../library/settings';
 import type { ProviderId } from '../summaries/provider';
 import { CLAUDE_EFFORTS, CLAUDE_MODELS, CODEX_EFFORTS, CODEX_MODELS } from './inference-options';
-
-export type CliProviderKind = Extract<SummaryProviderKind, 'ClaudeCode' | 'Codex'>;
 
 /** Settings fields that hold a string per engine. */
 type StringSettingKey = {
@@ -28,6 +28,8 @@ export interface CliEngine {
   readonly executable: 'claude' | 'codex';
   /** The product name in errors and status lines. */
   readonly displayName: string;
+  /** Catalog key of the product name in the UI. */
+  readonly nameKey: 'Cli_ClaudeName' | 'Cli_CodexName';
   /** Attached images are files the engine opens itself with a tool, not inputs on the argv. */
   readonly readsImagesFromDisk: boolean;
   readonly models: readonly string[];
@@ -45,6 +47,7 @@ export const CLI_ENGINES = {
     providerId: 'claude-code',
     executable: 'claude',
     displayName: 'Claude Code',
+    nameKey: 'Cli_ClaudeName',
     readsImagesFromDisk: true,
     models: CLAUDE_MODELS,
     efforts: CLAUDE_EFFORTS,
@@ -58,6 +61,7 @@ export const CLI_ENGINES = {
     providerId: 'codex',
     executable: 'codex',
     displayName: 'Codex',
+    nameKey: 'Cli_CodexName',
     readsImagesFromDisk: false,
     models: CODEX_MODELS,
     efforts: CODEX_EFFORTS,
@@ -72,9 +76,6 @@ export const CLI_ENGINE_LIST: readonly CliEngine[] = Object.values(CLI_ENGINES);
 
 export type CliProviderId = CliEngine['providerId'];
 export type CliExecutable = CliEngine['executable'];
-
-export const isCliProvider = (kind: SummaryProviderKind): kind is CliProviderKind =>
-  CLI_ENGINE_LIST.some((engine) => engine.kind === kind);
 
 /** The program name looked up on PATH. Other kinds are not CLI backed. */
 export function cliExecutableName(kind: SummaryProviderKind): CliExecutable {

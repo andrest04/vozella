@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readSettings } from '../library';
+import { isCliProvider, readSettings } from '../library';
 import { PROVIDER_IDS } from '../summaries/provider';
 import {
   CLI_ENGINE_LIST,
@@ -8,7 +8,6 @@ import {
   cliEngineByProviderId,
   cliExecutableName,
   isCliEngine,
-  isCliProvider,
   readsImagesFromDisk,
   summaryKindOf,
 } from './cli-providers';
