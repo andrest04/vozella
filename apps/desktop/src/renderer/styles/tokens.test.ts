@@ -190,7 +190,7 @@ describe('no decoration outside overlays (item 163)', () => {
     const offenders = files
       // The Claude mark keeps its brand orange (_gaps.md section 1).
       .filter(
-        (f) => f.file !== 'styles/tokens.css' && f.file !== 'features/settings/ProviderMark.tsx',
+        (f) => f.file !== 'styles/tokens.css' && f.file !== 'features/ai-provider/ProviderMark.tsx',
       )
       .filter((f) => /#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/.test(f.text))
       .map((f) => f.file);

@@ -3,10 +3,10 @@ import { deriveTabFlags, type TabFlags } from '@vozella/core';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { StringKey, Translate } from '../../i18n/translate';
 import type { Option } from '../../ui';
-import type { RunSetup } from './use-provider-gate';
+import type { RunSetup } from '../ai-provider/use-provider-gate';
 import type { NotesMode } from './summary-tab-model';
 
-export type { RunSetup, SetupRequest } from './use-provider-gate';
+export type { RunSetup, SetupRequest } from '../ai-provider/use-provider-gate';
 
 export interface GenerationStatus {
   readonly text: string;

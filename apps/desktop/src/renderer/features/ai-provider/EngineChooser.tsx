@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import { cn } from '../../ui';
-import { ProviderMark } from '../settings/ProviderMark';
+import { ProviderMark } from './ProviderMark';
 import type { WizardEngine } from './wizard-state';
 
 /** Rows in the order the spec fixes (item 127). Grok is not offered: owner decision 2026-11-03. */

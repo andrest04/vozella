@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Providers } from '../library/library-test-kit';
-import { MarkdownView } from '../summaries/MarkdownView';
+import { MarkdownView } from '../markdown/MarkdownView';
 import { peekTranscriptReveal } from '../session/transcript-reveal';
 import { classifyChatLink, useChatLinks } from './use-chat-links';
 

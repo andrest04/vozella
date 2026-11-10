@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
 import type { StringKey, Translate } from '../../i18n/translate';
 import { Badge, Button, Notice, Progress, SectionHeader, SettingRow, Switch } from '../../ui';
-import { ConfirmDialog } from '../library/dialogs';
+import { ConfirmDialog } from '../../ui';
 import { overallPercent } from './live-lines';
 import { useEngineInstall } from './use-engine-install';
 import { useEngineStatus } from './use-engine-status';

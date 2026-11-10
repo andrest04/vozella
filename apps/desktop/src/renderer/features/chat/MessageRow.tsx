@@ -2,7 +2,7 @@ import { BookmarkPlus, Check, Copy, FilePen, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import { Icon, IconButton, cn } from '../../ui';
-import { MarkdownView, type LinkHandler } from '../summaries/MarkdownView';
+import { MarkdownView, type LinkHandler } from '../markdown/MarkdownView';
 import { accessibleMessageText, type ChatRow } from './chat-view-model';
 
 export interface MessageRowProps {

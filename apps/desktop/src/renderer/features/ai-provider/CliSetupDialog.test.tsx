@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Providers } from '../library/library-test-kit';
 import { CliSetupDialog } from './CliSetupDialog';
 import { SetupWizardDialog } from './SetupWizardDialog';
-import { installSummariesApi } from './summaries-test-kit';
+import { installSummariesApi } from '../summaries/summaries-test-kit';
 
 afterEach(() => {
   cleanup();

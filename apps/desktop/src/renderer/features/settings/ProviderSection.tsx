@@ -3,9 +3,9 @@ import { CLI_STATUS_KEYS } from '@vozella/core';
 import { useState } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import { Button, Notice, RadioGroup, SectionHeader, Select, SettingRow } from '../../ui';
-import { SetupWizardDialog } from '../summaries/SetupWizardDialog';
+import { SetupWizardDialog } from '../ai-provider/SetupWizardDialog';
 import { LocalModels } from './LocalModels';
-import { ProviderMark } from './ProviderMark';
+import { ProviderMark } from '../ai-provider/ProviderMark';
 import type { SettingsPageModel } from './use-settings-page';
 
 interface OptionKeys {

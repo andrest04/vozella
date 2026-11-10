@@ -3,7 +3,7 @@ import type { MeetingRecordDto } from '@vozella/contracts';
 import { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
 import { Button, Skeleton, Tabs } from '../../ui';
-import { MarkdownView } from '../summaries/MarkdownView';
+import { MarkdownView } from '../markdown/MarkdownView';
 import { formatDueDate } from '../summaries/summary-tab-model';
 import { formatMeetingSpan } from './format';
 import type { MeetingTab } from './search-results';

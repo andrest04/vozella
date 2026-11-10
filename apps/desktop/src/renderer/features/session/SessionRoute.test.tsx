@@ -32,10 +32,10 @@ vi.mock('./TranscriptTab', () => ({
     <div data-testid="transcript-stub">{meetingId}</div>
   ),
 }));
-vi.mock('../summaries/use-provider-gate', () => ({
+vi.mock('../ai-provider/use-provider-gate', () => ({
   useProviderGate: () => ({ runSetup: vi.fn() }),
 }));
-vi.mock('../summaries/ProviderGateDialogs', () => ({
+vi.mock('../ai-provider/ProviderGateDialogs', () => ({
   ProviderGateDialogs: () => null,
   ProviderUnavailableNotice: () => null,
 }));

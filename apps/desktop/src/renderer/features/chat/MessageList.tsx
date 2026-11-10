@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
 import { useT } from '../../i18n/I18nProvider';
-import type { LinkHandler } from '../summaries/MarkdownView';
+import type { LinkHandler } from '../markdown/MarkdownView';
 import type { ChatRow } from './chat-view-model';
 import { MessageRow } from './MessageRow';
 

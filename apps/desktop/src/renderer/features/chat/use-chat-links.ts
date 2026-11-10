@@ -3,7 +3,7 @@ import { useCallback, useRef, type MouseEvent } from 'react';
 import { toCoreT } from './chat-core-t';
 import { useT } from '../../i18n/I18nProvider';
 import { requestTranscriptReveal } from '../session/transcript-reveal';
-import { decodedHref } from '../summaries/markdown';
+import { decodedHref } from '../markdown/markdown';
 
 export type ChatLinkTarget =
   | {

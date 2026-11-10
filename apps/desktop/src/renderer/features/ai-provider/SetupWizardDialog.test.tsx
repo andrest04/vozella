@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Providers } from '../library/library-test-kit';
 import { SetupWizardDialog, type SetupWizardDialogProps } from './SetupWizardDialog';
-import { installSummariesApi } from './summaries-test-kit';
+import { installSummariesApi } from '../summaries/summaries-test-kit';
 
 afterEach(() => {
   cleanup();
