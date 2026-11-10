@@ -4,8 +4,15 @@ import { Award } from 'lucide-react';
 import { useState } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
 import type { StringKey } from '../../i18n/translate';
-import { Badge, Button, Icon, Progress, RadioGroup, type RadioOption } from '../../ui';
-import { ConfirmDialog } from '../library/dialogs';
+import {
+  Badge,
+  Button,
+  ConfirmDialog,
+  Icon,
+  Progress,
+  RadioGroup,
+  type RadioOption,
+} from '../../ui';
 
 /**
  * The local summary models, in catalog order: which one is active, and download, cancel and delete

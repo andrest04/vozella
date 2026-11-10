@@ -3,12 +3,12 @@ import type { MeetingListItemDto } from '@vozella/contracts';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
 import type { StringKey } from '../../i18n/translate';
-import { Button, EmptyState, Notice, Skeleton, cn } from '../../ui';
+import { Button, ConfirmDialog, EmptyState, Notice, Skeleton, cn } from '../../ui';
 import { Breadcrumbs } from './Breadcrumbs';
 import { BulkBar } from './BulkBar';
 import { matchLibraryShortcut } from '../../app/shortcuts';
 import { RenameDialog } from '../session/RenameDialog';
-import { ConfirmDialog, MoveDialog, NameDialog, PersonalityDialog } from './dialogs';
+import { MoveDialog, NameDialog, PersonalityDialog } from './dialogs';
 import {
   clearDropRequest,
   clearFolderRequest,
