@@ -5,14 +5,21 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SafeStorageKeyStore, type StringCipher } from './safe-storage-key-store';
 
 /** Reversible stand-in for Electron `safeStorage`: no OS keychain is touched. */
-function fakeCipher(available = true): StringCipher {
+function fakeCipher(available = true, prefix = 'enc:', reEncryptFrom?: string): StringCipher {
   return {
-    isEncryptionAvailable: () => available,
-    encryptString: (plain) => Buffer.from(`enc:${Buffer.from(plain).toString('hex')}`),
-    decryptString: (data) => {
+    isAsyncEncryptionAvailable: () => Promise.resolve(available),
+    encryptStringAsync: (plain) =>
+      Promise.resolve(Buffer.from(`${prefix}${Buffer.from(plain).toString('hex')}`)),
+    decryptStringAsync: (data) => {
       const text = data.toString();
-      if (!text.startsWith('enc:')) throw new Error('Error while decrypting the ciphertext');
-      return Buffer.from(text.slice(4), 'hex').toString();
+      const used = [prefix, reEncryptFrom].find((p) => p !== undefined && text.startsWith(p));
+      if (used === undefined) {
+        return Promise.reject(new Error('Error while decrypting the ciphertext'));
+      }
+      return Promise.resolve({
+        shouldReEncrypt: used !== prefix,
+        result: Buffer.from(text.slice(used.length), 'hex').toString(),
+      });
     },
   };
 }
@@ -75,6 +82,14 @@ describe('SafeStorageKeyStore', () => {
     expect(await store.has('OpenAi')).toBe(false);
     await store.set('OpenAi', 'k');
     expect(await new SafeStorageKeyStore({ file, cipher: fakeCipher() }).get('OpenAi')).toBe('k');
+  });
+
+  it('re-encrypts the file with the current OS key when asked to', async () => {
+    await new SafeStorageKeyStore({ file, cipher: fakeCipher(true, 'old:') }).set('OpenAi', 'k');
+    const rotated = new SafeStorageKeyStore({ file, cipher: fakeCipher(true, 'new:', 'old:') });
+    expect(await rotated.get('OpenAi')).toBe('k');
+    await rotated.flush();
+    expect(Buffer.from(fs.readFileSync(file, 'utf8'), 'base64').toString()).toMatch(/^new:/);
   });
 
   it('serializes concurrent saves so none is lost', async () => {

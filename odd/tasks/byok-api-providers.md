@@ -82,3 +82,5 @@ Today the only cloud engines are the Claude Code and Codex CLIs, which need the 
 ## Next step
 
 Manual smoke with a real key by the user, then merge to main.
+
+- safeStorage async migration: the key store uses `isAsyncEncryptionAvailable` / `encryptStringAsync` / `decryptStringAsync` (sync ones are deprecated in Electron 45) and rewrites the file when the OS reports `shouldReEncrypt` (inline: one file + its tests; api-keys tests 9/9, tsc node, eslint, prettier).

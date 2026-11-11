@@ -4,9 +4,11 @@ import { composeApiKeys } from './compose-api-keys';
 import { SafeStorageKeyStore } from './safe-storage-key-store';
 
 const cipher = {
-  isEncryptionAvailable: vi.fn(() => true),
-  encryptString: vi.fn((plain: string) => Buffer.from(plain)),
-  decryptString: vi.fn((data: Buffer) => data.toString()),
+  isAsyncEncryptionAvailable: vi.fn(() => Promise.resolve(true)),
+  encryptStringAsync: vi.fn((plain: string) => Promise.resolve(Buffer.from(plain))),
+  decryptStringAsync: vi.fn((data: Buffer) =>
+    Promise.resolve({ shouldReEncrypt: false, result: data.toString() }),
+  ),
 };
 
 describe('composeApiKeys', () => {
@@ -18,6 +20,6 @@ describe('composeApiKeys', () => {
   it('uses the safeStorage store otherwise, without touching the cipher yet', () => {
     const store = composeApiKeys({ fakeNative: false, appDataDirectory: 'C:/app-data', cipher });
     expect(store).toBeInstanceOf(SafeStorageKeyStore);
-    expect(cipher.isEncryptionAvailable).not.toHaveBeenCalled();
+    expect(cipher.isAsyncEncryptionAvailable).not.toHaveBeenCalled();
   });
 });
