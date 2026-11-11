@@ -39,3 +39,4 @@ Strategy: merge to main (solo project, no PRs). Forecast about 400 to 500 author
 ## Progress
 
 - 2026-11-10: worktree created from main `1d3eb94`, apart from the in-progress BYOK work in `C:\Code\vozella`. Route: delegated writer (2+ non-trivial files across contracts, main, renderer, workflow).
+- 2026-11-10: U1 `2b9697d`, U2 `a6b44a1`, U3 `002fa1a` on `feat/auto-update`. Next: merge to main after review; a real end-to-end update can only be proven after two releases ship with this build.
