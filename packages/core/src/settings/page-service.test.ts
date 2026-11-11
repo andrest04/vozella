@@ -87,7 +87,7 @@ describe('SettingsPageService.load', () => {
       apiKeys: { has: (kind) => Promise.resolve(kind === 'Gemini') },
     });
     const { api } = await service.load();
-    expect(api.Gemini).toMatchObject({ keySet: true, model: 'gemini-2.5-flash', baseUrl: null });
+    expect(api.Gemini).toMatchObject({ keySet: true, model: 'gemini-3.8-flash', baseUrl: null });
     expect(api.OpenAi.keySet).toBe(false);
     expect(api.Anthropic.model).toBe('claude-custom');
     expect(api.Anthropic.modelOptions).toContain('claude-custom');

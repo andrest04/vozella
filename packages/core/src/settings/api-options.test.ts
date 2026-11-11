@@ -35,7 +35,7 @@ describe('SettingsCommands: API key engines', () => {
       reason: 'blank',
     });
     expect(
-      await c.setApiOption({ kind: 'Gemini', field: 'model', value: 'gemini-2.5-flash' }),
+      await c.setApiOption({ kind: 'Gemini', field: 'model', value: 'gemini-3.8-flash' }),
     ).toEqual({ status: 'ignored', reason: 'unchanged' });
     expect(await c.setApiOption({ kind: 'Gemini', field: 'model', value: 'two words' })).toEqual({
       status: 'ignored',
