@@ -25,12 +25,12 @@
   })();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vozella</title>
+<title data-i18n="meta.title">Vozella: Every meeting, written down.</title>
 <meta name="description" data-i18n-attr="content:meta.description" content="Vozella takes notes for your meetings on Windows. No bot joins the call. Your meetings stay as Markdown files.">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5.4' fill='%230a0a0a'/%3E%3Cpath fill='%23fff' d='M5 6h2v3H5zM8 6h2v8H8zM11 6h2v13h-2zM14 6h2v8h-2zM17 6h2v3h-2z'/%3E%3C/svg%3E">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)">
-<meta property="og:title" data-i18n-attr="content:meta.ogTitle" content="Vozella">
+<meta property="og:title" data-i18n-attr="content:meta.title" content="Vozella: Every meeting, written down.">
 <meta property="og:description" data-i18n-attr="content:meta.description" content="Vozella takes notes for your meetings on Windows. No bot joins the call. Your meetings stay as Markdown files.">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary">
@@ -73,20 +73,25 @@
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 92px; }
   body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/24px var(--sans); -webkit-font-smoothing: antialiased; }
-  h1, h2, h3, p, ul, ol, figure, dl, dd { margin: 0; padding: 0; }
+  h1, h2, p, ul, ol, figure, dl, dd { margin: 0; padding: 0; }
   ul, ol { list-style: none; }
   a { color: inherit; text-underline-offset: 3px; }
+  main:focus { outline: 0; }
   ::selection { background: var(--ink); color: var(--paper); }
   .on-ink ::selection { background: var(--paper); color: var(--ink); }
   :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
   .wrap { max-width: 1320px; margin: 0 auto; padding-inline: var(--gutter); }
   .mono { font: 400 13px/20px var(--mono); font-variant-numeric: tabular-nums; }
+  .faint { color: var(--ink-faint); }
 
   .btn { display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; border-radius: 4px; font: 500 14px/20px var(--sans); text-decoration: none; background: var(--ink); color: var(--on-ink); border: 0; cursor: pointer; transition: opacity 150ms cubic-bezier(.2, .7, .2, 1); }
   .btn:hover { opacity: .85; }
   .btn:active { opacity: .7; }
   .btn .win { width: 14px; height: 14px; margin-inline-start: 8px; flex: none; }
   .on-ink .btn { background: var(--on-ink); color: var(--ink); }
+  /* Off screen until a keyboard reaches it. */
+  .skip { position: fixed; top: 12px; left: var(--gutter); z-index: 60; transform: translateY(-200%); }
+  .skip:focus-visible { transform: none; }
   .on-ink :focus-visible { outline-color: var(--on-ink); }
 
   /* Header */
@@ -155,7 +160,7 @@
   .hero { padding-block: clamp(40px, 7vw, 88px) clamp(32px, 4vw, 56px); }
   h1 { font: 600 clamp(56px, 11.4vw, 164px)/.92 var(--sans); letter-spacing: -.04em; text-wrap: balance; }
   .hero-foot { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 24px; margin-top: clamp(24px, 3vw, 40px); }
-  .lead { max-width: 34em; font-size: 20px; line-height: 30px; color: var(--ink-muted); }
+  .lead { max-width: 34em; font-size: 20px; line-height: 30px; color: var(--ink-muted); text-wrap: pretty; }
   .cta { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
   .cta small { font: 400 13px/20px var(--mono); color: var(--ink-faint); }
 
@@ -171,7 +176,7 @@
   .panel { grid-area: 1 / 1; padding: clamp(16px, 2.4vw, 32px); min-width: 0; transition: opacity 320ms; }
   .panel[hidden] { display: block; opacity: 0; visibility: hidden; }
   .panel-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding-bottom: 16px; border-bottom: 1px solid var(--hairline); }
-  .panel-head h3 { font: 600 20px/28px var(--sans); letter-spacing: -.01em; }
+  .panel-title { font: 600 20px/28px var(--sans); letter-spacing: -.01em; }
   .live { display: inline-flex; align-items: center; gap: 12px; }
   .state { display: inline-flex; align-items: center; gap: 8px; font: 500 14px/20px var(--sans); }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--signal); }
@@ -208,7 +213,7 @@
   /* The stamp shares the heading's first baseline, like a timestamp in the margin. */
   .moment > .stamp, .moment > .stamp + div { align-self: first baseline; }
   h2 { font: 600 clamp(32px, 4.4vw, 56px)/1.04 var(--sans); letter-spacing: -.03em; text-wrap: balance; }
-  .moment p.copy { margin-top: 16px; max-width: 46ch; font-size: 18px; line-height: 28px; color: var(--ink-muted); }
+  .moment p.copy { margin-top: 16px; max-width: 46ch; font-size: 18px; line-height: 28px; color: var(--ink-muted); text-wrap: pretty; }
 
   .card { background: var(--paper-raised); border-radius: 4px; padding: clamp(16px, 2.4vw, 24px); }
   .toast { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; max-width: 400px; padding: 16px; background: var(--paper); border: 1px solid var(--border-control); border-radius: 4px; }
@@ -247,7 +252,7 @@
   .slab-body { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 32px clamp(24px, 5vw, 80px); padding-block: clamp(32px, 5vw, 72px) clamp(56px, 8vw, 112px); align-items: start; }
   .slab h2 { font-size: clamp(44px, 7.4vw, 104px); line-height: .96; letter-spacing: -.04em; }
   .slab p.copy { margin-top: 24px; max-width: 42ch; font-size: 18px; line-height: 28px; opacity: .74; }
-  .file { border: 1px solid var(--hairline-on-ink); border-radius: 4px; padding: 16px; font: 400 13px/22px var(--mono); overflow-x: auto; white-space: pre; }
+  .file { border: 1px solid var(--hairline-on-ink); border-radius: 4px; padding: 16px; font: 400 13px/22px var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 
   /* Engines */
   .engines { padding-block: clamp(56px, 8vw, 112px); }
@@ -293,7 +298,7 @@
     * { transition: none !important; }
   }
 </style>
-<noscript><style>.lang { display: none; }</style></noscript>
+<noscript><style>.lang, .steps button { display: none; }</style></noscript>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -306,6 +311,7 @@
   </symbol>
 </svg>
 
+<a class="btn skip" href="#top" data-i18n="nav.skip">Skip to content</a>
 <div class="top-sentinel" id="top-sentinel" aria-hidden="true"></div>
 <div class="wrap top-shell">
   <header class="top" id="top-bar">
@@ -333,14 +339,14 @@
   </header>
 </div>
 
-<main id="top">
+<main id="top" tabindex="-1">
   <section class="wrap hero">
     <h1 data-i18n="hero.title">Every meeting, written down.</h1>
     <div class="hero-foot">
       <p class="lead" data-i18n="hero.lead">Vozella listens to your microphone and your computer's audio, then gives you a transcript, a summary and your action items. No bot joins the call.</p>
       <div class="cta">
         <a class="btn" href="https://github.com/andrest04/vozella/releases/latest/download/Vozella-Setup.exe"><span data-i18n="hero.cta">Download for Windows</span><svg class="win" aria-hidden="true" viewBox="0 0 16 16"><path fill="currentColor" d="M0 0h7.5v7.5H0zM8.5 0H16v7.5H8.5zM0 8.5h7.5V16H0zM8.5 8.5H16V16H8.5z"/></svg></a>
-        <small data-i18n="hero.soon">Beta</small>
+        <small data-i18n="hero.status">Beta</small>
       </div>
     </div>
   </section>
@@ -358,7 +364,7 @@
           <div class="stage">
             <div class="panel" data-panel="listen">
               <div class="panel-head">
-                <h3 data-i18n="sample.title">Pricing review</h3>
+                <p class="panel-title" data-i18n="sample.title">Pricing review</p>
                 <div class="live">
                   <span class="level" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
                   <span class="state is-live"><span class="dot"></span><span data-i18n="app.recording">Recording</span></span>
@@ -376,14 +382,14 @@
               <p class="hint" data-i18n="app.liveHint">Live preview only. The transcript that is saved is generated from the recording after you stop.</p>
             </div>
             <div class="panel" data-panel="polish" hidden>
-              <div class="panel-head"><h3 data-i18n="sample.title">Pricing review</h3><span class="state" data-i18n="app.stopped">Stopped</span></div>
+              <div class="panel-head"><p class="panel-title" data-i18n="sample.title">Pricing review</p><span class="state" data-i18n="app.stopped">Stopped</span></div>
               <div class="polish">
                 <p data-i18n="app.polishing">Polishing transcript...</p>
                 <div class="track"><i data-progress></i></div>
               </div>
             </div>
             <div class="panel" data-panel="summary" hidden>
-              <div class="panel-head"><h3 data-i18n="sample.title">Pricing review</h3><span class="mono" style="color:var(--ink-faint)">47:08</span></div>
+              <div class="panel-head"><p class="panel-title" data-i18n="sample.title">Pricing review</p><span class="mono faint">47:08</span></div>
               <p class="note" data-i18n="sample.note">The team kept annual pricing as is and held the monthly change until after the launch on the 18th, because support tickets rose after the last change. The numbers get reviewed again after launch.</p>
               <p class="sub" data-i18n="app.actionItems">Action items</p>
               <ul class="items">
@@ -406,7 +412,7 @@
 
   <div class="wrap timeline" id="timeline">
     <section class="moment">
-      <div class="stamp">-01:00</div>
+      <div class="stamp">−01:00</div>
       <div>
         <h2 data-i18n="calendar.title">It sees the meeting coming.</h2>
         <p class="copy" data-i18n="calendar.copy">Vozella reads your Windows calendar and reminds you a minute before any meeting with two or more people. Join a Zoom, Teams or Meet call out of nowhere and it notices that too.</p>
@@ -494,13 +500,12 @@
         <h2 data-i18n="files.title">Your meetings are files.</h2>
         <p class="copy" data-i18n="files.copy">Each meeting is a Markdown file in your Documents folder, with its recording next to it. Open them in any editor, back them up however you like, and keep them if you ever stop using Vozella.</p>
       </div>
-      <div class="file" tabindex="0" aria-label="A meeting saved as a Markdown file" data-i18n-attr="aria-label:files.label" data-i18n="files.sample">---
+      <div class="file" role="group" aria-label="A meeting saved as a Markdown file" data-i18n-attr="aria-label:files.label" data-i18n="files.sample">---
 title: Pricing review
 ---
 
 ## Summary
-The team kept annual pricing as is and held
-the monthly change until after the launch.
+The team kept annual pricing as is and held the monthly change until after the launch.
 
 ## Action Items
 - [ ] Tell sales today
@@ -511,15 +516,15 @@ the monthly change until after the launch.
   <section class="wrap engines" id="engines">
     <div class="engine-grid">
       <div>
-        <h2 data-i18n="engines.title">You choose who reads the transcript.</h2>
+        <h2 id="engines-title" data-i18n="engines.title">You choose who reads the transcript.</h2>
         <p class="copy" data-i18n="engines.copy">Transcription always runs on your PC. For summaries and chat, pick the engine you trust. Pick a cloud one and the transcript goes to that provider.</p>
       </div>
       <div>
-        <table>
+        <table aria-labelledby="engines-title">
           <tr><th scope="row" data-i18n="engines.transcription">Transcription</th><td data-i18n="engines.transcriptionBody">NVIDIA Nemotron, on this PC. Needs about 0.74 GB, fetched once during setup.</td></tr>
           <tr><th scope="row">Local</th><td data-i18n="engines.localBody">Runs entirely on this PC, with no account, no server and no cost.</td></tr>
           <tr><th scope="row">Claude Code, Codex</th><td data-i18n="engines.cliBody">Your own installed and signed-in command line tool.</td></tr>
-          <tr><th scope="row">Grok</th><td data-i18n="engines.grokBody">xAI, with SuperGrok or an API key.</td></tr>
+          <tr><th scope="row" data-i18n="engines.apiKey">API key</th><td data-i18n="engines.apiKeyBody">OpenAI, Anthropic, Gemini or any OpenAI-compatible server, with your own key.</td></tr>
         </table>
         <p class="langs" data-i18n="engines.langs">Transcribes English, Spanish, Portuguese, French, German, Italian, Dutch, Japanese and Chinese, or detects the language for you. The app and its summaries are in English and Spanish.</p>
       </div>
@@ -544,7 +549,8 @@ the monthly change until after the launch.
     var I18N = {
       en: {
         "meta.description": "Vozella takes notes for your meetings on Windows. No bot joins the call. Your meetings stay as Markdown files.",
-        "meta.ogTitle": "Vozella",
+        "meta.title": "Vozella: Every meeting, written down.",
+        "nav.skip": "Skip to content",
         "nav.home": "Vozella home",
         "nav.label": "Main",
         "nav.how": "How it works",
@@ -556,7 +562,7 @@ the monthly change until after the launch.
         "hero.title": "Every meeting, written down.",
         "hero.lead": "Vozella listens to your microphone and your computer's audio, then gives you a transcript, a summary and your action items. No bot joins the call.",
         "hero.cta": "Download for Windows",
-        "hero.soon": "Beta",
+        "hero.status": "Beta",
         "demo.section": "Product demo",
         "demo.label": "Vozella on a sample meeting. It records with a live transcript, polishes the transcript after you stop, then shows a summary and action items.",
         "demo.caption": "Sample meeting, redrawn from the app.",
@@ -623,14 +629,15 @@ the monthly change until after the launch.
         "files.title": "Your meetings are files.",
         "files.copy": "Each meeting is a Markdown file in your Documents folder, with its recording next to it. Open them in any editor, back them up however you like, and keep them if you ever stop using Vozella.",
         "files.label": "A meeting saved as a Markdown file",
-        "files.sample": "---\ntitle: Pricing review\n---\n\n## Summary\nThe team kept annual pricing as is and held\nthe monthly change until after the launch.\n\n## Action Items\n- [ ] Tell sales today\n- [ ] Send last quarter's ticket numbers",
+        "files.sample": "---\ntitle: Pricing review\n---\n\n## Summary\nThe team kept annual pricing as is and held the monthly change until after the launch.\n\n## Action Items\n- [ ] Tell sales today\n- [ ] Send last quarter's ticket numbers",
         "engines.title": "You choose who reads the transcript.",
         "engines.copy": "Transcription always runs on your PC. For summaries and chat, pick the engine you trust. Pick a cloud one and the transcript goes to that provider.",
         "engines.transcription": "Transcription",
         "engines.transcriptionBody": "NVIDIA Nemotron, on this PC. Needs about 0.74 GB, fetched once during setup.",
         "engines.localBody": "Runs entirely on this PC, with no account, no server and no cost.",
         "engines.cliBody": "Your own installed and signed-in command line tool.",
-        "engines.grokBody": "xAI, with SuperGrok or an API key.",
+        "engines.apiKey": "API key",
+        "engines.apiKeyBody": "OpenAI, Anthropic, Gemini or any OpenAI-compatible server, with your own key.",
         "engines.langs": "Transcribes English, Spanish, Portuguese, French, German, Italian, Dutch, Japanese and Chinese, or detects the language for you. The app and its summaries are in English and Spanish.",
         "close.title": "Download Vozella for Windows.",
         "close.cta": "Download for Windows",
@@ -638,7 +645,8 @@ the monthly change until after the launch.
       },
       es: {
         "meta.description": "Vozella toma notas de tus reuniones en Windows. Ningún bot se une a la llamada. Tus reuniones quedan como archivos Markdown.",
-        "meta.ogTitle": "Vozella",
+        "meta.title": "Vozella: Cada reunión, por escrito.",
+        "nav.skip": "Saltar al contenido",
         "nav.home": "Inicio de Vozella",
         "nav.label": "Principal",
         "nav.how": "Cómo funciona",
@@ -650,7 +658,7 @@ the monthly change until after the launch.
         "hero.title": "Cada reunión, por escrito.",
         "hero.lead": "Vozella escucha tu micrófono y el audio de tu PC, y te entrega una transcripción, un resumen y tus elementos de acción. Ningún bot se une a la llamada.",
         "hero.cta": "Descargar para Windows",
-        "hero.soon": "Beta",
+        "hero.status": "Beta",
         "demo.section": "Demostración del producto",
         "demo.label": "Vozella en una reunión de ejemplo. Graba con transcripción en vivo, pule la transcripción después de detener la grabación y luego muestra un resumen y elementos de acción.",
         "demo.caption": "Reunión de ejemplo, recreada a partir de la aplicación.",
@@ -706,7 +714,7 @@ the monthly change until after the launch.
         "writes.title": "Detienes la grabación y Vozella escribe.",
         "writes.copy": "El texto en vivo es solo una vista previa. Cuando detienes la grabación, Vozella vuelve a ella y hace bien la transcripción, y luego escribe el resumen y los elementos de acción.",
         "writes.stop": "Terminas la grabación.",
-        "writes.transcript": "Se genera de nuevo a partir de todo el audio, con etiquetas Hablante 1-4 si las activas.",
+        "writes.transcript": "Se genera de nuevo a partir de todo el audio, con etiquetas Hablante 1–4 si las activas.",
         "writes.summary": "Lo escribe el motor que elegiste, a partir de tu plantilla.",
         "writes.actionItems": "Aparecen bajo el resumen, listos para marcar.",
         "recall.stamp": "Próxima semana",
@@ -717,14 +725,15 @@ the monthly change until after the launch.
         "files.title": "Tus reuniones son archivos.",
         "files.copy": "Cada reunión es un archivo Markdown en tu carpeta Documentos, con su grabación al lado. Ábrelos en cualquier editor, haz copias de seguridad como prefieras y consérvalos si algún día dejas de usar Vozella.",
         "files.label": "Una reunión guardada como archivo Markdown",
-        "files.sample": "---\ntitle: Revisión de precios\n---\n\n## Summary\nEl equipo mantuvo el precio anual y dejó\nel cambio mensual para después del\nlanzamiento.\n\n## Action Items\n- [ ] Avisar hoy a ventas\n- [ ] Enviar las cifras de tickets\n      del último trimestre",
+        "files.sample": "---\ntitle: Revisión de precios\n---\n\n## Summary\nEl equipo mantuvo el precio anual y dejó el cambio mensual para después del lanzamiento.\n\n## Action Items\n- [ ] Avisar hoy a ventas\n- [ ] Enviar las cifras de tickets del último trimestre",
         "engines.title": "Tú eliges quién lee la transcripción.",
         "engines.copy": "La transcripción siempre se ejecuta en tu PC. Para resúmenes y chat, elige el motor en el que confías. Si eliges uno en la nube, la transcripción va a ese proveedor.",
         "engines.transcription": "Transcripción",
         "engines.transcriptionBody": "NVIDIA Nemotron, en este PC. Necesita unos 0.74 GB, que se obtienen una sola vez durante la configuración.",
         "engines.localBody": "Se ejecuta completamente en este PC, sin cuenta, sin servidor y gratis.",
         "engines.cliBody": "Tu propia herramienta de línea de comandos, instalada y con sesión iniciada.",
-        "engines.grokBody": "xAI, con SuperGrok o una clave de API.",
+        "engines.apiKey": "Clave de API",
+        "engines.apiKeyBody": "OpenAI, Anthropic, Gemini o cualquier servidor compatible con OpenAI, con tu propia clave.",
         "engines.langs": "Transcribe inglés, español, portugués, francés, alemán, italiano, neerlandés, japonés y chino, o detecta el idioma por ti. La aplicación y sus resúmenes están en inglés y español.",
         "close.title": "Descarga Vozella para Windows.",
         "close.cta": "Descargar para Windows",
@@ -775,7 +784,7 @@ the monthly change until after the launch.
     var figure = document.querySelector("figure");
 
     // Everything on screen comes from (step, t), so the demo can jump, freeze and stand still.
-    var step = 0, t = 6, visible = true, last = performance.now();
+    var step = 0, t = 6, visible = true, auto = true, last = performance.now();
 
     function fmt(seconds) {
       var s = Math.floor(seconds);
@@ -806,6 +815,8 @@ the monthly change until after the launch.
     buttons.forEach(function (b, i) {
       b.addEventListener("click", function () {
         step = i;
+        // Choosing a step ends the loop: that step plays through and then holds.
+        auto = false;
         if (reduced) endFrame(); else { t = 0; draw(); }
       });
     });
@@ -823,7 +834,9 @@ the monthly change until after the launch.
       last = now;
       if (!visible || document.hidden) return;
       t += dt;
-      if (t >= STEPS[step].dur) { step = (step + 1) % STEPS.length; t = 0; }
+      if (t >= STEPS[step].dur) {
+        if (auto) { step = (step + 1) % STEPS.length; t = 0; } else t = STEPS[step].dur;
+      }
       draw();
     }, 50);
 
