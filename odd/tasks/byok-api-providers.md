@@ -52,8 +52,10 @@ Today the only cloud engines are the Claude Code and Codex CLIs, which need the 
   - `ProviderSection` radios and API options block; privacy notice; renderer gates (`use-provider-gate`, `ProviderMark`, `EngineChooser`, `wizard-state`, `cli-hint`, `use-chat`).
   - i18n keys in both locales.
   - Checks: `pnpm check`; focused e2e for settings provider section.
-- [ ] T4 — Specs and docs (inline or delegated)
+- [x] T4 — Specs and docs, plus T3 gap B (route: delegated; trigger: 2+ non-trivial files, reading that prepares a write)
   - `docs/port/specs/summaries.md` (§2.1, §2.5, §2.7, §2.9, §4.1, §5.2), `settings-i18n.md` §2.2, `stack.md` credentials row.
+  - Gap B: the recording setup checklist no longer reopens when the wizard sends the user to Settings for an API key.
+- [ ] T5 — Gap A: `Ui_SummaryProviderXaiRemoved` copy should also name the API key engines (blocked: needs `features/settings/SettingsRoute.test.tsx` and `e2e/settings-provider.spec.ts`, which also assert the old text).
 
 ## Acceptance criteria
 
@@ -75,6 +77,8 @@ Today the only cloud engines are the Claude Code and Codex CLIs, which need the 
 - T3 done: `SettingsRuntimeDeps.apiKeys`/`fetch`/`verifyTimeoutMs` and `SettingsRuntime.apiKeys` (`ApiKeySettings`: set/clear answer `{status, keySet}`, verify answers `{status:'verified', models}` or `{status:'failed', errorKey}` from `API_FAILURE_UI_KEYS` / `API_KEY_SETTINGS_UI_KEYS`, 20 s timeout); `composeSettings` gets the shared store and, in the fake native build, a `FakeFetch` model list. Channels `settings.setApiOption` (registered), `settings.setApiKey`, `settings.clearApiKey`, `settings.verifyApiKey` (strict zod; the key is never in an answer or log). Settings: `ProviderChoice` (one radiogroup, three captioned rows: on this PC / with a subscription / with your API key), `ApiProviderOptions` (privacy notice, server address for the compatible kind, masked key with show/hide, Save/Verify/Remove, polite live status line, model input with datalist of verified + catalog ids). Gates: wizard chooser lists the API engines (`SavingApi` phase: save, then ready or open Settings), provider gate shows "Add your API key in Settings" notice (also in chat), saved prompts can name API engines. RED observed for contracts, runtime, handlers, Settings UI, gate and wizard reducer, then GREEN. Commits: see git log (`feat(desktop): add API key IPC channels`, `feat(settings): add API key provider settings`, `feat(desktop): offer API key engines in the wizard, gate and saved prompts`).
 - T3 gaps: `Ui_SummaryProviderXaiRemoved` copy unchanged (needs `apps/desktop/src/renderer/features/summaries/SummaryGeneration.test.tsx`, outside the T3 surface); `features/record/use-ensure-ready.tsx` re-shows the checklist after the wizard sends the user to Settings for a key; the ai-provider `ModelPicker` is the local GGUF list, so the API model uses an input with suggestions instead.
 
+- T4 done. Gap B fixed: `SetupWizardDialog` / `useSetupWizard` take an optional `onSentToSettings`, called just before `onFinished(null)` when an API engine still needs its key; `useEnsureReady` maps the wizard to `ready | left | settings` and ends the loop on `settings` (no checklist, no "Setup cancelled." notice); the checklist comes back on the next Record. RED observed in `RecordRoute.test.tsx` (the checklist dialog was still open after the wizard opened Settings), then GREEN; an ordering test was added to `SetupWizardDialog.test.tsx`. Docs describe the shipped behavior (engine table, protocols, no map-reduce, no images or web search, failure kinds and HTTP mapping, readiness reasons, Settings block, five settings fields omitted when null, `api-keys.bin` boundary). Gap A deferred to T5 (edit surface). Commits: see git log (`fix(record): keep setup checklist closed while adding an API key`, `docs(summaries): document API key providers`).
+
 ## Next step
 
-T4 (specs and docs), then the T3 gaps above.
+T5 (gap A copy, needs the two extra test files authorized), then a manual smoke with a real key by the user, then merge to main.

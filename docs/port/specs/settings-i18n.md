@@ -112,6 +112,16 @@ Visibility of the provider-specific blocks (all bound one-way):
 
 All blocks sit below the radios so the radios never jump.
 
+**Port: grouped radios with API key engines.** The port drops Grok and adds four API key engines (BYOK). The radios stay one radiogroup, split into three captioned groups in this fixed order:
+
+| Group caption key | en | es | Radios (label key) |
+|---|---|---|---|
+| `Ui_ProviderGroupDevice` | On this PC | En este PC | `Local` (`Settings_ProviderLocal.Text`) |
+| `Ui_ProviderGroupSubscription` | With a subscription | Con una suscripción | `ClaudeCode` (`Settings_ProviderClaude.Text`), `Codex` (`Settings_ProviderCodex.Text`) |
+| `Ui_ProviderGroupApiKey` | With your API key | Con tu clave de API | `OpenAi` (`Ui_ApiOpenAiName`), `Anthropic` (`Ui_ApiAnthropicName`), `Gemini` (`Ui_ApiGeminiName`), `OpenAiCompatible` (`Ui_ApiOpenAiCompatibleName`) |
+
+Selecting an API kind saves `selectedSummaryProvider` like any other kind and shows the API options block (privacy notice, key, Verify, model, and the server address for the compatible kind). Its behavior is in summaries spec 2.9; its settings fields are in summaries spec 4.1.
+
 ### 2.3 Claude Code and Codex options
 
 Each has two combo boxes inside a settings expander, bound to string lists from `InferenceCatalog`.

@@ -18,7 +18,7 @@ Binding brief for everyone working in `apps/desktop`, `packages/*`, and `native/
 | ASR | NeMo-Speech.cpp v0.3.0 C ABI through koffi 3 in its own `utilityProcess`, Nemotron GGUF, CUDA or CPU | Same engine and models as today, with v0.3.0 streaming and diarization fixes. Spike: exact Spanish text, RTF 0.06 on GPU |
 | Local LLM | `llama-server` (llama.cpp, pinned b-tag, SHA-256 per zip) as a child process on loopback with an ephemeral API key, SSE streaming, backends cuda12, cuda13, vulkan, cpu | Spike: 230 t/s on GPU. Today's app is CPU-only, so GPU offload is a real upgrade. A Job Object or equivalent must kill it if the parent dies |
 | Calendar, DPAPI, sessions | Same Rust addon, `windows` crate, behind ports | Store read worked unpackaged. `safeStorage` cannot read .NET DPAPI blobs; `CryptUnprotectData` can |
-| Credentials | `safeStorage` for new secrets. Old DPAPI files are read only through an explicit import | |
+| Credentials | `safeStorage` for new secrets. Old DPAPI files are read only through an explicit import | API keys (BYOK) live in `api-keys.bin` through the `ApiKeyStore` port, main process only |
 | Search | No database. Markdown files stay the source of truth; filter in memory as today | Add SQLite only if a measured need appears |
 | CLI tools | `spawn` with `shell:false`, argv array, prompt on stdin, explicit `.cmd` shim handling (CVE-2024-27980) | |
 | Tests | Vitest 5; Playwright `_electron` for e2e with a fake-native build flag; contract tests run against both fake and real adapters | |
