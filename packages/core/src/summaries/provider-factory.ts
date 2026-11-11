@@ -1,5 +1,11 @@
 import type { SettingsStore } from '../library/ports';
-import { isProviderAvailable, type SummaryProviderKind } from '../library/settings';
+import {
+  isApiProvider,
+  isProviderAvailable,
+  type AppSettings,
+  type SummaryProviderKind,
+} from '../library/settings';
+import { API_ENGINES, type ApiEngine } from '../settings/api-providers';
 import { CLI_ENGINES } from '../settings/cli-providers';
 import {
   createClaudeCodeProvider,
@@ -9,12 +15,23 @@ import type { CliProcessRunner } from './cli-failure';
 import { createCodexProvider, createCodexWebSearchProvider } from './codex-provider';
 import type { SummaryProvider } from './provider';
 
+/**
+ * Builds the provider for an API key engine from the settings read for this call. Core does no
+ * HTTP: the platform supplies the adapter, which reads the key from its `ApiKeyStore`.
+ */
+export type ApiProviderBuilder = (
+  engine: ApiEngine,
+  settings: AppSettings,
+) => SummaryProvider | Promise<SummaryProvider>;
+
 export interface SummaryProviderFactoryDeps {
   /** The single settings reader (B2): every provider is built from `settings.load()`. */
   readonly settings: SettingsStore;
   readonly runner: CliProcessRunner;
   /** Builds the local provider for a model file. The platform shares one host behind it (B3). */
   readonly createLocal: (modelPath: string) => SummaryProvider;
+  /** Builds the OpenAI, Anthropic, Gemini and compatible providers (BYOK). */
+  readonly apiProviderBuilder: ApiProviderBuilder;
   /** The fake native build answers every kind with a double. Null falls through to the real one. */
   readonly override?: (kind: SummaryProviderKind) => SummaryProvider | null;
 }
@@ -50,6 +67,8 @@ export class SummaryProviderFactory {
       return this.deps.createLocal(options.modelPath);
     }
     const settings = await this.deps.settings.load();
+    // API engines have no web search (live answers keep it CLI-only), so the flag is ignored.
+    if (isApiProvider(kind)) return this.deps.apiProviderBuilder(API_ENGINES[kind], settings);
     const webSearch = options.webSearch === true;
     const engine = CLI_ENGINES[kind];
     const cliOptions = {

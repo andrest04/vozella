@@ -18,7 +18,7 @@ import { rememberedNextSessionDate } from './next-session';
 import { PatchQueue } from './patch-queue';
 import { createEnhancementContext } from './prompt-builders';
 import { isCancellation, type ProviderId } from './provider';
-import type { SetupKind, SummaryProviderResolver } from './provider-resolver';
+import type { SetupKind, SetupReason, SummaryProviderResolver } from './provider-resolver';
 import {
   DEFAULT_PLACEHOLDER_FORMATS,
   placeholderPatternsFromFormats,
@@ -77,7 +77,7 @@ export type GenerateOutcome =
   | {
       readonly status: 'needs-setup';
       readonly kind: SetupKind;
-      readonly reason: 'model-missing' | 'cli-missing';
+      readonly reason: SetupReason;
     }
   | { readonly status: 'unavailable'; readonly reason: 'xai-removed' }
   | { readonly status: 'cancelled' }

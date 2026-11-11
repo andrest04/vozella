@@ -1,8 +1,10 @@
 import { CancelSource, type CancelSignal } from '../../cancel';
 import type { TranslateFn } from '../../i18n/translator';
 import type { SettingsStore } from '../../library/ports';
-import { isCliProvider } from '../../library/settings';
+import { isApiProvider, isCliProvider } from '../../library/settings';
+import { API_ENGINES } from '../../settings/api-providers';
 import { CLI_ENGINES } from '../../settings/cli-providers';
+import { ApiProviderError } from '../../summaries/api-failure';
 import { CliToolError } from '../../summaries/cli-failure';
 import { formatFailure } from '../../summaries/cli-failure-messages';
 import type { SummaryProviderResolver } from '../../summaries/provider-resolver';
@@ -147,7 +149,13 @@ export class SummaryStage {
     switch (outcome.status) {
       case 'failed':
         return describeFailed(outcome, t);
-      case 'needs-setup':
+      case 'needs-setup': {
+        if (isApiProvider(outcome.kind)) {
+          const name = API_ENGINES[outcome.kind].displayName;
+          return outcome.reason === 'key-missing'
+            ? formatFailure(new ApiProviderError(name, 'KeyMissing'), t)
+            : t('Ui_ApiSetupIncomplete', name);
+        }
         return outcome.reason === 'model-missing'
           ? t('Ui_SummaryLocalModelMissing')
           : formatFailure(
@@ -157,6 +165,7 @@ export class SummaryStage {
               ),
               t,
             );
+      }
       case 'unavailable':
         return t('Ui_SummaryProviderXaiRemoved');
       case 'busy':

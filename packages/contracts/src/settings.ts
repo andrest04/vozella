@@ -12,7 +12,18 @@ const empty = z.object({}).strict();
 
 export const uiLanguageTagSchema = z.enum(['en-US', 'es']);
 export const catalogLocaleSchema = z.enum(['en', 'es']);
-export const summaryProviderSchema = z.enum(['Local', 'ClaudeCode', 'Codex', 'Xai']);
+export const summaryProviderSchema = z.enum([
+  'Local',
+  'ClaudeCode',
+  'Codex',
+  'Xai',
+  'OpenAi',
+  'Anthropic',
+  'Gemini',
+  'OpenAiCompatible',
+]);
+export const apiProviderKindSchema = z.enum(['OpenAi', 'Anthropic', 'Gemini', 'OpenAiCompatible']);
+export type ApiProviderKindDto = z.infer<typeof apiProviderKindSchema>;
 export type SummaryProviderDto = z.infer<typeof summaryProviderSchema>;
 export const cliStatusSchema = z.enum(['detected', 'missing']);
 
@@ -43,6 +54,17 @@ const providerOptionsSchema = z.object({
   effortOptions: z.array(z.string()).readonly(),
 });
 
+/** One API key engine on the page: whether a key is set, never the key. */
+const apiEngineOptionsSchema = z
+  .object({
+    keySet: z.boolean(),
+    model: z.string(),
+    modelOptions: z.array(z.string()).readonly(),
+    baseUrl: z.string().nullable(),
+  })
+  .strict();
+export type ApiEngineOptionsDto = z.infer<typeof apiEngineOptionsSchema>;
+
 export const modelRowSchema = z.object({
   fileName: z.string(),
   displayName: z.string(),
@@ -72,6 +94,12 @@ export const settingsPageSchema = z.object({
   provider: summaryProviderSchema,
   claude: providerOptionsSchema,
   codex: providerOptionsSchema,
+  api: z.object({
+    OpenAi: apiEngineOptionsSchema,
+    Anthropic: apiEngineOptionsSchema,
+    Gemini: apiEngineOptionsSchema,
+    OpenAiCompatible: apiEngineOptionsSchema,
+  }),
   cliStatus: cliStatusSchema.nullable(),
   transcriptionLanguage: z.string(),
   summaryLanguage: z.string(),
@@ -121,6 +149,49 @@ export const settingsSetCliOption = defineRequest('settings.setCliOption', {
     value: z.string().max(300),
   }),
   output: commitOutcomeSchema,
+});
+
+/** The model id of an API key engine, or the endpoint of the compatible one (http or https). */
+export const settingsSetApiOption = defineRequest('settings.setApiOption', {
+  input: z.object({
+    kind: apiProviderKindSchema,
+    field: z.enum(['model', 'baseUrl']),
+    value: z.string().max(300),
+  }),
+  output: commitOutcomeSchema,
+});
+
+/**
+ * Saves the user's API key for one engine. The key travels from the page to main once and is never
+ * sent back: the answer says only whether a key is now set. A blank key removes it. `failed` names
+ * the catalog key of the reason (for example, the OS cannot encrypt it).
+ */
+export const settingsSetApiKey = defineRequest('settings.setApiKey', {
+  input: z.object({ kind: apiProviderKindSchema, key: z.string().max(2_000) }).strict(),
+  output: z.discriminatedUnion('status', [
+    z.object({ status: z.literal('saved'), keySet: z.boolean() }).strict(),
+    z.object({ status: z.literal('failed'), errorKey: z.string() }).strict(),
+  ]),
+});
+
+export const settingsClearApiKey = defineRequest('settings.clearApiKey', {
+  input: z.object({ kind: apiProviderKindSchema }).strict(),
+  output: z.discriminatedUnion('status', [
+    z.object({ status: z.literal('saved'), keySet: z.boolean() }).strict(),
+    z.object({ status: z.literal('failed'), errorKey: z.string() }).strict(),
+  ]),
+});
+
+/**
+ * Tries the saved key (and, for the compatible engine, the saved address) by listing the models
+ * it can use. A failure is the catalog key of the reason; `{0}` in it is the engine's name.
+ */
+export const settingsVerifyApiKey = defineRequest('settings.verifyApiKey', {
+  input: z.object({ kind: apiProviderKindSchema }).strict(),
+  output: z.discriminatedUnion('status', [
+    z.object({ status: z.literal('verified'), models: z.array(z.string()).readonly() }).strict(),
+    z.object({ status: z.literal('failed'), errorKey: z.string() }).strict(),
+  ]),
 });
 
 export const settingsSetMeetingLanguage = defineRequest('settings.setMeetingLanguage', {

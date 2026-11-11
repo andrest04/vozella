@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef, useState, type DragEvent } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import type { StringKey } from '../../i18n/translate';
 import { ProviderGateDialogs } from '../ai-provider/ProviderGateDialogs';
+import { ProviderUnavailableNotice } from '../ai-provider/ProviderUnavailableNotice';
 import { useProviderGate } from '../ai-provider/use-provider-gate';
 import { Icon, Notice } from '../../ui';
 import { ApplySummaryNotice } from './ApplySummaryNotice';
@@ -125,6 +126,7 @@ export function ChatBody({ scope }: { readonly scope: ChatScopeDecision }) {
           </Notice>
         </div>
       ) : null}
+      <ProviderUnavailableNotice gate={gate} />
       {library.notice ? (
         <div data-testid="InfoChatPromptsNotice">
           <Notice onDismiss={library.dismissNotice} dismissLabel={t('Ui_Close')}>

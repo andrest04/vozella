@@ -9,8 +9,8 @@ import {
   cliExecutableName,
   isCliEngine,
   readsImagesFromDisk,
-  summaryKindOf,
 } from './cli-providers';
+import { summaryKindOf } from './api-providers';
 import { CLAUDE_MODELS, CODEX_EFFORTS } from './inference-options';
 
 describe('CLI_ENGINES', () => {

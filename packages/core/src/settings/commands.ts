@@ -6,6 +6,8 @@ import {
   type AppSettings,
   type SettingsStore,
 } from '../library';
+import type { ApiProviderKind } from '../library/settings';
+import { API_ENGINES } from './api-providers';
 import { cliEngineByExecutable, type CliExecutable } from './cli-providers';
 import {
   normalizeLanguageCode,
@@ -40,6 +42,26 @@ export const messageOf = (error: unknown): string =>
 /** The model and effort pickers are keyed by the engine's executable name. */
 export type CliOptionProvider = CliExecutable;
 export type CliOptionField = 'model' | 'effort';
+
+/** `model` for every API key engine; `baseUrl` only for the compatible one. */
+export type ApiOptionField = 'model' | 'baseUrl';
+
+/** Longest model id or URL a setting keeps. */
+const API_OPTION_MAX = 300;
+
+/**
+ * `scheme://[user@]host[:port][/path]` with an http or https scheme. Core has no `URL` (no DOM or
+ * Node libs), so the shape is checked here and the HTTP adapter parses it for real.
+ */
+const HTTP_URL =
+  /^https?:\/\/(?:[^\s/?#@]+@)?(?:[^\s/?#:@[\]]+|\[[0-9a-f:.]+\])(?::\d{1,5})?(?:[/?#]\S*)?$/i;
+
+/** An absolute http or https URL, without its trailing slashes; null for anything else. */
+export function normalizeApiBaseUrl(value: string): string | null {
+  const text = value.trim();
+  if (!HTTP_URL.test(text)) return null;
+  return text.replace(/\/+$/, '');
+}
 
 export interface SettingsCommandsDeps {
   readonly store: SettingsStore;
@@ -95,6 +117,38 @@ export class SettingsCommands {
         patch: this.patchFor(provider, field, value),
         feedback: (next) => this.feedbackFor(next, provider),
       };
+    });
+  }
+
+  /**
+   * The model id of an API key engine (any id the provider knows, suggested or typed) or the
+   * endpoint of the compatible engine (http or https only).
+   */
+  async setApiOption(input: {
+    readonly kind: ApiProviderKind;
+    readonly field: ApiOptionField;
+    readonly value: string;
+  }): Promise<CommitOutcome> {
+    const { kind, field } = input;
+    const value = input.value.trim();
+    const engine = API_ENGINES[kind];
+    return this.commit((current) => {
+      if (value === '') return ignored('blank');
+      if (value.length > API_OPTION_MAX) return ignored('invalid');
+      if (field === 'model') {
+        if (/\s/.test(value)) return ignored('invalid');
+        if (engine.resolveModel(current) === value) return ignored('unchanged');
+        return {
+          patch: { [engine.modelSetting]: value },
+          feedback: (next) => ({ key: 'Xai_FeedbackModel', args: [engine.resolveModel(next)] }),
+        };
+      }
+      // Only the compatible engine takes a user endpoint; the others have a fixed one.
+      if (engine.defaultBaseUrl !== null) return ignored('invalid');
+      const url = normalizeApiBaseUrl(value);
+      if (url === null) return ignored('invalid');
+      if (engine.resolveBaseUrl(current) === url) return ignored('unchanged');
+      return { patch: { openAiCompatibleBaseUrl: url } };
     });
   }
 

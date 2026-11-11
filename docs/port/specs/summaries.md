@@ -52,6 +52,20 @@ Concatenating all chunks of `StreamPromptAsync` equals the full answer.
 
 `SummaryResult.SuggestedTitle` is parsed from the same response as the summary. There is never a second inference for the title on the summarize path.
 
+**API key engines (port-only, BYOK).** Next to Local and the two CLIs, the port offers four engines reached over HTTP with the user's own key. One table, `API_ENGINES` (`core/src/settings/api-providers.ts`), defines them; two protocols serve all four:
+
+| Kind (saved) | Provider id | Protocol | Base URL | Key | Default model |
+|---|---|---|---|---|---|
+| `OpenAi` | `openai` | OpenAI chat completions | `https://api.openai.com/v1` | required | `gpt-5-mini` |
+| `Anthropic` | `anthropic` | Anthropic Messages | `https://api.anthropic.com/v1` | required | `claude-sonnet-5-5` |
+| `Gemini` | `gemini` | OpenAI chat completions | `https://generativelanguage.googleapis.com/v1beta/openai` | required | `gemini-2.5-flash` |
+| `OpenAiCompatible` | `openai-compatible` | OpenAI chat completions | user-supplied (trailing `/` trimmed) | optional (Ollama, LM Studio take none) | none: the user types one |
+
+- `OpenAiChatProvider` (`POST {base}/chat/completions`, `Authorization: Bearer`) and `AnthropicMessagesProvider` (`POST {base}/messages`, `x-api-key`, `anthropic-version: 2023-06-01`, `max_tokens` 8192) share the `ApiChatProvider` base in `packages/platform/src/api-providers`. Every prompt is one streamed (SSE) request; `StreamPromptAsync` yields real chunks.
+- A remote engine: like the CLIs it gets the large chat budgets and **never map-reduces** (3.5 applies to Local only). The whole prompt goes in one request.
+- A finish reason of `length` (OpenAI) or `max_tokens` (Anthropic) reports the answer as truncated.
+- Not in v1: image attachments are never sent to API engines (chat shows `Ui_ChatAttachImagesApi`), and live-answer web search stays CLI-only.
+
 ### 2.2 Summary tab (`App/SummaryPage.xaml`, `SummaryPage.xaml.cs`, `ViewModels/SummaryPageViewModel.cs`)
 
 #### Layout
@@ -271,6 +285,40 @@ Messages (`BuildMessage`, Core keys, `{0}` = provider display name):
 
 Because `Format` returns raw `Message` for other exception types, these English strings reach the user untranslated in the Spanish UI: the local-model messages in 3.5, `FileNotFoundException` text, every `XaiException` message, and `HttpRequestException` text.
 
+#### API engine failures (port-only: `ApiProviderError`, `core/src/summaries/api-failure.ts`)
+
+An API engine failure is data, like `CliToolError`: `kind`, `displayName`, and `detail` (a `SanitizeSnippet` of the body, kept only for Unknown). The key is never part of the message.
+
+How a failure is classified:
+
+| Cause | Kind |
+|---|---|
+| No key saved for an engine that requires one (checked before any request) | `KeyMissing` |
+| HTTP 401 or 403 | `KeyInvalid` |
+| HTTP 402, or 429 whose body mentions `quota` or `insufficient` | `QuotaExceeded` |
+| Other HTTP 429 | `RateLimited` |
+| HTTP 404 | `ModelNotFound` |
+| HTTP 408 or 504, or no byte within 5 minutes | `TimedOut` |
+| Any other error on the wire | `Network` |
+| The stream ended without text | `EmptyOutput` |
+| Any other non-2xx status | `Unknown` |
+
+Cancel is a `CancelledError`, never a failure. Messages use `API_FAILURE_UI_KEYS`, `{0}` = display name (`OpenAI`, `Anthropic`, `Google Gemini`, `OpenAI-compatible`):
+
+| Kind | Key | English |
+|---|---|---|
+| KeyMissing | `Ui_ApiKeyMissing` | `{0} needs your API key. Add it in Settings.` |
+| KeyInvalid | `Ui_ApiKeyInvalid` | `{0} did not accept your API key. Check it in Settings.` |
+| QuotaExceeded | `Ui_ApiQuotaExceeded` | `Your {0} account is out of credit or quota. Check your plan with {0}.` |
+| RateLimited | `Ui_ApiRateLimited` | `{0} is receiving too many requests right now. Try again in a minute.` |
+| Network | `Ui_ApiNetwork` | `Could not reach {0}. Check your internet connection or the address in Settings.` |
+| TimedOut | `Ui_ApiTimedOut` | `{0} took too long to answer. Try again.` |
+| EmptyOutput | `Ui_ApiEmptyOutput` | `{0} returned an empty answer. Try again.` |
+| ModelNotFound | `Ui_ApiModelNotFound` | `{0} does not know the selected model. Pick another model in Settings.` |
+| Unknown | `Ui_ApiUnknown` | `{0} could not finish.` |
+
+Every key exists in both locales, so these messages are never shown untranslated.
+
 ### 2.6 Setup wizard (`SummaryModelSetupDialog`, `SummaryModelSetupDialogViewModel`)
 
 A modal dialog titled "Set up summary generation" (`Setup_Title.Title`) with a "Cancel" close button (`Setup_Title.CloseButtonText`), default button Close, no primary button. Content scrolls (max height 480), fixed width 440. Only one ContentDialog can show at once on WinUI, which shapes the xAI hand-off below; the Electron port does not have that limit.
@@ -352,6 +400,14 @@ The provider factory (`AppServices.CreateSummaryProvider`) builds a new provider
 - Codex: same with the Codex resolvers.
 - Xai: `XaiSummaryProvider(session, api, ResolveXaiModelId(), settings.ResolveXaiEffort())`.
 
+**API key engines (port-only).** `SummaryProviderResolver` asks `apiSetupGap(engine, settings, hasKey)` and answers the first gap as `needs-setup` with a reason, else builds the provider:
+
+1. `base-url-missing`: no endpoint (only the compatible kind can lack one).
+2. `key-missing`: the engine requires a key and `ApiKeyStore.has(kind)` is false. The resolver never reads the key itself.
+3. `model-missing`: no saved model and no default (only the compatible kind).
+
+The renderer gate answers with a notice to add the key in Settings (`Ui_ApiKeyMissing`, or `Ui_ApiSetupIncomplete` for a missing address or model), never with a CLI-missing message. The setup wizard's API choice saves the kind, re-reads the provider status, and finishes ready when the key is already saved; otherwise it closes and opens Settings. The recording setup checklist then stays closed until the next Record.
+
 **CLI setup dialog** (`CliToolSetupDialog`): title `Cli_SetupTitle` = `Set up the {0} CLI` ({0} = "Claude Code" or "Codex"). Body text `Cli_NotFound` = `Vozella couldn't find "{0}" on your PATH. {1} Once it's installed and signed in, select Retry.` and a warning InfoBar titled "Not found on PATH" (`CliSetup_NotFound.Title`). Buttons: primary "Retry" (`CliSetup.PrimaryButtonText`), close "Cancel". Primary click: if the executable is now on PATH, the dialog closes with true; otherwise the click is cancelled (dialog stays) and the InfoBar message becomes `Cli_StillMissing`. Width 420, scroll max height 480.
 
 ### 2.8 xAI sign-in dialog (`XaiAuthDialog`, `XaiAuthDialogViewModel`)
@@ -398,6 +454,17 @@ Actions:
 - **Apply loaded settings** (offline part of page load): resolve the kind; for xAI only apply the credential status, seed the model list with the saved model when signed in and the list is empty (so the combo box keeps its selection); set xAI model and effort; set Claude and Codex model and effort with the commit guard on. **Load xAI account** (network part): only when xAI is the selected kind.
 - **Refresh xAI account**: apply credential status first. Signed out: clear the model list and stop. Signed in: set busy, get an access token (this may refresh OAuth), list models, load settings, `resolved = ResolveModelId(saved, models)`, merge the list in place (keep order, keep the resolved id even if not listed), select the resolved id, and if it differs from the saved id write it back to settings, mark models loaded and set the ready line `Xai_StatusReady` = `Ready. Using {0}.` with `"{model} · {effort}"`. Any exception: models-loaded false, status text `Xai_StatusErrorTitle` "Could not reach Grok", detail = exception message. Always clears busy.
 - Credential status text: OAuth gives `Xai_StatusSuperGrok` "Signed in with SuperGrok", API key gives `Xai_StatusApiKey` "API key saved", none gives `Xai_StatusSignedOut` "Not signed in". Signed out detail: `Xai_StatusSignedOutDetail` "Sign in with SuperGrok, or paste an API key below.". Signed in with no loaded list yet: `Xai_StatusLoadingModels` "Loading your Grok models…" (kept as "ready" once loaded).
+
+**Port: API key engines in the provider section** (`ProviderChoice`, `ApiProviderOptions` in `renderer/features/settings`):
+
+- The radios form one radiogroup in three captioned groups: "On this PC" (`Ui_ProviderGroupDevice`: Local), "With a subscription" (`Ui_ProviderGroupSubscription`: Claude Code, Codex), "With your API key" (`Ui_ProviderGroupApiKey`: OpenAI, Anthropic, Google Gemini, OpenAI-compatible). Grok is not offered.
+- An API kind shows its options block (`ApiProviderOptions`), top to bottom:
+  1. Privacy notice: `Ui_ApiPrivacyNotice` (transcripts and chat messages are sent to `{0}`, billed to the user's `{0}` account), or `Ui_ApiPrivacyNoticeCompatible` for the compatible kind.
+  2. Compatible kind only: server address (`Ui_ApiBaseUrlLabel`), saved on blur; an address main refuses shows `Ui_ApiBaseUrlInvalid`.
+  3. API key: a masked field with show/hide, **Save key**, **Verify**, and **Remove key** when a key is set. The description says whether a key is saved (`Ui_ApiKeyStatusSaved` / `Ui_ApiKeyStatusNotSet`, or `Ui_ApiKeyOptional` for the compatible kind). The draft is cleared after a save; the saved key is never shown again. One polite live status line (`TxtApiKeyStatus`) announces saved, removed, verified, or the localized failure.
+  4. **Verify** lists the models the saved key can use (20-second timeout). Success shows `Ui_ApiVerified` with the count, or `Ui_ApiVerifiedEmpty`; failure shows the API failure message from 2.5.
+  5. Model: a free-text input with suggestions (verified ids, then the catalog ids from 2.1). Saved on blur; an id with spaces shows `Ui_ApiModelInvalid`.
+- The page model only carries `keySet` per kind; IPC channels `settings.setApiKey`, `settings.clearApiKey`, `settings.verifyApiKey`, and `settings.setApiOption` never return the key.
 
 The local-model management list (download, delete, set active, in Settings) lives in `LocalModelSectionViewModel` (Settings module). It shares `ModelOption`, `ILocalLlmModelManager`, and the settings field `SelectedSummaryModelId` with this module. Deleting the active model clears `SelectedSummaryModelId`.
 
@@ -873,6 +940,18 @@ Written by `AppSettingsService` with `JsonSerializerDefaults.Web` (camelCase key
 | `selectedCodexModelId` / `selectedCodexEffort` | string? | null means `gpt-5.6` / `low` |
 | `summaryLanguage` | string? | `es` or `en`; null/blank means `es` |
 
+Port-only fields for the API key engines (2.1). `selectedSummaryProvider` also accepts `OpenAi`, `Anthropic`, `Gemini`, and `OpenAiCompatible`. All five fields below are in `OMITTED_WHEN_NULL`: a null value is left out of the file, so the legacy app never sees an unknown key while they are unset.
+
+| Field | Type | Meaning and default |
+|---|---|---|
+| `selectedOpenAiModelId` | string? | null/blank means `gpt-5-mini` |
+| `selectedAnthropicModelId` | string? | null/blank means `claude-sonnet-5-5` |
+| `selectedGeminiModelId` | string? | null/blank means `gemini-2.5-flash` |
+| `selectedOpenAiCompatibleModelId` | string? | no default: blank means `model-missing` |
+| `openAiCompatibleBaseUrl` | string? | the server address, trailing `/` trimmed; blank means `base-url-missing` |
+
+API keys are never stored in settings (see 5.2).
+
 Settings are read-modify-write by several callers; each call reloads, mutates one field, and saves the whole object (see bug B19).
 
 ### 4.2 Meeting file fields written by this module
@@ -965,6 +1044,13 @@ Directory `SummaryModels`, one file per downloaded catalog entry, file name = ca
 ### 5.2 Process and credential boundaries
 
 The user's Claude Code, Codex, and xAI accounts are not used while porting; those paths are tested with doubles (`FakeCliProcessRunner`, in-memory credential store, fake HTTP handlers) and must be flagged as pending real validation.
+
+**API keys (port-only).** The `ApiKeyStore` port (`core/src/api-keys`) holds one key per API kind:
+
+- Adapter: `SafeStorageKeyStore` in the main process. The file is `<app data>/api-keys.bin`: base64 of the Electron `safeStorage`-encrypted JSON map of kind to key (DPAPI on Windows). Writes are atomic and serialized.
+- Without OS encryption nothing is saved (`set` fails with `Ui_ApiKeyStoreUnavailable`) and no key reads as set, so a key is never written in plain text. A file that cannot be decrypted reads as no keys.
+- Keys stay in main. The HTTP providers and the model list run there; the renderer only learns `keySet`. A key never travels back over IPC, never enters settings, the library, or the logs, and is scrubbed from failure details.
+- The fake native build (e2e) uses an in-memory store (`FakeApiKeyStore`) and a fake model list, so tests never touch real accounts or the network.
 
 ### 5.3 Cross-module dependencies
 

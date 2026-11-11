@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import { Button, Dialog, Progress } from '../../ui';
+import { API_NAME_KEYS } from './api-engines';
 import { CliCheckPanel } from './CliCheckPanel';
 import { EngineChooser } from './EngineChooser';
 import { ModelPicker } from './ModelPicker';
@@ -21,6 +22,8 @@ export interface SetupWizardDialogProps {
   readonly mode: WizardMode;
   /** Called once: the engine that is ready, or null when the user leaves. */
   readonly onFinished: (result: WizardResult | null) => void;
+  /** Called just before `onFinished(null)` when an API engine needs its key and Settings opens. */
+  readonly onSentToSettings?: () => void;
   /** The CheckingCli panel. Defaults to `CliCheckPanel`; tests pass a stub. */
   readonly renderCliPanel?: (context: CliPanelContext) => ReactNode;
 }
@@ -37,9 +40,14 @@ export function SetupWizardDialog(props: SetupWizardDialogProps) {
   return props.open ? <OpenWizard {...props} /> : null;
 }
 
-function OpenWizard({ mode, onFinished, renderCliPanel }: SetupWizardDialogProps) {
+function OpenWizard({
+  mode,
+  onFinished,
+  onSentToSettings,
+  renderCliPanel,
+}: SetupWizardDialogProps) {
   const t = useT();
-  const wizard = useSetupWizard(mode, onFinished);
+  const wizard = useSetupWizard(mode, onFinished, onSentToSettings);
   const { state } = wizard;
 
   return (
@@ -55,6 +63,9 @@ function OpenWizard({ mode, onFinished, renderCliPanel }: SetupWizardDialogProps
       <div className="flex flex-col gap-3" data-testid="summary-setup">
         {state.phase === 'ChoosingEngine' ? <EngineChooser onChoose={wizard.chooseEngine} /> : null}
         {state.phase === 'DetectingHardware' ? <Detecting wizard={wizard} /> : null}
+        {state.phase === 'SavingApi' ? (
+          <Progress label={t('Ui_SetupApiSaving', t(API_NAME_KEYS[state.api]))} value={null} />
+        ) : null}
         {state.phase === 'SelectingModel' ? (
           <ModelPicker
             hardware={state.hardware}

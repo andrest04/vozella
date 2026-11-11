@@ -113,7 +113,7 @@ test('Grok is not offered as a provider', async () => {
     page
       .getByRole('radiogroup', { name: 'Choose where summaries are generated' })
       .getByRole('radio'),
-  ).toHaveCount(3);
+  ).toHaveCount(7);
 });
 
 test('meeting language and summary language are saved on their own', async () => {

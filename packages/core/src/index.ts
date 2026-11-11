@@ -8,6 +8,7 @@ export * from './logging';
 export * from './library';
 export * from './i18n';
 export * from './settings';
+export * from './api-keys';
 export * from './transcription';
 export * from './summaries';
 export * from './meeting-detection';

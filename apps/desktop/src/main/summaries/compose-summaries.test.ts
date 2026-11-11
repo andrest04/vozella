@@ -1,5 +1,5 @@
 import { MeetingBusyRegistry, Workspace, type SettingsStore } from '@vozella/core';
-import type { LibraryRuntime } from '@vozella/platform';
+import { FakeApiKeyStore, type LibraryRuntime } from '@vozella/platform';
 import { describe, expect, it, vi } from 'vitest';
 import {
   noDialogs,
@@ -35,6 +35,7 @@ function compose(overrides: Partial<ComposeSummariesDeps> = {}) {
     hardware: machine.hardware,
     models: machine.summaryModels,
     cli: machine.summaryCli,
+    apiKeys: new FakeApiKeyStore(),
     settingsModels: machine.settings.models,
     llamaRoot: 'C:/app-data/LlamaRuntime',
     fakeNative: true,

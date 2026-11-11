@@ -9,6 +9,9 @@ import { SummaryProviderFactory } from './provider-factory';
 import { SummaryProviderResolver } from './provider-resolver';
 import type { SummaryProvider } from './provider';
 import { FakeCliProcessRunner } from './test-kit';
+import type { ApiKeyStore } from '../api-keys/api-key-store';
+import type { ApiProviderKind } from '../library/settings';
+import type { ApiEngine } from '../settings/api-providers';
 
 const ONE_B = SUMMARY_MODELS[0]!;
 
@@ -21,8 +24,28 @@ class FakeProbe implements CliPathProbe {
   }
 }
 
+class FakeKeys implements ApiKeyStore {
+  readonly keys = new Map<ApiProviderKind, string>();
+  has(kind: ApiProviderKind): Promise<boolean> {
+    return Promise.resolve(this.keys.has(kind));
+  }
+  get(kind: ApiProviderKind): Promise<string | null> {
+    return Promise.resolve(this.keys.get(kind) ?? null);
+  }
+  set(kind: ApiProviderKind, key: string): Promise<void> {
+    this.keys.set(kind, key);
+    return Promise.resolve();
+  }
+  delete(kind: ApiProviderKind): Promise<void> {
+    this.keys.delete(kind);
+    return Promise.resolve();
+  }
+}
+
 function setup(downloaded: readonly string[] = []) {
   const settings = new InMemorySettingsStore();
+  const keys = new FakeKeys();
+  const built: { engine: ApiEngine; model: string }[] = [];
   const runner = new FakeCliProcessRunner('## Summary\nhi');
   const probe = new FakeProbe();
   const localPaths: string[] = [];
@@ -34,6 +57,10 @@ function setup(downloaded: readonly string[] = []) {
       localPaths.push(path);
       return localProvider;
     },
+    apiProviderBuilder: (engine, current) => {
+      built.push({ engine, model: engine.resolveModel(current) });
+      return { id: engine.providerId } as unknown as SummaryProvider;
+    },
   });
   const resolver = new SummaryProviderResolver({
     settings,
@@ -43,8 +70,9 @@ function setup(downloaded: readonly string[] = []) {
       pathFor: (name) => `C:/models/${name}`,
     },
     factory,
+    apiKeys: keys,
   });
-  return { settings, runner, probe, localPaths, localProvider, factory, resolver };
+  return { settings, runner, probe, keys, built, localPaths, localProvider, factory, resolver };
 }
 
 const summarize = (p: SummaryProvider) =>
@@ -223,10 +251,57 @@ describe('SummaryProviderFactory', () => {
       settings: counting,
       runner: t.runner,
       createLocal: () => t.localProvider,
+      apiProviderBuilder: () => t.localProvider,
     });
     await factory.create('Codex');
     await factory.create('ClaudeCode');
     expect(loads).toBe(2);
+  });
+});
+
+describe('API key engines', () => {
+  it.each(['OpenAi', 'Anthropic', 'Gemini'] as const)(
+    '%s needs a key, then is ready through the injected builder',
+    async (kind) => {
+      const t = setup();
+      expect(await t.resolver.resolveSummaryProvider({ kind })).toEqual({
+        status: 'needs-setup',
+        kind,
+        reason: 'key-missing',
+      });
+      expect(t.built).toEqual([]);
+      t.keys.keys.set(kind, 'secret');
+      const r = await t.resolver.resolveSummaryProvider({ kind });
+      expect(r).toMatchObject({ status: 'ready', kind });
+      expect(t.built.map((b) => b.engine.kind)).toEqual([kind]);
+      expect(t.probe.asked).toEqual([]);
+    },
+  );
+
+  it('the compatible engine needs a base URL and a model, but no key', async () => {
+    const t = setup();
+    const kind = 'OpenAiCompatible';
+    expect(await t.resolver.resolveSummaryProvider({ kind })).toMatchObject({
+      status: 'needs-setup',
+      reason: 'base-url-missing',
+    });
+    await t.settings.update({ openAiCompatibleBaseUrl: 'http://localhost:11434/v1' });
+    expect(await t.resolver.resolveSummaryProvider({ kind })).toMatchObject({
+      status: 'needs-setup',
+      reason: 'model-missing',
+    });
+    await t.settings.update({ selectedOpenAiCompatibleModelId: 'llama3.1' });
+    expect(await t.resolver.resolveSummaryProvider({ kind })).toMatchObject({ status: 'ready' });
+    expect(t.built.map((b) => [b.engine.kind, b.model])).toEqual([[kind, 'llama3.1']]);
+  });
+
+  it('the factory routes API kinds to the builder with fresh settings, ignoring web search', async () => {
+    const t = setup();
+    await t.settings.update({ selectedGeminiModelId: 'gemini-2.5-pro' });
+    const p = await t.factory.create('Gemini', { webSearch: true });
+    expect(p.id).toBe('gemini');
+    expect(t.built.map((b) => [b.engine.kind, b.model])).toEqual([['Gemini', 'gemini-2.5-pro']]);
+    expect(t.runner.calls).toHaveLength(0);
   });
 });
 

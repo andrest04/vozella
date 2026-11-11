@@ -1,7 +1,7 @@
 import type { FolderRecord } from '../library/folder';
 import type { MeetingRecord } from '../library/meeting';
 import { parseOffsetDate } from '../library/offset-date';
-import { isCliEngine } from '../settings/cli-providers';
+import { isRemoteEngine } from '../settings/api-providers';
 import type { ProviderId } from '../summaries/provider';
 import type { ChatScopeKind } from './scope-resolver';
 import { cutPrefix, cutTail } from './text-cut';
@@ -51,9 +51,9 @@ export const CLI_CONTEXT_BUDGET: ContextBudget = {
   summaryChars: 2000,
 };
 
-/** CLI engines get the large budget; local, or an engine that does not say, the small one. */
+/** Remote engines (CLI or API) get the large budget; local, or an unknown engine, the small one. */
 export const contextBudgetFor = (providerId: ProviderId | undefined): ContextBudget =>
-  isCliEngine(providerId) ? CLI_CONTEXT_BUDGET : LOCAL_CONTEXT_BUDGET;
+  isRemoteEngine(providerId) ? CLI_CONTEXT_BUDGET : LOCAL_CONTEXT_BUDGET;
 
 export interface PackOptions {
   /** Defaults to the local budget. */

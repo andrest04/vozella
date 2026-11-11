@@ -87,7 +87,7 @@ function completingGate(settings: { selectedSummaryProvider: string | null }): P
       return Promise.resolve('completed');
     },
     open: null,
-    unavailable: false,
+    notice: null,
     finish: () => undefined,
     dismissUnavailable: () => undefined,
     openSettings: () => undefined,

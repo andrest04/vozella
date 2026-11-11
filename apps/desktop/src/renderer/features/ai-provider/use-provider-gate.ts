@@ -1,20 +1,26 @@
-import type { SummaryCliKindDto } from '@vozella/contracts';
+import type { SummaryApiKindDto, SummaryCliKindDto } from '@vozella/contracts';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 /** What a `needs-setup` or `unavailable` outcome from the summary service asks for. */
 export interface SetupRequest {
-  readonly kind: 'Local' | SummaryCliKindDto | 'Xai';
-  readonly reason: 'model-missing' | 'cli-missing' | 'unavailable';
+  readonly kind: 'Local' | SummaryCliKindDto | SummaryApiKindDto | 'Xai';
+  readonly reason:
+    'model-missing' | 'cli-missing' | 'key-missing' | 'base-url-missing' | 'unavailable';
 }
 
 /** `completed` means the engine is ready now; anything else leaves the summary alone. */
 export type RunSetup = (request: SetupRequest) => Promise<'completed' | 'cancelled'>;
 
+/** A notice instead of a dialog: the engine was removed, or an API engine needs Settings. */
+export type GateNotice =
+  | { readonly type: 'removed' }
+  | { readonly type: 'api-setup'; readonly kind: SummaryApiKindDto; readonly reason: string };
+
 /** The one decision table of the gate: which surface each request opens. */
 export type GateSurface =
   | { readonly surface: 'wizard' }
   | { readonly surface: 'cli'; readonly kind: SummaryCliKindDto }
-  | { readonly surface: 'notice' };
+  | { readonly surface: 'notice'; readonly notice: GateNotice };
 
 export function decideSurface(request: SetupRequest): GateSurface {
   switch (request.kind) {
@@ -23,8 +29,18 @@ export function decideSurface(request: SetupRequest): GateSurface {
     case 'ClaudeCode':
     case 'Codex':
       return { surface: 'cli', kind: request.kind };
+    // API key engines are set up in Settings (key, model, address). The notice says what is
+    // missing and offers Settings; the page the user is on stays where it is.
+    case 'OpenAi':
+    case 'Anthropic':
+    case 'Gemini':
+    case 'OpenAiCompatible':
+      return {
+        surface: 'notice',
+        notice: { type: 'api-setup', kind: request.kind, reason: request.reason },
+      };
     case 'Xai':
-      return { surface: 'notice' };
+      return { surface: 'notice', notice: { type: 'removed' } };
   }
 }
 
@@ -37,8 +53,8 @@ export interface ProviderGate {
   /** Pass to anything that can hit the gate. Resolves once the dialog is done. */
   readonly runSetup: RunSetup;
   readonly open: Open;
-  /** True after a removed provider (Xai) was met, until dismissed. */
-  readonly unavailable: boolean;
+  /** Set after a removed provider (Xai) or an API engine that needs Settings, until dismissed. */
+  readonly notice: GateNotice | null;
   readonly finish: (completed: boolean) => void;
   readonly dismissUnavailable: () => void;
   readonly openSettings: () => void;
@@ -46,13 +62,14 @@ export interface ProviderGate {
 
 /**
  * The renderer's single owner of the "this engine is not ready" answer. Local opens the setup
- * wizard on the model step; Claude Code and Codex open the CLI dialog; a removed provider shows a
- * notice that points at Settings and never falls back to another engine. Render the surfaces
+ * wizard on the model step; Claude Code and Codex open the CLI dialog; an API key engine that lacks
+ * its key or address, and a removed provider, show a notice that points at Settings and never fall
+ * back to another engine. Render the surfaces
  * with `ProviderGateDialogs`, then retry the call that was refused when `runSetup` says completed.
  */
 export function useProviderGate(): ProviderGate {
   const [open, setOpen] = useState<Open>(null);
-  const [unavailable, setUnavailable] = useState(false);
+  const [notice, setNotice] = useState<GateNotice | null>(null);
   const pending = useRef<((result: 'completed' | 'cancelled') => void) | null>(null);
 
   const settle = useCallback((result: 'completed' | 'cancelled'): void => {
@@ -67,7 +84,7 @@ export function useProviderGate(): ProviderGate {
   const runSetup = useCallback<RunSetup>((request) => {
     const decision = decideSurface(request);
     if (decision.surface === 'notice') {
-      setUnavailable(true);
+      setNotice(decision.notice);
       return Promise.resolve('cancelled');
     }
     // One dialog at a time: a second request while one is open is cancelled.
@@ -89,16 +106,20 @@ export function useProviderGate(): ProviderGate {
   return {
     runSetup,
     open,
-    unavailable,
+    notice,
     finish,
     dismissUnavailable: useCallback(() => {
-      setUnavailable(false);
+      setNotice(null);
     }, []),
     openSettings: useCallback(() => {
-      setUnavailable(false);
-      void window.vozella.invoke('workspace.dispatch', {
-        action: { type: 'navigateTo', tag: 'Settings' },
-      });
+      setNotice(null);
+      navigateToSettings();
     }, []),
   };
+}
+
+function navigateToSettings(): void {
+  void window.vozella.invoke('workspace.dispatch', {
+    action: { type: 'navigateTo', tag: 'Settings' },
+  });
 }

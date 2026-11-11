@@ -1,4 +1,5 @@
 import type { TranslateFn } from '../i18n/translator';
+import { ApiProviderError, type ApiFailureKind } from './api-failure';
 import { CliToolError, type CliFailureKind } from './cli-failure';
 
 /** Stable codes for failures that are not CLI failures (B28). Text lives in the catalogs. */
@@ -46,6 +47,19 @@ export const CLI_FAILURE_CORE_KEYS: Readonly<Record<CliFailureKind, string>> = {
   Unknown: 'CliFailureUnknown',
 };
 
+/** API engine kind to the UI key. `{0}` is the display name. */
+export const API_FAILURE_UI_KEYS: Readonly<Record<ApiFailureKind, string>> = {
+  KeyMissing: 'Ui_ApiKeyMissing',
+  KeyInvalid: 'Ui_ApiKeyInvalid',
+  QuotaExceeded: 'Ui_ApiQuotaExceeded',
+  RateLimited: 'Ui_ApiRateLimited',
+  Network: 'Ui_ApiNetwork',
+  TimedOut: 'Ui_ApiTimedOut',
+  EmptyOutput: 'Ui_ApiEmptyOutput',
+  ModelNotFound: 'Ui_ApiModelNotFound',
+  Unknown: 'Ui_ApiUnknown',
+};
+
 export const SUMMARY_ERROR_KEYS: Readonly<Record<SummaryErrorCode, string>> = {
   LocalModelMissing: 'Ui_SummaryLocalModelMissing',
   LocalEmpty: 'Ui_SummaryLocalEmpty',
@@ -60,6 +74,7 @@ export const SUMMARY_ERROR_KEYS: Readonly<Record<SummaryErrorCode, string>> = {
 export const SUMMARY_FAILURE_CATALOG_KEYS: readonly string[] = [
   ...Object.values(CLI_FAILURE_UI_KEYS),
   ...Object.values(CLI_FAILURE_CORE_KEYS),
+  ...Object.values(API_FAILURE_UI_KEYS),
   ...Object.values(SUMMARY_ERROR_KEYS),
 ];
 
@@ -67,6 +82,10 @@ export const SUMMARY_FAILURE_CATALOG_KEYS: readonly string[] = [
 export function formatFailure(error: unknown, translate: TranslateFn): string {
   if (error instanceof CliToolError) {
     const text = translate(CLI_FAILURE_UI_KEYS[error.kind], error.displayName);
+    return error.kind === 'Unknown' && error.detail ? `${text} ${error.detail}` : text;
+  }
+  if (error instanceof ApiProviderError) {
+    const text = translate(API_FAILURE_UI_KEYS[error.kind], error.displayName);
     return error.kind === 'Unknown' && error.detail ? `${text} ${error.detail}` : text;
   }
   if (error instanceof SummaryError) {

@@ -313,7 +313,7 @@ describe('generating', () => {
       [{ status: 'not-found' }, 'The meeting could not be found, so no summary was made.'],
       [
         { status: 'unavailable', reason: 'xai-removed' },
-        'Grok (xAI) is no longer available. Pick Local, Claude Code or Codex to summarize your meetings.',
+        'Grok (xAI) is no longer available. Pick Local, Claude Code, Codex or an API key engine to summarize your meetings.',
       ],
     ];
     for (const [outcome, text] of cases) {

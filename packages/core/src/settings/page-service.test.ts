@@ -62,6 +62,44 @@ describe('SettingsPageService.load', () => {
     expect(await store.load()).toMatchObject({ uiLanguage: null, selectedSummaryProvider: null });
   });
 
+  it('BYOK: lists each API engine with key-set flags only, never the key', async () => {
+    const store = new InMemorySettingsStore();
+    await store.update({
+      selectedAnthropicModelId: 'claude-custom',
+      openAiCompatibleBaseUrl: 'http://localhost:11434/v1',
+    });
+    const service = new SettingsPageService({
+      store,
+      osLanguages: () => ['en-US'],
+      hardware: { detect: () => Promise.resolve(hardware) },
+      models: new LocalModelsService({
+        store: {
+          isDownloaded: () => Promise.resolve(false),
+          download: () => Promise.resolve(),
+          delete: () => Promise.resolve(),
+        },
+        settings: store,
+        notify: () => undefined,
+      }),
+      cli: { isOnPath: () => Promise.resolve(false) },
+      notices: new SettingsNotices(),
+      capabilities: { localModels: true },
+      apiKeys: { has: (kind) => Promise.resolve(kind === 'Gemini') },
+    });
+    const { api } = await service.load();
+    expect(api.Gemini).toMatchObject({ keySet: true, model: 'gemini-2.5-flash', baseUrl: null });
+    expect(api.OpenAi.keySet).toBe(false);
+    expect(api.Anthropic.model).toBe('claude-custom');
+    expect(api.Anthropic.modelOptions).toContain('claude-custom');
+    expect(api.OpenAiCompatible).toEqual({
+      keySet: false,
+      model: '',
+      modelOptions: [],
+      baseUrl: 'http://localhost:11434/v1',
+    });
+    expect(JSON.stringify(api)).not.toMatch(/key"\s*:/i);
+  });
+
   it('the app language follows the OS when nothing is saved, and the saved choice otherwise', async () => {
     const { service, store } = page({ os: ['es-MX'] });
     expect((await service.load()).uiLanguage).toBe('es');

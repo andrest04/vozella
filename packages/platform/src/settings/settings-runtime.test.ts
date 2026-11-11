@@ -5,6 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { CancelSource, SUMMARY_MODELS, type LocalModelStore } from '@vozella/core';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { FakeApiKeyStore } from '../fakes/fake-api-key-store';
+import { FakeFetch } from '../fakes/fake-fetch';
 import { FakeCliProbe, FakeHardwareProbe, FakeLocalModelStore } from '../fakes/fake-settings-ports';
 import { JsonSettingsStore } from '../library/json-settings-store';
 import { FileLocalModelStore } from './file-local-model-store';
@@ -268,5 +270,126 @@ describe('SettingsRuntime.warmUp', () => {
       runtimeWith.warmUp();
     }).not.toThrow();
     await Promise.resolve();
+  });
+});
+
+describe('SettingsRuntime API keys (BYOK)', () => {
+  const modelsReply = JSON.stringify({ data: [{ id: 'gpt-5' }, { id: 'gpt-5-mini' }] });
+
+  function keyed(
+    options: {
+      keys?: FakeApiKeyStore;
+      fetch?: FakeFetch;
+      settings?: Record<string, unknown>;
+    } = {},
+  ) {
+    const settingsFile = path.join(dir, 'settings.json');
+    if (options.settings) fs.writeFileSync(settingsFile, JSON.stringify(options.settings));
+    const keys = options.keys ?? new FakeApiKeyStore();
+    const fetcher = options.fetch ?? new FakeFetch({ chunks: [modelsReply] });
+    const created = new SettingsRuntime({
+      store: new JsonSettingsStore({ settingsFilePath: settingsFile }),
+      appDataDirectory: dir,
+      osLanguages: () => ['en-US'],
+      relaunch: () => undefined,
+      notifyModel: () => undefined,
+      hardware: new FakeHardwareProbe({ totalRamGb: 16, gpuName: null, gpuVramGb: null }),
+      cli: new FakeCliProbe(new Set()),
+      apiKeys: keys,
+      fetch: fetcher.fetch,
+    });
+    return { runtime: created, keys, fetcher, settingsFile };
+  }
+
+  it('the page says which engines have a key, never the key', async () => {
+    const { runtime: r } = keyed({ keys: new FakeApiKeyStore({ Anthropic: 'sk-ant-secret' }) });
+    const page = await r.page.load();
+    expect(page.api.Anthropic.keySet).toBe(true);
+    expect(page.api.OpenAi.keySet).toBe(false);
+    expect(JSON.stringify(page)).not.toContain('sk-ant-secret');
+  });
+
+  it('saves and removes a key, answering only whether one is set', async () => {
+    const { runtime: r, keys, settingsFile } = keyed();
+    expect(await r.apiKeys.set('OpenAi', '  sk-test  ')).toEqual({ status: 'saved', keySet: true });
+    expect(await keys.get('OpenAi')).toBe('sk-test');
+    expect(await r.apiKeys.clear('OpenAi')).toEqual({ status: 'saved', keySet: false });
+    expect(await keys.has('OpenAi')).toBe(false);
+    // A key never reaches the settings file.
+    expect(fs.existsSync(settingsFile)).toBe(false);
+  });
+
+  it('a store that cannot encrypt answers failed with a catalog key', async () => {
+    const keys = new FakeApiKeyStore();
+    keys.set = () => Promise.reject(new Error('encryption is not available'));
+    const { runtime: r } = keyed({ keys });
+    expect(await r.apiKeys.set('OpenAi', 'sk-test')).toEqual({
+      status: 'failed',
+      errorKey: 'Ui_ApiKeyStoreUnavailable',
+    });
+  });
+
+  it('verify lists the models with the saved key and current settings', async () => {
+    const { runtime: r, fetcher } = keyed({ keys: new FakeApiKeyStore({ OpenAi: 'sk-test' }) });
+    expect(await r.apiKeys.verify('OpenAi')).toEqual({
+      status: 'verified',
+      models: ['gpt-5', 'gpt-5-mini'],
+    });
+    expect(fetcher.calls[0]?.url).toBe('https://api.openai.com/v1/models');
+    expect(fetcher.calls[0]?.headers.authorization).toBe('Bearer sk-test');
+  });
+
+  it('verify maps a refused key to its localized reason and never echoes the key', async () => {
+    const { runtime: r } = keyed({
+      keys: new FakeApiKeyStore({ OpenAi: 'sk-test' }),
+      fetch: new FakeFetch({ status: 401, chunks: ['{"error":"bad key sk-test"}'] }),
+    });
+    const result = await r.apiKeys.verify('OpenAi');
+    expect(result).toEqual({ status: 'failed', errorKey: 'Ui_ApiKeyInvalid' });
+    expect(JSON.stringify(result)).not.toContain('sk-test');
+  });
+
+  it('verify without a key or an address says what is missing, without a request', async () => {
+    const { runtime: r, fetcher } = keyed();
+    expect(await r.apiKeys.verify('Anthropic')).toEqual({
+      status: 'failed',
+      errorKey: 'Ui_ApiKeyMissing',
+    });
+    expect(await r.apiKeys.verify('OpenAiCompatible')).toEqual({
+      status: 'failed',
+      errorKey: 'Ui_ApiBaseUrlMissing',
+    });
+    expect(fetcher.calls).toHaveLength(0);
+  });
+
+  it('verify on the compatible engine uses the saved address and needs no key', async () => {
+    const { runtime: r, fetcher } = keyed({
+      settings: { openAiCompatibleBaseUrl: 'http://localhost:11434/v1' },
+    });
+    expect(await r.apiKeys.verify('OpenAiCompatible')).toMatchObject({ status: 'verified' });
+    expect(fetcher.calls[0]?.url).toBe('http://localhost:11434/v1/models');
+  });
+
+  it('verify gives up after its time limit', async () => {
+    const created = keyed({
+      keys: new FakeApiKeyStore({ Gemini: 'k' }),
+      fetch: new FakeFetch({ hang: true }),
+    });
+    const r = new SettingsRuntime({
+      store: new JsonSettingsStore({ settingsFilePath: created.settingsFile }),
+      appDataDirectory: dir,
+      osLanguages: () => ['en-US'],
+      relaunch: () => undefined,
+      notifyModel: () => undefined,
+      hardware: new FakeHardwareProbe({ totalRamGb: 16, gpuName: null, gpuVramGb: null }),
+      cli: new FakeCliProbe(new Set()),
+      apiKeys: created.keys,
+      fetch: created.fetcher.fetch,
+      verifyTimeoutMs: 20,
+    });
+    expect(await r.apiKeys.verify('Gemini')).toEqual({
+      status: 'failed',
+      errorKey: 'Ui_ApiTimedOut',
+    });
   });
 });

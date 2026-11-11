@@ -7,6 +7,7 @@ export * from './summary-splitter';
 export * from './answer-to-summary';
 export * from './suggested-title';
 export * from './provider';
+export * from './api-failure';
 export * from './cli-failure';
 export * from './cli-failure-messages';
 export * from './cli-invocation';

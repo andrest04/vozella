@@ -325,6 +325,13 @@ export const appSettingsSchema = z.object({
   liveCopilotPillAlong: z.number().nullable(),
   /** `off`, `rules` or `rules+ai`; null takes the default for the summary engine. */
   liveQuestions: z.string().nullable(),
+  /** The model per API key engine (BYOK); null takes the engine's default. */
+  selectedOpenAiModelId: z.string().nullable(),
+  selectedAnthropicModelId: z.string().nullable(),
+  selectedGeminiModelId: z.string().nullable(),
+  selectedOpenAiCompatibleModelId: z.string().nullable(),
+  /** The endpoint of the OpenAI-compatible engine. Keys are never part of the settings. */
+  openAiCompatibleBaseUrl: z.string().nullable(),
 });
 export type AppSettingsDto = z.infer<typeof appSettingsSchema>;
 

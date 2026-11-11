@@ -109,8 +109,16 @@ export const chatStateSchema = z.object({
 });
 export type ChatStateDto = z.infer<typeof chatStateSchema>;
 
-/** Engines a saved prompt can name (Phase 5). */
-export const chatEngineSchema = z.enum(['claude-code', 'codex', 'local']);
+/** Engines a saved prompt can name (Phase 5), API key engines included (BYOK). Core ids. */
+export const chatEngineSchema = z.enum([
+  'claude-code',
+  'codex',
+  'local',
+  'openai',
+  'anthropic',
+  'gemini',
+  'openai-compatible',
+]);
 export type ChatEngineDto = z.infer<typeof chatEngineSchema>;
 
 export const chatSend = defineRequest('chat.send', {

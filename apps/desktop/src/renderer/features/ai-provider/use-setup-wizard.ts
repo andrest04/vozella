@@ -31,17 +31,21 @@ export interface SetupWizard {
  * Drives the Summary setup wizard: the pure reducer decides the phases, this hook sends the
  * requests and feeds the answers back under the attempt they were sent with, so an answer that
  * comes after a cancel or a close is dropped. `onFinished` is called once: with the engine that
- * is ready, or with null when the user leaves.
+ * is ready, or with null when the user leaves. `onSentToSettings` runs just before that null when
+ * an API engine still needs its key and the wizard opens Settings for it.
  */
 export function useSetupWizard(
   mode: WizardMode,
   onFinished: (result: WizardResult | null) => void,
+  onSentToSettings?: () => void,
 ): SetupWizard {
   const [state, dispatch] = useReducer(wizardReducer, mode, initialWizardState);
   const stateRef = useRef(state);
   stateRef.current = state;
   const finishedRef = useRef(onFinished);
   finishedRef.current = onFinished;
+  const sentToSettingsRef = useRef(onSentToSettings);
+  sentToSettingsRef.current = onSentToSettings;
   const reported = useRef(false);
 
   const report = useCallback((result: WizardResult | null): void => {
@@ -81,6 +85,37 @@ export function useSetupWizard(
       }),
     [],
   );
+
+  // An API key engine: save it as the summary engine, then ask main whether it can answer. A key
+  // that is still missing sends the user to Settings, where the key is entered (BYOK).
+  const savingApi = state.phase === 'SavingApi' ? state.api : null;
+  const saveAttempt = state.attempt;
+  useEffect(() => {
+    if (savingApi === null) return;
+    const needsSettings = (): void => {
+      // The user may have closed the wizard meanwhile: then nothing moves.
+      const current = stateRef.current;
+      if (current.phase !== 'SavingApi' || current.attempt !== saveAttempt) return;
+      dispatch({ type: 'apiNeedsSettings', attempt: saveAttempt });
+      // Told before `onFinished(null)`, so a caller can tell "went to Settings" from "left".
+      if (!reported.current) sentToSettingsRef.current?.();
+      report(null);
+      void window.vozella
+        .invoke('workspace.dispatch', { action: { type: 'navigateTo', tag: 'Settings' } })
+        .catch(() => undefined);
+    };
+    void window.vozella
+      .invoke('settings.setSummaryProvider', { kind: savingApi })
+      .then(() => window.vozella.invoke('summaries.providerStatus', {}))
+      .then((status) => {
+        if (status.status === 'ready' && status.kind === savingApi) {
+          dispatch({ type: 'apiReady', attempt: saveAttempt });
+        } else {
+          needsSettings();
+        }
+      })
+      .catch(needsSettings);
+  }, [savingApi, saveAttempt, report]);
 
   useEffect(() => {
     if (state.phase === 'Completed') report(state.result);

@@ -1,5 +1,6 @@
 import type { SettingsStore } from '@vozella/core';
 import {
+  FakeApiKeyStore,
   FakeCliProbe,
   FakeHardwareProbe,
   FileFakeCliProbe,
@@ -20,6 +21,7 @@ const deps = (overrides: Partial<ComposeSettingsDeps>): ComposeSettingsDeps => (
   relaunch: vi.fn(),
   broadcast: vi.fn(),
   activeGpuOffload: () => undefined,
+  apiKeys: new FakeApiKeyStore(),
   ...overrides,
 });
 
@@ -51,5 +53,21 @@ describe('composeSettings', () => {
     const composed = composeSettings(deps({}));
     expect(composed.settings.models).toBeDefined();
     expect(composed.settings.exitGates).toBeDefined();
+  });
+
+  it('the page reads the shared key store, and Verify never leaves the PC in the fake build', async () => {
+    const apiKeys = new FakeApiKeyStore({ OpenAi: 'sk-fake' });
+    const store: SettingsStore = {
+      load: () => Promise.resolve({} as Awaited<ReturnType<SettingsStore['load']>>),
+      update: () => Promise.reject(new Error('read only')),
+    };
+    const composed = composeSettings(deps({ fakeNative: true, apiKeys, store }));
+    const verified = await composed.settings.apiKeys.verify('OpenAi');
+    expect(verified.status).toBe('verified');
+    expect(await composed.settings.apiKeys.set('Anthropic', 'sk-other')).toEqual({
+      status: 'saved',
+      keySet: true,
+    });
+    expect(await apiKeys.has('Anthropic')).toBe(true);
   });
 });

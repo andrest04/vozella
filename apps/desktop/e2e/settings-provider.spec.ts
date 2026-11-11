@@ -89,15 +89,16 @@ async function pick(page: Page, select: string, option: string): Promise<void> {
   await page.getByRole('option', { name: option, exact: true }).click();
 }
 
-test('the provider radios are Local, Claude Code and Codex, and a choice saves the enum name (172)', async () => {
+test('the provider radios are Local, Claude Code, Codex and the API key engines, and a choice saves the enum name (172)', async () => {
   const s = await start();
   try {
     await seeProvider(s.page);
     const group = s.page.getByRole('radiogroup', { name: 'Choose where summaries are generated' });
-    await expect(group.getByRole('radio')).toHaveCount(3);
+    await expect(group.getByRole('radio')).toHaveCount(7);
     await expect(group.getByRole('radio').nth(0)).toHaveAccessibleName('Local (on this device)');
     await expect(group.getByRole('radio').nth(1)).toHaveAccessibleName('Claude Code CLI');
     await expect(group.getByRole('radio').nth(2)).toHaveAccessibleName('Codex CLI');
+    await expect(group.getByRole('radio').nth(3)).toHaveAccessibleName('OpenAI');
     await expect(group.getByRole('radio', { name: 'Local (on this device)' })).toBeChecked();
     expect(fs.existsSync(s.file)).toBe(false);
 
@@ -123,10 +124,10 @@ test('a settings file that names Grok shows the notice, selects nothing and chan
   try {
     await seeProvider(s.page);
     const notice =
-      'Grok (xAI) is no longer available. Pick Local, Claude Code or Codex to summarize your meetings.';
+      'Grok (xAI) is no longer available. Pick Local, Claude Code, Codex or an API key engine to summarize your meetings.';
     await expect(s.page.getByText(notice)).toBeVisible();
     const group = s.page.getByRole('radiogroup', { name: 'Choose where summaries are generated' });
-    await expect(group.getByRole('radio')).toHaveCount(3);
+    await expect(group.getByRole('radio')).toHaveCount(7);
     for (const radio of await group.getByRole('radio').all()) await expect(radio).not.toBeChecked();
     await expect(s.page.getByRole('radio', { name: /Grok/ })).toHaveCount(0);
     // Opening the page wrote nothing.
@@ -227,7 +228,7 @@ test('Spanish: radios, notice and toast use the Spanish catalog', async () => {
     await seeProvider(s.page, 'Proveedor de resumen');
     await expect(
       s.page.getByText(
-        'Grok (xAI) ya no está disponible. Elige Local, Claude Code o Codex para resumir tus reuniones.',
+        'Grok (xAI) ya no está disponible. Elige Local, Claude Code, Codex o un motor con clave de API para resumir tus reuniones.',
       ),
     ).toBeVisible();
     const group = s.page.getByRole('radiogroup', { name: 'Elige dónde se generan los resúmenes' });

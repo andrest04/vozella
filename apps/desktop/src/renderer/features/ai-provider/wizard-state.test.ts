@@ -64,6 +64,22 @@ describe('wizardReducer', () => {
     expect(state).toMatchObject({ phase: 'CheckingCli', cli: 'Codex' });
   });
 
+  it('choosing an API key engine saves it under a new attempt (BYOK)', () => {
+    const state = run(initialWizardState('choose'), { type: 'chooseEngine', engine: 'Anthropic' });
+    expect(state).toMatchObject({ phase: 'SavingApi', api: 'Anthropic', attempt: 1 });
+  });
+
+  it('an API engine that is ready completes; one that needs its key closes for Settings', () => {
+    const saving = run(initialWizardState('choose'), { type: 'chooseEngine', engine: 'OpenAi' });
+    expect(run(saving, { type: 'apiReady', attempt: 1 })).toMatchObject({
+      phase: 'Completed',
+      result: { kind: 'OpenAi' },
+    });
+    expect(run(saving, { type: 'apiNeedsSettings', attempt: 1 }).phase).toBe('Closed');
+    // An answer sent under an older attempt is stale.
+    expect(run(saving, { type: 'apiReady', attempt: 0 })).toBe(saving);
+  });
+
   it('back from CheckingCli returns to the chooser', () => {
     const state = run(
       initialWizardState('choose'),

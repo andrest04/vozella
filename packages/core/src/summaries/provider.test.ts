@@ -44,7 +44,15 @@ describeSummaryProviderContract(
 
 describe('provider ids', () => {
   it('are local, claude-code and codex only (xAI is retired)', () => {
-    expect([...PROVIDER_IDS]).toEqual(['local', 'claude-code', 'codex']);
+    expect([...PROVIDER_IDS]).toEqual([
+      'local',
+      'claude-code',
+      'codex',
+      'openai',
+      'anthropic',
+      'gemini',
+      'openai-compatible',
+    ]);
   });
 });
 

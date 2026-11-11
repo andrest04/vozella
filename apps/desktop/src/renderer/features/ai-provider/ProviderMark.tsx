@@ -1,5 +1,5 @@
 import type { SummaryProviderDto } from '@vozella/contracts';
-import { Cpu } from 'lucide-react';
+import { Cloud, Cpu } from 'lucide-react';
 import { Icon } from '../../ui';
 
 // Provider marks as 24 x 24 canvas paths.
@@ -27,6 +27,8 @@ export function ProviderMark({
   size?: number;
 }) {
   if (kind === 'Local') return <Icon icon={Cpu} />;
+  // API key engines have no mark yet: a neutral cloud until their row is designed.
+  if (kind !== 'ClaudeCode' && kind !== 'Codex') return <Icon icon={Cloud} />;
   const mark = MARKS[kind];
   return (
     <svg

@@ -57,6 +57,11 @@ describe('defaults', () => {
       liveCopilotPillEdge: null,
       liveCopilotPillAlong: null,
       liveQuestions: null,
+      selectedOpenAiModelId: null,
+      selectedAnthropicModelId: null,
+      selectedGeminiModelId: null,
+      selectedOpenAiCompatibleModelId: null,
+      openAiCompatibleBaseUrl: null,
     });
   });
 
@@ -274,7 +279,26 @@ describe('reading and writing', () => {
     expect(text).toContain('  "disabledCalendarIds": [],');
     expect(text.split('\r\n').at(-2)).toBe('  "liveCopilotPillAlong": null');
     expect(text).not.toContain('liveQuestions');
+    expect(text).not.toContain('OpenAi');
+    expect(text).not.toContain('Anthropic');
+    expect(text).not.toContain('Gemini');
     expect(text.endsWith('\r\n}')).toBe(true);
+  });
+
+  it('BYOK: the API engine fields are written only once set and round-trip', () => {
+    const patch = {
+      selectedOpenAiModelId: 'gpt-5',
+      selectedAnthropicModelId: 'claude-haiku-5-5',
+      selectedGeminiModelId: 'gemini-2.5-pro',
+      selectedOpenAiCompatibleModelId: 'llama3.1',
+      openAiCompatibleBaseUrl: 'http://localhost:11434/v1',
+    } as const;
+    const text = serializeSettings(applySettingsPatch({}, patch));
+    expect(parseSettingsJson(text).settings).toMatchObject(patch);
+    const partial = serializeSettings(applySettingsPatch({}, { selectedGeminiModelId: 'g' }));
+    expect(partial).toContain('"selectedGeminiModelId": "g"');
+    expect(partial).not.toContain('selectedOpenAiModelId');
+    expect(partial).not.toContain('openAiCompatibleBaseUrl');
   });
 
   it('B17: unknown keys survive a patch and stay after the known ones', () => {
@@ -346,6 +370,12 @@ describe('resolveLiveQuestionsMode', () => {
     );
     expect(resolveLiveQuestionsMode({ ...base, selectedSummaryProvider: 'Local' })).toBe('rules');
     expect(resolveLiveQuestionsMode(base)).toBe('rules');
+  });
+
+  it('defaults to rules+ai with an API key engine too', () => {
+    for (const kind of ['OpenAi', 'Anthropic', 'Gemini', 'OpenAiCompatible']) {
+      expect(resolveLiveQuestionsMode({ ...base, selectedSummaryProvider: kind })).toBe('rules+ai');
+    }
   });
 
   it('keeps a saved choice and ignores an unknown one', () => {

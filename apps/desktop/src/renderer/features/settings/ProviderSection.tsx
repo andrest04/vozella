@@ -2,10 +2,13 @@ import type { SettingsPageDto } from '@vozella/contracts';
 import { CLI_STATUS_KEYS } from '@vozella/core';
 import { useState } from 'react';
 import { useT } from '../../i18n/I18nProvider';
-import { Button, Notice, RadioGroup, SectionHeader, Select, SettingRow } from '../../ui';
+import { Button, Notice, SectionHeader, Select, SettingRow } from '../../ui';
 import { SetupWizardDialog } from '../ai-provider/SetupWizardDialog';
+import { ApiProviderOptions } from './ApiProviderOptions';
 import { LocalModels } from './LocalModels';
+import { ProviderChoice } from './ProviderChoice';
 import { ProviderMark } from '../ai-provider/ProviderMark';
+import { isApiKind } from '../ai-provider/api-engines';
 import type { SettingsPageModel } from './use-settings-page';
 
 interface OptionKeys {
@@ -82,7 +85,8 @@ function CliOptions({
 }
 
 /**
- * Where summaries are made, and the options of whichever provider is chosen. The blocks sit below
+ * Where summaries are made, and the options of whichever provider is chosen: local models, a
+ * CLI's model and effort, or an API engine's key, model and address. The blocks sit below
  * the choice so the choice never moves (spec 2.2 to 2.5). Controls whose module is not present
  * (`capabilities`) are not drawn. A settings file that still names the removed Grok provider shows a
  * notice and no selected radio, so the user picks another one.
@@ -98,13 +102,6 @@ export function ProviderSection({
   const { provider, capabilities } = page;
   const [wizardOpen, setWizardOpen] = useState(false);
   const noActiveModel = !page.models.rows.some((row) => row.active);
-
-  const label = (text: string, kind: 'ClaudeCode' | 'Codex' | 'Local') => (
-    <span className="inline-flex items-center gap-2">
-      <ProviderMark kind={kind} />
-      {text}
-    </span>
-  );
 
   return (
     <div>
@@ -123,17 +120,12 @@ export function ProviderSection({
             {t('Ui_SummaryProviderCardDescription')}
           </span>
         </div>
-        <RadioGroup
+        <ProviderChoice
           label={t('Settings_SummaryProviderCard.Header')}
           value={provider === 'Xai' ? '' : provider}
           onValueChange={(kind) => {
             void model.setProvider(kind);
           }}
-          options={[
-            { value: 'Local', label: label(t('Settings_ProviderLocal.Text'), 'Local') },
-            { value: 'ClaudeCode', label: label(t('Settings_ProviderClaude.Text'), 'ClaudeCode') },
-            { value: 'Codex', label: label(t('Settings_ProviderCodex.Text'), 'Codex') },
-          ]}
         />
       </div>
 
@@ -185,6 +177,15 @@ export function ProviderSection({
           onEffort={(value) => {
             model.setCliOption('codex', 'effort', value);
           }}
+        />
+      ) : null}
+
+      {isApiKind(provider) ? (
+        <ApiProviderOptions
+          key={provider}
+          kind={provider}
+          options={page.api[provider]}
+          model={model}
         />
       ) : null}
 

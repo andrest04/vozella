@@ -24,7 +24,7 @@ type StringSettingKey = {
  */
 export interface CliEngine {
   readonly kind: CliProviderKind;
-  readonly providerId: Exclude<ProviderId, 'local'>;
+  readonly providerId: Extract<ProviderId, 'claude-code' | 'codex'>;
   readonly executable: 'claude' | 'codex';
   /** The product name in errors and status lines. */
   readonly displayName: string;
@@ -100,10 +100,6 @@ export function cliEngineByExecutable(executable: CliExecutable): CliEngine {
   if (engine === undefined) throw new RangeError(`Unknown CLI executable: ${executable}`);
   return engine;
 }
-
-/** The saved summary-provider kind for a chat or summaries provider id. */
-export const summaryKindOf = (providerId: ProviderId): 'Local' | CliProviderKind =>
-  cliEngineByProviderId(providerId)?.kind ?? 'Local';
 
 /** Catalog keys for the line under the provider radios. */
 export const CLI_STATUS_KEYS = { found: 'Status_CliOnPath', missing: 'Status_CliMissing' } as const;

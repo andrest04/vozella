@@ -9,6 +9,9 @@ import { refreshSetup, setNotice } from './use-recording';
 
 type Pending = (value: never) => void;
 
+/** How the summary wizard ended: an engine is ready, the user left, or Settings opened for a key. */
+type WizardOutcome = 'ready' | 'left' | 'settings';
+
 export interface EnsureReady {
   /** True when the take or import may begin; false when the user stopped the setup. */
   readonly ensureReady: () => Promise<boolean>;
@@ -21,6 +24,8 @@ export interface EnsureReady {
  * asks, "Set up" runs the missing steps in order (engine, then the summary chooser, then the CLI
  * for a chosen CLI engine), and the snapshot is read again until it can record. A step the user
  * cancels ends that pass and shows the checklist again; Cancel on the checklist ends the loop.
+ * An API engine still missing its key ends the loop too: the wizard opens Settings for the key,
+ * and the checklist returns only on the next Record.
  */
 export function useEnsureReady(): EnsureReady {
   const gate = useProviderGate();
@@ -43,27 +48,31 @@ export function useEnsureReady(): EnsureReady {
     resolve?.(value as never);
   }, []);
 
+  /** Runs the missing steps; 'stop' when a step left the page (the wizard opened Settings). */
   const runMissingSteps = useCallback(
-    async (first: RecordingSetupDto): Promise<void> => {
+    async (first: RecordingSetupDto): Promise<'again' | 'stop'> => {
       let setup = first;
       if (!setup.engine.ready) {
         const ready = await ask<boolean>('engine', () => {
           setEngineOpen(true);
         });
-        if (!ready) return;
+        if (!ready) return 'again';
         setup = (await refreshSetup()) ?? setup;
       }
       if (!setup.summary.ready) {
-        const chosen = await ask<boolean>('wizard', () => {
+        const chosen = await ask<WizardOutcome>('wizard', () => {
           setWizardOpen(true);
         });
-        if (!chosen) return;
+        // The API key is added in Settings: the checklist stays closed until the next Record.
+        if (chosen === 'settings') return 'stop';
+        if (chosen === 'left') return 'again';
         setup = (await refreshSetup()) ?? setup;
         const kind = setup.provider;
         if (!setup.summary.ready && (kind === 'ClaudeCode' || kind === 'Codex')) {
           await gate.runSetup({ kind, reason: 'cli-missing' });
         }
       }
+      return 'again';
     },
     [ask, gate],
   );
@@ -81,7 +90,7 @@ export function useEnsureReady(): EnsureReady {
         setNotice({ key: 'Status_SetupCancelled', args: [], severity: 'info' });
         return false;
       }
-      await runMissingSteps(setup);
+      if ((await runMissingSteps(setup)) === 'stop') return false;
       setup = (await refreshSetup()) ?? setup;
     }
     return true;
@@ -105,9 +114,13 @@ export function useEnsureReady(): EnsureReady {
       <SetupWizardDialog
         open={wizardOpen}
         mode="choose"
+        onSentToSettings={() => {
+          answer('wizard', 'settings' satisfies WizardOutcome);
+        }}
         onFinished={(result) => {
           setWizardOpen(false);
-          answer('wizard', result !== null);
+          // After `onSentToSettings` the slot is already answered, so this is a no-op then.
+          answer('wizard', (result !== null ? 'ready' : 'left') satisfies WizardOutcome);
         }}
       />
       <ProviderGateDialogs gate={gate} />
