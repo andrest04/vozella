@@ -168,7 +168,7 @@ describe('Settings page', () => {
     mount();
     expect(
       await screen.findByText(
-        'Grok (xAI) is no longer available. Pick Local, Claude Code or Codex to summarize your meetings.',
+        'Grok (xAI) is no longer available. Pick Local, Claude Code, Codex or an API key engine to summarize your meetings.',
       ),
     ).toBeInTheDocument();
     expect(screen.queryByRole('radio', { name: /Grok/ })).toBeNull();
@@ -193,7 +193,7 @@ describe('Settings page', () => {
     mount('es');
     expect(
       await screen.findByText(
-        'Grok (xAI) ya no está disponible. Elige Local, Claude Code o Codex para resumir tus reuniones.',
+        'Grok (xAI) ya no está disponible. Elige Local, Claude Code, Codex o un motor con clave de API para resumir tus reuniones.',
       ),
     ).toBeInTheDocument();
     await userEvent.click(screen.getByRole('radio', { name: /Codex/ }));

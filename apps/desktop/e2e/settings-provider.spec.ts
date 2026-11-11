@@ -124,7 +124,7 @@ test('a settings file that names Grok shows the notice, selects nothing and chan
   try {
     await seeProvider(s.page);
     const notice =
-      'Grok (xAI) is no longer available. Pick Local, Claude Code or Codex to summarize your meetings.';
+      'Grok (xAI) is no longer available. Pick Local, Claude Code, Codex or an API key engine to summarize your meetings.';
     await expect(s.page.getByText(notice)).toBeVisible();
     const group = s.page.getByRole('radiogroup', { name: 'Choose where summaries are generated' });
     await expect(group.getByRole('radio')).toHaveCount(7);
@@ -228,7 +228,7 @@ test('Spanish: radios, notice and toast use the Spanish catalog', async () => {
     await seeProvider(s.page, 'Proveedor de resumen');
     await expect(
       s.page.getByText(
-        'Grok (xAI) ya no está disponible. Elige Local, Claude Code o Codex para resumir tus reuniones.',
+        'Grok (xAI) ya no está disponible. Elige Local, Claude Code, Codex o un motor con clave de API para resumir tus reuniones.',
       ),
     ).toBeVisible();
     const group = s.page.getByRole('radiogroup', { name: 'Elige dónde se generan los resúmenes' });

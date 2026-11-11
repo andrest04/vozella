@@ -55,7 +55,7 @@ Today the only cloud engines are the Claude Code and Codex CLIs, which need the 
 - [x] T4 — Specs and docs, plus T3 gap B (route: delegated; trigger: 2+ non-trivial files, reading that prepares a write)
   - `docs/port/specs/summaries.md` (§2.1, §2.5, §2.7, §2.9, §4.1, §5.2), `settings-i18n.md` §2.2, `stack.md` credentials row.
   - Gap B: the recording setup checklist no longer reopens when the wizard sends the user to Settings for an API key.
-- [ ] T5 — Gap A: `Ui_SummaryProviderXaiRemoved` copy should also name the API key engines (blocked: needs `features/settings/SettingsRoute.test.tsx` and `e2e/settings-provider.spec.ts`, which also assert the old text).
+- [x] T5 — Gap A: `Ui_SummaryProviderXaiRemoved` copy names the API key engines (inline: mechanical copy + 3 test assertions; SummaryGeneration, SettingsRoute and i18n catalog tests 99/99).
 
 ## Acceptance criteria
 
@@ -81,4 +81,4 @@ Today the only cloud engines are the Claude Code and Codex CLIs, which need the 
 
 ## Next step
 
-T5 (gap A copy, needs the two extra test files authorized), then a manual smoke with a real key by the user, then merge to main.
+Manual smoke with a real key by the user, then merge to main.
