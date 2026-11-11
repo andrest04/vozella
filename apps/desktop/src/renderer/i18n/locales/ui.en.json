@@ -397,5 +397,11 @@
   "Ui_SetupApiGroup": "Or use your own API key",
   "Ui_SetupApiHint": "Usage is billed to your account. If the key is not saved yet, Settings opens so you can add it.",
   "Ui_SetupApiSaving": "Setting up {0}…",
-  "Ui_ChatAttachImagesApi": "This engine does not read images yet. This answer left them out."
+  "Ui_ChatAttachImagesApi": "This engine does not read images yet. This answer left them out.",
+  "Ui_UpdateReadyTitle": "A new version of Vozella is available!",
+  "Ui_UpdateReadyVersions": "({0} → {1})",
+  "Ui_UpdateReadyBody": "Would you like to install it now? Vozella will restart.",
+  "Ui_UpdateRemindLater": "Remind me later",
+  "Ui_UpdateInstallNow": "Install now",
+  "Ui_UpdateInstallFailed": "The update could not start. It will install the next time you quit Vozella."
 }

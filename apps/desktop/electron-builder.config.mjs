@@ -45,6 +45,11 @@ export default {
     deleteAppDataOnUninstall: false,
     artifactName: `Vozella-Setup-\${version}${variant === 'e2e' ? '-e2e' : ''}.\${ext}`,
   },
+  // Where installed copies look for updates (electron-updater reads the app-update.yml this
+  // writes into resources). It also makes packaging write latest.yml and the installer's
+  // .blockmap next to it. Packaging never uploads (`--publish never`): the release workflow
+  // attaches these files with `gh release create`, so their names must match the assets.
+  publish: [{ provider: 'github', owner: 'andrest04', repo: 'vozella', releaseType: 'release' }],
   electronFuses: {
     runAsNode: false,
     enableCookieEncryption: true,

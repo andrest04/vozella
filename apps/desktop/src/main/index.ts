@@ -77,6 +77,8 @@ import { composeChat } from './chat/compose-chat';
 import { composeSettings } from './settings/compose-settings';
 import { composeSummaries } from './summaries/compose-summaries';
 import { composeTranscription } from './transcription/compose-transcription';
+import { composeUpdates } from './updates/compose-updates';
+import { createElectronUpdaterPort } from './updates/electron-updater-port';
 import { AsrWorkerHost } from './workers/asr-worker-host';
 import { createAppIconProvider } from './audio/app-icon';
 import { RecordingTakes } from './audio/recording-take';
@@ -833,6 +835,23 @@ function main(): void {
       });
       settings.exitGates.register(() => closeGuard.mayClose());
       mayExit = () => settings.exitGates.mayExit();
+      // Automatic updates (installed releases only): the install asks the same exit gates.
+      const updates = composeUpdates({
+        isPackaged: app.isPackaged,
+        env: process.env,
+        currentVersion: appVersion,
+        logger: logger.child('updates'),
+        server: ipcServer,
+        gates: settings.exitGates,
+        approveQuit: () => {
+          exitFlow.approve();
+        },
+        broadcast,
+        createPort: () => createElectronUpdaterPort(logger.child('updates')),
+      });
+      stopOnExit(() => {
+        updates.stop();
+      });
       registerRecordingHandlers({
         server: ipcServer,
         service: recording,

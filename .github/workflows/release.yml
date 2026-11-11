@@ -78,8 +78,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $source = "apps/desktop/release/Vozella-Setup-$env:VERSION.exe"
-          if (-not (Test-Path $source)) {
-            Write-Error "Installer not found: $source"
+          # Installed copies update from these: latest.yml names the versioned installer, and the
+          # blockmap lets electron-updater download only the changed blocks.
+          $blockmap = "$source.blockmap"
+          $feed = "apps/desktop/release/latest.yml"
+          foreach ($file in @($source, $blockmap, $feed)) {
+            if (-not (Test-Path $file)) {
+              Write-Error "Release file not found: $file"
+              exit 1
+            }
+          }
+          # The asset names must be the names latest.yml points at, or the update download 404s.
+          $expected = "Vozella-Setup-$env:VERSION.exe"
+          if (-not (Select-String -Path $feed -SimpleMatch "path: $expected" -Quiet)) {
+            Write-Error "latest.yml does not name $expected"
             exit 1
           }
           # The name stays the same across versions, so the landing page link never changes.
@@ -96,5 +108,5 @@ jobs:
           elseif (-not $changes) { $changes = "Maintenance and internal improvements." }
           $notes = (Get-Content .github/release-notes.md -Raw).Replace("{{VERSION}}", $env:VERSION).Replace("{{CHANGES}}", $changes)
           Set-Content release-notes.generated.md $notes -Encoding utf8
-          gh release create "v$env:VERSION" $installer "$installer.sha256" `
+          gh release create "v$env:VERSION" $installer "$installer.sha256" $source $blockmap $feed `
             --target $env:GITHUB_SHA --latest --notes-file release-notes.generated.md --title "Vozella $env:VERSION"
