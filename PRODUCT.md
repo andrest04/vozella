@@ -20,7 +20,7 @@ Vozella writes every meeting down. It records the user's microphone plus system 
 
 - **Nothing joins the call.** No bot, no invite, no extra guest; capture happens on the user's PC.
 - **Transcription stays local.** The speech model runs on the PC. The saved transcript is generated from the recording after the user stops; the live text is only a preview.
-- **The user chooses who reads the transcript.** Summaries and chat run on a local GGUF model (no account) or on an engine the user picks: their own signed-in Claude Code or Codex CLI, or Grok. Cloud engines send the text to that provider, and the product says so.
+- **The user chooses who reads the transcript.** Summaries and chat run on a local GGUF model (no account) or on an engine the user picks: their own signed-in Claude Code or Codex CLI, or their own API key (OpenAI, Anthropic, Gemini, or any OpenAI-compatible server). Cloud engines send the text to that provider, and the product says so.
 - **Meetings are files.** Each meeting is a Markdown file with its recording next to it in `Documents\Vozella`, usable in any editor and kept if the user stops using Vozella.
 
 ## Operating Context

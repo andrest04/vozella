@@ -22,7 +22,7 @@ Every meeting, written down.
 
 | Option | Choices |
 | --- | --- |
-| Summary and chat engine | Local (GGUF on this PC, no account), Claude Code or Codex (your own signed-in CLI), Grok (xAI) |
+| Summary and chat engine | Local (GGUF on this PC, no account), Claude Code or Codex (your own signed-in CLI), or your own API key (OpenAI, Anthropic, Gemini, or any OpenAI-compatible server) |
 | Transcription language | Auto, English, Spanish, Portuguese, French, German, Italian, Dutch, Japanese, Chinese |
 | UI and summary language | English, Spanish |
 
@@ -37,7 +37,7 @@ It began as a port of an earlier WinUI 3 app named MeetingLive, which is no long
 | Data | Where it goes |
 | --- | --- |
 | Transcription | Runs on this PC. The speech model and a small runtime download once during setup. |
-| Summaries and chat | Go to the engine you choose. Local stays on this PC; Claude Code, Codex and Grok send the text to their services. With Claude Code or Codex, live answers can also search the web. |
+| Summaries and chat | Go to the engine you choose. Local stays on this PC; Claude Code, Codex and API key engines send the text to the provider you set up. An OpenAI-compatible server running on this PC keeps it local. With Claude Code or Codex, live answers can also search the web. |
 | TypeSafe (optional) | Sends the transcript to TypeSafe. Off until you save a key. |
 | Meetings and recordings | Markdown files with their recordings in `Documents\Vozella`. It follows OneDrive redirection, so a redirected Documents folder puts them in OneDrive too. |
 
