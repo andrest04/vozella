@@ -1,4 +1,5 @@
 import type {
+  ApiProviderKindDto,
   CommitOutcomeDto,
   FeedbackDto,
   ModelEventDto,
@@ -11,6 +12,12 @@ import { useT } from '../../i18n/I18nProvider';
 export const FEEDBACK_MS = 4000;
 
 type CliProvider = 'claude' | 'codex';
+
+/** What a key change or a Verify answered, already in words for the API block's status line. */
+export type ApiKeyAnswer =
+  | { readonly status: 'saved'; readonly keySet: boolean }
+  | { readonly status: 'verified'; readonly models: readonly string[] }
+  | { readonly status: 'failed'; readonly errorKey: string };
 
 export interface SettingsPageModel {
   /** Null until the first answer. */
@@ -31,6 +38,17 @@ export interface SettingsPageModel {
   readonly setProvider: (kind: string) => Promise<void>;
   readonly setCliOption: (provider: CliProvider, field: 'model' | 'effort', value: string) => void;
   readonly setMeetingLanguage: (kind: 'transcription' | 'summary', code: string) => void;
+  /** The model id of an API engine, or the compatible engine's address. Answers what was done. */
+  readonly setApiOption: (
+    kind: ApiProviderKindDto,
+    field: 'model' | 'baseUrl',
+    value: string,
+  ) => Promise<CommitOutcomeDto | null>;
+  /** Sends the key to main once; the page only ever learns whether one is set. */
+  readonly setApiKey: (kind: ApiProviderKindDto, key: string) => Promise<ApiKeyAnswer>;
+  readonly clearApiKey: (kind: ApiProviderKindDto) => Promise<ApiKeyAnswer>;
+  /** Lists the models the saved key can use. Changes nothing. */
+  readonly verifyApiKey: (kind: ApiProviderKindDto) => Promise<ApiKeyAnswer>;
   readonly checkCliAgain: () => Promise<void>;
   readonly downloadModel: (fileName: string) => Promise<void>;
   readonly cancelModel: (fileName: string) => void;
@@ -195,6 +213,45 @@ export function useSettingsPage(): SettingsPageModel {
     [commit],
   );
 
+  const setApiOption = useCallback(
+    (kind: ApiProviderKindDto, field: 'model' | 'baseUrl', value: string) =>
+      commit(window.vozella.invoke('settings.setApiOption', { kind, field, value })),
+    [commit],
+  );
+
+  // Key answers stay in the API block: a failure there is shown next to the key, not as a banner.
+  const keyCommand = useCallback(
+    async (request: () => Promise<ApiKeyAnswer>, reload: boolean): Promise<ApiKeyAnswer> => {
+      let answer: ApiKeyAnswer;
+      try {
+        answer = await request();
+      } catch {
+        answer = { status: 'failed', errorKey: 'Ui_ApiUnknown' };
+      }
+      if (reload && alive.current) await load();
+      return answer;
+    },
+    [load],
+  );
+
+  const setApiKey = useCallback(
+    (kind: ApiProviderKindDto, key: string) =>
+      keyCommand(() => window.vozella.invoke('settings.setApiKey', { kind, key }), true),
+    [keyCommand],
+  );
+
+  const clearApiKey = useCallback(
+    (kind: ApiProviderKindDto) =>
+      keyCommand(() => window.vozella.invoke('settings.clearApiKey', { kind }), true),
+    [keyCommand],
+  );
+
+  const verifyApiKey = useCallback(
+    (kind: ApiProviderKindDto) =>
+      keyCommand(() => window.vozella.invoke('settings.verifyApiKey', { kind }), false),
+    [keyCommand],
+  );
+
   const checkCliAgain = useCallback(async (): Promise<void> => {
     if (!page) return;
     try {
@@ -326,6 +383,10 @@ export function useSettingsPage(): SettingsPageModel {
       setUiLanguage,
       setCliOption,
       setMeetingLanguage,
+      setApiOption,
+      setApiKey,
+      clearApiKey,
+      verifyApiKey,
       checkCliAgain,
       downloadModel,
       cancelModel,
@@ -347,6 +408,10 @@ export function useSettingsPage(): SettingsPageModel {
       setUiLanguage,
       setCliOption,
       setMeetingLanguage,
+      setApiOption,
+      setApiKey,
+      clearApiKey,
+      verifyApiKey,
       checkCliAgain,
       downloadModel,
       cancelModel,

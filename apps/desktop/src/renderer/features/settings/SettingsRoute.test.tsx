@@ -828,7 +828,7 @@ describe('Settings page', () => {
     expect(screen.getByTestId('settings-content')).not.toHaveClass('animate-fade-in');
   });
 
-  it('lists Local, Claude Code and Codex in that order, each with its mark (28)', async () => {
+  it('lists Local, Claude Code, Codex and the API key engines in that order, each with its mark (28)', async () => {
     install({ 'settings.getPage': () => pageDto({ capabilities: allOn }) });
     mount();
     const group = await screen.findByRole('radiogroup', {
@@ -839,11 +839,15 @@ describe('Settings page', () => {
       'Local (on this device)',
       'Claude Code CLI',
       'Codex CLI',
+      'OpenAI',
+      'Anthropic',
+      'Google Gemini',
+      'OpenAI-compatible',
     ]);
     for (const radio of radios) expect(labelOf(radio).querySelector('svg')).not.toBeNull();
   });
 
-  it('labels the three providers in Spanish (28)', async () => {
+  it('labels the providers in Spanish (28)', async () => {
     install({ 'settings.getPage': () => pageDto({ capabilities: allOn }) });
     mount('es');
     const radio = await screen.findByRole('radio', { name: 'Local (en este dispositivo)' });
@@ -852,7 +856,15 @@ describe('Settings page', () => {
       within(group)
         .getAllByRole('radio')
         .map((r) => labelOf(r).textContent.trim()),
-    ).toEqual(['Local (en este dispositivo)', 'CLI de Claude Code', 'CLI de Codex']);
+    ).toEqual([
+      'Local (en este dispositivo)',
+      'CLI de Claude Code',
+      'CLI de Codex',
+      'OpenAI',
+      'Anthropic',
+      'Google Gemini',
+      'Compatible con OpenAI',
+    ]);
   });
 
   it('shows the detection text in Spanish, and a new answer after Check again (35)', async () => {
@@ -895,7 +907,7 @@ describe('Settings page', () => {
     mount();
     expect(
       await screen.findByText(
-        'Local runs entirely on this PC for free. Claude Code and Codex use an already-installed CLI.',
+        'Local runs entirely on this PC for free. Claude Code and Codex use an already-installed CLI. API engines use your own key and bill your account.',
       ),
     ).toBeInTheDocument();
   });
