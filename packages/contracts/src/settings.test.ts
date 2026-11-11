@@ -8,8 +8,11 @@ import {
   settingsModelsDelete,
   settingsModelsDownload,
   settingsPageSchema,
+  settingsClearApiKey,
+  settingsSetApiKey,
   settingsSetApiOption,
   settingsSetCliOption,
+  settingsVerifyApiKey,
   settingsSetMeetingLanguage,
   summariesProviderStatus,
 } from './index';
@@ -21,6 +24,10 @@ describe('settings contracts', () => {
       'settings.setUiLanguage',
       'settings.setSummaryProvider',
       'settings.setCliOption',
+      'settings.setApiOption',
+      'settings.setApiKey',
+      'settings.clearApiKey',
+      'settings.verifyApiKey',
       'settings.setMeetingLanguage',
       'settings.detectCli',
       'settings.dismissNotice',
@@ -53,6 +60,40 @@ describe('settings contracts', () => {
     expect(settingsSetApiOption.input.safeParse({ ...ok, value: 'x'.repeat(301) }).success).toBe(
       false,
     );
+  });
+
+  it('BYOK: the key travels only toward main; every answer is a flag, a model list or a key name', () => {
+    expect(settingsSetApiKey.input.safeParse({ kind: 'OpenAi', key: 'sk-test' }).success).toBe(
+      true,
+    );
+    expect(settingsSetApiKey.input.safeParse({ kind: 'Local', key: 'sk-test' }).success).toBe(
+      false,
+    );
+    expect(
+      settingsSetApiKey.input.safeParse({ kind: 'OpenAi', key: 'x'.repeat(2001) }).success,
+    ).toBe(false);
+    expect(settingsSetApiKey.output.safeParse({ status: 'saved', keySet: true }).success).toBe(
+      true,
+    );
+    expect(
+      settingsSetApiKey.output.safeParse({ status: 'saved', keySet: true, key: 'sk-test' }).success,
+    ).toBe(false);
+    expect(
+      settingsSetApiKey.output.safeParse({
+        status: 'failed',
+        errorKey: 'Ui_ApiKeyStoreUnavailable',
+      }).success,
+    ).toBe(true);
+    expect(settingsClearApiKey.input.safeParse({ kind: 'Anthropic' }).success).toBe(true);
+    expect(settingsVerifyApiKey.input.safeParse({ kind: 'Gemini' }).success).toBe(true);
+    expect(settingsVerifyApiKey.input.safeParse({ kind: 'Gemini', key: 'k' }).success).toBe(false);
+    expect(
+      settingsVerifyApiKey.output.safeParse({ status: 'verified', models: ['gpt-5'] }).success,
+    ).toBe(true);
+    expect(
+      settingsVerifyApiKey.output.safeParse({ status: 'failed', errorKey: 'Ui_ApiKeyInvalid' })
+        .success,
+    ).toBe(true);
   });
 
   it('BYOK: the page carries key-set flags per API engine and refuses a key field', () => {

@@ -418,6 +418,7 @@ function main(): void {
     fakeNative,
     env: process.env,
     activeGpuOffload: () => llamaGpuOffload(),
+    apiKeys,
     store: library.settings,
     appDataDirectory: paths.appData,
     osLanguages: () => app.getPreferredSystemLanguages(),

@@ -10,10 +10,14 @@ import {
   settingsModelsDelete,
   settingsModelsDownload,
   settingsModelsSelect,
+  settingsClearApiKey,
+  settingsSetApiKey,
+  settingsSetApiOption,
   settingsSetCliOption,
   settingsSetMeetingLanguage,
   settingsSetSummaryProvider,
   settingsSetUiLanguage,
+  settingsVerifyApiKey,
   type ModelEventDto,
 } from '@vozella/contracts';
 import type { SettingsRuntime } from '@vozella/platform';
@@ -59,6 +63,11 @@ export function registerSettingsHandlers(deps: SettingsHandlerDeps): void {
     return result;
   });
   registerRequest(server, settingsSetCliOption, (input) => runtime.commands.setCliOption(input));
+  registerRequest(server, settingsSetApiOption, (input) => runtime.commands.setApiOption(input));
+  // The key arrives once and goes straight into the encrypted store; answers carry only a flag.
+  registerRequest(server, settingsSetApiKey, ({ kind, key }) => runtime.apiKeys.set(kind, key));
+  registerRequest(server, settingsClearApiKey, ({ kind }) => runtime.apiKeys.clear(kind));
+  registerRequest(server, settingsVerifyApiKey, ({ kind }) => runtime.apiKeys.verify(kind));
   registerRequest(server, settingsSetMeetingLanguage, ({ kind, code }) =>
     runtime.commands.setMeetingLanguage(kind, code),
   );

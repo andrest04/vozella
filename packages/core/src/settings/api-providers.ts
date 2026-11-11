@@ -160,5 +160,14 @@ export function apiSetupGap(
   return null;
 }
 
+/**
+ * Catalog keys of the Settings answers about API keys that are not engine failures: the OS could
+ * not encrypt the key, or the compatible engine has no address yet. `{0}` is the engine's name.
+ */
+export const API_KEY_SETTINGS_UI_KEYS = {
+  storeUnavailable: 'Ui_ApiKeyStoreUnavailable',
+  baseUrlMissing: 'Ui_ApiBaseUrlMissing',
+} as const;
+
 /** Rough token count for budgets on remote engines: about four characters per token. */
 export const estimateTokens = (text: string): number => Math.ceil(text.length / 4);

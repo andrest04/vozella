@@ -366,5 +366,7 @@
   "Ui_ApiModelNotFound": "{0} no reconoce el modelo elegido. Elige otro modelo en Configuración.",
   "Ui_ApiUnknown": "{0} no pudo terminar.",
   "Ui_ApiSetupIncomplete": "{0} necesita una dirección y un modelo. Termina de configurarlo en Configuración.",
+  "Ui_ApiKeyStoreUnavailable": "Windows no pudo cifrar la clave, así que no se guardó.",
+  "Ui_ApiBaseUrlMissing": "Primero escribe la dirección del servidor.",
   "Ui_ChatAttachImagesApi": "Este motor todavía no lee imágenes. Esta respuesta no las tuvo en cuenta."
 }

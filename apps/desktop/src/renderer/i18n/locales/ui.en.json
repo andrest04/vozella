@@ -366,5 +366,7 @@
   "Ui_ApiModelNotFound": "{0} does not know the selected model. Pick another model in Settings.",
   "Ui_ApiUnknown": "{0} could not finish.",
   "Ui_ApiSetupIncomplete": "{0} needs an address and a model. Finish setting it up in Settings.",
+  "Ui_ApiKeyStoreUnavailable": "Windows could not encrypt the key, so it was not saved.",
+  "Ui_ApiBaseUrlMissing": "Enter the server address first.",
   "Ui_ChatAttachImagesApi": "This engine does not read images yet. This answer left them out."
 }

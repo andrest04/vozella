@@ -161,6 +161,39 @@ export const settingsSetApiOption = defineRequest('settings.setApiOption', {
   output: commitOutcomeSchema,
 });
 
+/**
+ * Saves the user's API key for one engine. The key travels from the page to main once and is never
+ * sent back: the answer says only whether a key is now set. A blank key removes it. `failed` names
+ * the catalog key of the reason (for example, the OS cannot encrypt it).
+ */
+export const settingsSetApiKey = defineRequest('settings.setApiKey', {
+  input: z.object({ kind: apiProviderKindSchema, key: z.string().max(2_000) }).strict(),
+  output: z.discriminatedUnion('status', [
+    z.object({ status: z.literal('saved'), keySet: z.boolean() }).strict(),
+    z.object({ status: z.literal('failed'), errorKey: z.string() }).strict(),
+  ]),
+});
+
+export const settingsClearApiKey = defineRequest('settings.clearApiKey', {
+  input: z.object({ kind: apiProviderKindSchema }).strict(),
+  output: z.discriminatedUnion('status', [
+    z.object({ status: z.literal('saved'), keySet: z.boolean() }).strict(),
+    z.object({ status: z.literal('failed'), errorKey: z.string() }).strict(),
+  ]),
+});
+
+/**
+ * Tries the saved key (and, for the compatible engine, the saved address) by listing the models
+ * it can use. A failure is the catalog key of the reason; `{0}` in it is the engine's name.
+ */
+export const settingsVerifyApiKey = defineRequest('settings.verifyApiKey', {
+  input: z.object({ kind: apiProviderKindSchema }).strict(),
+  output: z.discriminatedUnion('status', [
+    z.object({ status: z.literal('verified'), models: z.array(z.string()).readonly() }).strict(),
+    z.object({ status: z.literal('failed'), errorKey: z.string() }).strict(),
+  ]),
+});
+
 export const settingsSetMeetingLanguage = defineRequest('settings.setMeetingLanguage', {
   input: z.object({
     kind: z.enum(['transcription', 'summary']),

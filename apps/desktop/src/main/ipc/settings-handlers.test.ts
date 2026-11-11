@@ -5,7 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { settingsPageSchema, type EventChannel, type ModelEventDto } from '@vozella/contracts';
 import { readSettings, type Logger } from '@vozella/core';
 import {
+  FakeApiKeyStore,
   FakeCliProbe,
+  FakeFetch,
   FakeHardwareProbe,
   FakeLocalModelStore,
   JsonSettingsStore,
@@ -36,6 +38,8 @@ interface Options {
   models?: FakeLocalModelStore;
   relaunch?: () => void;
   onSummaryProviderSaved?: () => void;
+  apiKeys?: FakeApiKeyStore;
+  fetch?: FakeFetch;
 }
 
 async function setup(options: Options = {}) {
@@ -48,6 +52,7 @@ async function setup(options: Options = {}) {
   const osLanguages = options.os ?? ['en-US'];
   const settingsFile = path.join(dir, 'settings.json');
   const store = new JsonSettingsStore({ settingsFilePath: settingsFile });
+  const log = logger();
   const runtime = new SettingsRuntime({
     store,
     appDataDirectory: dir,
@@ -57,13 +62,15 @@ async function setup(options: Options = {}) {
     hardware: new FakeHardwareProbe({ totalRamGb: 16, gpuName: null, gpuVramGb: null }),
     cli: new FakeCliProbe(new Set(['codex'])),
     modelStore: options.models ?? new FakeLocalModelStore(),
+    ...(options.apiKeys ? { apiKeys: options.apiKeys } : {}),
+    ...(options.fetch ? { fetch: options.fetch.fetch } : {}),
   });
   const locale = new LocaleState(
     await resolveStartupLanguage(() => store.load(), osLanguages),
     mainCatalogs,
   );
   registerSettingsHandlers({
-    server: { ipc, isTrusted: () => true, logger: logger() },
+    server: { ipc, isTrusted: () => true, logger: log },
     runtime,
     locale,
     broadcast,
@@ -75,7 +82,16 @@ async function setup(options: Options = {}) {
       value?: Record<string, unknown>;
       error?: { code: string };
     };
-  return { call, events, runtime, locale, settingsFile, store, registered: [...handlers.keys()] };
+  return {
+    call,
+    events,
+    runtime,
+    locale,
+    settingsFile,
+    store,
+    log,
+    registered: [...handlers.keys()],
+  };
 }
 
 describe('settings handlers', () => {
@@ -319,5 +335,84 @@ describe('settings handlers', () => {
       value: 'x',
     });
     expect(xai.ok).toBe(false);
+  });
+});
+
+describe('settings handlers: API keys (BYOK)', () => {
+  const secret = 'sk-test-SECRET-123';
+
+  it('saves a key and answers only that a key is set, never the key', async () => {
+    const keys = new FakeApiKeyStore();
+    const t = await setup({ apiKeys: keys });
+    const saved = await t.call('settings.setApiKey', { kind: 'OpenAi', key: secret });
+    expect(saved).toEqual({ ok: true, value: { status: 'saved', keySet: true } });
+    expect(await keys.get('OpenAi')).toBe(secret);
+    const page = await t.call('settings.getPage');
+    expect((page.value as { api: { OpenAi: { keySet: boolean } } }).api.OpenAi.keySet).toBe(true);
+    expect(JSON.stringify(page)).not.toContain(secret);
+    expect(fs.existsSync(t.settingsFile)).toBe(false);
+  });
+
+  it('removes a key', async () => {
+    const keys = new FakeApiKeyStore({ Anthropic: secret });
+    const t = await setup({ apiKeys: keys });
+    const cleared = await t.call('settings.clearApiKey', { kind: 'Anthropic' });
+    expect(cleared.value).toEqual({ status: 'saved', keySet: false });
+    expect(await keys.has('Anthropic')).toBe(false);
+  });
+
+  it('a store that cannot encrypt answers failed and logs nothing about the key', async () => {
+    const keys = new FakeApiKeyStore();
+    keys.set = () => Promise.reject(new Error('encryption is not available'));
+    const t = await setup({ apiKeys: keys });
+    const result = await t.call('settings.setApiKey', { kind: 'Gemini', key: secret });
+    expect(result.value).toEqual({ status: 'failed', errorKey: 'Ui_ApiKeyStoreUnavailable' });
+    expect(JSON.stringify(vi.mocked(t.log.error).mock.calls)).not.toContain(secret);
+  });
+
+  it('verify lists models with the saved key; a refused key comes back as a catalog key', async () => {
+    const ok = await setup({
+      apiKeys: new FakeApiKeyStore({ OpenAi: secret }),
+      fetch: new FakeFetch({ chunks: [JSON.stringify({ data: [{ id: 'gpt-5' }] })] }),
+    });
+    expect((await ok.call('settings.verifyApiKey', { kind: 'OpenAi' })).value).toEqual({
+      status: 'verified',
+      models: ['gpt-5'],
+    });
+
+    const refused = await setup({
+      apiKeys: new FakeApiKeyStore({ OpenAi: secret }),
+      fetch: new FakeFetch({ status: 401, chunks: [`{"error":"bad ${secret}"}`] }),
+    });
+    const answer = await refused.call('settings.verifyApiKey', { kind: 'OpenAi' });
+    expect(answer.value).toEqual({ status: 'failed', errorKey: 'Ui_ApiKeyInvalid' });
+    expect(JSON.stringify(answer)).not.toContain(secret);
+  });
+
+  it('saves the model and the compatible address through the checked command', async () => {
+    const t = await setup();
+    const model = await t.call('settings.setApiOption', {
+      kind: 'OpenAi',
+      field: 'model',
+      value: 'gpt-5',
+    });
+    expect(model.value).toMatchObject({ status: 'saved' });
+    const url = await t.call('settings.setApiOption', {
+      kind: 'OpenAiCompatible',
+      field: 'baseUrl',
+      value: 'http://localhost:11434/v1',
+    });
+    expect(url.value).toMatchObject({ status: 'saved' });
+    expect(JSON.parse(fs.readFileSync(t.settingsFile, 'utf8'))).toMatchObject({
+      selectedOpenAiModelId: 'gpt-5',
+      openAiCompatibleBaseUrl: 'http://localhost:11434/v1',
+    });
+  });
+
+  it('refuses a key for a kind that is not an API engine', async () => {
+    const t = await setup({ apiKeys: new FakeApiKeyStore() });
+    const bad = await t.call('settings.setApiKey', { kind: 'Codex', key: secret });
+    expect(bad.ok).toBe(false);
+    expect(bad.error?.code).toBe('invalid-input');
   });
 });

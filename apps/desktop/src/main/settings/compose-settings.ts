@@ -1,7 +1,8 @@
 import path from 'node:path';
-import type { CliPathProbe, HardwareProbe, SettingsStore } from '@vozella/core';
+import type { ApiKeyStore, CliPathProbe, HardwareProbe, SettingsStore } from '@vozella/core';
 import {
   FakeCliProbe,
+  FakeFetch,
   FakeHardwareProbe,
   FileFakeCliProbe,
   FileLocalModelStore,
@@ -26,7 +27,12 @@ export interface ComposeSettingsDeps {
   readonly broadcast: Broadcast;
   /** Whether the llama runtime in use offloads to the GPU; unknown until summaries pick one. */
   readonly activeGpuOffload: () => boolean | undefined;
+  /** The one API key store (BYOK), shared with the summaries. Without it no key can be saved. */
+  readonly apiKeys?: ApiKeyStore;
 }
+
+/** The fake native build answers Verify from this list, so no request leaves the PC. */
+const FAKE_API_MODELS = ['fake-model-large', 'fake-model-small'];
 
 export interface ComposedSettings {
   readonly hardware: HardwareProbe;
@@ -38,7 +44,7 @@ export interface ComposedSettings {
 /**
  * The machine probes (hardware, summary models, CLIs) and the Settings services. In the fake
  * native build the machine, the CLIs, the model downloads are doubles, so nothing touches the
- * network.
+ * network: Verify answers from a fixed model list.
  */
 export function composeSettings(deps: ComposeSettingsDeps): ComposedSettings {
   const { fakeNative, env } = deps;
@@ -73,6 +79,14 @@ export function composeSettings(deps: ComposeSettingsDeps): ComposedSettings {
     hardware,
     cli: summaryCli,
     modelStore: summaryModels,
+    ...(deps.apiKeys ? { apiKeys: deps.apiKeys } : {}),
+    ...(fakeNative
+      ? {
+          fetch: new FakeFetch({
+            chunks: [JSON.stringify({ data: FAKE_API_MODELS.map((id) => ({ id })) })],
+          }).fetch,
+        }
+      : {}),
   });
   return { hardware, summaryModels, summaryCli, settings };
 }
