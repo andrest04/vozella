@@ -22,6 +22,8 @@ export interface SetupWizardDialogProps {
   readonly mode: WizardMode;
   /** Called once: the engine that is ready, or null when the user leaves. */
   readonly onFinished: (result: WizardResult | null) => void;
+  /** Called just before `onFinished(null)` when an API engine needs its key and Settings opens. */
+  readonly onSentToSettings?: () => void;
   /** The CheckingCli panel. Defaults to `CliCheckPanel`; tests pass a stub. */
   readonly renderCliPanel?: (context: CliPanelContext) => ReactNode;
 }
@@ -38,9 +40,14 @@ export function SetupWizardDialog(props: SetupWizardDialogProps) {
   return props.open ? <OpenWizard {...props} /> : null;
 }
 
-function OpenWizard({ mode, onFinished, renderCliPanel }: SetupWizardDialogProps) {
+function OpenWizard({
+  mode,
+  onFinished,
+  onSentToSettings,
+  renderCliPanel,
+}: SetupWizardDialogProps) {
   const t = useT();
-  const wizard = useSetupWizard(mode, onFinished);
+  const wizard = useSetupWizard(mode, onFinished, onSentToSettings);
   const { state } = wizard;
 
   return (

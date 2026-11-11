@@ -583,6 +583,40 @@ describe('RecordRoute accelerator and missing steps', () => {
     expect(await screen.findByRole('dialog', { name: 'Set up recording' })).toBeInTheDocument();
     expect(api.named('recording.start')).toHaveLength(0);
   });
+
+  it('an API engine sent to Settings for its key ends the setup without showing the checklist again', async () => {
+    const needsSummary: RecordingSetupDto = {
+      ...readySetup,
+      canRecord: false,
+      summary: card('RecordingSetup_Summary.Header', false),
+      idleStatus: { key: 'Status_NeedsSetup', args: [] },
+    };
+    const api = installApi({
+      'recording.getSetup': () => needsSummary,
+      'settings.setSummaryProvider': () => ({ status: 'saved', settings: {}, feedback: null }),
+      'summaries.providerStatus': () => ({
+        status: 'needs-setup',
+        kind: 'OpenAi',
+        reason: 'key-missing',
+      }),
+    });
+    mount();
+    await userEvent.click(await screen.findByRole('button', { name: 'Set up to record' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Set up recording' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Set up' }));
+    const wizard = await screen.findByRole('dialog', { name: 'Set up summary generation' });
+    await userEvent.click(within(wizard).getByTestId('BtnEngineOpenAi'));
+    await waitFor(() => {
+      expect(api.named('workspace.dispatch').map((call) => call.input)).toContainEqual({
+        action: { type: 'navigateTo', tag: 'Settings' },
+      });
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    expect(screen.queryByText('Setup cancelled.')).toBeNull();
+    expect(api.named('recording.start')).toHaveLength(0);
+  });
 });
 
 describe('RecordRoute status bars (spec 2.18, B-12)', () => {

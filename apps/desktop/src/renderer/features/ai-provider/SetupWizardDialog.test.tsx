@@ -121,6 +121,28 @@ describe('SetupWizardDialog: chooser', () => {
     });
   });
 
+  it('tells the caller it went to Settings before reporting no engine', async () => {
+    const order: string[] = [];
+    mount(
+      {
+        onSentToSettings: () => order.push('settings'),
+        onFinished: (result) => order.push(result === null ? 'null' : 'ready'),
+      },
+      {
+        'settings.setSummaryProvider': () => ({ status: 'saved', settings: {}, feedback: null }),
+        'summaries.providerStatus': () => ({
+          status: 'needs-setup',
+          kind: 'OpenAi',
+          reason: 'key-missing',
+        }),
+      },
+    );
+    await userEvent.click(await screen.findByTestId('BtnEngineOpenAi'));
+    await waitFor(() => {
+      expect(order).toEqual(['settings', 'null']);
+    });
+  });
+
   it('an API engine whose key is already saved finishes the wizard ready', async () => {
     const { api, onFinished } = mount(
       {},
