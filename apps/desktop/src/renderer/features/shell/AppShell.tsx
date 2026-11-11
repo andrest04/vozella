@@ -11,6 +11,7 @@ import { CallPromptBar } from './CallPromptBar';
 import { Mark, cn, pageColumn } from '../../ui';
 import { NavRail } from './NavRail';
 import { StartupNotice } from './StartupNotice';
+import { UpdateToast } from '../updates/UpdateToast';
 import { routeOfTag, tagOfPath } from './navigation';
 
 /** The shell is the only listener of navigation requests, and tells the workspace where it is. */
@@ -95,6 +96,7 @@ export function AppShell() {
       </div>
       <CloseDialogs />
       <StartupNotice />
+      <UpdateToast />
     </div>
   );
 }

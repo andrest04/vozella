@@ -351,5 +351,11 @@
   "Ui_ActionItemsExportEmpty": "None of these items has a date yet.",
   "Ui_ActionItemsExportFailed": "Could not save the calendar file: {0}",
   "Ui_IcsOwnerLabel": "Owner",
-  "Ui_IcsMeetingLabel": "Meeting"
+  "Ui_IcsMeetingLabel": "Meeting",
+  "Ui_UpdateReadyTitle": "A new version of Vozella is available!",
+  "Ui_UpdateReadyVersions": "({0} → {1})",
+  "Ui_UpdateReadyBody": "Would you like to install it now? Vozella will restart.",
+  "Ui_UpdateRemindLater": "Remind me later",
+  "Ui_UpdateInstallNow": "Install now",
+  "Ui_UpdateInstallFailed": "The update could not start. It will install the next time you quit Vozella."
 }

@@ -351,5 +351,11 @@
   "Ui_ActionItemsExportEmpty": "Ninguno de estos elementos tiene fecha todavía.",
   "Ui_ActionItemsExportFailed": "No se pudo guardar el archivo de calendario: {0}",
   "Ui_IcsOwnerLabel": "Responsable",
-  "Ui_IcsMeetingLabel": "Reunión"
+  "Ui_IcsMeetingLabel": "Reunión",
+  "Ui_UpdateReadyTitle": "¡Hay una nueva versión de Vozella disponible!",
+  "Ui_UpdateReadyVersions": "({0} → {1})",
+  "Ui_UpdateReadyBody": "¿Desea instalarla ahora? Vozella se reiniciará.",
+  "Ui_UpdateRemindLater": "Recordármelo más tarde",
+  "Ui_UpdateInstallNow": "Instalar ahora",
+  "Ui_UpdateInstallFailed": "No se pudo iniciar la actualización. Se instalará la próxima vez que cierre Vozella."
 }
