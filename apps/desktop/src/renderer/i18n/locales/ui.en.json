@@ -394,5 +394,8 @@
   "Ui_ApiBaseUrlLabel": "Server address",
   "Ui_ApiBaseUrlHelp": "OpenRouter, Groq, Ollama, LM Studio, or any server that speaks the OpenAI API. For example, http://localhost:11434/v1.",
   "Ui_ApiBaseUrlInvalid": "Enter an address that starts with http:// or https://.",
+  "Ui_SetupApiGroup": "Or use your own API key",
+  "Ui_SetupApiHint": "Usage is billed to your account. If the key is not saved yet, Settings opens so you can add it.",
+  "Ui_SetupApiSaving": "Setting up {0}…",
   "Ui_ChatAttachImagesApi": "This engine does not read images yet. This answer left them out."
 }

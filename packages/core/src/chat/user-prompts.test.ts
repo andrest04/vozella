@@ -38,7 +38,15 @@ describe('normalizePromptDraft (validation)', () => {
   });
 
   it('accepts every engine and both availabilities', () => {
-    for (const engine of ['claude-code', 'codex', 'local'] as const) {
+    for (const engine of [
+      'claude-code',
+      'codex',
+      'local',
+      'openai',
+      'anthropic',
+      'gemini',
+      'openai-compatible',
+    ] as const) {
       expect(
         normalizePromptDraft({ name: 'a', prompt: 'b', availability: 'multiple', engine })?.engine,
       ).toBe(engine);

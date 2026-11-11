@@ -18,6 +18,8 @@ describe('decideSurface', () => {
     [{ kind: 'ClaudeCode', reason: 'cli-missing' }, 'cli'],
     [{ kind: 'Codex', reason: 'cli-missing' }, 'cli'],
     [{ kind: 'Xai', reason: 'unavailable' }, 'notice'],
+    [{ kind: 'OpenAi', reason: 'key-missing' }, 'notice'],
+    [{ kind: 'OpenAiCompatible', reason: 'base-url-missing' }, 'notice'],
   ];
   it.each(table)('%j opens %s', (request, surface) => {
     expect(decideSurface(request).surface).toBe(surface);
@@ -125,6 +127,35 @@ describe('useProviderGate', () => {
       input: { action: { type: 'navigateTo', tag: 'Settings' } },
     });
     expect(screen.queryByTestId('TxtProviderUnavailable')).toBeNull();
+  });
+
+  it('an API engine without its key says to add it in Settings, and goes there only on request', async () => {
+    const { api, run } = mount();
+    let result: Promise<string> | undefined;
+    act(() => {
+      result = run({ kind: 'Anthropic', reason: 'key-missing' });
+    });
+    await expect(result).resolves.toBe('cancelled');
+    expect(await screen.findByTestId('TxtProviderUnavailable')).toHaveTextContent(
+      'Anthropic needs your API key. Add it in Settings.',
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(api.calls.some((call) => call.name === 'workspace.dispatch')).toBe(false);
+    await userEvent.click(screen.getByTestId('BtnOpenSettings'));
+    expect(api.calls).toContainEqual({
+      name: 'workspace.dispatch',
+      input: { action: { type: 'navigateTo', tag: 'Settings' } },
+    });
+  });
+
+  it('the compatible engine without an address asks to finish its setup', async () => {
+    const { run } = mount();
+    act(() => {
+      void run({ kind: 'OpenAiCompatible', reason: 'base-url-missing' });
+    });
+    expect(await screen.findByTestId('TxtProviderUnavailable')).toHaveTextContent(
+      'OpenAI-compatible needs an address and a model. Finish setting it up in Settings.',
+    );
   });
 
   it('a second request while a dialog is open is cancelled, not stacked', async () => {

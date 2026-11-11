@@ -1,5 +1,10 @@
-import type { ChatPromptSaveOutcomeDto } from '@vozella/contracts';
-import { USER_PROMPT_LIMIT, USER_PROMPT_NAME_MAX, USER_PROMPT_TEXT_MAX } from '@vozella/core';
+import type { ChatEngineDto, ChatPromptSaveOutcomeDto } from '@vozella/contracts';
+import {
+  CHAT_ENGINES,
+  USER_PROMPT_LIMIT,
+  USER_PROMPT_NAME_MAX,
+  USER_PROMPT_TEXT_MAX,
+} from '@vozella/core';
 import { CircleAlert } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useT } from '../../i18n/I18nProvider';
@@ -64,7 +69,7 @@ export function PromptDialog({ request, onSave, onClose }: PromptDialogProps) {
 
   const engineOptions = [
     { value: DEFAULT_ENGINE, label: t('Ui_ChatPromptEngineDefault') },
-    ...(['claude-code', 'codex', 'local'] as const).map((engine) => ({
+    ...CHAT_ENGINES.map((engine) => ({
       value: engine,
       label: t(ENGINE_LABEL[engine]),
     })),
@@ -157,9 +162,8 @@ export function PromptDialog({ request, onSave, onClose }: PromptDialogProps) {
             options={engineOptions}
             value={values.engine ?? DEFAULT_ENGINE}
             onValueChange={(next) => {
-              const engine =
-                next === 'claude-code' || next === 'codex' || next === 'local' ? next : null;
-              setValues((v) => ({ ...v, engine }));
+              const engine = CHAT_ENGINES.find((known): known is ChatEngineDto => known === next);
+              setValues((v) => ({ ...v, engine: engine ?? null }));
             }}
             className="self-start"
           />

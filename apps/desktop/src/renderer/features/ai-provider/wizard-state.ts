@@ -1,9 +1,12 @@
-import type { ModelRowDto, SummaryCliKindDto } from '@vozella/contracts';
+import type { ModelRowDto, SummaryApiKindDto, SummaryCliKindDto } from '@vozella/contracts';
 
 /** `choose` starts at the engine chooser; `local-only` is for an engine that is already Local. */
 export type WizardMode = 'choose' | 'local-only';
 
-export type WizardEngine = 'Local' | SummaryCliKindDto;
+export type WizardEngine = 'Local' | SummaryCliKindDto | SummaryApiKindDto;
+
+const isCliEngine = (engine: WizardEngine): engine is SummaryCliKindDto =>
+  engine === 'ClaudeCode' || engine === 'Codex';
 
 export interface HardwareSummaryDto {
   readonly totalRamGb: number;
@@ -13,7 +16,9 @@ export interface HardwareSummaryDto {
 
 /** What the wizard hands back when it ends with a ready engine. */
 export type WizardResult =
-  { readonly kind: 'Local'; readonly fileName: string } | { readonly kind: SummaryCliKindDto };
+  | { readonly kind: 'Local'; readonly fileName: string }
+  | { readonly kind: SummaryCliKindDto }
+  | { readonly kind: SummaryApiKindDto };
 
 /**
  * One panel per phase (spec 2.6). `attempt` numbers every request the wizard sends; an answer
@@ -46,6 +51,8 @@ export type WizardState =
       readonly percent: number;
     }
   | { readonly phase: 'CheckingCli'; readonly attempt: number; readonly cli: SummaryCliKindDto }
+  /** An API key engine was picked: it is saved, then either ready or sent to Settings for its key. */
+  | { readonly phase: 'SavingApi'; readonly attempt: number; readonly api: SummaryApiKindDto }
   | { readonly phase: 'Completed'; readonly attempt: number; readonly result: WizardResult }
   | { readonly phase: 'Closed'; readonly attempt: number };
 
@@ -71,6 +78,9 @@ export type WizardAction =
   /** Main answered `cancelled` to the request sent under this attempt. */
   | { readonly type: 'downloadCancelled'; readonly attempt: number }
   | { readonly type: 'cliReady' }
+  | { readonly type: 'apiReady'; readonly attempt: number }
+  /** The API engine still needs its key or address: the wizard closes and Settings opens. */
+  | { readonly type: 'apiNeedsSettings'; readonly attempt: number }
   | { readonly type: 'close' };
 
 export function initialWizardState(mode: WizardMode): WizardState {
@@ -90,9 +100,21 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
   switch (state.phase) {
     case 'ChoosingEngine':
       if (action.type !== 'chooseEngine') return state;
-      return action.engine === 'Local'
-        ? { phase: 'DetectingHardware', attempt: state.attempt + 1, error: null }
-        : { phase: 'CheckingCli', attempt: state.attempt + 1, cli: action.engine };
+      if (action.engine === 'Local') {
+        return { phase: 'DetectingHardware', attempt: state.attempt + 1, error: null };
+      }
+      return isCliEngine(action.engine)
+        ? { phase: 'CheckingCli', attempt: state.attempt + 1, cli: action.engine }
+        : { phase: 'SavingApi', attempt: state.attempt + 1, api: action.engine };
+
+    case 'SavingApi':
+      if (action.type === 'apiReady' && action.attempt === state.attempt) {
+        return { phase: 'Completed', attempt: state.attempt + 1, result: { kind: state.api } };
+      }
+      if (action.type === 'apiNeedsSettings' && action.attempt === state.attempt) {
+        return { phase: 'Closed', attempt: state.attempt + 1 };
+      }
+      return state;
 
     case 'CheckingCli':
       if (action.type === 'back') return { phase: 'ChoosingEngine', attempt: state.attempt + 1 };

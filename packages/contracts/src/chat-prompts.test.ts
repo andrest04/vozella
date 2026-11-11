@@ -20,6 +20,13 @@ const scope = { isVisible: true, kind: 'Meeting', folderId: null, meetingId: 'm-
 const draft = { name: 'Risks', prompt: 'List the risks.', availability: 'single', engine: null };
 
 describe('saved prompt contracts (Phase 5)', () => {
+  it('BYOK: a saved prompt can name an API key engine, matching the core engine ids', () => {
+    for (const engine of ['openai', 'anthropic', 'gemini', 'openai-compatible']) {
+      expect(chatPromptDraftSchema.safeParse({ ...draft, engine }).success).toBe(true);
+    }
+    expect(chatPromptDraftSchema.safeParse({ ...draft, engine: 'xai' }).success).toBe(false);
+  });
+
   it('registers the prompt requests and the change event by name', () => {
     for (const channel of [
       chatPromptsList,

@@ -74,7 +74,7 @@ const called = (api: ReturnType<typeof installProviderApi>, name: string) =>
   api.calls.filter((call) => call.name === name);
 
 describe('SetupWizardDialog: chooser', () => {
-  it('lists Claude Code, Codex and Local models in order, with no Grok row', async () => {
+  it('lists Claude Code, Codex, Local, then the API key engines, with no Grok row', async () => {
     mount();
     const dialog = await screen.findByRole('dialog', { name: 'Set up summary generation' });
     expect(within(dialog).getByText('Choose how to generate summaries')).toBeVisible();
@@ -82,12 +82,58 @@ describe('SetupWizardDialog: chooser', () => {
       .getAllByRole('button')
       .map((button) => button.getAttribute('data-testid'))
       .filter((id) => id?.startsWith('BtnEngine'));
-    expect(buttons).toEqual(['BtnEngineClaudeCode', 'BtnEngineCodex', 'BtnEngineLocal']);
+    expect(buttons).toEqual([
+      'BtnEngineClaudeCode',
+      'BtnEngineCodex',
+      'BtnEngineLocal',
+      'BtnEngineOpenAi',
+      'BtnEngineAnthropic',
+      'BtnEngineGemini',
+      'BtnEngineOpenAiCompatible',
+    ]);
+    expect(within(dialog).getByRole('list', { name: 'Or use your own API key' })).toBeVisible();
     expect(
       within(dialog).getByText('Uses the Claude Code CLI already installed on this PC.'),
     ).toBeVisible();
     expect(within(dialog).queryByText(/Grok/)).toBeNull();
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeVisible();
+  });
+
+  it('an API engine without its key is saved, then Settings opens to add the key (BYOK)', async () => {
+    const { api, onFinished } = mount(
+      {},
+      {
+        'settings.setSummaryProvider': () => ({ status: 'saved', settings: {}, feedback: null }),
+        'summaries.providerStatus': () => ({
+          status: 'needs-setup',
+          kind: 'Gemini',
+          reason: 'key-missing',
+        }),
+      },
+    );
+    await userEvent.click(await screen.findByTestId('BtnEngineGemini'));
+    await waitFor(() => {
+      expect(onFinished).toHaveBeenCalledWith(null);
+    });
+    expect(called(api, 'settings.setSummaryProvider')[0]?.input).toEqual({ kind: 'Gemini' });
+    expect(called(api, 'workspace.dispatch')[0]?.input).toEqual({
+      action: { type: 'navigateTo', tag: 'Settings' },
+    });
+  });
+
+  it('an API engine whose key is already saved finishes the wizard ready', async () => {
+    const { api, onFinished } = mount(
+      {},
+      {
+        'settings.setSummaryProvider': () => ({ status: 'saved', settings: {}, feedback: null }),
+        'summaries.providerStatus': () => ({ status: 'ready', kind: 'OpenAi' }),
+      },
+    );
+    await userEvent.click(await screen.findByTestId('BtnEngineOpenAi'));
+    await waitFor(() => {
+      expect(onFinished).toHaveBeenCalledWith({ kind: 'OpenAi' });
+    });
+    expect(called(api, 'workspace.dispatch')).toHaveLength(0);
   });
 
   it('choosing Local reads the hardware and shows the model list', async () => {

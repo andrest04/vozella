@@ -82,6 +82,35 @@ export function useSetupWizard(
     [],
   );
 
+  // An API key engine: save it as the summary engine, then ask main whether it can answer. A key
+  // that is still missing sends the user to Settings, where the key is entered (BYOK).
+  const savingApi = state.phase === 'SavingApi' ? state.api : null;
+  const saveAttempt = state.attempt;
+  useEffect(() => {
+    if (savingApi === null) return;
+    const needsSettings = (): void => {
+      // The user may have closed the wizard meanwhile: then nothing moves.
+      const current = stateRef.current;
+      if (current.phase !== 'SavingApi' || current.attempt !== saveAttempt) return;
+      dispatch({ type: 'apiNeedsSettings', attempt: saveAttempt });
+      report(null);
+      void window.vozella
+        .invoke('workspace.dispatch', { action: { type: 'navigateTo', tag: 'Settings' } })
+        .catch(() => undefined);
+    };
+    void window.vozella
+      .invoke('settings.setSummaryProvider', { kind: savingApi })
+      .then(() => window.vozella.invoke('summaries.providerStatus', {}))
+      .then((status) => {
+        if (status.status === 'ready' && status.kind === savingApi) {
+          dispatch({ type: 'apiReady', attempt: saveAttempt });
+        } else {
+          needsSettings();
+        }
+      })
+      .catch(needsSettings);
+  }, [savingApi, saveAttempt, report]);
+
   useEffect(() => {
     if (state.phase === 'Completed') report(state.result);
   }, [state, report]);

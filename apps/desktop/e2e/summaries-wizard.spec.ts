@@ -74,7 +74,7 @@ test.describe('with a GPU and a slow download', () => {
     await session.launched.close();
   });
 
-  test('the chooser lists Claude Code, Codex and Local models, and no Grok', async () => {
+  test('the chooser lists Claude Code, Codex, Local models and the API key engines, and no Grok', async () => {
     const { page } = session;
     await openWizard(page, 'Open the wizard');
     const dialog = page.getByRole('dialog');
@@ -82,7 +82,15 @@ test.describe('with a GPU and a slow download', () => {
     const ids = await dialog
       .locator('[data-testid^="BtnEngine"]')
       .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-testid')));
-    expect(ids).toEqual(['BtnEngineClaudeCode', 'BtnEngineCodex', 'BtnEngineLocal']);
+    expect(ids).toEqual([
+      'BtnEngineClaudeCode',
+      'BtnEngineCodex',
+      'BtnEngineLocal',
+      'BtnEngineOpenAi',
+      'BtnEngineAnthropic',
+      'BtnEngineGemini',
+      'BtnEngineOpenAiCompatible',
+    ]);
     await expect(
       dialog.getByText('Uses the Codex CLI already installed on this PC.'),
     ).toBeVisible();

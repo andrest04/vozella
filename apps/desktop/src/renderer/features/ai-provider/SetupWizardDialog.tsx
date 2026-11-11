@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import { Button, Dialog, Progress } from '../../ui';
+import { API_NAME_KEYS } from './api-engines';
 import { CliCheckPanel } from './CliCheckPanel';
 import { EngineChooser } from './EngineChooser';
 import { ModelPicker } from './ModelPicker';
@@ -55,6 +56,9 @@ function OpenWizard({ mode, onFinished, renderCliPanel }: SetupWizardDialogProps
       <div className="flex flex-col gap-3" data-testid="summary-setup">
         {state.phase === 'ChoosingEngine' ? <EngineChooser onChoose={wizard.chooseEngine} /> : null}
         {state.phase === 'DetectingHardware' ? <Detecting wizard={wizard} /> : null}
+        {state.phase === 'SavingApi' ? (
+          <Progress label={t('Ui_SetupApiSaving', t(API_NAME_KEYS[state.api]))} value={null} />
+        ) : null}
         {state.phase === 'SelectingModel' ? (
           <ModelPicker
             hardware={state.hardware}

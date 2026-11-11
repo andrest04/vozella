@@ -18,6 +18,10 @@ export const ENGINE_LABEL: Readonly<Record<ChatEngineDto, StringKey>> = {
   'claude-code': 'Ui_ChatPromptEngineClaude',
   codex: 'Ui_ChatPromptEngineCodex',
   local: 'Ui_ChatPromptEngineLocal',
+  openai: 'Ui_ApiOpenAiName',
+  anthropic: 'Ui_ApiAnthropicName',
+  gemini: 'Ui_ApiGeminiName',
+  'openai-compatible': 'Ui_ApiOpenAiCompatibleName',
 };
 
 /** A meeting (or Live) gets one-meeting prompts; a folder or all meetings get several. */
