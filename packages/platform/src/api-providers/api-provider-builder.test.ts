@@ -81,6 +81,51 @@ describe('listApiModels', () => {
     expect(fake.calls[0]?.headers.authorization).toBe('Bearer g-key');
   });
 
+  it('keeps only chat models that are not being retired for OpenAI and Gemini', async () => {
+    const body = JSON.stringify({
+      data: [
+        { id: 'gpt-6-astra', shutdown_date: null },
+        { id: 'gpt-6-luna' },
+        { id: 'gpt-5-mini', shutdown_date: '2026-12-11' },
+        { id: 'text-embedding-3-small', shutdown_date: null },
+        { id: 'gpt-image-2.6-flare' },
+        { id: 'gpt-realtime-2.1' },
+      ],
+    });
+    const openAi = await listApiModels(
+      API_ENGINES.OpenAi,
+      readSettings({}),
+      'k',
+      new FakeFetch({ chunks: [body] }).fetch,
+    );
+    expect(openAi).toEqual(['gpt-6-astra', 'gpt-6-luna']);
+    const gemini = await listApiModels(
+      API_ENGINES.Gemini,
+      readSettings({}),
+      'k',
+      new FakeFetch({
+        chunks: [
+          JSON.stringify({
+            data: [{ id: 'models/gemini-3.8-flash' }, { id: 'models/gemini-embedding-2' }],
+          }),
+        ],
+      }).fetch,
+    );
+    expect(gemini).toEqual(['gemini-3.8-flash']);
+  });
+
+  it('lists every model of an OpenAI-compatible server unfiltered', async () => {
+    const ids = await listApiModels(
+      API_ENGINES.OpenAiCompatible,
+      readSettings({ OpenAiCompatibleBaseUrl: 'http://localhost:11434/v1' }),
+      null,
+      new FakeFetch({
+        chunks: [JSON.stringify({ data: [{ id: 'llama3.1' }, { id: 'nomic-embed-text' }] })],
+      }).fetch,
+    );
+    expect(ids).toEqual(['llama3.1', 'nomic-embed-text']);
+  });
+
   it('lists the Anthropic models with the key and version headers', async () => {
     const fake = new FakeFetch({
       chunks: [JSON.stringify({ data: [{ id: 'claude-b' }, { id: 'claude-a' }] })],

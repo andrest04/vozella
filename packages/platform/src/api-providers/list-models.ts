@@ -1,5 +1,6 @@
 import {
   ApiProviderError,
+  isChatModelId,
   type ApiEngine,
   type AppSettings,
   type CancelSignal,
@@ -25,9 +26,21 @@ function modelsRequest(engine: ApiEngine, baseUrl: string, key: string | null): 
 }
 
 /**
- * The Settings "Verify" call: the model ids this key can use, sorted and without duplicates. A
- * failure maps like a prompt call (KeyInvalid, RateLimited, Network...), so the same localized
- * text explains it.
+ * Whether a listed model belongs in the picker. A known provider's catalog also lists embedding,
+ * image, audio and other non-chat models, and OpenAI marks models being retired with a
+ * `shutdown_date`; both are left out. An OpenAI-compatible server's list is shown as it comes,
+ * since its names follow no catalog.
+ */
+const pickable = (engine: ApiEngine, entry: unknown, id: string): boolean => {
+  if (engine.kind === 'OpenAiCompatible') return true;
+  const shutdown = field(entry, 'shutdown_date');
+  return (shutdown === undefined || shutdown === null) && isChatModelId(id);
+};
+
+/**
+ * The Settings "Verify" call: the chat model ids this key can use, sorted and without
+ * duplicates. A failure maps like a prompt call (KeyInvalid, RateLimited, Network...), so the
+ * same localized text explains it.
  */
 export async function listApiModels(
   engine: ApiEngine,
@@ -57,7 +70,9 @@ export async function listApiModels(
   }
   const ids = data.flatMap((entry: unknown) => {
     const id = field(entry, 'id');
-    return typeof id === 'string' && id.trim() !== '' ? [bareId(id.trim())] : [];
+    if (typeof id !== 'string' || id.trim() === '') return [];
+    const bare = bareId(id.trim());
+    return pickable(engine, entry, bare) ? [bare] : [];
   });
   return [...new Set(ids)].sort();
 }

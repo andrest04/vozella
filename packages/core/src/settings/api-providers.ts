@@ -62,7 +62,12 @@ const fixedBaseUrl =
   () =>
     url;
 
-/** The single table of API key engines. Add or change an engine here. */
+/**
+ * The single table of API key engines. Add or change an engine here.
+ * Defaults and suggestions follow each provider's own model catalog (checked 2026-11-10):
+ * developers.openai.com/api/docs/models, platform.claude.com/docs/en/about-claude/models/overview,
+ * aistudio.google.com/docs/models. Verify lists the models a key can really use.
+ */
 export const API_ENGINES = {
   OpenAi: {
     kind: 'OpenAi',
@@ -72,10 +77,10 @@ export const API_ENGINES = {
     nameKey: 'Ui_ApiOpenAiName',
     defaultBaseUrl: 'https://api.openai.com/v1',
     requiresKey: true,
-    models: ['gpt-5-mini', 'gpt-5', 'gpt-5-nano', 'gpt-4.1-mini'],
-    defaultModel: 'gpt-5-mini',
+    models: ['gpt-6-astra', 'gpt-6.1-sol', 'gpt-6.1-terra', 'gpt-6-luna'],
+    defaultModel: 'gpt-6-astra',
     modelSetting: 'selectedOpenAiModelId',
-    resolveModel: modelResolver('selectedOpenAiModelId', 'gpt-5-mini'),
+    resolveModel: modelResolver('selectedOpenAiModelId', 'gpt-6-astra'),
     resolveBaseUrl: fixedBaseUrl('https://api.openai.com/v1'),
   },
   Anthropic: {
@@ -86,10 +91,10 @@ export const API_ENGINES = {
     nameKey: 'Ui_ApiAnthropicName',
     defaultBaseUrl: 'https://api.anthropic.com/v1',
     requiresKey: true,
-    models: ['claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-opus-5-5'],
-    defaultModel: 'claude-sonnet-5-5',
+    models: ['claude-opus-5-5', 'claude-fable-5-2', 'claude-sonnet-5-5', 'claude-haiku-5-5'],
+    defaultModel: 'claude-opus-5-5',
     modelSetting: 'selectedAnthropicModelId',
-    resolveModel: modelResolver('selectedAnthropicModelId', 'claude-sonnet-5-5'),
+    resolveModel: modelResolver('selectedAnthropicModelId', 'claude-opus-5-5'),
     resolveBaseUrl: fixedBaseUrl('https://api.anthropic.com/v1'),
   },
   Gemini: {
@@ -100,10 +105,10 @@ export const API_ENGINES = {
     nameKey: 'Ui_ApiGeminiName',
     defaultBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
     requiresKey: true,
-    models: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.5-flash-lite'],
-    defaultModel: 'gemini-2.5-flash',
+    models: ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'],
+    defaultModel: 'gemini-3.8-flash',
     modelSetting: 'selectedGeminiModelId',
-    resolveModel: modelResolver('selectedGeminiModelId', 'gemini-2.5-flash'),
+    resolveModel: modelResolver('selectedGeminiModelId', 'gemini-3.8-flash'),
     resolveBaseUrl: fixedBaseUrl('https://generativelanguage.googleapis.com/v1beta/openai'),
   },
   OpenAiCompatible: {
@@ -124,6 +129,44 @@ export const API_ENGINES = {
 } as const satisfies Readonly<Record<ApiProviderKind, ApiEngine>>;
 
 export const API_ENGINE_LIST: readonly ApiEngine[] = Object.values(API_ENGINES);
+
+/**
+ * Name fragments of the models a provider's model list returns that cannot answer a text chat:
+ * embeddings, images, video, music, speech, realtime and live audio, moderation, translation and
+ * specialist agents. Taken from the OpenAI and Gemini catalogs (checked 2026-11-10).
+ */
+const NON_CHAT_MODEL_FRAGMENTS = [
+  'embed',
+  'image',
+  'imagen',
+  'dall-e',
+  'banana',
+  'veo',
+  'lyria',
+  'omni',
+  'tts',
+  'whisper',
+  'transcribe',
+  'audio',
+  'realtime',
+  'live',
+  'moderation',
+  'translate',
+  'cyber',
+  'rosalind',
+  'codex',
+  'deep-research',
+  'computer-use',
+  'robotics',
+  'antigravity',
+  'aqa',
+] as const;
+
+/** Whether a listed model id is a text chat model (filters Verify's list for known catalogs). */
+export const isChatModelId = (id: string): boolean => {
+  const lower = id.toLowerCase();
+  return !NON_CHAT_MODEL_FRAGMENTS.some((fragment) => lower.includes(fragment));
+};
 
 /** The API engine behind a provider id; undefined for local, a CLI engine, or none. */
 export const apiEngineByProviderId = (providerId: ProviderId | undefined): ApiEngine | undefined =>

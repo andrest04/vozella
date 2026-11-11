@@ -12,6 +12,7 @@ import {
   apiSetupGap,
   estimateTokens,
   isApiEngine,
+  isChatModelId,
   isRemoteEngine,
   summaryKindOf,
 } from './api-providers';
@@ -54,9 +55,9 @@ describe('API_ENGINES', () => {
 
   it('defaults the model per engine and lets a saved one win', () => {
     const blank = readSettings({});
-    expect(API_ENGINES.OpenAi.resolveModel(blank)).toBe('gpt-5-mini');
-    expect(API_ENGINES.Anthropic.resolveModel(blank)).toBe('claude-sonnet-5-5');
-    expect(API_ENGINES.Gemini.resolveModel(blank)).toBe('gemini-2.5-flash');
+    expect(API_ENGINES.OpenAi.resolveModel(blank)).toBe('gpt-6-astra');
+    expect(API_ENGINES.Anthropic.resolveModel(blank)).toBe('claude-opus-5-5');
+    expect(API_ENGINES.Gemini.resolveModel(blank)).toBe('gemini-3.8-flash');
     expect(API_ENGINES.OpenAiCompatible.resolveModel(blank)).toBe('');
     const saved = readSettings({
       selectedOpenAiModelId: 'gpt-5',
@@ -65,7 +66,27 @@ describe('API_ENGINES', () => {
     });
     expect(API_ENGINES.OpenAi.resolveModel(saved)).toBe('gpt-5');
     expect(API_ENGINES.OpenAiCompatible.resolveModel(saved)).toBe('llama3.1');
-    expect(API_ENGINES.Anthropic.resolveModel(saved)).toBe('claude-sonnet-5-5');
+    expect(API_ENGINES.Anthropic.resolveModel(saved)).toBe('claude-opus-5-5');
+  });
+
+  it('suggests the current models from each provider catalog (checked 2026-11-10)', () => {
+    expect(API_ENGINES.OpenAi.models).toEqual([
+      'gpt-6-astra',
+      'gpt-6.1-sol',
+      'gpt-6.1-terra',
+      'gpt-6-luna',
+    ]);
+    expect(API_ENGINES.Anthropic.models).toEqual([
+      'claude-opus-5-5',
+      'claude-fable-5-2',
+      'claude-sonnet-5-5',
+      'claude-haiku-5-5',
+    ]);
+    expect(API_ENGINES.Gemini.models).toEqual([
+      'gemini-3.8-flash',
+      'gemini-3.6-flash',
+      'gemini-3.5-flash-lite',
+    ]);
   });
 
   it('offers a suggested list that holds the default model', () => {
@@ -83,6 +104,60 @@ describe('API_ENGINES', () => {
       ),
     ).toBe('http://localhost:11434/v1');
     expect(API_ENGINES.OpenAi.resolveBaseUrl(readSettings({}))).toBe('https://api.openai.com/v1');
+  });
+});
+
+describe('isChatModelId', () => {
+  it('keeps text chat models', () => {
+    for (const id of [
+      'gpt-6-astra',
+      'gpt-6.1-sol',
+      'gpt-6-luna',
+      'claude-opus-5-5',
+      'gemini-3.8-flash',
+      'gemini-3.5-flash-lite',
+      'gemini-flash-latest',
+    ]) {
+      expect(isChatModelId(id), id).toBe(true);
+    }
+  });
+
+  it('drops embedding, image, audio, realtime, moderation and other non-chat models', () => {
+    for (const id of [
+      'text-embedding-3-small',
+      'gemini-embedding-2',
+      'gpt-image-2.6-sunburst',
+      'gemini-3.5-flash-image',
+      'gemini-nano-banana-2.1',
+      'imagen-4.0-generate',
+      'dall-e-3',
+      'gpt-realtime-2.1-mini',
+      'gpt-live-1',
+      'gemini-3.1-flash-live-preview',
+      'gpt-transcribe',
+      'gemini-3.5-transcribe',
+      'gpt-realtime-whisper',
+      'whisper-1',
+      'gpt-audio-1.5',
+      'gemini-2.5-flash-native-audio-preview-09-2025',
+      'tts-1',
+      'gemini-3.1-flash-tts-preview',
+      'omni-moderation-latest',
+      'gpt-realtime-translate',
+      'gpt-6-cyber',
+      'gpt-rosalind-research',
+      'gpt-5.3-codex',
+      'o3-deep-research',
+      'computer-use-preview',
+      'gemini-omni-3-flash',
+      'lyria-2',
+      'veo-3.1-generate',
+      'gemini-robotics-er-1.5',
+      'antigravity-preview-1',
+      'aqa',
+    ]) {
+      expect(isChatModelId(id), id).toBe(false);
+    }
   });
 });
 
