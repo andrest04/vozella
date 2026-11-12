@@ -43,3 +43,8 @@ target/
 .agents/skills/electron-best-practices/
 .agents/skills/electron-builder/
 .agents/skills/impeccable/
+
+## Presentation video (HyperFrames): renders and caches are build outputs
+video/renders/
+video/node_modules/
+video/.hyperframes/
