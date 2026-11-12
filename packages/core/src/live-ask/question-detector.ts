@@ -11,9 +11,11 @@ import {
  *
  * A line counts when it has `¿`, ends with `?`, or starts with an interrogative word ("por qué"
  * and "por que" included, "porque" not), an English auxiliary plus subject ("is the…", "do we…")
- * or a Spanish request opener ("puedes…", "alguien sabe…"), is at least 12 characters once normalized, and is not a
- * whole-line rhetorical check ("¿se entiende?", "right?"). Of several new questions the last one
- * wins; a second-person cue ("¿puedes…?", "can you…") only breaks that tie, it never rejects.
+ * or a Spanish request opener ("puedes…", "alguien sabe…"), spoken lead-ins ("entonces", "so")
+ * skipped. It must be at least 12 characters once normalized and not a rhetorical check, even
+ * wrapped ("ok, ¿se entiende?", "right?"). The card keeps only the sentence holding the question.
+ * Of several new questions the last one wins; a second-person cue ("¿puedes…?", "can you…") only
+ * breaks that tie, it never rejects.
  */
 
 const MINIMUM_NORMALIZED_LENGTH = 12;
@@ -21,19 +23,12 @@ const MINIMUM_NORMALIZED_LENGTH = 12;
 const INTERROGATIVE_WORDS: ReadonlySet<string> = new Set([
   'qué',
   'cómo',
-  'como',
   'cuál',
-  'cual',
   'cuáles',
-  'cuales',
   'cuándo',
-  'cuando',
   'dónde',
-  'donde',
   'quién',
-  'quien',
   'quiénes',
-  'quienes',
   // Port extra: only the accented forms, "cuanto antes" starts statements.
   'cuánto',
   'cuánta',
@@ -121,6 +116,70 @@ const SPANISH_REQUEST_OPENERS: readonly string[] = [
   'alguien sabe',
   'alguien tiene',
 ];
+
+/**
+ * Nemotron drops accents as well as "¿?" ("cuando entregamos el informe…" is a question), so the
+ * unaccented forms count too, except before a comma: "como dije antes, el plan…" opens a
+ * subordinate clause, a statement.
+ */
+const UNACCENTED_INTERROGATIVES: ReadonlySet<string> = new Set([
+  'como',
+  'cual',
+  'cuales',
+  'cuando',
+  'donde',
+  'quien',
+  'quienes',
+]);
+
+/**
+ * English wh-words that a subject pronoun follows start an embedded clause ("what I mean is…",
+ * "how we do it…"), not a question, when the line has no question mark.
+ */
+const EMBEDDED_CLAUSE_SUBJECTS: ReadonlySet<string> = new Set([
+  'i',
+  'you',
+  'we',
+  'they',
+  'he',
+  'she',
+  'it',
+]);
+
+/** Spoken lead-ins skipped before the opener is read: "entonces cuál…", "so what…". */
+const LEAD_INS: ReadonlySet<string> = new Set([
+  'entonces',
+  'bueno',
+  'y',
+  'pues',
+  'pero',
+  'oye',
+  'oigan',
+  'mira',
+  'miren',
+  'vale',
+  'ok',
+  'okay',
+  'so',
+  'and',
+  'but',
+  'well',
+  'then',
+  'hey',
+  'also',
+]);
+
+/** Tags that wrap a rhetorical check without changing it: "me explico, verdad?", "…hear me now?". */
+const TAIL_TAGS: ReadonlySet<string> = new Set([
+  'verdad',
+  'no',
+  'cierto',
+  'ok',
+  'okay',
+  'right',
+  'now',
+  'ahora',
+]);
 
 /** "por qué" is WinUI; "por que" is a port extra (ASR drops the accent). "porque" never counts. */
 const INTERROGATIVE_PHRASES: readonly string[] = ['por qué', 'por que'];
@@ -283,17 +342,36 @@ function startsWithEnglishYesNo(words: readonly string[]): boolean {
 
 function startsWithInterrogative(body: string): boolean {
   // Curly apostrophes become straight ones so "what’s" matches "what's".
-  const normalized = normalize(body).replace(/’/gu, "'");
+  const rawWords = normalize(body).replace(/’/gu, "'").split(' ');
+  const allWords = rawWords.map(trimEdges);
+  let skip = 0;
+  while (skip < allWords.length - 1 && LEAD_INS.has(allWords[skip] ?? '')) skip += 1;
+  const words = allWords.slice(skip).filter((word) => word !== '');
+  const normalized = words.join(' ');
   if (normalized === '') return false;
   const phrases = [...INTERROGATIVE_PHRASES, ...SPANISH_REQUEST_OPENERS];
   if (phrases.some((phrase) => startsWithPhrase(normalized, phrase))) return true;
-  const words = normalized.split(' ').map(trimEdges);
-  const first = words[0] ?? '';
-  return INTERROGATIVE_WORDS.has(first) || startsWithEnglishYesNo(words);
+  const [first = '', second = ''] = words;
+  if (INTERROGATIVE_WORDS.has(first)) return !EMBEDDED_CLAUSE_SUBJECTS.has(second);
+  if (UNACCENTED_INTERROGATIVES.has(first)) {
+    return !rawWords.slice(skip).some((word) => word.includes(','));
+  }
+  return startsWithEnglishYesNo(words);
 }
 
 function hasQuestionSignal(trimmed: string): boolean {
   return trimmed.includes('¿') || trimmed.endsWith('?') || startsWithInterrogative(trimmed);
+}
+
+/** A rhetorical check, once lead-ins ("ok, …") and tail tags ("…, verdad") are peeled off. */
+function isRhetorical(body: string): boolean {
+  const words = questionKey(body).split(' ');
+  let start = 0;
+  let end = words.length;
+  while (start < end && LEAD_INS.has(words[start] ?? '')) start += 1;
+  while (end > start && TAIL_TAGS.has(words[end - 1] ?? '')) end -= 1;
+  const core = words.slice(start, end).join(' ');
+  return core === '' || RHETORICAL_BODIES.has(core);
 }
 
 /** WinUI `IsDirectQuestion`. Whole-body rhetorical match only: "¿no es ese…?" still counts. */
@@ -302,7 +380,21 @@ export function isDirectQuestion(body: string): boolean {
   if (trimmed === '' || !hasQuestionSignal(trimmed)) return false;
   const normalized = normalize(trimmed);
   if (normalized.length < MINIMUM_NORMALIZED_LENGTH) return false;
-  return !RHETORICAL_BODIES.has(normalized);
+  return !RHETORICAL_BODIES.has(normalized) && !isRhetorical(trimmed);
+}
+
+/**
+ * The last sentence of the body that is a question on its own ("Gracias. ¿Cuál es el plan?"
+ * gives the second one), or the whole body when no sentence stands alone ("…viernes. ¿No?").
+ */
+function questionSentence(body: string): string {
+  const sentences = body.split(/(?<=[.!?…])\s+/u);
+  if (sentences.length < 2) return body;
+  for (let i = sentences.length - 1; i >= 0; i -= 1) {
+    const sentence = sentences[i] ?? '';
+    if (isDirectQuestion(sentence)) return sentence.trim();
+  }
+  return body;
 }
 
 function hasSecondPersonCue(body: string): boolean {
@@ -326,8 +418,9 @@ export function detectNewQuestion(
   let lastWithCue: DetectedQuestion | null = null;
   for (const line of splitCommittedLines(current)) {
     if (line === '' || previousLines.has(line) || isTranscriptHeader(line)) continue;
-    const body = extractCommittedBody(line);
-    if (!isDirectQuestion(body)) continue;
+    const lineBody = extractCommittedBody(line);
+    if (!isDirectQuestion(lineBody)) continue;
+    const body = questionSentence(lineBody);
     const key = questionKey(body);
     if (seen.has(key)) continue;
     const found: DetectedQuestion = { body, lineStartMs: parseCommittedLineStart(line), key };

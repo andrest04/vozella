@@ -184,6 +184,61 @@ describe('detectNewQuestion (port extras)', () => {
   });
 });
 
+describe('detectNewQuestion (statement openers, lead-ins and tags)', () => {
+  it.each([
+    'Cuando terminemos la demo, revisamos el informe',
+    'Como dije antes, el plan sigue igual',
+    'Donde estaba el servidor, ahí lo dejamos',
+    'Quien quiera, puede quedarse después de la reunión',
+    'What I mean is that we ship on Friday',
+    'How we do it is not important right now',
+  ])('rejects a statement that starts like a question: %s', (text) => {
+    expect(body(null, formatLine(0, 3000, text))).toBeNull();
+  });
+
+  it.each([
+    'cuando lo entregamos al cliente?',
+    'como lo configuramos en producción?',
+    'what I need to bring tomorrow?',
+  ])('still accepts those openers when the line ends with a question mark: %s', (text) => {
+    expect(body(null, formatLine(0, 3000, text))).toBe(text);
+  });
+
+  it.each([
+    'Entonces cuál es el presupuesto para el Q3',
+    'Bueno y qué opinan del nuevo diseño',
+    'Oye, puedes enviarme el contrato mañana',
+    'So what is the budget for Q3',
+    'And how do we deploy this thing',
+    'Okay, is the staging environment ready',
+  ])('accepts a question after a spoken lead-in: %s', (text) => {
+    expect(body(null, formatLine(0, 3000, text))).toBe(text);
+  });
+
+  it.each([
+    'ok, se entiende?',
+    'bueno, ¿me explico?',
+    'me explico, verdad?',
+    'can you hear me now?',
+    'so, does that make sense?',
+  ])('rejects a rhetorical check wrapped in a lead-in or tag: %s', (phrase) => {
+    expect(body(null, formatLine(0, 3000, phrase))).toBeNull();
+  });
+
+  it('keeps only the sentence that holds the question', () => {
+    const line = formatLine(0, 6000, 'Gracias a todos por venir. ¿Cuál es el plan para mañana?');
+    expect(detectNewQuestion(null, line, none)).toMatchObject({
+      body: '¿Cuál es el plan para mañana?',
+      key: questionKey('¿Cuál es el plan para mañana?'),
+    });
+  });
+
+  it('keeps the whole line when the question needs the sentence before it', () => {
+    const text = 'La entrega es el viernes. ¿No?';
+    expect(body(null, formatLine(0, 3000, text))).toBe(text);
+  });
+});
+
 describe('detectNewQuestion (real Nemotron live lines)', () => {
   it.each([...NEMOTRON_ES_LINES, ...NEMOTRON_EN_LINES])(
     '$line -> question $question',
