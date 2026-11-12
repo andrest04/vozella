@@ -18,7 +18,7 @@ There is no video to present the product. The user asked (2026-11-11) for an "ep
 - Voice: plain, short, factual. No invented numbers, customers, testimonials, pricing or benchmarks.
 - Product claims only from `PRODUCT.md` / `README.md`.
 - Video copy in Spanish (neutral); user-chosen default by the orchestrator, cheap to swap.
-- No audio: the repo has no licensed music or voiceover.
+- Audio: music and sound effects generated with ElevenLabs (user request, 2026-11-11); no voiceover.
 - Deterministic: one paused GSAP timeline on `window.__timelines`, no wall-clock time, no unseeded randomness.
 - 1920x1080, 30 fps, about 40 to 50 seconds.
 
@@ -29,6 +29,9 @@ There is no video to present the product. The user asked (2026-11-11) for an "ep
 - [x] P1 HyperFrames project + composition + render. Route: delegated writer (2+ non-trivial files, needs HyperFrames docs research).
   - Storyboard: hook (meeting noise, nobody takes notes) → mark reveal + tagline → nothing joins the call → records mic + system audio → local transcription → summary and action items → Live copilot "What did I miss?" → library and chat with source links → choose your engine, meetings are Markdown files → outro lockup (beta, Windows).
   - Checks: `npx hyperframes lint` / `check` clean; `npx hyperframes render` produces an MP4; ffprobe confirms 1920x1080, 30 fps and duration; frames extracted with ffmpeg at each scene and inspected for overlap, clipping and blank frames.
+- [x] P2 Soundtrack and sound effects with ElevenLabs. Route: inline (one script plus mechanical `<audio>` tags).
+  - User ran the ElevenLabs CLI onboarding (key in git-ignored `.env.local`) and asked for audio and/or music.
+  - `video/scripts/generate-audio.mjs` (`npm run audio`) writes `assets/audio/music.mp3` (50 s instrumental, `music_v2_5`) and `riser.mp3`, `impact.mp3`, `whoosh.mp3` (`eleven_text_to_sound_v3`). Six `<audio>` cues in `index.html`.
 
 ## Acceptance criteria
 - `video/` renders to an MP4 with one command documented in `video/README.md`.
@@ -58,6 +61,7 @@ There is no video to present the product. The user asked (2026-11-11) for an "ep
     | 8 | Library and chat | 34.0 | 39.4 | horizontal push |
     | 9 | Your engine, your files | 39.4 | 45.4 | bar wipe closes and shrinks into the logo tile |
     | 10 | Outro | 45.4 | 50.0 | final lockup holds about 2.4 s |
+- 2026-11-11: P2 done. Observed: `npm run audio` wrote 4 files (50.04 s, 4.0 s, 2.48 s, 1.2 s); `hyperframes check` passed with Audio 0 errors / 0 warnings and Craft 0 warnings (`film_silent` gone); render 9.4 MB, h264 + aac, both 50.0 s; volumedetect mean -15.0 dB, max -2.5 dB (no clipping); `elevenlabs onboard check`: key valid, SDK declared and imported. Not verified: nobody has listened to the mix yet.
 
 ## Next step
 User reviews the MP4 (`video/renders/vozella-presentation.mp4`); merge `feat/presentation-video` into main when approved. Work-unit commit: `739f9a9`. Parent spot check: ffprobe h264 1920x1080 30 fps 50.0 s and a 10-frame contact sheet, clean. Stock scaffold `video/CLAUDE.md` and `video/AGENTS.md` removed (they pointed at skills that are not installed). RDD off: no review.

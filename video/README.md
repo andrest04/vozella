@@ -67,3 +67,19 @@ recording pill and the bar wipe can cross scene cuts), and it notes the film has
 
 Only claims documented in `PRODUCT.md` / `README.md` appear in the video. The meeting shown in
 the mock-ups (a launch planning call) is fictional.
+
+## Audio
+
+The soundtrack and sound effects in `assets/audio/` are generated with ElevenLabs by
+`scripts/generate-audio.mjs` (music: Eleven Music; riser, impact and whoosh: sound effects).
+The files are committed, so rendering needs no API key.
+
+```sh
+npm install              # once, installs the ElevenLabs SDK
+npm run audio            # generate missing files
+npm run audio -- --force # regenerate everything (uses credits, results differ each run)
+```
+
+The script reads `ELEVENLABS_API_KEY` from the repo's `.env.local` (git-ignored). Prompts and
+lengths are at the top of the script. Cue times, volumes and fades are the `<audio>` elements
+at the end of the composition root in `index.html`; they follow the scene times in `T`.

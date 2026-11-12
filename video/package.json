@@ -5,7 +5,11 @@
   "scripts": {
     "dev": "npx --yes hyperframes@0.9.36 preview",
     "check": "npx --yes hyperframes@0.9.36 check",
-    "render": "npx --yes hyperframes@0.9.36 render",
+    "audio": "node --env-file=../.env.local scripts/generate-audio.mjs",
+    "render":"npx --yes hyperframes@0.9.36 render",
     "publish": "npx --yes hyperframes@0.9.36 publish"
+  },
+  "devDependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.77.0"
   }
 }

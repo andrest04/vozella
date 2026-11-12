@@ -48,3 +48,5 @@ target/
 video/renders/
 video/node_modules/
 video/.hyperframes/
+# Local secrets written by `elevenlabs onboard`
+/.env.local
