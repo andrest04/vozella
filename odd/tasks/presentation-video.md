@@ -60,4 +60,4 @@ There is no video to present the product. The user asked (2026-11-11) for an "ep
     | 10 | Outro | 45.4 | 50.0 | final lockup holds about 2.4 s |
 
 ## Next step
-Review the MP4 (`video/renders/vozella-presentation.mp4`), then commit the work unit on `feat/presentation-video` and merge to main. The Engram mirror `odd/presentation-video/tasks` still needs this update (the writer did not touch Engram).
+User reviews the MP4 (`video/renders/vozella-presentation.mp4`); merge `feat/presentation-video` into main when approved. Work-unit commit: `739f9a9`. Parent spot check: ffprobe h264 1920x1080 30 fps 50.0 s and a 10-frame contact sheet, clean. Stock scaffold `video/CLAUDE.md` and `video/AGENTS.md` removed (they pointed at skills that are not installed). RDD off: no review.
