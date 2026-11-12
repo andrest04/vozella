@@ -133,6 +133,69 @@ const UNACCENTED_INTERROGATIVES: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * Nemotron writes no "¿?" in Spanish and runs the lead-up into the question ("vamos con esto qué
+ * es…"), but it keeps the accent of a mid-line interrogative. Only the accented Spanish forms
+ * count there: "como" or "cuando" mid-line are everyday connectors.
+ */
+const MID_LINE_INTERROGATIVES: ReadonlySet<string> = new Set([
+  'qué',
+  'cómo',
+  'cuál',
+  'cuáles',
+  'cuándo',
+  'dónde',
+  'quién',
+  'quiénes',
+  'cuánto',
+  'cuánta',
+  'cuántos',
+  'cuántas',
+]);
+
+/** Words right before a mid-line interrogative that make it an indirect statement ("no sé qué…"). */
+const INDIRECT_STATEMENT_CUES: ReadonlySet<string> = new Set([
+  'sé',
+  'sabemos',
+  'sabía',
+  'sabíamos',
+  'ver',
+  'vemos',
+  'veremos',
+  'importa',
+  'depende',
+  'entiendo',
+  'decidir',
+  'decidimos',
+  'definir',
+  'definimos',
+  'dije',
+  'dijo',
+]);
+
+/** "qué bueno que…" is an exclamation, not a question. */
+const EXCLAMATION_WORDS: ReadonlySet<string> = new Set([
+  'bueno',
+  'buena',
+  'bien',
+  'genial',
+  'raro',
+  'rara',
+  'pena',
+  'lástima',
+  'padre',
+  'chido',
+  'increíble',
+  'interesante',
+  'horror',
+  'miedo',
+  'rico',
+  'lindo',
+  'bonito',
+  'suerte',
+  'gusto',
+]);
+
+/**
  * English wh-words that a subject pronoun follows start an embedded clause ("what I mean is…",
  * "how we do it…"), not a question, when the line has no question mark.
  */
@@ -352,6 +415,7 @@ function startsWithInterrogative(body: string): boolean {
   const phrases = [...INTERROGATIVE_PHRASES, ...SPANISH_REQUEST_OPENERS];
   if (phrases.some((phrase) => startsWithPhrase(normalized, phrase))) return true;
   const [first = '', second = ''] = words;
+  if (first === 'qué' && EXCLAMATION_WORDS.has(second)) return false;
   if (INTERROGATIVE_WORDS.has(first)) return !EMBEDDED_CLAUSE_SUBJECTS.has(second);
   if (UNACCENTED_INTERROGATIVES.has(first)) {
     return !rawWords.slice(skip).some((word) => word.includes(','));
@@ -359,8 +423,41 @@ function startsWithInterrogative(body: string): boolean {
   return startsWithEnglishYesNo(words);
 }
 
+const rawWordsOf = (text: string): string[] => text.trim().split(/\s+/u).filter(Boolean);
+
+/**
+ * The index (in `rawWordsOf`) of a mid-line Spanish interrogative that opens a question, or -1.
+ * It needs two words after it and must not follow an indirect cue or open an exclamation.
+ */
+function midLineQuestionIndex(body: string): number {
+  const words = rawWordsOf(body).map((word) => trimEdges(word.toLowerCase()));
+  for (let k = 1; k < words.length - 2; k += 1) {
+    if (!MID_LINE_INTERROGATIVES.has(words[k] ?? '')) continue;
+    if (EXCLAMATION_WORDS.has(words[k + 1] ?? '')) continue;
+    if (words.slice(Math.max(0, k - 2), k).some((word) => INDIRECT_STATEMENT_CUES.has(word))) {
+      continue;
+    }
+    return words[k - 1] === 'por' ? k - 1 : k;
+  }
+  return -1;
+}
+
 function hasQuestionSignal(trimmed: string): boolean {
-  return trimmed.includes('¿') || trimmed.endsWith('?') || startsWithInterrogative(trimmed);
+  return (
+    trimmed.includes('¿') ||
+    trimmed.endsWith('?') ||
+    startsWithInterrogative(trimmed) ||
+    midLineQuestionIndex(trimmed) >= 0
+  );
+}
+
+/** A flat line found by its mid-line interrogative keeps only the question: "…vamos con esto qué es…". */
+function fromMidLineOpener(sentence: string): string {
+  if (sentence.includes('¿') || sentence.includes('?') || startsWithInterrogative(sentence)) {
+    return sentence;
+  }
+  const index = midLineQuestionIndex(sentence);
+  return index > 0 ? rawWordsOf(sentence).slice(index).join(' ') : sentence;
 }
 
 /** A rhetorical check, once lead-ins ("ok, …") and tail tags ("…, verdad") are peeled off. */
@@ -420,7 +517,7 @@ export function detectNewQuestion(
     if (line === '' || previousLines.has(line) || isTranscriptHeader(line)) continue;
     const lineBody = extractCommittedBody(line);
     if (!isDirectQuestion(lineBody)) continue;
-    const body = questionSentence(lineBody);
+    const body = fromMidLineOpener(questionSentence(lineBody));
     const key = questionKey(body);
     if (seen.has(key)) continue;
     const found: DetectedQuestion = { body, lineStartMs: parseCommittedLineStart(line), key };

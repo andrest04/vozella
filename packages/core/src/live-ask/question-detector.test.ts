@@ -239,6 +239,42 @@ describe('detectNewQuestion (statement openers, lead-ins and tags)', () => {
   });
 });
 
+describe('detectNewQuestion (flat Nemotron lines with the question mid-line)', () => {
+  it.each([
+    [
+      'ah bueno chicos ok vamos con la siguiente pregunta cuál es el rol del scrum master',
+      'cuál es el rol del scrum master',
+    ],
+    ['ok vamos con esto qué es lo que se utiliza en Scrum', 'qué es lo que se utiliza en Scrum'],
+    ['la siguiente pregunta es qué es un sprint', 'qué es un sprint'],
+    [
+      'bueno chicos cuáles son los primeros pasos del Scrum',
+      'cuáles son los primeros pasos del Scrum',
+    ],
+    [
+      'quiero saber cuál es la diferencia entre scrum y kanban',
+      'cuál es la diferencia entre scrum y kanban',
+    ],
+    ['alguien me puede explicar qué es un daily', 'qué es un daily'],
+  ])('finds the question inside %s', (text, question) => {
+    const line = formatLine(0, 6000, text);
+    expect(detectNewQuestion(null, line, none)).toMatchObject({
+      body: question,
+      key: questionKey(question),
+    });
+  });
+
+  it.each([
+    'no sé qué pasó con el servidor ayer',
+    'ya sabemos cuál es el problema del deploy',
+    'vamos a ver qué hacemos con el presupuesto después',
+    'ok qué bueno que llegaron todos a tiempo',
+    'qué bueno que llegaron todos a tiempo',
+  ])('rejects an indirect statement or exclamation: %s', (text) => {
+    expect(body(null, formatLine(0, 3000, text))).toBeNull();
+  });
+});
+
 describe('detectNewQuestion (real Nemotron live lines)', () => {
   it.each([...NEMOTRON_ES_LINES, ...NEMOTRON_EN_LINES])(
     '$line -> question $question',
