@@ -11,9 +11,12 @@ import {
  *
  * A line counts when it has `¿`, ends with `?`, or starts with an interrogative word ("por qué"
  * and "por que" included, "porque" not), an English auxiliary plus subject ("is the…", "do we…")
- * or a Spanish request opener ("puedes…", "alguien sabe…"), is at least 12 characters once normalized, and is not a
- * whole-line rhetorical check ("¿se entiende?", "right?"). Of several new questions the last one
- * wins; a second-person cue ("¿puedes…?", "can you…") only breaks that tie, it never rejects.
+ * or a Spanish request opener ("puedes…", "alguien sabe…"), spoken lead-ins ("entonces", "so")
+ * skipped. Flat ASR lines also count by an order that asks for an answer ("nómbrame…", "tell
+ * me…") or an accented interrogative mid-line ("vamos con esto qué es…"). It must be at least 12 characters once normalized and not a rhetorical check, even
+ * wrapped ("ok, ¿se entiende?", "right?"). The card keeps only the sentence holding the question.
+ * Of several new questions the last one wins; a second-person cue ("¿puedes…?", "can you…") only
+ * breaks that tie, it never rejects.
  */
 
 const MINIMUM_NORMALIZED_LENGTH = 12;
@@ -21,19 +24,12 @@ const MINIMUM_NORMALIZED_LENGTH = 12;
 const INTERROGATIVE_WORDS: ReadonlySet<string> = new Set([
   'qué',
   'cómo',
-  'como',
   'cuál',
-  'cual',
   'cuáles',
-  'cuales',
   'cuándo',
-  'cuando',
   'dónde',
-  'donde',
   'quién',
-  'quien',
   'quiénes',
-  'quienes',
   // Port extra: only the accented forms, "cuanto antes" starts statements.
   'cuánto',
   'cuánta',
@@ -121,6 +117,205 @@ const SPANISH_REQUEST_OPENERS: readonly string[] = [
   'alguien sabe',
   'alguien tiene',
 ];
+
+/**
+ * Nemotron drops accents as well as "¿?" ("cuando entregamos el informe…" is a question), so the
+ * unaccented forms count too, except before a comma: "como dije antes, el plan…" opens a
+ * subordinate clause, a statement.
+ */
+const UNACCENTED_INTERROGATIVES: ReadonlySet<string> = new Set([
+  'como',
+  'cual',
+  'cuales',
+  'cuando',
+  'donde',
+  'quien',
+  'quienes',
+]);
+
+/**
+ * Nemotron writes no "¿?" in Spanish and runs the lead-up into the question ("vamos con esto qué
+ * es…"), but it keeps the accent of a mid-line interrogative. Only the accented Spanish forms
+ * count there: "como" or "cuando" mid-line are everyday connectors.
+ */
+const MID_LINE_INTERROGATIVES: ReadonlySet<string> = new Set([
+  'qué',
+  'cómo',
+  'cuál',
+  'cuáles',
+  'cuándo',
+  'dónde',
+  'quién',
+  'quiénes',
+  'cuánto',
+  'cuánta',
+  'cuántos',
+  'cuántas',
+]);
+
+/**
+ * Orders that ask the listener for an answer ("Andrés, nómbrame los primeros pasos…"). The forms
+ * with an attached "me/nos" only ever make a request, so they count anywhere in the line; the
+ * accentless spellings are there because Nemotron drops accents.
+ */
+const REQUEST_IMPERATIVES: ReadonlySet<string> = new Set([
+  'dime',
+  'dinos',
+  'díganme',
+  'diganme',
+  'nómbrame',
+  'nombrame',
+  'nómbranos',
+  'nombranos',
+  'explícame',
+  'explicame',
+  'explícanos',
+  'explicanos',
+  'explíquenme',
+  'expliquenme',
+  'cuéntame',
+  'cuentame',
+  'cuéntanos',
+  'cuentanos',
+  'cuéntenme',
+  'cuentenme',
+  'mencióname',
+  'mencioname',
+  'menciónanos',
+  'mencionanos',
+  'enumérame',
+  'enumerame',
+  'enuméranos',
+  'enumeranos',
+  'descríbeme',
+  'describeme',
+  'descríbenos',
+  'describenos',
+  'defíneme',
+  'defineme',
+  'recuérdame',
+  'recuerdame',
+  'recuérdanos',
+  'recuerdanos',
+]);
+
+/** English requests that count anywhere in the line ("okay John, tell me what…"). */
+const ENGLISH_REQUEST_PHRASES: readonly string[] = [
+  'tell me',
+  'tell us',
+  'walk me through',
+  'walk us through',
+  'explain to me',
+  'explain to us',
+];
+
+/**
+ * Bare orders count only as the opener, lead-ins skipped: mid-line "describe" or "explica" are
+ * just as often statements ("el documento describe…").
+ */
+const OPENING_IMPERATIVES: ReadonlySet<string> = new Set([
+  'nombra',
+  'menciona',
+  'enumera',
+  'explica',
+  'describe',
+  'define',
+  'explain',
+  'name',
+  'list',
+]);
+
+/** Words right before a mid-line interrogative that make it an indirect statement ("no sé qué…"). */
+const INDIRECT_STATEMENT_CUES: ReadonlySet<string> = new Set([
+  'sé',
+  'sabemos',
+  'sabía',
+  'sabíamos',
+  'ver',
+  'vemos',
+  'veremos',
+  'importa',
+  'depende',
+  'entiendo',
+  'decidir',
+  'decidimos',
+  'definir',
+  'definimos',
+  'dije',
+  'dijo',
+]);
+
+/** "qué bueno que…" is an exclamation, not a question. */
+const EXCLAMATION_WORDS: ReadonlySet<string> = new Set([
+  'bueno',
+  'buena',
+  'bien',
+  'genial',
+  'raro',
+  'rara',
+  'pena',
+  'lástima',
+  'padre',
+  'chido',
+  'increíble',
+  'interesante',
+  'horror',
+  'miedo',
+  'rico',
+  'lindo',
+  'bonito',
+  'suerte',
+  'gusto',
+]);
+
+/**
+ * English wh-words that a subject pronoun follows start an embedded clause ("what I mean is…",
+ * "how we do it…"), not a question, when the line has no question mark.
+ */
+const EMBEDDED_CLAUSE_SUBJECTS: ReadonlySet<string> = new Set([
+  'i',
+  'you',
+  'we',
+  'they',
+  'he',
+  'she',
+  'it',
+]);
+
+/** Spoken lead-ins skipped before the opener is read: "entonces cuál…", "so what…". */
+const LEAD_INS: ReadonlySet<string> = new Set([
+  'entonces',
+  'bueno',
+  'y',
+  'pues',
+  'pero',
+  'oye',
+  'oigan',
+  'mira',
+  'miren',
+  'vale',
+  'ok',
+  'okay',
+  'so',
+  'and',
+  'but',
+  'well',
+  'then',
+  'hey',
+  'also',
+]);
+
+/** Tags that wrap a rhetorical check without changing it: "me explico, verdad?", "…hear me now?". */
+const TAIL_TAGS: ReadonlySet<string> = new Set([
+  'verdad',
+  'no',
+  'cierto',
+  'ok',
+  'okay',
+  'right',
+  'now',
+  'ahora',
+]);
 
 /** "por qué" is WinUI; "por que" is a port extra (ASR drops the accent). "porque" never counts. */
 const INTERROGATIVE_PHRASES: readonly string[] = ['por qué', 'por que'];
@@ -283,17 +478,79 @@ function startsWithEnglishYesNo(words: readonly string[]): boolean {
 
 function startsWithInterrogative(body: string): boolean {
   // Curly apostrophes become straight ones so "what’s" matches "what's".
-  const normalized = normalize(body).replace(/’/gu, "'");
+  const rawWords = normalize(body).replace(/’/gu, "'").split(' ');
+  const allWords = rawWords.map(trimEdges);
+  let skip = 0;
+  while (skip < allWords.length - 1 && LEAD_INS.has(allWords[skip] ?? '')) skip += 1;
+  const words = allWords.slice(skip).filter((word) => word !== '');
+  const normalized = words.join(' ');
   if (normalized === '') return false;
   const phrases = [...INTERROGATIVE_PHRASES, ...SPANISH_REQUEST_OPENERS];
   if (phrases.some((phrase) => startsWithPhrase(normalized, phrase))) return true;
-  const words = normalized.split(' ').map(trimEdges);
-  const first = words[0] ?? '';
-  return INTERROGATIVE_WORDS.has(first) || startsWithEnglishYesNo(words);
+  const [first = '', second = ''] = words;
+  if (first === 'qué' && EXCLAMATION_WORDS.has(second)) return false;
+  if (INTERROGATIVE_WORDS.has(first)) return !EMBEDDED_CLAUSE_SUBJECTS.has(second);
+  if (OPENING_IMPERATIVES.has(first)) return words.length >= 3;
+  if (UNACCENTED_INTERROGATIVES.has(first)) {
+    return !rawWords.slice(skip).some((word) => word.includes(','));
+  }
+  return startsWithEnglishYesNo(words);
+}
+
+const rawWordsOf = (text: string): string[] => text.trim().split(/\s+/u).filter(Boolean);
+
+function startsRequest(words: readonly string[], k: number): boolean {
+  if (REQUEST_IMPERATIVES.has(words[k] ?? '')) return true;
+  const rest = words.slice(k).join(' ');
+  return ENGLISH_REQUEST_PHRASES.some((phrase) => startsWithPhrase(rest, phrase));
+}
+
+/**
+ * The index (in `rawWordsOf`) where a question or request opens inside a flat line, or -1: a
+ * request ("nómbrame…", "tell me…") anywhere, or a mid-line Spanish interrogative that does not
+ * follow an indirect cue or open an exclamation. Two words must follow it.
+ */
+function midLineQuestionIndex(body: string): number {
+  const words = rawWordsOf(body).map((word) => trimEdges(word.toLowerCase()));
+  for (let k = 0; k < words.length - 2; k += 1) {
+    if (startsRequest(words, k)) return k;
+    if (k === 0 || !MID_LINE_INTERROGATIVES.has(words[k] ?? '')) continue;
+    if (EXCLAMATION_WORDS.has(words[k + 1] ?? '')) continue;
+    if (words.slice(Math.max(0, k - 2), k).some((word) => INDIRECT_STATEMENT_CUES.has(word))) {
+      continue;
+    }
+    return words[k - 1] === 'por' ? k - 1 : k;
+  }
+  return -1;
 }
 
 function hasQuestionSignal(trimmed: string): boolean {
-  return trimmed.includes('¿') || trimmed.endsWith('?') || startsWithInterrogative(trimmed);
+  return (
+    trimmed.includes('¿') ||
+    trimmed.endsWith('?') ||
+    startsWithInterrogative(trimmed) ||
+    midLineQuestionIndex(trimmed) >= 0
+  );
+}
+
+/** A flat line found by its mid-line interrogative keeps only the question: "…vamos con esto qué es…". */
+function fromMidLineOpener(sentence: string): string {
+  if (sentence.includes('¿') || sentence.includes('?') || startsWithInterrogative(sentence)) {
+    return sentence;
+  }
+  const index = midLineQuestionIndex(sentence);
+  return index > 0 ? rawWordsOf(sentence).slice(index).join(' ') : sentence;
+}
+
+/** A rhetorical check, once lead-ins ("ok, …") and tail tags ("…, verdad") are peeled off. */
+function isRhetorical(body: string): boolean {
+  const words = questionKey(body).split(' ');
+  let start = 0;
+  let end = words.length;
+  while (start < end && LEAD_INS.has(words[start] ?? '')) start += 1;
+  while (end > start && TAIL_TAGS.has(words[end - 1] ?? '')) end -= 1;
+  const core = words.slice(start, end).join(' ');
+  return core === '' || RHETORICAL_BODIES.has(core);
 }
 
 /** WinUI `IsDirectQuestion`. Whole-body rhetorical match only: "¿no es ese…?" still counts. */
@@ -302,7 +559,21 @@ export function isDirectQuestion(body: string): boolean {
   if (trimmed === '' || !hasQuestionSignal(trimmed)) return false;
   const normalized = normalize(trimmed);
   if (normalized.length < MINIMUM_NORMALIZED_LENGTH) return false;
-  return !RHETORICAL_BODIES.has(normalized);
+  return !RHETORICAL_BODIES.has(normalized) && !isRhetorical(trimmed);
+}
+
+/**
+ * The last sentence of the body that is a question on its own ("Gracias. ¿Cuál es el plan?"
+ * gives the second one), or the whole body when no sentence stands alone ("…viernes. ¿No?").
+ */
+function questionSentence(body: string): string {
+  const sentences = body.split(/(?<=[.!?…])\s+/u);
+  if (sentences.length < 2) return body;
+  for (let i = sentences.length - 1; i >= 0; i -= 1) {
+    const sentence = sentences[i] ?? '';
+    if (isDirectQuestion(sentence)) return sentence.trim();
+  }
+  return body;
 }
 
 function hasSecondPersonCue(body: string): boolean {
@@ -326,8 +597,9 @@ export function detectNewQuestion(
   let lastWithCue: DetectedQuestion | null = null;
   for (const line of splitCommittedLines(current)) {
     if (line === '' || previousLines.has(line) || isTranscriptHeader(line)) continue;
-    const body = extractCommittedBody(line);
-    if (!isDirectQuestion(body)) continue;
+    const lineBody = extractCommittedBody(line);
+    if (!isDirectQuestion(lineBody)) continue;
+    const body = fromMidLineOpener(questionSentence(lineBody));
     const key = questionKey(body);
     if (seen.has(key)) continue;
     const found: DetectedQuestion = { body, lineStartMs: parseCommittedLineStart(line), key };

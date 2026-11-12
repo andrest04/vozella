@@ -40,8 +40,9 @@ export interface LiveQuestionTrackerDeps {
 // WinUI LiveQuestionJevJudge criteria, used as a yes or no prompt.
 const DIRECT_QUESTION_INSTRUCTIONS =
   'Is this line a direct question that expects a factual or explanatory answer from someone in the room right now?';
+// Port extra: the last sentence, as the detector also surfaces orders ("nómbrame los pasos…").
 const TRUE_CRITERIA =
-  'Asks for a fact, definition, rule, procedure, or explanation, even if the transcript dropped the question mark. Includes a question asked to the room, not only to one person.';
+  'Asks for a fact, definition, rule, procedure, or explanation, even if the transcript dropped the question mark. Includes a question asked to the room, not only to one person. A request to name, list, explain, or describe something counts as a question.';
 const FALSE_CRITERIA =
   'A statement, acknowledgment, greeting, or a rhetorical check that people are following, such as "does that make sense", "¿se entiende?", "right?", or "ok?". It does not expect a factual answer.';
 

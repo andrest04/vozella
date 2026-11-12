@@ -184,6 +184,128 @@ describe('detectNewQuestion (port extras)', () => {
   });
 });
 
+describe('detectNewQuestion (statement openers, lead-ins and tags)', () => {
+  it.each([
+    'Cuando terminemos la demo, revisamos el informe',
+    'Como dije antes, el plan sigue igual',
+    'Donde estaba el servidor, ahí lo dejamos',
+    'Quien quiera, puede quedarse después de la reunión',
+    'What I mean is that we ship on Friday',
+    'How we do it is not important right now',
+  ])('rejects a statement that starts like a question: %s', (text) => {
+    expect(body(null, formatLine(0, 3000, text))).toBeNull();
+  });
+
+  it.each([
+    'cuando lo entregamos al cliente?',
+    'como lo configuramos en producción?',
+    'what I need to bring tomorrow?',
+  ])('still accepts those openers when the line ends with a question mark: %s', (text) => {
+    expect(body(null, formatLine(0, 3000, text))).toBe(text);
+  });
+
+  it.each([
+    'Entonces cuál es el presupuesto para el Q3',
+    'Bueno y qué opinan del nuevo diseño',
+    'Oye, puedes enviarme el contrato mañana',
+    'So what is the budget for Q3',
+    'And how do we deploy this thing',
+    'Okay, is the staging environment ready',
+  ])('accepts a question after a spoken lead-in: %s', (text) => {
+    expect(body(null, formatLine(0, 3000, text))).toBe(text);
+  });
+
+  it.each([
+    'ok, se entiende?',
+    'bueno, ¿me explico?',
+    'me explico, verdad?',
+    'can you hear me now?',
+    'so, does that make sense?',
+  ])('rejects a rhetorical check wrapped in a lead-in or tag: %s', (phrase) => {
+    expect(body(null, formatLine(0, 3000, phrase))).toBeNull();
+  });
+
+  it('keeps only the sentence that holds the question', () => {
+    const line = formatLine(0, 6000, 'Gracias a todos por venir. ¿Cuál es el plan para mañana?');
+    expect(detectNewQuestion(null, line, none)).toMatchObject({
+      body: '¿Cuál es el plan para mañana?',
+      key: questionKey('¿Cuál es el plan para mañana?'),
+    });
+  });
+
+  it('keeps the whole line when the question needs the sentence before it', () => {
+    const text = 'La entrega es el viernes. ¿No?';
+    expect(body(null, formatLine(0, 3000, text))).toBe(text);
+  });
+});
+
+describe('detectNewQuestion (flat Nemotron lines with the question mid-line)', () => {
+  it.each([
+    [
+      'ah bueno chicos ok vamos con la siguiente pregunta cuál es el rol del scrum master',
+      'cuál es el rol del scrum master',
+    ],
+    ['ok vamos con esto qué es lo que se utiliza en Scrum', 'qué es lo que se utiliza en Scrum'],
+    ['la siguiente pregunta es qué es un sprint', 'qué es un sprint'],
+    [
+      'bueno chicos cuáles son los primeros pasos del Scrum',
+      'cuáles son los primeros pasos del Scrum',
+    ],
+    [
+      'quiero saber cuál es la diferencia entre scrum y kanban',
+      'cuál es la diferencia entre scrum y kanban',
+    ],
+    ['alguien me puede explicar qué es un daily', 'qué es un daily'],
+  ])('finds the question inside %s', (text, question) => {
+    const line = formatLine(0, 6000, text);
+    expect(detectNewQuestion(null, line, none)).toMatchObject({
+      body: question,
+      key: questionKey(question),
+    });
+  });
+
+  it.each([
+    'no sé qué pasó con el servidor ayer',
+    'ya sabemos cuál es el problema del deploy',
+    'vamos a ver qué hacemos con el presupuesto después',
+    'ok qué bueno que llegaron todos a tiempo',
+    'qué bueno que llegaron todos a tiempo',
+  ])('rejects an indirect statement or exclamation: %s', (text) => {
+    expect(body(null, formatLine(0, 3000, text))).toBeNull();
+  });
+});
+
+describe('detectNewQuestion (requests phrased as orders)', () => {
+  it.each([
+    [
+      'bueno muchachos bueno ok está bien Andrés nómbrame los primeros pasos del manifiesto ágil',
+      'nómbrame los primeros pasos del manifiesto ágil',
+    ],
+    [
+      'Andrés nombrame los primeros pasos para crear una startup',
+      'nombrame los primeros pasos para crear una startup',
+    ],
+    ['María explícame cómo funciona el sprint review', 'explícame cómo funciona el sprint review'],
+    ['dime cuáles son los riesgos del proyecto', 'dime cuáles son los riesgos del proyecto'],
+    ['menciona tres valores del manifiesto ágil', 'menciona tres valores del manifiesto ágil'],
+    ['okay John tell me what the next steps are', 'tell me what the next steps are'],
+    [
+      'explain the difference between scrum and kanban',
+      'explain the difference between scrum and kanban',
+    ],
+  ])('accepts the request in %s', (text, question) => {
+    expect(body(null, formatLine(0, 6000, text))).toBe(question);
+  });
+
+  it.each([
+    'el documento describe los primeros pasos del proceso',
+    'la lista explica todo lo que hicimos ayer',
+    'dime',
+  ])('rejects a statement that only contains a request verb: %s', (text) => {
+    expect(body(null, formatLine(0, 3000, text))).toBeNull();
+  });
+});
+
 describe('detectNewQuestion (real Nemotron live lines)', () => {
   it.each([...NEMOTRON_ES_LINES, ...NEMOTRON_EN_LINES])(
     '$line -> question $question',
