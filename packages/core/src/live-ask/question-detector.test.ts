@@ -275,6 +275,37 @@ describe('detectNewQuestion (flat Nemotron lines with the question mid-line)', (
   });
 });
 
+describe('detectNewQuestion (requests phrased as orders)', () => {
+  it.each([
+    [
+      'bueno muchachos bueno ok está bien Andrés nómbrame los primeros pasos del manifiesto ágil',
+      'nómbrame los primeros pasos del manifiesto ágil',
+    ],
+    [
+      'Andrés nombrame los primeros pasos para crear una startup',
+      'nombrame los primeros pasos para crear una startup',
+    ],
+    ['María explícame cómo funciona el sprint review', 'explícame cómo funciona el sprint review'],
+    ['dime cuáles son los riesgos del proyecto', 'dime cuáles son los riesgos del proyecto'],
+    ['menciona tres valores del manifiesto ágil', 'menciona tres valores del manifiesto ágil'],
+    ['okay John tell me what the next steps are', 'tell me what the next steps are'],
+    [
+      'explain the difference between scrum and kanban',
+      'explain the difference between scrum and kanban',
+    ],
+  ])('accepts the request in %s', (text, question) => {
+    expect(body(null, formatLine(0, 6000, text))).toBe(question);
+  });
+
+  it.each([
+    'el documento describe los primeros pasos del proceso',
+    'la lista explica todo lo que hicimos ayer',
+    'dime',
+  ])('rejects a statement that only contains a request verb: %s', (text) => {
+    expect(body(null, formatLine(0, 3000, text))).toBeNull();
+  });
+});
+
 describe('detectNewQuestion (real Nemotron live lines)', () => {
   it.each([...NEMOTRON_ES_LINES, ...NEMOTRON_EN_LINES])(
     '$line -> question $question',

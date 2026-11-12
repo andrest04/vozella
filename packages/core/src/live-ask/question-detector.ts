@@ -12,7 +12,8 @@ import {
  * A line counts when it has `¿`, ends with `?`, or starts with an interrogative word ("por qué"
  * and "por que" included, "porque" not), an English auxiliary plus subject ("is the…", "do we…")
  * or a Spanish request opener ("puedes…", "alguien sabe…"), spoken lead-ins ("entonces", "so")
- * skipped. It must be at least 12 characters once normalized and not a rhetorical check, even
+ * skipped. Flat ASR lines also count by an order that asks for an answer ("nómbrame…", "tell
+ * me…") or an accented interrogative mid-line ("vamos con esto qué es…"). It must be at least 12 characters once normalized and not a rhetorical check, even
  * wrapped ("ok, ¿se entiende?", "right?"). The card keeps only the sentence holding the question.
  * Of several new questions the last one wins; a second-person cue ("¿puedes…?", "can you…") only
  * breaks that tie, it never rejects.
@@ -150,6 +151,78 @@ const MID_LINE_INTERROGATIVES: ReadonlySet<string> = new Set([
   'cuánta',
   'cuántos',
   'cuántas',
+]);
+
+/**
+ * Orders that ask the listener for an answer ("Andrés, nómbrame los primeros pasos…"). The forms
+ * with an attached "me/nos" only ever make a request, so they count anywhere in the line; the
+ * accentless spellings are there because Nemotron drops accents.
+ */
+const REQUEST_IMPERATIVES: ReadonlySet<string> = new Set([
+  'dime',
+  'dinos',
+  'díganme',
+  'diganme',
+  'nómbrame',
+  'nombrame',
+  'nómbranos',
+  'nombranos',
+  'explícame',
+  'explicame',
+  'explícanos',
+  'explicanos',
+  'explíquenme',
+  'expliquenme',
+  'cuéntame',
+  'cuentame',
+  'cuéntanos',
+  'cuentanos',
+  'cuéntenme',
+  'cuentenme',
+  'mencióname',
+  'mencioname',
+  'menciónanos',
+  'mencionanos',
+  'enumérame',
+  'enumerame',
+  'enuméranos',
+  'enumeranos',
+  'descríbeme',
+  'describeme',
+  'descríbenos',
+  'describenos',
+  'defíneme',
+  'defineme',
+  'recuérdame',
+  'recuerdame',
+  'recuérdanos',
+  'recuerdanos',
+]);
+
+/** English requests that count anywhere in the line ("okay John, tell me what…"). */
+const ENGLISH_REQUEST_PHRASES: readonly string[] = [
+  'tell me',
+  'tell us',
+  'walk me through',
+  'walk us through',
+  'explain to me',
+  'explain to us',
+];
+
+/**
+ * Bare orders count only as the opener, lead-ins skipped: mid-line "describe" or "explica" are
+ * just as often statements ("el documento describe…").
+ */
+const OPENING_IMPERATIVES: ReadonlySet<string> = new Set([
+  'nombra',
+  'menciona',
+  'enumera',
+  'explica',
+  'describe',
+  'define',
+  'explain',
+  'name',
+  'list',
 ]);
 
 /** Words right before a mid-line interrogative that make it an indirect statement ("no sé qué…"). */
@@ -417,6 +490,7 @@ function startsWithInterrogative(body: string): boolean {
   const [first = '', second = ''] = words;
   if (first === 'qué' && EXCLAMATION_WORDS.has(second)) return false;
   if (INTERROGATIVE_WORDS.has(first)) return !EMBEDDED_CLAUSE_SUBJECTS.has(second);
+  if (OPENING_IMPERATIVES.has(first)) return words.length >= 3;
   if (UNACCENTED_INTERROGATIVES.has(first)) {
     return !rawWords.slice(skip).some((word) => word.includes(','));
   }
@@ -425,14 +499,22 @@ function startsWithInterrogative(body: string): boolean {
 
 const rawWordsOf = (text: string): string[] => text.trim().split(/\s+/u).filter(Boolean);
 
+function startsRequest(words: readonly string[], k: number): boolean {
+  if (REQUEST_IMPERATIVES.has(words[k] ?? '')) return true;
+  const rest = words.slice(k).join(' ');
+  return ENGLISH_REQUEST_PHRASES.some((phrase) => startsWithPhrase(rest, phrase));
+}
+
 /**
- * The index (in `rawWordsOf`) of a mid-line Spanish interrogative that opens a question, or -1.
- * It needs two words after it and must not follow an indirect cue or open an exclamation.
+ * The index (in `rawWordsOf`) where a question or request opens inside a flat line, or -1: a
+ * request ("nómbrame…", "tell me…") anywhere, or a mid-line Spanish interrogative that does not
+ * follow an indirect cue or open an exclamation. Two words must follow it.
  */
 function midLineQuestionIndex(body: string): number {
   const words = rawWordsOf(body).map((word) => trimEdges(word.toLowerCase()));
-  for (let k = 1; k < words.length - 2; k += 1) {
-    if (!MID_LINE_INTERROGATIVES.has(words[k] ?? '')) continue;
+  for (let k = 0; k < words.length - 2; k += 1) {
+    if (startsRequest(words, k)) return k;
+    if (k === 0 || !MID_LINE_INTERROGATIVES.has(words[k] ?? '')) continue;
     if (EXCLAMATION_WORDS.has(words[k + 1] ?? '')) continue;
     if (words.slice(Math.max(0, k - 2), k).some((word) => INDIRECT_STATEMENT_CUES.has(word))) {
       continue;

@@ -208,6 +208,7 @@ describe('question check prompt', () => {
     const prompt = buildQuestionCheckPrompt(Q1, text);
     expect(prompt).toContain('direct question that expects a factual or explanatory answer');
     expect(prompt).toContain('even if the transcript dropped the question mark');
+    expect(prompt).toContain('A request to name, list, explain, or describe something counts');
     expect(prompt).toContain('rhetorical check');
     expect(prompt).toContain('we compared the agile principles');
     expect(prompt).not.toContain('old talk about lunch');
