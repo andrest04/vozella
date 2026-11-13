@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useEffect, type RefObject } from 'react';
+import { useCallback, type RefObject } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import { TooltipProvider } from '../../ui';
 import { SessionRoute } from './SessionRoute';
+import { useCopySource } from './use-copy-source';
 
 let summaryText: string | null = 'Summary body';
 
@@ -17,20 +18,23 @@ vi.mock('../summaries/SummaryTab', () => ({
     meetingId: string | null;
     copySourceRef?: RefObject<(() => Promise<string | null>) | null>;
   }) => {
-    useEffect(() => {
-      if (!copySourceRef) return;
-      copySourceRef.current = () => Promise.resolve(summaryText);
-      return () => {
-        copySourceRef.current = null;
-      };
-    }, [copySourceRef]);
+    const source = useCallback(() => Promise.resolve(summaryText), []);
+    useCopySource(copySourceRef, source);
     return <div data-testid="summary-stub">{meetingId}</div>;
   },
 }));
 vi.mock('./TranscriptTab', () => ({
-  TranscriptTab: ({ meetingId }: { meetingId: string }) => (
-    <div data-testid="transcript-stub">{meetingId}</div>
-  ),
+  TranscriptTab: ({
+    meetingId,
+    copySourceRef,
+  }: {
+    meetingId: string;
+    copySourceRef: RefObject<(() => Promise<string | null>) | null>;
+  }) => {
+    const source = useCallback(() => Promise.resolve('Transcript body'), []);
+    useCopySource(copySourceRef, source);
+    return <div data-testid="transcript-stub">{meetingId}</div>;
+  },
 }));
 vi.mock('../ai-provider/use-provider-gate', () => ({
   useProviderGate: () => ({ runSetup: vi.fn() }),
@@ -473,6 +477,21 @@ describe('SessionRoute', () => {
         await vi.advanceTimersByTimeAsync(600);
       });
       expect(screen.queryByTestId('InfoSessionCopy')).toBeNull();
+    });
+
+    it('still copies after switching tabs, once the leaving panel has unmounted', async () => {
+      const fake = install({ state: { selectedMeetingId: A, sessionTab: 'Transcript' } });
+      mount();
+      await screen.findByRole('heading', { level: 1 });
+      await userEvent.click(screen.getByTestId('SelectorSessionSummary'));
+      await screen.findByTestId('summary-stub');
+      await waitFor(() => {
+        expect(screen.getAllByRole('tabpanel')).toHaveLength(1);
+      });
+      await userEvent.click(screen.getByTestId('BtnSessionCopy'));
+      await waitFor(() => {
+        expect(fake.clipboard).toEqual(['Summary body']);
+      });
     });
 
     it('shows nothing for whitespace text and can be dismissed by hand (56, 60)', async () => {

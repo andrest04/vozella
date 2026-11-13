@@ -10,6 +10,7 @@ import {
 import { completeTranscriptReveal, usePendingTranscriptReveal } from '../chat/transcript-reveal';
 import { AudioBar } from './AudioBar';
 import { audioUrl, useAudioPlayer } from './use-audio-player';
+import { useCopySource } from './use-copy-source';
 import { useTranscript } from './use-transcript';
 
 /** What a tab gives the Copy button: its text, or null when it has nothing to copy. */
@@ -103,14 +104,12 @@ export function TranscriptTab({
   const displayed = useRef('');
   displayed.current = model.text;
 
-  useEffect(() => {
-    // Copy takes what is displayed now, also while a re-transcription replaces it.
-    copySourceRef.current = () =>
-      Promise.resolve(hasTranscriptContent(displayed.current) ? displayed.current : null);
-    return () => {
-      copySourceRef.current = null;
-    };
-  }, [copySourceRef, meetingId]);
+  // Copy takes what is displayed now, also while a re-transcription replaces it.
+  const copySource = useCallback(
+    () => Promise.resolve(hasTranscriptContent(displayed.current) ? displayed.current : null),
+    [],
+  );
+  useCopySource(copySourceRef, copySource);
 
   const lines = useMemo(() => toLines(model.text), [model.text]);
   const player = useAudioPlayer();
