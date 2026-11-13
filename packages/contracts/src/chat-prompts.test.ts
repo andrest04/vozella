@@ -11,6 +11,7 @@ import {
   chatPromptsImport,
   chatPromptsList,
   chatPromptsUpdate,
+  chatGetEngineChoices,
   chatSend,
   eventChannels,
   requestChannels,
@@ -101,5 +102,46 @@ describe('saved prompt contracts (Phase 5)', () => {
     expect(chatSend.input.parse(base)).not.toHaveProperty('engine');
     expect(chatSend.input.parse({ ...base, engine: 'codex' }).engine).toBe('codex');
     expect(chatSend.input.safeParse({ ...base, engine: 'grok' }).success).toBe(false);
+  });
+
+  it('chat.send takes a model and effort only together with an engine', () => {
+    const base = { requestId: 'r', draft: 'hi', scope, liveTranscript: null };
+    const parsed = chatSend.input.parse({
+      ...base,
+      engine: 'codex',
+      model: 'gpt-5.5',
+      effort: 'high',
+    });
+    expect([parsed.model, parsed.effort]).toEqual(['gpt-5.5', 'high']);
+    expect(chatSend.input.parse(base)).not.toHaveProperty('model');
+    expect(chatSend.input.safeParse({ ...base, model: 'gpt-5.5' }).success).toBe(false);
+    expect(chatSend.input.safeParse({ ...base, effort: 'high' }).success).toBe(false);
+    for (const model of ['', 'gpt 5', 'x'.repeat(201)]) {
+      expect(chatSend.input.safeParse({ ...base, engine: 'openai', model }).success).toBe(false);
+    }
+    expect(
+      chatSend.input.safeParse({ ...base, engine: 'codex', effort: 'x'.repeat(41) }).success,
+    ).toBe(false);
+  });
+
+  it('chat.getEngineChoices answers each engine with its models, efforts and defaults', () => {
+    const engine = {
+      engine: 'claude-code',
+      readiness: 'ready',
+      models: [{ id: 'opus', label: 'opus' }],
+      effortOptions: ['low', 'high'],
+      defaultModel: 'opus',
+      defaultEffort: 'low',
+    };
+    expect(Object.keys(requestChannels)).toContain('chat.getEngineChoices');
+    expect(chatGetEngineChoices.input.safeParse({}).success).toBe(true);
+    const ok = chatGetEngineChoices.output.safeParse({ defaultEngine: null, engines: [engine] });
+    expect(ok.success).toBe(true);
+    expect(
+      chatGetEngineChoices.output.safeParse({
+        defaultEngine: 'local',
+        engines: [{ ...engine, readiness: 'broken' }],
+      }).success,
+    ).toBe(false);
   });
 });

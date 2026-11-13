@@ -18,9 +18,14 @@ import {
   type ApiProviderKind,
   type CliProviderKind,
 } from '../library/settings';
-import { API_ENGINES, apiModelLabels } from './api-providers';
+import { API_ENGINES, apiModelLabels, apiModelOptions } from './api-providers';
 import { cliExecutableName } from './cli-providers';
-import { engineStatuses, type SummaryEngineStatus } from './engine-readiness';
+import {
+  engineStatuses,
+  readEngineAccess,
+  type EngineAccess,
+  type SummaryEngineStatus,
+} from './engine-readiness';
 import {
   CLAUDE_EFFORTS,
   CLAUDE_MODELS,
@@ -115,20 +120,15 @@ export class SettingsPageService {
     ]);
     const provider = resolveSummaryProviderKind(settings);
     // Both CLIs are probed every time, together, so the list can show each one without picking it.
-    const [models, claudeFound, codexFound, api] = await Promise.all([
+    const [models, access] = await Promise.all([
       this.deps.models.rows(
         hardware,
         hardware ? { gpuOffload: gpuOffloadFor(hardware, this.deps.activeGpuOffload?.()) } : {},
       ),
-      // A probe that fails reads as not found: it must not keep the page from loading.
-      this.isCliFound('ClaudeCode').catch(() => false),
-      this.isCliFound('Codex').catch(() => false),
-      this.apiOptions(settings),
+      readEngineAccess(this.deps),
     ]);
-    const cliFound: Record<CliProviderKind, boolean> = {
-      ClaudeCode: claudeFound,
-      Codex: codexFound,
-    };
+    const { cliFound, keySet } = access;
+    const api = this.apiOptions(settings, access);
     const cliStatus = isCliProvider(provider) ? cliStatusOf(cliFound[provider]) : null;
     const claudeModel = resolveClaudeModelId(settings);
     const claudeEffort = resolveClaudeEffort(settings);
@@ -138,12 +138,7 @@ export class SettingsPageService {
       settings,
       cliFound,
       cliModel: { ClaudeCode: claudeModel, Codex: codexModel },
-      keySet: {
-        OpenAi: api.OpenAi.keySet,
-        Anthropic: api.Anthropic.keySet,
-        Gemini: api.Gemini.keySet,
-        OpenAiCompatible: api.OpenAiCompatible.keySet,
-      },
+      keySet,
       models,
     });
     return {
@@ -175,25 +170,23 @@ export class SettingsPageService {
     };
   }
 
-  private async apiOptions(
+  private apiOptions(
     settings: AppSettings,
-  ): Promise<Readonly<Record<ApiProviderKind, ApiEngineOptions>>> {
-    const entries = await Promise.all(
-      API_PROVIDER_KINDS.map(async (kind) => {
-        const engine = API_ENGINES[kind];
-        const model = engine.resolveModel(settings);
-        const keySet = (await this.deps.apiKeys?.has(kind)) ?? false;
-        const modelOptions = model === '' ? engine.models : optionsIncluding(engine.models, model);
-        const options: ApiEngineOptions = {
-          keySet,
-          model,
-          modelOptions,
-          modelLabels: apiModelLabels(engine, modelOptions),
-          baseUrl: engine.defaultBaseUrl === null ? engine.resolveBaseUrl(settings) : null,
-        };
-        return [kind, options] as const;
-      }),
-    );
+    access: EngineAccess,
+  ): Readonly<Record<ApiProviderKind, ApiEngineOptions>> {
+    const entries = API_PROVIDER_KINDS.map((kind) => {
+      const engine = API_ENGINES[kind];
+      const model = engine.resolveModel(settings);
+      const modelOptions = apiModelOptions(engine, model);
+      const options: ApiEngineOptions = {
+        keySet: access.keySet[kind],
+        model,
+        modelOptions,
+        modelLabels: apiModelLabels(engine, modelOptions),
+        baseUrl: engine.defaultBaseUrl === null ? engine.resolveBaseUrl(settings) : null,
+      };
+      return [kind, options] as const;
+    });
     return Object.fromEntries(entries) as Record<ApiProviderKind, ApiEngineOptions>;
   }
 

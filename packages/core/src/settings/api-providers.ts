@@ -1,6 +1,11 @@
-import type { ApiProviderKind, AppSettings, CliProviderKind } from '../library/settings';
+import {
+  isCliProvider,
+  type ApiProviderKind,
+  type AppSettings,
+  type CliProviderKind,
+} from '../library/settings';
 import type { ProviderId } from '../summaries/provider';
-import { cliEngineByProviderId } from './cli-providers';
+import { CLI_ENGINES, cliEngineByProviderId, type CliProviderId } from './cli-providers';
 
 /** Settings fields that hold a string per engine. */
 type StringSettingKey = {
@@ -203,6 +208,10 @@ export const apiModelLabels = (
     }),
   );
 
+/** The picker's list: the suggestions plus the saved model when it is not on it (B13). */
+export const apiModelOptions = (engine: ApiEngine, model: string): readonly string[] =>
+  model === '' || engine.models.includes(model) ? engine.models : [...engine.models, model];
+
 /** The API engine behind a provider id; undefined for local, a CLI engine, or none. */
 export const apiEngineByProviderId = (providerId: ProviderId | undefined): ApiEngine | undefined =>
   API_ENGINE_LIST.find((engine) => engine.providerId === providerId);
@@ -222,6 +231,16 @@ export const summaryKindOf = (
   providerId: ProviderId,
 ): 'Local' | CliProviderKind | ApiProviderKind =>
   cliEngineByProviderId(providerId)?.kind ?? apiEngineByProviderId(providerId)?.kind ?? 'Local';
+
+/** The chat and summaries provider id of a saved summary-provider kind: `summaryKindOf` reversed. */
+export const chatEngineOfKind = (
+  kind: 'Local' | CliProviderKind | ApiProviderKind,
+): 'local' | CliProviderId | ApiProviderId =>
+  kind === 'Local'
+    ? 'local'
+    : isCliProvider(kind)
+      ? CLI_ENGINES[kind].providerId
+      : API_ENGINES[kind].providerId;
 
 /**
  * The first thing an API key engine still needs, or null when it can answer: the endpoint, then

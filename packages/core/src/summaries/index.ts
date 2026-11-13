@@ -18,6 +18,7 @@ export * from './codex-provider';
 export * from './llama-backend';
 export * from './local-map-reduce';
 export * from './local-prompt-budget';
+export * from './model-choice';
 export * from './provider-factory';
 export * from './provider-resolver';
 export * from './template-instructions';

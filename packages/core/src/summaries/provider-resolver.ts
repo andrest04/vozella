@@ -12,6 +12,7 @@ import { API_ENGINES, apiSetupGap } from '../settings/api-providers';
 import { cliExecutableName } from '../settings/cli-providers';
 import type { CliPathProbe, LocalModelStore } from '../settings/ports';
 import { findSummaryModel } from '../settings/summary-models';
+import { withModelChoice, type ModelChoice } from './model-choice';
 import type { SummaryProvider } from './provider';
 import type { SummaryProviderFactory } from './provider-factory';
 
@@ -44,6 +45,12 @@ export interface ResolveRequest {
   readonly kind?: SummaryProviderKind;
   /** The live-answer path only (item 143). */
   readonly webSearch?: boolean;
+  /**
+   * Chat's model picker: a model and effort for this request only, never saved. A CLI value the
+   * engine does not offer, or a blank API id, keeps the Settings value; a Local model that is not
+   * on disk needs setup like a missing one.
+   */
+  readonly choice?: ModelChoice;
 }
 
 export interface SummaryProviderResolverDeps {
@@ -62,8 +69,10 @@ export class SummaryProviderResolver {
   constructor(private readonly deps: SummaryProviderResolverDeps) {}
 
   async resolveSummaryProvider(request: ResolveRequest = {}): Promise<ProviderResolution> {
-    const settings = await this.deps.settings.load();
-    const kind = request.kind ?? resolveSummaryProviderKind(settings);
+    const saved = await this.deps.settings.load();
+    const kind = request.kind ?? resolveSummaryProviderKind(saved);
+    const settings = withModelChoice(kind, saved, request.choice);
+    const choice = request.choice === undefined ? {} : { choice: request.choice };
     if (!isProviderAvailable(kind)) {
       return { status: 'unavailable', kind, reason: 'xai-removed' };
     }
@@ -81,7 +90,7 @@ export class SummaryProviderResolver {
       const hasKey = engine.requiresKey ? await this.deps.apiKeys.has(kind) : false;
       const gap = apiSetupGap(engine, settings, hasKey);
       if (gap !== null) return { status: 'needs-setup', kind, reason: gap };
-      const provider = await this.deps.factory.create(kind);
+      const provider = await this.deps.factory.create(kind, choice);
       return { status: 'ready', kind, provider };
     }
     if (!(await this.deps.cli.isOnPath(cliExecutableName(kind)))) {
@@ -89,6 +98,7 @@ export class SummaryProviderResolver {
     }
     const provider = await this.deps.factory.create(kind, {
       webSearch: request.webSearch === true,
+      ...choice,
     });
     return { status: 'ready', kind, provider };
   }

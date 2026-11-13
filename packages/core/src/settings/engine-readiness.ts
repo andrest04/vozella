@@ -5,8 +5,11 @@ import {
   type AppSettings,
   type CliProviderKind,
 } from '../library/settings';
+import type { ApiKeyStore } from '../api-keys/api-key-store';
 import { API_ENGINES, apiSetupGap, type ApiSetupGap } from './api-providers';
+import { cliExecutableName } from './cli-providers';
 import type { ModelRows } from './local-models';
+import type { CliPathProbe } from './ports';
 
 /** Every engine the user can pick, in the order the page lists them. Xai is gone, so never here. */
 export type SelectableEngineKind = 'Local' | CliProviderKind | ApiProviderKind;
@@ -73,4 +76,34 @@ export function engineStatuses(input: SummaryEngineReadinessInput): readonly Sum
     };
   });
   return [local, ...cli, ...api];
+}
+
+/** What `engineStatuses` needs from outside the settings file: the PATH and the key store. */
+export interface EngineAccess {
+  readonly cliFound: Readonly<Record<CliProviderKind, boolean>>;
+  readonly keySet: Readonly<Record<ApiProviderKind, boolean>>;
+}
+
+export interface EngineAccessDeps {
+  readonly cli: CliPathProbe;
+  /** Without it, no key reads as set. */
+  readonly apiKeys?: Pick<ApiKeyStore, 'has'>;
+}
+
+/**
+ * Probes both CLIs and asks the key store about every API engine, all at once. A probe that fails
+ * reads as not found, so one broken check never keeps a page or a picker from loading.
+ */
+export async function readEngineAccess(deps: EngineAccessDeps): Promise<EngineAccess> {
+  const found = (kind: CliProviderKind) =>
+    deps.cli.isOnPath(cliExecutableName(kind)).catch(() => false);
+  const hasKey = async (kind: ApiProviderKind) => (await deps.apiKeys?.has(kind)) ?? false;
+  const [cli, keys] = await Promise.all([
+    Promise.all(CLI_PROVIDER_KINDS.map(async (kind) => [kind, await found(kind)] as const)),
+    Promise.all(API_PROVIDER_KINDS.map(async (kind) => [kind, await hasKey(kind)] as const)),
+  ]);
+  return {
+    cliFound: Object.fromEntries(cli) as Record<CliProviderKind, boolean>,
+    keySet: Object.fromEntries(keys) as Record<ApiProviderKind, boolean>,
+  };
 }

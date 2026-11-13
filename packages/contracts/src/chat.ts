@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { defineEvent, defineRequest } from './channel';
+import { summaryEngineReadinessSchema } from './settings';
 import { summarySetupKindSchema } from './summaries';
 
 /**
@@ -122,19 +123,71 @@ export const chatEngineSchema = z.enum([
 export type ChatEngineDto = z.infer<typeof chatEngineSchema>;
 
 export const chatSend = defineRequest('chat.send', {
-  input: z.object({
-    requestId,
-    draft: z.string().max(100_000),
-    scope: chatScopeSchema,
-    /** The live transcript as the renderer's workspace state held it when the user pressed send. */
-    liveTranscript: z.string().max(2_000_000).nullable(),
-    /** Ids from `chat.attach.*`. Unknown or failed ids are skipped by main. */
-    attachmentIds: z.array(z.string().min(1).max(100)).max(CHAT_ATTACHMENT_MAX).default([]),
-    /** A saved prompt's engine, for this send only. Unset uses the engine from Settings. */
-    engine: chatEngineSchema.optional(),
-  }),
+  input: z
+    .object({
+      requestId,
+      draft: z.string().max(100_000),
+      scope: chatScopeSchema,
+      /** The live transcript as the renderer's workspace state held it when the user pressed send. */
+      liveTranscript: z.string().max(2_000_000).nullable(),
+      /** Ids from `chat.attach.*`. Unknown or failed ids are skipped by main. */
+      attachmentIds: z.array(z.string().min(1).max(100)).max(CHAT_ATTACHMENT_MAX).default([]),
+      /** The engine for this send only (a saved prompt's or the model picker's). Unset: Settings. */
+      engine: chatEngineSchema.optional(),
+      /**
+       * The model picker's model for `engine`: a CLI alias, an API model id or a downloaded local
+       * model's file name. Refused without an engine; never saved to Settings.
+       */
+      model: z.string().regex(/^\S+$/).max(200).optional(),
+      /** The model picker's effort for a CLI `engine`; other engines ignore it. Needs an engine. */
+      effort: z.string().min(1).max(40).optional(),
+    })
+    .refine(
+      (input) =>
+        input.engine !== undefined || (input.model === undefined && input.effort === undefined),
+      {
+        message: 'A model or effort needs an engine.',
+      },
+    ),
   output: chatSendOutcomeSchema,
 });
+
+/** One model in the picker. */
+export const chatModelOptionSchema = z.object({
+  /** CLI: the alias. API: the model id. Local: the catalog file name. */
+  id: z.string().min(1).max(200),
+  /** The readable name; the id itself when there is none. */
+  label: z.string().max(200),
+});
+export type ChatModelOptionDto = z.infer<typeof chatModelOptionSchema>;
+
+/** One engine in the chat's model picker. */
+export const chatEngineChoiceSchema = z.object({
+  engine: chatEngineSchema,
+  readiness: summaryEngineReadinessSchema,
+  /** CLI: its models. API: suggestions plus the saved id. Local: downloaded models only. */
+  models: z.array(chatModelOptionSchema).max(100),
+  /** CLI only; empty for the others. */
+  effortOptions: z.array(z.string().max(40)).max(20),
+  /** What Settings would use; null when there is none. */
+  defaultModel: z.string().nullable(),
+  /** CLI only, else null. */
+  defaultEffort: z.string().nullable(),
+});
+export type ChatEngineChoiceDto = z.infer<typeof chatEngineChoiceSchema>;
+
+/**
+ * What the chat's model picker offers, with the Settings engine as the default (null when the
+ * saved one was removed). Cheap: no hardware detection, nothing written.
+ */
+export const chatGetEngineChoices = defineRequest('chat.getEngineChoices', {
+  input: empty,
+  output: z.object({
+    defaultEngine: chatEngineSchema.nullable(),
+    engines: z.array(chatEngineChoiceSchema).max(chatEngineSchema.options.length),
+  }),
+});
+export type ChatEngineChoicesDto = z.infer<typeof chatGetEngineChoices.output>;
 
 // Saved prompts (Phase 5). The same limits as core's `user-prompts.ts`.
 export const CHAT_PROMPT_NAME_MAX = 60;

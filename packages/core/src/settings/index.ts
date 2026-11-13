@@ -1,5 +1,6 @@
 export * from './api-providers';
 export * from './engine-readiness';
+export * from './engine-choices';
 export * from './cli-providers';
 export * from './commands';
 export * from './inference-options';

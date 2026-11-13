@@ -16,7 +16,7 @@ import {
   type PayloadInputOf,
   type ThemePreference,
 } from '@vozella/contracts';
-import { MeetingBusyRegistry, Workspace } from '@vozella/core';
+import { MeetingBusyRegistry, readEngineChoices, Workspace } from '@vozella/core';
 import {
   JsonWindowStateStore,
   createNativePorts,
@@ -715,6 +715,15 @@ function main(): void {
       const { service: chatService } = composeChat({
         library,
         resolver: summaryRuntime.resolver,
+        // The model picker's engines: settings, the CLI probe, the key store and the model files
+        // on disk. No hardware detection (that is the Settings page's job).
+        engineChoices: () =>
+          readEngineChoices({
+            store: library.settings,
+            cli: summaryCli,
+            apiKeys,
+            models: settings.models,
+          }),
         logger: logger.child('chat'),
         translate: (key, ...args) => locale.t(key, ...args),
         uiLanguage: () => locale.tag,

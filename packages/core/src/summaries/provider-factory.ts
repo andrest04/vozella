@@ -13,6 +13,7 @@ import {
 } from './claude-code-provider';
 import type { CliProcessRunner } from './cli-failure';
 import { createCodexProvider, createCodexWebSearchProvider } from './codex-provider';
+import { withModelChoice, type ModelChoice } from './model-choice';
 import type { SummaryProvider } from './provider';
 
 /**
@@ -41,6 +42,8 @@ export interface CreateProviderOptions {
   readonly modelPath?: string | null;
   /** The live-answer path only (item 143). Summaries never ask for it. */
   readonly webSearch?: boolean;
+  /** Chat's model picker: a model and effort for this provider only. Unset reads Settings. */
+  readonly choice?: ModelChoice;
 }
 
 /**
@@ -66,7 +69,7 @@ export class SummaryProviderFactory {
       }
       return this.deps.createLocal(options.modelPath);
     }
-    const settings = await this.deps.settings.load();
+    const settings = withModelChoice(kind, await this.deps.settings.load(), options.choice);
     // API engines have no web search (live answers keep it CLI-only), so the flag is ignored.
     if (isApiProvider(kind)) return this.deps.apiProviderBuilder(API_ENGINES[kind], settings);
     const webSearch = options.webSearch === true;
