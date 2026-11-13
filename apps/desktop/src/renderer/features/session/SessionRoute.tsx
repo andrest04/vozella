@@ -80,6 +80,7 @@ export function SessionRoute() {
   const copy = useCopyFeedback();
   const copySourceRef = useRef<CopySource | null>(null);
   const [copyProblem, setCopyProblem] = useState<string | null>(null);
+  const [copyEmpty, setCopyEmpty] = useState(false);
   const [revealFailed, setRevealFailed] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameProblem, setRenameProblem] = useState<string | null>(null);
@@ -101,19 +102,28 @@ export function SessionRoute() {
   // Notices belong to one meeting; opening another one starts clean.
   useEffect(() => {
     setCopyProblem(null);
+    setCopyEmpty(false);
     setRevealFailed(false);
     setRenameOpen(false);
     dismissCopy();
   }, [meetingId, dismissCopy]);
 
   const onCopy = useCallback(() => {
+    setCopyProblem(null);
+    setCopyEmpty(false);
     const source = copySourceRef.current;
-    if (source === null) return;
+    if (source === null) {
+      setCopyEmpty(true);
+      return;
+    }
     void (async () => {
-      setCopyProblem(null);
       try {
         const text = copyCommand(await source());
-        if (text === null) return;
+        if (text === null) {
+          dismissCopy();
+          setCopyEmpty(true);
+          return;
+        }
         const written = await window.vozella.invoke('summaries.writeClipboard', { text });
         if (written.status === 'written') showCopied();
         else setCopyProblem(t('Ui_SummaryCopyFailed', written.detail));
@@ -121,7 +131,7 @@ export function SessionRoute() {
         setCopyProblem(t('Ui_SummaryCopyFailed', error instanceof Error ? error.message : ''));
       }
     })();
-  }, [showCopied, t]);
+  }, [dismissCopy, showCopied, t]);
 
   const onOpenLocation = useCallback(() => {
     if (meetingId === null) return;
@@ -274,6 +284,18 @@ export function SessionRoute() {
           />
           <RetranscribeStatus model={retranscription} />
           {copy.visible ? <CopyNotice onDismiss={dismissCopy} /> : null}
+          {copyEmpty ? (
+            <div data-testid="InfoSessionCopyEmpty">
+              <Notice
+                onDismiss={() => {
+                  setCopyEmpty(false);
+                }}
+                dismissLabel={t('Ui_Close')}
+              >
+                {t('Ui_SessionCopyEmpty')}
+              </Notice>
+            </div>
+          ) : null}
           {copyProblem !== null ? (
             <Notice
               tone="warning"

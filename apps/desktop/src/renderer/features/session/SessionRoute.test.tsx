@@ -494,17 +494,19 @@ describe('SessionRoute', () => {
       });
     });
 
-    it('shows nothing for whitespace text and can be dismissed by hand (56, 60)', async () => {
+    it('says there is nothing to copy for whitespace text and can be dismissed by hand (56, 60)', async () => {
       const fake = install({ state: { selectedMeetingId: A, sessionTab: 'Summary' } });
       mount();
       await screen.findByTestId('summary-stub');
       summaryText = '   ';
       await userEvent.click(screen.getByTestId('BtnSessionCopy'));
+      expect(await screen.findByTestId('InfoSessionCopyEmpty')).toBeTruthy();
       expect(fake.clipboard).toEqual([]);
       expect(screen.queryByTestId('InfoSessionCopy')).toBeNull();
       summaryText = 'ok';
       await userEvent.click(screen.getByTestId('BtnSessionCopy'));
       const notice = await screen.findByTestId('InfoSessionCopy');
+      expect(screen.queryByTestId('InfoSessionCopyEmpty')).toBeNull();
       await userEvent.click(within(notice).getByRole('button', { name: 'Close' }));
       expect(screen.queryByTestId('InfoSessionCopy')).toBeNull();
     });
