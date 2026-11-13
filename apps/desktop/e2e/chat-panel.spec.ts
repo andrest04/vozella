@@ -91,8 +91,8 @@ test('the launcher opens a docked panel beside the page, focused on the composer
   expect(box?.width).toBeCloseTo(380, 0);
   expect((box?.x ?? 0) + (box?.width ?? 0)).toBeCloseTo(viewport.width, 0);
   expect((content?.x ?? 0) + (content?.width ?? 0)).toBeLessThanOrEqual((box?.x ?? 0) + 0.5);
-  // The composer sits at the bottom of the panel.
-  const field = await composer().boundingBox();
+  // The composer sits at the bottom of the panel: its toolbar line (with Send) ends near the edge.
+  const field = await page.getByTestId('BtnMeetingChatSend').boundingBox();
   expect(
     (box?.y ?? 0) + (box?.height ?? 0) - ((field?.y ?? 0) + (field?.height ?? 0)),
   ).toBeLessThan(32);

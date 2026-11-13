@@ -1,6 +1,6 @@
 import type { ChatRecipe } from '@vozella/core';
 import { ArrowUp, BookOpenText, Paperclip, Square } from 'lucide-react';
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import { SHORTCUTS } from '../../app/shortcuts';
 import { Button, IconButton, ShortcutHint, Tooltip, cn } from '../../ui';
@@ -28,9 +28,14 @@ export interface ComposerProps {
   readonly promptActions?: RecipeMenuActions;
   /** A recipe was picked and its prompt is now the draft. */
   readonly onRecipePicked?: (recipe: ChatRecipe) => void;
+  /** The model chip, drawn on the toolbar line just before Send. Unset draws nothing there. */
+  readonly modelPicker?: ReactNode;
 }
 
-/** The message box: Enter sends, Shift+Enter adds a line, and the box grows to three lines. */
+/**
+ * The message box over a toolbar line: Recipes and Attach on the left, the model chip and Send on
+ * the right. Enter sends, Shift+Enter adds a line, and the box grows to four lines.
+ */
 export function Composer({
   draft,
   onDraftChange,
@@ -41,6 +46,7 @@ export function Composer({
   onAttach,
   promptActions,
   onRecipePicked,
+  modelPicker,
 }: ComposerProps) {
   const t = useT();
   const field = useRef<HTMLTextAreaElement>(null);
@@ -105,29 +111,8 @@ export function Composer({
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) close();
       }}
-      className="relative flex min-w-[180px] items-end gap-2 rounded-control border border-border-control bg-paper px-2.5 py-1 focus-within:border-ink"
+      className="relative flex min-w-[180px] flex-col rounded-control border border-border-control bg-paper px-1.5 pt-0.5 pb-1 focus-within:border-ink"
     >
-      <IconButton
-        label={t('Chat_Recipes.AutomationProperties.Name')}
-        icon={BookOpenText}
-        size="sm"
-        data-testid="BtnMeetingChatRecipes"
-        aria-haspopup="listbox"
-        aria-expanded={isOpen}
-        aria-controls={isOpen ? RECIPES_LIST_ID : undefined}
-        onClick={menu.toggle}
-        className="mb-0.5"
-      />
-      {onAttach ? (
-        <IconButton
-          label={t('Ui_ChatAttach')}
-          icon={Paperclip}
-          size="sm"
-          data-testid="BtnMeetingChatAttach"
-          onClick={onAttach}
-          className="mb-0.5 -ms-1.5"
-        />
-      ) : null}
       <textarea
         ref={field}
         id="TxtMeetingChat"
@@ -160,7 +145,7 @@ export function Composer({
         }}
         style={{ minHeight: COMPOSER_MIN_HEIGHT, maxHeight: COMPOSER_MAX_HEIGHT }}
         className={cn(
-          'min-w-0 flex-1 resize-none bg-transparent py-1.5 text-ui-lg leading-5 text-ink outline-none',
+          'w-full min-w-0 resize-none bg-transparent px-1 py-1.5 text-ui-lg leading-5 text-ink outline-none',
           // One line: a placeholder longer than a narrow panel ends in an ellipsis instead of wrapping.
           'overflow-y-hidden placeholder:truncate placeholder:text-ink-faint',
         )}
@@ -178,38 +163,62 @@ export function Composer({
           }}
         />
       ) : null}
-      {isSending ? (
+      {/* The toolbar line: what goes into the message on the left, how and when it is sent on the right. */}
+      <div className="flex items-center gap-1">
         <IconButton
-          label={t('Ui_ChatStop')}
-          icon={Square}
+          label={t('Chat_Recipes.AutomationProperties.Name')}
+          icon={BookOpenText}
           size="sm"
-          variant="secondary"
-          data-testid="BtnMeetingChatStop"
-          onClick={onStop}
-          className="mb-0.5"
+          data-testid="BtnMeetingChatRecipes"
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
+          aria-controls={isOpen ? RECIPES_LIST_ID : undefined}
+          onClick={menu.toggle}
         />
-      ) : (
-        <Tooltip
-          content={
-            <ShortcutHint
-              label={t('Chat_Send.AutomationProperties.Name')}
-              chords={[['Enter'], SHORTCUTS.chatSend.keys]}
-            />
-          }
-        >
-          <Button
-            id="BtnMeetingChatSend"
-            data-testid="BtnMeetingChatSend"
-            variant="primary"
+        {onAttach ? (
+          <IconButton
+            label={t('Ui_ChatAttach')}
+            icon={Paperclip}
             size="sm"
-            icon={ArrowUp}
-            disabled={!canSend}
-            aria-label={t('Chat_Send.AutomationProperties.Name')}
-            onClick={onSend}
-            className="mb-0.5 px-1.5"
+            data-testid="BtnMeetingChatAttach"
+            onClick={onAttach}
           />
-        </Tooltip>
-      )}
+        ) : null}
+        <div className="ms-auto flex min-w-0 items-center gap-1">
+          {modelPicker}
+          {isSending ? (
+            <IconButton
+              label={t('Ui_ChatStop')}
+              icon={Square}
+              size="sm"
+              variant="secondary"
+              data-testid="BtnMeetingChatStop"
+              onClick={onStop}
+            />
+          ) : (
+            <Tooltip
+              content={
+                <ShortcutHint
+                  label={t('Chat_Send.AutomationProperties.Name')}
+                  chords={[['Enter'], SHORTCUTS.chatSend.keys]}
+                />
+              }
+            >
+              <Button
+                id="BtnMeetingChatSend"
+                data-testid="BtnMeetingChatSend"
+                variant="primary"
+                size="sm"
+                icon={ArrowUp}
+                disabled={!canSend}
+                aria-label={t('Chat_Send.AutomationProperties.Name')}
+                onClick={onSend}
+                className="px-1.5"
+              />
+            </Tooltip>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

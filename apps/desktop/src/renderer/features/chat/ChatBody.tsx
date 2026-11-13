@@ -12,6 +12,7 @@ import { AttachmentChips } from './AttachmentChips';
 import { dragHasFiles, sendableAttachmentIds } from './chat-attachments-view';
 import { ChatErrorNotice } from './ChatErrorNotice';
 import { ENGINE_LABEL } from './chat-prompts-view';
+import { ChatModelPicker } from './ChatModelPicker';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
 import { SavedPromptDialogs } from './SavedPromptDialogs';
@@ -23,6 +24,9 @@ import { useChatAttachments } from './use-chat-attachments';
 import { useChatLinks } from './use-chat-links';
 import { usePromptLibrary } from './use-prompt-library';
 import { useRecipeContext } from './use-recipe-context';
+import { useModelChoice } from './use-model-choice';
+import { SETTINGS_KIND } from './model-choice';
+import { openEngineInSettings } from '../settings/engine-focus';
 
 /**
  * The AI panel's chat: transcript, suggested questions, the error line and the composer pinned to
@@ -51,7 +55,9 @@ export function ChatBody({ scope }: { readonly scope: ChatScopeDecision }) {
   const lookup = useCallback((key: string) => t(key as StringKey), [t]);
   const library = usePromptLibrary({ kind: scope.kind, context, draft: chat.draft, lookup });
   const { armed, arm, disarm } = library;
-  const { setDraft, send } = chat;
+  const { setDraft, send, reportError } = chat;
+  // The model for this conversation; New chat remounts the body, so it starts from Settings.
+  const models = useModelChoice();
   const onDraftChange = (value: string): void => {
     setDraft(value);
     if (value.trim() === '') disarm();
@@ -63,8 +69,14 @@ export function ChatBody({ scope }: { readonly scope: ChatScopeDecision }) {
   const sendWith = (text: string, recipe: ChatRecipe | null | undefined): void => {
     disarm();
     const engine = recipe?.engine;
-    void send(text, engine ? { engine } : {}).then((result) => {
+    // A saved prompt's own engine wins for its send; otherwise the picker's choice, if any.
+    const override = engine ? { engine } : models.override();
+    void send(text, override).then((result) => {
       if (result === 'restored' && recipe?.engine) arm(recipe);
+      if (result === 'unavailable' && override.engine) {
+        reportError(t('Ui_ChatModelUnavailable', t(ENGINE_LABEL[override.engine])));
+        models.reset();
+      }
     });
   };
 
@@ -170,6 +182,19 @@ export function ChatBody({ scope }: { readonly scope: ChatScopeDecision }) {
         recipes={library.recipes}
         promptActions={library.actions}
         onRecipePicked={library.arm}
+        modelPicker={
+          <ChatModelPicker
+            status={models.status}
+            choices={models.choices}
+            choice={models.choice}
+            onOpen={models.reload}
+            onPick={models.pick}
+            onEffort={models.setEffort}
+            onSetup={(engine) => {
+              openEngineInSettings(SETTINGS_KIND[engine]);
+            }}
+          />
+        }
       />
       <ProviderGateDialogs gate={gate} />
       <SavedPromptDialogs library={library} />
