@@ -1,12 +1,13 @@
 import type { SettingsPageDto, SummaryEngineReadinessDto } from '@vozella/contracts';
 import { CLI_STATUS_KEYS } from '@vozella/core';
 import { Check } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import { Button, Icon, Notice, SectionHeader, Select, SettingRow } from '../../ui';
 import { SetupWizardDialog } from '../ai-provider/SetupWizardDialog';
 import { API_NAME_KEYS, isApiKind } from '../ai-provider/api-engines';
 import { ApiProviderOptions } from './ApiProviderOptions';
+import { onEngineFocus, pendingEngineFocus, takeEngineFocus } from './engine-focus';
 import { EngineList, type EngineGroupView } from './EngineList';
 import { LocalEngineSetup } from './LocalEngineSetup';
 import {
@@ -163,8 +164,28 @@ export function ProviderSection({
   const { provider } = page;
   const [wizardOpen, setWizardOpen] = useState(false);
   const [openKind, setOpenKind] = useState<EngineKind | null>(
-    isEngineKind(provider) ? provider : null,
+    () => pendingEngineFocus() ?? (isEngineKind(provider) ? provider : null),
   );
+  // A link from elsewhere (the chat's model picker) opens its engine's row and brings it into
+  // view, here on mount or later while the page is on screen. It never changes the engine in use.
+  const [focusKind, setFocusKind] = useState<EngineKind | null>(null);
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const linked = takeEngineFocus();
+    if (linked) setFocusKind(linked);
+    return onEngineFocus((kind) => {
+      takeEngineFocus();
+      setOpenKind(kind);
+      setFocusKind(kind);
+    });
+  }, []);
+  useEffect(() => {
+    if (focusKind === null) return;
+    const button = root.current?.querySelector<HTMLElement>(`[data-engine="${focusKind}"]`);
+    button?.scrollIntoView({ block: 'center' });
+    button?.focus({ preventScroll: true });
+    setFocusKind(null);
+  }, [focusKind]);
 
   const readinessOf = (kind: EngineKind): SummaryEngineReadinessDto | null =>
     page.engines.find((engine) => engine.kind === kind)?.readiness ?? null;
@@ -241,7 +262,7 @@ export function ProviderSection({
   );
 
   return (
-    <div>
+    <div ref={root}>
       <SectionHeader
         level={2}
         compact
