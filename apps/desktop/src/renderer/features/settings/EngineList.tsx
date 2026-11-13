@@ -51,13 +51,14 @@ function EngineRow({
     .filter((part): part is string => part !== null)
     .join(' ');
 
+  // The row is named by its visible engine name (WCAG 2.5.3, label in name). The model and status
+  // are hidden from that name and read as the description instead, so the name stays the engine.
   return (
     <li className="border-b border-hairline py-1 last:border-b-0">
       <button
         type="button"
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
-        aria-labelledby={nameId}
         aria-describedby={describedBy === '' ? undefined : describedBy}
         onClick={onToggle}
         className={cn(
@@ -71,13 +72,14 @@ function EngineRow({
           {row.name}
         </span>
         {row.model ? (
-          <span id={modelId} className="min-w-0 truncate text-ui text-ink-muted">
+          <span id={modelId} aria-hidden="true" className="min-w-0 truncate text-ui text-ink-muted">
             {row.model}
           </span>
         ) : null}
         {row.status ? (
           <span
             id={statusId}
+            aria-hidden="true"
             className={cn(
               'ms-auto flex shrink-0 items-center gap-1.5 text-ui',
               inUse ? 'font-medium text-ink' : 'text-ink-muted',

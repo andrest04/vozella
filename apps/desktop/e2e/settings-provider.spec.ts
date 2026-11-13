@@ -86,7 +86,7 @@ async function seriousViolations(page: Page): Promise<unknown[]> {
 
 /** The engine list's rows: one disclosure button per engine, in display order. */
 function engineRows(page: Page, name = 'Choose where summaries are generated') {
-  return page.getByRole('group', { name }).locator('button[aria-expanded]');
+  return page.getByRole('group', { name }).locator('li > button[aria-expanded]');
 }
 
 async function pick(page: Page, select: string, option: string): Promise<void> {
