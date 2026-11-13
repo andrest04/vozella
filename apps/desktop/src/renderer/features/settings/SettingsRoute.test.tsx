@@ -1187,6 +1187,27 @@ describe('Summary engine list', () => {
     expect(screen.queryByRole('button', { name: 'Use this engine' })).toBeNull();
   });
 
+  it('an engine in use that is not ready says only what it needs, and its row still says In use', async () => {
+    install({ 'settings.getPage': () => pageDto({ provider: 'Local' }) });
+    mount();
+    const local = await openRow('Local (on this device)');
+    expect(within(panelOf(local)).getByText('Download a model to use Local.')).toBeVisible();
+    expect(screen.queryByText('Summaries are made with this engine.')).toBeNull();
+    await inUse('Local (on this device)');
+  });
+
+  it('a CLI in use that went missing says only what it needs', async () => {
+    install({
+      'settings.getPage': () =>
+        pageDto({ provider: 'Codex', engines: engines({ Codex: 'cli-missing' }) }),
+    });
+    mount();
+    await openRow('Codex CLI');
+    expect(screen.getByText('Install Codex, then check again.')).toBeVisible();
+    expect(screen.queryByText('Summaries are made with this engine.')).toBeNull();
+    await inUse('Codex CLI');
+  });
+
   it('Check again detects the CLI of the open row, not the engine in use', async () => {
     let codex: 'missing' | 'detected' = 'missing';
     const calls = install({

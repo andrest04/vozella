@@ -235,9 +235,10 @@ describe('Settings: API key engines (BYOK)', () => {
     mount();
     const user = userEvent.setup();
     const field = await screen.findByRole('combobox', { name: 'Model' });
-    expect(field).toHaveValue('claude-opus-5-5');
+    // At rest a known model reads by its name; its id is in the description.
+    expect(field).toHaveValue('Claude Opus 5.5');
     expect(field).toHaveAccessibleDescription(
-      'Pick a suggestion or type any model id. Verify lists the models your key can use.',
+      'Pick a suggestion or type any model id. Verify lists the models your key can use. claude-opus-5-5',
     );
     await user.click(field);
     expect(await screen.findAllByRole('option')).toHaveLength(2);
@@ -264,7 +265,8 @@ describe('Settings: API key engines (BYOK)', () => {
 
     await user.clear(field);
     await user.click(keyField());
-    expect(field).toHaveValue('gpt-5-mini');
+    // Back to the saved model, which reads by its name now the field is left.
+    expect(field).toHaveValue('GPT-5 Mini');
     expect(screen.queryByText('A model id has no spaces.')).toBeNull();
     expect(calls.filter((call) => call.name === 'settings.setApiOption')).toHaveLength(0);
   });

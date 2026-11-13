@@ -112,7 +112,8 @@ function CliSetup({
 
 /**
  * The first line of an engine's setup: In use, the button that makes it the engine in use once it
- * is ready, or what it still needs. An engine in use that lost what it needs says both.
+ * is ready, or what it still needs. An engine in use that is not ready says only what it needs
+ * (its row still reads In use), so the panel never claims summaries are made with it.
  */
 function EngineUse({
   inUse,
@@ -128,7 +129,7 @@ function EngineUse({
   const t = useT();
   return (
     <div className="flex flex-col items-start gap-1 pt-1">
-      {inUse ? (
+      {inUse && ready ? (
         <p className="flex items-center gap-1.5 text-ui text-ink">
           <Icon icon={Check} size={14} />
           {t('Ui_SummaryEngineInUseLine')}

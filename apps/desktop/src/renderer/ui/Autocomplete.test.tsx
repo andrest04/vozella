@@ -46,7 +46,6 @@ describe('Autocomplete', () => {
   it('shows every option when opened, even though the field already holds one of them', async () => {
     render(<Harness onCommit={vi.fn()} />);
     const user = userEvent.setup();
-    expect(field()).toHaveValue('claude-opus-5-5');
     expect(field()).toHaveAttribute('aria-expanded', 'false');
 
     await user.click(field());
@@ -135,6 +134,50 @@ describe('Autocomplete', () => {
     await user.type(field(), 'another-model');
     await user.click(screen.getByRole('button', { name: 'Elsewhere' }));
     expect(onCommit).toHaveBeenLastCalledWith('another-model');
+  });
+
+  it('shows the readable name of a known model at rest and its id while editing', async () => {
+    render(<Harness onCommit={vi.fn()} />);
+    const user = userEvent.setup();
+    expect(field()).toHaveValue('Claude Opus 5.5');
+    expect(field()).toHaveAccessibleDescription('claude-opus-5-5');
+
+    await user.click(field());
+    expect(field()).toHaveValue('claude-opus-5-5');
+    expect(field()).toHaveAccessibleDescription('Claude Opus 5.5');
+    await user.keyboard('{Escape}');
+
+    await user.click(screen.getByRole('button', { name: 'Elsewhere' }));
+    expect(field()).toHaveValue('Claude Opus 5.5');
+  });
+
+  it('commits the id, never the readable name, when the field is left untouched', async () => {
+    const onCommit = vi.fn();
+    render(<Harness onCommit={onCommit} />);
+    const user = userEvent.setup();
+    await user.click(field());
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('button', { name: 'Elsewhere' }));
+    expect(onCommit).toHaveBeenLastCalledWith('claude-opus-5-5');
+  });
+
+  it('shows free text and same-named ids as they are, with no extra description', () => {
+    const { unmount } = render(<Harness initial="my-own-model" onCommit={vi.fn()} />);
+    expect(field()).toHaveValue('my-own-model');
+    expect(field()).toHaveAccessibleDescription('');
+    unmount();
+    render(<Harness initial="o9-preview" onCommit={vi.fn()} />);
+    expect(field()).toHaveValue('o9-preview');
+    expect(field()).toHaveAccessibleDescription('');
+  });
+
+  it('shows a picked model by its readable name once the field is left', async () => {
+    render(<Harness onCommit={vi.fn()} />);
+    const user = userEvent.setup();
+    await user.click(field());
+    await user.click(await screen.findByRole('option', { name: /Claude Haiku 5\.5/ }));
+    await user.click(screen.getByRole('button', { name: 'Elsewhere' }));
+    expect(field()).toHaveValue('Claude Haiku 5.5');
   });
 
   it('Escape closes the list and keeps the text', async () => {

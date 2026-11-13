@@ -1,6 +1,6 @@
 import { Autocomplete as BaseAutocomplete } from '@base-ui/react/autocomplete';
 import { Check, ChevronDown } from 'lucide-react';
-import { useRef, useState, type KeyboardEvent } from 'react';
+import { useId, useRef, useState, type KeyboardEvent } from 'react';
 import { cn } from './cn';
 import { Icon } from './Icon';
 import { controlSurface, popupColors, popupItem, popupSurface } from './styles';
@@ -49,6 +49,7 @@ const matches = (option: AutocompleteOption, query: string): boolean => {
  * A text field with suggestions: any text is allowed, and the list helps pick a known one.
  * Opening it (click, ArrowDown, the chevron) shows every option whatever the field holds; only
  * typing filters. Arrows move, Enter or a click picks, Escape closes, leaving the field commits.
+ * At rest a known option reads by its label; focusing the field shows the value to edit.
  */
 export function Autocomplete({
   options,
@@ -67,8 +68,19 @@ export function Autocomplete({
   // Null until the user types after opening, so an opened list starts complete.
   const [query, setQuery] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const highlighted = useRef<AutocompleteOption | undefined>(undefined);
   const visible = query === null ? options : options.filter((option) => matches(option, query));
+  const otherNameId = useId();
+
+  // A known option whose label differs reads by its label at rest and by its value while edited;
+  // whichever is not shown is the field's extra description, so both stay within reach.
+  const named = options.find((option) => option.value === value && option.label !== value);
+  const shown = named && !editing ? named.label : value;
+  const otherName = named ? (editing ? named.label : named.value) : null;
+  const describedByAll =
+    [describedBy, otherName === null ? undefined : otherNameId].filter(Boolean).join(' ') ||
+    undefined;
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
     // With an option highlighted, Enter picks it (committed through onValueChange below).
@@ -82,7 +94,7 @@ export function Autocomplete({
       items={options}
       filteredItems={visible}
       itemToStringValue={(item: AutocompleteOption) => item.value}
-      value={value}
+      value={shown}
       // With nothing to suggest the list stays shut, so the page is never hidden behind it.
       open={open && visible.length > 0}
       openOnInputClick
@@ -112,16 +124,20 @@ export function Autocomplete({
         <BaseAutocomplete.Input
           aria-label={label}
           aria-labelledby={labelledBy}
-          aria-describedby={describedBy}
+          aria-describedby={describedByAll}
           aria-invalid={invalid}
           placeholder={placeholder}
           autoComplete="off"
           spellCheck={false}
           onKeyDown={onKeyDown}
+          onFocus={() => {
+            setEditing(true);
+          }}
           onBlur={(event) => {
             // A list held shut for want of options must not pop open later on its own.
             setOpen(false);
             setQuery(null);
+            setEditing(false);
             onCommit(event.currentTarget.value);
           }}
           className="h-full min-w-0 flex-1 bg-transparent pr-1 pl-2.5 text-ui-lg outline-none placeholder:text-ink-faint"
@@ -132,6 +148,11 @@ export function Autocomplete({
         >
           <Icon icon={ChevronDown} size={14} />
         </BaseAutocomplete.Trigger>
+        {otherName === null ? null : (
+          <span id={otherNameId} hidden>
+            {otherName}
+          </span>
+        )}
       </BaseAutocomplete.InputGroup>
       <BaseAutocomplete.Portal>
         <BaseAutocomplete.Positioner sideOffset={4} className="z-50 outline-none">
