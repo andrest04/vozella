@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type RefObject } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useChatLinks } from '../chat/use-chat-links';
+import { useCopySource } from '../session/use-copy-source';
 import { formatDueDate, formatMeetingDate } from '../library/format';
 import type { ActionItemsListProps } from './ActionItemsList';
 import { DraftMessage } from './DraftMessage';
@@ -45,19 +46,20 @@ export function SummaryTab({
   const [linkProblem, setLinkProblem] = useState<string | null>(null);
   const onLink = useChatLinks(setLinkProblem);
   const copyMode = model.mode === 'notes' ? 'notes' : 'summary';
-  useEffect(() => {
-    if (!copySourceRef || meetingId === null) return;
-    copySourceRef.current = async () => {
-      const answer = await window.vozella.invoke('summaries.copyText', {
-        meetingId,
-        mode: copyMode,
-      });
-      return answer.text;
-    };
-    return () => {
-      copySourceRef.current = null;
-    };
-  }, [copySourceRef, meetingId, copyMode]);
+  const copySource = useMemo(
+    () =>
+      meetingId === null
+        ? null
+        : async () => {
+            const answer = await window.vozella.invoke('summaries.copyText', {
+              meetingId,
+              mode: copyMode,
+            });
+            return answer.text;
+          },
+    [meetingId, copyMode],
+  );
+  useCopySource(copySourceRef, copySource);
 
   const labels = useMemo<SummaryTabLabels>(
     () => ({
