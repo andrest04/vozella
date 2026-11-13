@@ -56,6 +56,10 @@ export function TranscriptionSection() {
   return (
     <div data-testid="transcription-section">
       <SectionHeader level={2} compact title={t('Settings_Transcription.Text')} className="pb-2" />
+      {/* Kept above the rows: a trailing sibling would stop the last row dropping its hairline. */}
+      <p role="status" className="sr-only">
+        {announcement}
+      </p>
       <SettingRow
         title={t('Ui_EngineTitle')}
         description={
@@ -189,9 +193,6 @@ export function TranscriptionSection() {
           ) : null}
         </div>
       ) : null}
-      <p role="status" className="sr-only">
-        {announcement}
-      </p>
       <ConfirmDialog
         open={confirming !== null}
         onOpenChange={(open) => {

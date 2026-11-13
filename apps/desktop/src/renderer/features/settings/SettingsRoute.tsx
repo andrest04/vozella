@@ -60,12 +60,15 @@ export function SettingsRoute() {
       case 'language':
         return <LanguageSection current={page.uiLanguage} onChange={model.setUiLanguage} />;
       case 'summaryProvider':
-        // Question detection sits with the engine: its optional check runs on that engine.
+        // Question detection sits with the engine: its optional check runs on that engine. It is
+        // one more row of the same block, so it keeps the row rhythm instead of the section gap.
         return (
-          <>
+          <div className="flex flex-col">
             <ProviderSection page={page} model={model} />
-            <LiveQuestionsSection selectedProvider={page.provider} />
-          </>
+            <div className="mt-2 border-t border-hairline">
+              <LiveQuestionsSection selectedProvider={page.provider} />
+            </div>
+          </div>
         );
       case 'microphone':
         return <MicrophoneSection />;
