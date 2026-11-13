@@ -3,7 +3,7 @@ import { CircleAlert, CircleCheck, Eye, EyeOff } from 'lucide-react';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import type { StringKey } from '../../i18n/translate';
-import { Button, Icon, IconButton, Input, SectionHeader } from '../../ui';
+import { Autocomplete, Button, Icon, IconButton, Input, SectionHeader } from '../../ui';
 import { ProviderMark } from '../ai-provider/ProviderMark';
 import { API_NAME_KEYS } from '../ai-provider/api-engines';
 import type { ApiKeyAnswer, SettingsPageModel } from './use-settings-page';
@@ -80,7 +80,6 @@ export function ApiProviderOptions({
   const t = useT();
   const name = t(API_NAME_KEYS[kind]);
   const compatible = kind === 'OpenAiCompatible';
-  const listId = useId();
 
   const [keyDraft, setKeyDraft] = useState('');
   const [revealed, setRevealed] = useState(false);
@@ -154,8 +153,9 @@ export function ApiProviderOptions({
     });
   };
 
-  const saveModel = async (): Promise<void> => {
-    const value = modelDraft.trim();
+  /** Takes the text to save: a picked option arrives before the draft state has caught up. */
+  const saveModel = async (text: string): Promise<void> => {
+    const value = text.trim();
     if (value === '' || value === options.model) {
       setModelDraft(options.model);
       setModelError(null);
@@ -184,6 +184,10 @@ export function ApiProviderOptions({
   };
 
   const suggestions = [...new Set([...verified, ...options.modelOptions])];
+  const modelChoices = suggestions.map((id) => ({
+    value: id,
+    label: Object.hasOwn(options.modelLabels, id) ? (options.modelLabels[id] ?? id) : id,
+  }));
   const keyDescription = options.keySet
     ? t('Ui_ApiKeyStatusSaved')
     : compatible
@@ -312,31 +316,20 @@ export function ApiProviderOptions({
         <StackedRow title={t('Ui_ApiModelLabel')} description={t('Ui_ApiModelHelp')}>
           {({ titleId, descriptionId }) => (
             <div className="flex flex-col gap-1.5">
-              <Input
-                type="text"
-                list={listId}
-                autoComplete="off"
-                spellCheck={false}
+              <Autocomplete
+                options={modelChoices}
+                value={modelDraft}
+                onValueChange={setModelDraft}
+                onCommit={(value) => {
+                  void saveModel(value);
+                }}
                 aria-labelledby={titleId}
                 aria-describedby={modelError ? `${descriptionId} ${titleId}-error` : descriptionId}
                 aria-invalid={modelError ? true : undefined}
-                value={modelDraft}
-                onChange={(event) => {
-                  setModelDraft(event.currentTarget.value);
-                }}
-                onBlur={() => {
-                  void saveModel();
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') void saveModel();
-                }}
+                openLabel={t('Ui_ApiModelShowSuggestions')}
+                listTestId="ListApiModels"
                 className="w-full max-w-xs"
               />
-              <datalist id={listId} data-testid="ListApiModels">
-                {suggestions.map((id) => (
-                  <option key={id} value={id} />
-                ))}
-              </datalist>
               {modelError ? (
                 <p id={`${titleId}-error`} className="flex gap-1.5 text-ui text-ink">
                   <Icon icon={CircleAlert} size={14} className="mt-[3px] shrink-0" />

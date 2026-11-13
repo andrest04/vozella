@@ -14,6 +14,7 @@ const engine = (extra: Record<string, unknown> = {}) => ({
   keySet: false,
   model: 'gpt-5-mini',
   modelOptions: ['gpt-5-mini', 'gpt-5'],
+  modelLabels: { 'gpt-5-mini': 'GPT-5 Mini' },
   baseUrl: null,
   ...extra,
 });
@@ -205,18 +206,76 @@ describe('Settings: API key engines (BYOK)', () => {
     expect(await screen.findByTestId('TxtApiKeyStatus')).toHaveTextContent(
       'Verified. 2 models are listed under Model.',
     );
-    const options = [...screen.getByTestId('ListApiModels').querySelectorAll('option')].map(
-      (option) => option.value,
-    );
-    expect(options).toEqual(['gpt-5', 'o9-preview', 'gpt-5-mini']);
+    const field = screen.getByRole('combobox', { name: 'Model' });
+    await user.click(field);
+    const options = within(await screen.findByTestId('ListApiModels'))
+      .getAllByRole('option')
+      .map((option) => option.textContent);
+    expect(options).toEqual(['gpt-5', 'o9-preview', 'GPT-5 Minigpt-5-mini']);
+    await user.keyboard('{Escape}');
 
-    const field = screen.getByLabelText('Model', { selector: 'input' });
     await user.clear(field);
     await user.type(field, 'o9-preview{Enter}');
     expect(calls).toContainEqual({
       name: 'settings.setApiOption',
       input: { kind: 'OpenAi', field: 'model', value: 'o9-preview' },
     });
+  });
+
+  it('the model picker lists every suggestion even though a model is saved, and a pick saves', async () => {
+    const calls = install({
+      'settings.getPage': () =>
+        pageDto({
+          provider: 'Anthropic',
+          api: {
+            ...pageDto().api,
+            Anthropic: engine({
+              model: 'claude-opus-5-5',
+              modelOptions: ['claude-opus-5-5', 'claude-sonnet-5-5'],
+              modelLabels: {
+                'claude-opus-5-5': 'Claude Opus 5.5',
+                'claude-sonnet-5-5': 'Claude Sonnet 5.5',
+              },
+            }),
+          },
+        }),
+      'settings.setApiOption': () => ({ status: 'saved', settings: {}, feedback: null }),
+    });
+    mount();
+    const user = userEvent.setup();
+    const field = await screen.findByRole('combobox', { name: 'Model' });
+    expect(field).toHaveValue('claude-opus-5-5');
+    expect(field).toHaveAccessibleDescription(
+      'Pick a suggestion or type any model id. Verify lists the models your key can use.',
+    );
+    await user.click(field);
+    expect(await screen.findAllByRole('option')).toHaveLength(2);
+    await user.click(screen.getByRole('option', { name: /Claude Sonnet 5\.5/ }));
+    expect(calls).toContainEqual({
+      name: 'settings.setApiOption',
+      input: { kind: 'Anthropic', field: 'model', value: 'claude-sonnet-5-5' },
+    });
+    expect(calls.filter((call) => call.name === 'settings.setApiOption')).toHaveLength(1);
+  });
+
+  it('a model id with spaces is refused inline, and a blank one quietly goes back', async () => {
+    const calls = install({
+      'settings.getPage': () => pageDto(),
+      'settings.setApiOption': () => ({ status: 'saved', settings: {}, feedback: null }),
+    });
+    mount();
+    const user = userEvent.setup();
+    const field = await screen.findByRole('combobox', { name: 'Model' });
+    await user.clear(field);
+    await user.type(field, 'gpt 5{Enter}');
+    expect(await screen.findByText('A model id has no spaces.')).toBeVisible();
+    expect(field).toHaveAttribute('aria-invalid', 'true');
+
+    await user.clear(field);
+    await user.click(keyField());
+    expect(field).toHaveValue('gpt-5-mini');
+    expect(screen.queryByText('A model id has no spaces.')).toBeNull();
+    expect(calls.filter((call) => call.name === 'settings.setApiOption')).toHaveLength(0);
   });
 
   it('a refused key is explained inline, in the live region', async () => {

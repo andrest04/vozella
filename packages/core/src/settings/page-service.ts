@@ -18,7 +18,7 @@ import {
   type ApiProviderKind,
   type CliProviderKind,
 } from '../library/settings';
-import { API_ENGINES } from './api-providers';
+import { API_ENGINES, apiModelLabels } from './api-providers';
 import { cliExecutableName } from './cli-providers';
 import { engineStatuses, type SummaryEngineStatus } from './engine-readiness';
 import {
@@ -53,6 +53,8 @@ export interface ApiEngineOptions {
   readonly model: string;
   /** Suggestions, plus the saved model when it is not on the list (B13). */
   readonly modelOptions: readonly string[];
+  /** Readable names of the options the engine knows, by id. An id without one shows as itself. */
+  readonly modelLabels: Readonly<Record<string, string>>;
   /** The endpoint of the compatible engine; null for the others or when none is saved. */
   readonly baseUrl: string | null;
 }
@@ -181,10 +183,12 @@ export class SettingsPageService {
         const engine = API_ENGINES[kind];
         const model = engine.resolveModel(settings);
         const keySet = (await this.deps.apiKeys?.has(kind)) ?? false;
+        const modelOptions = model === '' ? engine.models : optionsIncluding(engine.models, model);
         const options: ApiEngineOptions = {
           keySet,
           model,
-          modelOptions: model === '' ? engine.models : optionsIncluding(engine.models, model),
+          modelOptions,
+          modelLabels: apiModelLabels(engine, modelOptions),
           baseUrl: engine.defaultBaseUrl === null ? engine.resolveBaseUrl(settings) : null,
         };
         return [kind, options] as const;

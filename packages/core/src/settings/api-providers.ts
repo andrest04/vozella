@@ -38,6 +38,8 @@ export interface ApiEngine {
   readonly requiresKey: boolean;
   /** Suggestions for the model picker. The user may type any other id. */
   readonly models: readonly string[];
+  /** The readable name of each suggested model, in the same order. Other ids show as typed. */
+  readonly modelNames: Readonly<Record<string, string>>;
   /** Null when there is no sensible default (the compatible kind). */
   readonly defaultModel: string | null;
   readonly modelSetting: StringSettingKey;
@@ -78,6 +80,12 @@ export const API_ENGINES = {
     defaultBaseUrl: 'https://api.openai.com/v1',
     requiresKey: true,
     models: ['gpt-6-astra', 'gpt-6.1-sol', 'gpt-6.1-terra', 'gpt-6-luna'],
+    modelNames: {
+      'gpt-6-astra': 'GPT-6 Astra',
+      'gpt-6.1-sol': 'GPT-6.1 Sol',
+      'gpt-6.1-terra': 'GPT-6.1 Terra',
+      'gpt-6-luna': 'GPT-6 Luna',
+    },
     defaultModel: 'gpt-6-astra',
     modelSetting: 'selectedOpenAiModelId',
     resolveModel: modelResolver('selectedOpenAiModelId', 'gpt-6-astra'),
@@ -92,6 +100,12 @@ export const API_ENGINES = {
     defaultBaseUrl: 'https://api.anthropic.com/v1',
     requiresKey: true,
     models: ['claude-opus-5-5', 'claude-fable-5-2', 'claude-sonnet-5-5', 'claude-haiku-5-5'],
+    modelNames: {
+      'claude-opus-5-5': 'Claude Opus 5.5',
+      'claude-fable-5-2': 'Claude Fable 5.2',
+      'claude-sonnet-5-5': 'Claude Sonnet 5.5',
+      'claude-haiku-5-5': 'Claude Haiku 5.5',
+    },
     defaultModel: 'claude-opus-5-5',
     modelSetting: 'selectedAnthropicModelId',
     resolveModel: modelResolver('selectedAnthropicModelId', 'claude-opus-5-5'),
@@ -106,6 +120,11 @@ export const API_ENGINES = {
     defaultBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
     requiresKey: true,
     models: ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'],
+    modelNames: {
+      'gemini-3.8-flash': 'Gemini 3.8 Flash',
+      'gemini-3.6-flash': 'Gemini 3.6 Flash',
+      'gemini-3.5-flash-lite': 'Gemini 3.5 Flash-Lite',
+    },
     defaultModel: 'gemini-3.8-flash',
     modelSetting: 'selectedGeminiModelId',
     resolveModel: modelResolver('selectedGeminiModelId', 'gemini-3.8-flash'),
@@ -120,6 +139,7 @@ export const API_ENGINES = {
     defaultBaseUrl: null,
     requiresKey: false,
     models: [],
+    modelNames: {},
     defaultModel: null,
     modelSetting: 'selectedOpenAiCompatibleModelId',
     resolveModel: modelResolver('selectedOpenAiCompatibleModelId', null),
@@ -167,6 +187,21 @@ export const isChatModelId = (id: string): boolean => {
   const lower = id.toLowerCase();
   return !NON_CHAT_MODEL_FRAGMENTS.some((fragment) => lower.includes(fragment));
 };
+
+/**
+ * The readable names of the ids in a model list that the engine knows. An id it does not know
+ * (one Verify listed, or one the user typed) has no entry, so the picker shows the id itself.
+ */
+export const apiModelLabels = (
+  engine: ApiEngine,
+  ids: readonly string[],
+): Readonly<Record<string, string>> =>
+  Object.fromEntries(
+    ids.flatMap((id) => {
+      const name = Object.hasOwn(engine.modelNames, id) ? engine.modelNames[id] : undefined;
+      return name === undefined ? [] : [[id, name] as const];
+    }),
+  );
 
 /** The API engine behind a provider id; undefined for local, a CLI engine, or none. */
 export const apiEngineByProviderId = (providerId: ProviderId | undefined): ApiEngine | undefined =>

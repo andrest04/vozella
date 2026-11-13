@@ -60,6 +60,8 @@ const apiEngineOptionsSchema = z
     keySet: z.boolean(),
     model: z.string(),
     modelOptions: z.array(z.string()).readonly(),
+    /** Readable names of the options the app knows, by id. A page without them parses as none. */
+    modelLabels: z.record(z.string(), z.string()).readonly().default({}),
     baseUrl: z.string().nullable(),
   })
   .strict();

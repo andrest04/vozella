@@ -95,10 +95,14 @@ describe('SettingsPageService.load', () => {
     expect(api.OpenAi.keySet).toBe(false);
     expect(api.Anthropic.model).toBe('claude-custom');
     expect(api.Anthropic.modelOptions).toContain('claude-custom');
+    expect(api.Anthropic.modelLabels['claude-opus-5-5']).toBe('Claude Opus 5.5');
+    expect(api.Anthropic.modelLabels).not.toHaveProperty('claude-custom');
+    expect(api.Gemini.modelLabels['gemini-3.8-flash']).toBe('Gemini 3.8 Flash');
     expect(api.OpenAiCompatible).toEqual({
       keySet: false,
       model: '',
       modelOptions: [],
+      modelLabels: {},
       baseUrl: 'http://localhost:11434/v1',
     });
     expect(JSON.stringify(api)).not.toMatch(/key"\s*:/i);

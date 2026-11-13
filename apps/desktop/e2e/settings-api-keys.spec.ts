@@ -68,7 +68,15 @@ test('OpenAI: save a key, see it saved but never shown, verify it, and pass axe'
     await expect(page.getByTestId('TxtApiKeyStatus')).toHaveText(
       'Verified. 2 models are listed under Model.',
     );
-    await expect(page.getByTestId('ListApiModels').locator('option')).toHaveCount(6);
+    // The saved model fills the field, yet opening the picker lists every suggestion.
+    const modelField = page.getByRole('combobox', { name: 'Model' });
+    await expect(modelField).toHaveValue('gpt-6-astra');
+    await modelField.click();
+    const modelList = page.getByTestId('ListApiModels');
+    await expect(modelList.getByRole('option')).toHaveCount(6);
+    await expect(modelList.getByRole('option', { name: /GPT-6 Astra/ })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(modelList).toBeHidden();
 
     expect(await seriousViolations(page)).toEqual([]);
   } finally {

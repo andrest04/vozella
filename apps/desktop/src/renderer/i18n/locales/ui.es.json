@@ -392,6 +392,7 @@
   "Ui_ApiModelLabel": "Modelo",
   "Ui_ApiModelHelp": "Elige una sugerencia o escribe cualquier id de modelo. Verificar muestra los modelos que tu clave puede usar.",
   "Ui_ApiModelInvalid": "Un id de modelo no lleva espacios.",
+  "Ui_ApiModelShowSuggestions": "Mostrar modelos sugeridos",
   "Ui_ApiBaseUrlLabel": "Dirección del servidor",
   "Ui_ApiBaseUrlHelp": "OpenRouter, Groq, Ollama, LM Studio o cualquier servidor compatible con la API de OpenAI. Por ejemplo, http://localhost:11434/v1.",
   "Ui_ApiBaseUrlInvalid": "Escribe una dirección que empiece por http:// o https://.",
