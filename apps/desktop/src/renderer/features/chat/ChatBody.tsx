@@ -182,8 +182,9 @@ export function ChatBody({ scope }: { readonly scope: ChatScopeDecision }) {
         recipes={library.recipes}
         promptActions={library.actions}
         onRecipePicked={library.arm}
-        modelPicker={
+        modelPicker={(composerBox) => (
           <ChatModelPicker
+            anchor={composerBox}
             status={models.status}
             choices={models.choices}
             choice={models.choice}
@@ -194,7 +195,7 @@ export function ChatBody({ scope }: { readonly scope: ChatScopeDecision }) {
               openEngineInSettings(SETTINGS_KIND[engine]);
             }}
           />
-        }
+        )}
       />
       <ProviderGateDialogs gate={gate} />
       <SavedPromptDialogs library={library} />

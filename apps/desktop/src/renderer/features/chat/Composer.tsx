@@ -1,6 +1,6 @@
 import type { ChatRecipe } from '@vozella/core';
 import { ArrowUp, BookOpenText, Paperclip, Square } from 'lucide-react';
-import { useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import { SHORTCUTS } from '../../app/shortcuts';
 import { Button, IconButton, ShortcutHint, Tooltip, cn } from '../../ui';
@@ -28,8 +28,11 @@ export interface ComposerProps {
   readonly promptActions?: RecipeMenuActions;
   /** A recipe was picked and its prompt is now the draft. */
   readonly onRecipePicked?: (recipe: ChatRecipe) => void;
-  /** The model chip, drawn on the toolbar line just before Send. Unset draws nothing there. */
-  readonly modelPicker?: ReactNode;
+  /**
+   * Draws the model chip on the toolbar line just before Send. It gets the composer's box, so its
+   * popup can open above the whole box instead of over the message field. Unset draws nothing.
+   */
+  readonly modelPicker?: (composerBox: RefObject<HTMLElement | null>) => ReactNode;
 }
 
 /**
@@ -108,6 +111,7 @@ export function Composer({
   return (
     <div
       ref={wrapper}
+      data-testid="BoxMeetingChatComposer"
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) close();
       }}
@@ -185,7 +189,7 @@ export function Composer({
           />
         ) : null}
         <div className="ms-auto flex min-w-0 items-center gap-1">
-          {modelPicker}
+          {modelPicker?.(wrapper)}
           {isSending ? (
             <IconButton
               label={t('Ui_ChatStop')}

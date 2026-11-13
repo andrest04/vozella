@@ -262,14 +262,15 @@ describe('model picker popup', () => {
     const user = userEvent.setup();
     render(body());
     const dialog = await openPicker(user);
-    const codex = within(dialog).getByRole('option', { name: 'Codex' });
-    expect(codex).toHaveAccessibleDescription('Not found Install');
+    // The name is the whole visible row (WCAG 2.5.3: the words a voice user reads must match).
+    const codex = within(dialog).getByRole('option', { name: 'Codex Not found Install' });
     expect(within(dialog).queryByRole('option', { name: 'GPT-5.6' })).toBeNull();
-    const local = within(dialog).getByRole('option', { name: 'Local' });
-    expect(local).toHaveAccessibleDescription('Not set up Download a model');
-    expect(within(dialog).getByRole('option', { name: 'Anthropic' })).toHaveAccessibleDescription(
-      'Needs key Add key',
-    );
+    expect(
+      within(dialog).getByRole('option', { name: 'Local Not set up Download a model' }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('option', { name: 'Anthropic Needs key Add key' }),
+    ).toBeInTheDocument();
     await user.click(codex);
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: 'Models' })).toBeNull();

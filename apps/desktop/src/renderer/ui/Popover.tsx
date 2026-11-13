@@ -16,6 +16,13 @@ export interface PopoverProps {
   readonly children: ReactNode;
   readonly side?: 'top' | 'bottom';
   readonly align?: 'start' | 'center' | 'end';
+  /**
+   * The element the popup is placed against. Default: the trigger. A trigger inside a larger box
+   * (a chip in a composer toolbar) points it at the box so the popup clears the whole box.
+   */
+  readonly anchor?: RefObject<Element | null>;
+  /** Gap between the anchor and the popup, in px. */
+  readonly sideOffset?: number;
   /** Where focus goes when it opens. Default: the first focusable element inside. */
   readonly initialFocus?: RefObject<HTMLElement | null>;
   readonly className?: string;
@@ -34,6 +41,8 @@ export function Popover({
   children,
   side = 'bottom',
   align = 'start',
+  anchor,
+  sideOffset = 6,
   initialFocus,
   className,
 }: PopoverProps) {
@@ -56,7 +65,8 @@ export function Popover({
         <BasePopover.Positioner
           side={side}
           align={align}
-          sideOffset={6}
+          sideOffset={sideOffset}
+          {...(anchor ? { anchor } : {})}
           collisionPadding={8}
           className="z-50 outline-none"
         >

@@ -1,6 +1,14 @@
 import type { ChatEngineChoicesDto, ChatEngineDto } from '@vozella/contracts';
 import { Check, ChevronDown } from 'lucide-react';
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type RefObject,
+} from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import { Button, Icon, Input, Popover, StepBar, cn } from '../../ui';
 import { ProviderMark } from '../ai-provider/ProviderMark';
@@ -28,6 +36,11 @@ export interface ChatModelPickerProps {
   readonly onEffort: (effort: string) => void;
   /** Opens this engine in Settings (an engine that is not ready, or more local models). */
   readonly onSetup: (engine: ChatEngineDto) => void;
+  /**
+   * The composer box the chip sits in. The popup opens above it, right edges aligned, so it never
+   * covers the message field. Default: the chip itself.
+   */
+  readonly anchor?: RefObject<Element | null>;
 }
 
 /** One row of the list, in keyboard order. */
@@ -74,6 +87,7 @@ export function ChatModelPicker({
   onPick,
   onEffort,
   onSetup,
+  anchor,
 }: ChatModelPickerProps) {
   const t = useT();
   const baseId = useId();
@@ -245,8 +259,8 @@ export function ChatModelPicker({
         key={`${row.engine}:setup`}
         {...common}
         aria-selected={false}
-        aria-labelledby={nameId}
-        aria-describedby={state ? `${reasonId} ${actionId}` : actionId}
+        // Named by everything it shows (engine, reason, action), so a voice user's words match.
+        aria-labelledby={state ? `${nameId} ${reasonId} ${actionId}` : `${nameId} ${actionId}`}
         data-testid="ItemChatModelSetup"
         className={cn(
           'flex min-h-8 cursor-default items-center gap-2 rounded-control px-2 py-1 select-none',
@@ -259,13 +273,14 @@ export function ChatModelPicker({
         <span id={nameId} className="shrink-0 text-ui-lg text-ink-muted">
           {engineName(row.engine)}
         </span>
+        {/* Spaces between the parts keep the row's text readable as words; flex hides them. */}{' '}
         {state ? (
           <span id={reasonId} className="min-w-0 flex-1 truncate text-ui text-ink-muted">
             {t(ENGINE_STATUS_KEYS[state])}
           </span>
         ) : (
           <span className="flex-1" />
-        )}
+        )}{' '}
         {/* The whole row is the action; this only names it, so it is not a second button. */}
         <span
           id={actionId}
@@ -313,8 +328,11 @@ export function ChatModelPicker({
       label={t('Ui_ChatModelList')}
       side="top"
       align="end"
+      {...(anchor ? { anchor } : {})}
+      sideOffset={8}
       initialFocus={search}
-      className="flex max-h-[min(30rem,calc(100vh-6rem))] w-[min(22.5rem,calc(100vw-1rem))] flex-col"
+      // The positioner's available height keeps a short panel's popup inside the window.
+      className="flex max-h-[min(30rem,var(--available-height))] w-[min(22.5rem,calc(100vw-1rem))] flex-col"
     >
       <div className="p-1.5 pb-1">
         <Input
@@ -340,6 +358,8 @@ export function ChatModelPicker({
         id={listId}
         role="listbox"
         aria-label={t('Ui_ChatModelList')}
+        // The search field drives the list; a scrolling list must not take a Tab stop of its own.
+        tabIndex={-1}
         className="min-h-0 flex-1 overflow-y-auto px-1 pb-1 outline-none"
       >
         {groups.map((group) => (
