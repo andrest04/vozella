@@ -47,6 +47,7 @@ function pageDto(extra: Record<string, unknown> = {}): SettingsPageDto {
       effortOptions: ['low'],
     },
     cliStatus: null,
+    engines: [],
     transcriptionLanguage: 'es',
     summaryLanguage: 'es',
     hardware: { totalRamGb: 16, gpuName: null, gpuVramGb: null },

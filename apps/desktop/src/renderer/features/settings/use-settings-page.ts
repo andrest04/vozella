@@ -72,6 +72,24 @@ export function resetSettingsPageCache(): void {
 const without = (map: Readonly<Record<string, number>>, key: string): Record<string, number> =>
   Object.fromEntries(Object.entries(map).filter(([name]) => name !== key));
 
+/** The page after Check again: the selected CLI's status, and its row in the engine list. */
+const withCliStatus = (
+  page: SettingsPageDto,
+  kind: SettingsPageDto['provider'],
+  status: SettingsPageDto['cliStatus'],
+): SettingsPageDto => ({
+  ...page,
+  cliStatus: status,
+  engines:
+    status === null
+      ? page.engines
+      : page.engines.map((engine) =>
+          engine.kind === kind
+            ? { ...engine, readiness: status === 'detected' ? 'ready' : 'cli-missing' }
+            : engine,
+        ),
+});
+
 const messageOf = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
@@ -255,9 +273,10 @@ export function useSettingsPage(): SettingsPageModel {
   const checkCliAgain = useCallback(async (): Promise<void> => {
     if (!page) return;
     try {
-      const result = await window.vozella.invoke('settings.detectCli', { kind: page.provider });
+      const kind = page.provider;
+      const result = await window.vozella.invoke('settings.detectCli', { kind });
       if (alive.current)
-        setPage((current) => (current ? { ...current, cliStatus: result.status } : current));
+        setPage((current) => (current ? withCliStatus(current, kind, result.status) : current));
     } catch (error) {
       fail(messageOf(error));
     }

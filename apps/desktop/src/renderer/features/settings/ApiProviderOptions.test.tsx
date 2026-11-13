@@ -32,6 +32,7 @@ function pageDto(extra: Record<string, unknown> = {}): SettingsPageDto {
       OpenAiCompatible: engine({ model: '', modelOptions: [] }),
     },
     cliStatus: null,
+    engines: [],
     transcriptionLanguage: 'es',
     summaryLanguage: 'es',
     hardware: null,

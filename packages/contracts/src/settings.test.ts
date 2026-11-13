@@ -109,6 +109,25 @@ describe('settings contracts', () => {
     expect(api.safeParse({ ...all, OpenAi: { ...engine, key: 'sk-secret' } }).success).toBe(false);
   });
 
+  it('the page lists every selectable engine with its readiness, and refuses Xai', () => {
+    const engines = settingsPageSchema.shape.engines;
+    expect(
+      engines.safeParse([
+        { kind: 'Local', readiness: 'needs-model', model: null },
+        { kind: 'ClaudeCode', readiness: 'ready', model: 'sonnet' },
+        { kind: 'Codex', readiness: 'cli-missing', model: 'gpt-5.6' },
+        { kind: 'OpenAi', readiness: 'needs-key', model: 'gpt-6-astra' },
+        { kind: 'OpenAiCompatible', readiness: 'needs-server', model: null },
+      ]).success,
+    ).toBe(true);
+    expect(engines.safeParse([{ kind: 'Xai', readiness: 'ready', model: null }]).success).toBe(
+      false,
+    );
+    expect(engines.safeParse([{ kind: 'Local', readiness: 'whatever', model: null }]).success).toBe(
+      false,
+    );
+  });
+
   it('BYOK: the provider gate can say a key or an endpoint is missing', () => {
     for (const reason of ['key-missing', 'base-url-missing']) {
       expect(
