@@ -57,6 +57,36 @@ describe('composeTranscription', () => {
     );
   });
 
+  it('reads meetings from the current Library folder after it changes', async () => {
+    const handlers = new Map<string, (event: unknown, input: unknown) => unknown>();
+    const server = {
+      ipc: {
+        handle: (name: string, handler: (event: unknown, input: unknown) => unknown) => {
+          handlers.set(name, handler);
+        },
+      },
+      logger: silentLogger(),
+      isTrusted: () => true,
+    };
+    const before = { get: vi.fn(() => Promise.resolve(null)) };
+    const after = { get: vi.fn(() => Promise.resolve(null)) };
+    let current: unknown = before;
+    const library = {
+      paths: { transcriptionModelsDirectory: 'models', nemoSpeechDirectory: 'nemo' },
+      settings: {},
+      get meetings() {
+        return current;
+      },
+    } as unknown as Pick<LibraryRuntime, 'paths' | 'settings' | 'meetings'>;
+    compose({ library, server: server as unknown as ComposeTranscriptionDeps['server'] });
+    current = after;
+    const getView = handlers.get('session.getView');
+    if (!getView) throw new Error('session.getView is not registered');
+    await getView({ senderFrame: null }, { id: 'm1' });
+    expect(after.get).toHaveBeenCalledWith('m1');
+    expect(before.get).not.toHaveBeenCalled();
+  });
+
   it('disposes the controller on a real quit', () => {
     const { controller, stopOnExit } = compose();
     expect(stopOnExit).toHaveBeenCalledTimes(1);

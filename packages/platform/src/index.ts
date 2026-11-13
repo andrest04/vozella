@@ -25,6 +25,7 @@ export * from './library/library-layout';
 export * from './library/markdown-meeting-repository';
 export * from './library/migrations';
 export * from './library/library-runtime';
+export * from './library/live-repository';
 export * from './fakes/fake-settings-ports';
 export * from './settings/download-to-file';
 export * from './settings/file-local-model-store';

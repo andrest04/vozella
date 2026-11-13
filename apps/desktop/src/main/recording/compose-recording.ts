@@ -18,7 +18,13 @@ import {
   type Workspace,
   type CatalogLocale,
 } from '@vozella/core';
-import { directoryFor, repairWavFile, samePath, type LibraryRuntime } from '@vozella/platform';
+import {
+  directoryFor,
+  liveRepository,
+  repairWavFile,
+  samePath,
+  type LibraryRuntime,
+} from '@vozella/platform';
 import type { Broadcast } from '../ipc/library-handlers';
 import type { AudioController } from '../audio/audio-controller';
 import type { RecordingTakes } from '../audio/recording-take';
@@ -81,7 +87,7 @@ export function composeRecording(deps: ComposeRecordingDeps): RecordingService {
     translate: deps.translate,
   });
   const pipeline = new RecordingPipeline({
-    meetings: library.meetings,
+    meetings: liveRepository(() => library.meetings),
     settings: deps.settings,
     transcriber: offlineTranscriber(deps.transcription),
     formatFailure: deps.formatFailure,

@@ -16,6 +16,7 @@ import {
   SteppedRuntimeStore,
   TranscriptionRuntime,
   type LibraryRuntime,
+  liveRepository,
 } from '@vozella/platform';
 import type { Broadcast } from '../ipc/library-handlers';
 import type { IpcServerDeps } from '../ipc/ipc-server';
@@ -85,7 +86,7 @@ export function composeTranscription(deps: ComposeTranscriptionDeps): Transcript
   const transcriptionController = new TranscriptionController({
     runtime: transcription,
     settings: library.settings,
-    meetings: library.meetings,
+    meetings: liveRepository(() => library.meetings),
     busy: deps.busy,
     broadcast: deps.broadcast,
     logger: deps.logger,
@@ -109,7 +110,7 @@ export function composeTranscription(deps: ComposeTranscriptionDeps): Transcript
   registerTranscriptionHandlers({ server: deps.server, controller: transcriptionController });
   registerSessionHandlers({
     server: deps.server,
-    meetings: library.meetings,
+    meetings: liveRepository(() => library.meetings),
     workspace,
     runnerState: () => transcriptionController.retranscription,
     // A zero-byte or unreadable recording counts as no audio (B20).
