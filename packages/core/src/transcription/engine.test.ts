@@ -48,7 +48,7 @@ function setup(gpuName: string | null = null) {
 
 describe('latency profiles and geometry', () => {
   it('RightContextFrames_MapsProfileToModelSupportedFrames', () => {
-    expect(rightContextFrames('live')).toBe(3);
+    expect(rightContextFrames('live')).toBe(6);
     expect(rightContextFrames('offline')).toBe(13);
   });
   it('RightContextFrames_EveryProfileIsAModelSupportedValue', () => {
