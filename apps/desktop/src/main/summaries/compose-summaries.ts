@@ -23,6 +23,7 @@ import {
   writeFileAtomic,
   type LibraryRuntime,
   type SettingsRuntime,
+  liveRepository,
 } from '@vozella/platform';
 import { mainCatalogs } from '../i18n/main-catalogs';
 import type { Broadcast } from '../ipc/library-handlers';
@@ -107,7 +108,7 @@ export function composeSummaries(deps: ComposeSummariesDeps): ComposedSummaries 
   const summaryService = new ObservedSummaryService(
     {
       queue: summaryPatchQueue,
-      meetings: library.meetings,
+      meetings: liveRepository(() => library.meetings),
       settings: library.settings,
       nextSessionDates: library.settings,
       resolver: summaryRuntime.resolver,
@@ -131,7 +132,7 @@ export function composeSummaries(deps: ComposeSummariesDeps): ComposedSummaries 
     service: summaryService,
     tab: new SummaryTabService({
       queue: summaryPatchQueue,
-      meetings: library.meetings,
+      meetings: liveRepository(() => library.meetings),
       translate: deps.translate,
       getSelectedMeetingId: () => workspace.state.selectedMeetingId,
       selectMeeting: (id) => {

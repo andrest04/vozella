@@ -17,6 +17,7 @@ import {
   SystemClock,
   writeFileAtomic,
   type LibraryRuntime,
+  liveRepository,
 } from '@vozella/platform';
 import { registerChatHandlers } from '../ipc/chat-handlers';
 import { registerChatPromptHandlers } from '../ipc/chat-prompts-handlers';
@@ -62,8 +63,8 @@ export function composeChat(deps: ComposeChatDeps): ComposedChat {
   const { library, logger, translate, broadcast } = deps;
   // Chat: one in-memory conversation; the engine is whichever one the summaries resolver picks.
   const chatReader = new LibraryChatReader({
-    meetings: library.meetings,
-    folders: library.folders,
+    meetings: liveRepository(() => library.meetings),
+    folders: liveRepository(() => library.folders),
   });
   // Attached files: paths stay here; the page holds ids. Image copies for one send go to temp.
   const chatAttachments = new ChatAttachmentStore({
