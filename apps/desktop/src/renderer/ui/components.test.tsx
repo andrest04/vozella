@@ -156,6 +156,21 @@ describe('Dialog', () => {
     await userEvent.keyboard('{Escape}');
     expect(onOpenChange).toHaveBeenCalledWith(false, expect.anything());
   });
+
+  it('is 30rem wide by default and 40rem when wide', async () => {
+    const { rerender } = render(
+      <Dialog open onOpenChange={() => undefined} title="Models" closeLabel="Close" />,
+    );
+    expect(await screen.findByRole('dialog', { name: 'Models' })).toHaveClass(
+      'w-[min(30rem,calc(100vw-2rem))]',
+    );
+    rerender(
+      <Dialog open onOpenChange={() => undefined} title="Models" closeLabel="Close" size="wide" />,
+    );
+    expect(screen.getByRole('dialog', { name: 'Models' })).toHaveClass(
+      'w-[min(40rem,calc(100vw-2rem))]',
+    );
+  });
 });
 
 describe('Tree', () => {

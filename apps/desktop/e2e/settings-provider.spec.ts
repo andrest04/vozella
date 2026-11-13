@@ -232,7 +232,11 @@ test('downloading a model in the wizard makes it active and the Set up button go
     await expect(dialog).toBeHidden({ timeout: 30_000 });
     await expect.poll(() => s.settings().selectedSummaryModelId).toBeTruthy();
     await expect(s.page.getByRole('button', { name: 'Set up' })).toHaveCount(0);
-    await expect(s.page.getByText('Active', { exact: true })).toBeVisible();
+    // The Local row now names the active model and offers the full list behind Change model.
+    await expect(s.page.getByRole('button', { name: 'Change model' })).toBeVisible();
+    await s.page.getByRole('button', { name: 'Change model' }).click();
+    const models = s.page.getByRole('dialog', { name: 'Summary models' });
+    await expect(models.getByText('Active', { exact: true })).toBeVisible();
   } finally {
     await s.launched.close();
   }

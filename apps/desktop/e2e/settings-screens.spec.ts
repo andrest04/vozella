@@ -55,13 +55,17 @@ for (const theme of ['light', 'dark'] as const) {
   test(`settings in ${theme}`, async () => {
     await useTheme(theme);
     await openEngine('Local (on this device)');
-    const group = page.getByRole('radiogroup', { name: 'Summary models' });
     if (theme === 'light') {
+      await page.getByRole('button', { name: 'Change model' }).click();
+      const dialog = page.getByRole('dialog', { name: 'Summary models' });
+      const group = dialog.getByRole('radiogroup', { name: 'Summary models' });
       const row = group.locator(':scope > div').filter({
         has: page.getByRole('radio', { name: /Granite 4\.0 Micro/ }),
       });
       await row.getByRole('button', { name: 'Download' }).click();
       await page.getByRole('radio', { name: /Granite 4\.0 Micro/ }).click();
+      await dialog.getByRole('button', { name: 'Close' }).click();
+      await expect(dialog).toBeHidden();
     }
     await shot(`settings-local-${theme}`);
 

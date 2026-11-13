@@ -418,5 +418,6 @@
   "Ui_SummaryEngineMissingKey": "Save an API key to use {0}.",
   "Ui_SummaryEngineMissingServer": "Add the server address and a model.",
   "Ui_SummaryEngineMissingLocalModel": "Download a model to use Local.",
+  "Ui_SummaryEngineChangeModel": "Change model",
   "Ui_SummaryEngineMissingApiModel": "Choose a model to use {0}."
 }

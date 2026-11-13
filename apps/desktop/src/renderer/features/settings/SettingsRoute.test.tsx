@@ -106,6 +106,13 @@ const panelOf = (button: HTMLElement): HTMLElement => {
   if (panel === null) throw new Error('no panel for the row');
   return panel;
 };
+/** Opens the local model list from the Local row and answers its radio group. */
+const openModels = async (): Promise<HTMLElement> => {
+  await userEvent.click(await screen.findByRole('button', { name: 'Change model' }));
+  const dialog = await screen.findByRole('dialog', { name: 'Summary models' });
+  return within(dialog).getByRole('radiogroup', { name: 'Summary models' });
+};
+const modelsDialog = () => screen.getByRole('dialog', { name: 'Summary models' });
 /** Waits until the named engine's row says it is the one in use. */
 const inUse = async (name: string | RegExp): Promise<void> => {
   await waitFor(() => {
@@ -200,7 +207,7 @@ describe('Settings page', () => {
     mount();
     await inUse('Local (on this device)');
     expect(await openRow('Local (on this device)')).toBeInTheDocument();
-    expect(screen.queryByRole('radiogroup', { name: 'Summary models' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Change model' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Set up' })).toBeNull();
   });
 
@@ -283,7 +290,7 @@ describe('Settings page', () => {
     mount();
     const setUp = await screen.findByRole('button', { name: 'Set up' });
     expect(setUp).toHaveClass('bg-ink');
-    const group = screen.getByRole('radiogroup', { name: 'Summary models' });
+    const group = await openModels();
     for (const button of within(group).getAllByRole('button')) {
       expect(button).not.toHaveClass('bg-ink');
     }
@@ -310,7 +317,7 @@ describe('Settings page', () => {
         }),
     });
     mount();
-    const group = await screen.findByRole('radiogroup', { name: 'Summary models' });
+    const group = await openModels();
     expect(within(group).getAllByText('Recommended for your PC')).toHaveLength(1);
     const picked = within(group).getByRole('radio', { name: /Model C/ });
     expect(picked).toHaveAccessibleName(/Recommended for your PC/);
@@ -343,7 +350,8 @@ describe('Settings page', () => {
         }),
     });
     mount();
-    await screen.findByRole('radiogroup', { name: 'Summary models' });
+    expect(await screen.findByRole('button', { name: 'Change model' })).toBeVisible();
+    expect(screen.getByText('Model B')).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Set up' })).toBeNull();
   });
 
@@ -398,7 +406,7 @@ describe('Settings page', () => {
     });
     mount();
     const user = userEvent.setup();
-    const group = await screen.findByRole('radiogroup', { name: 'Summary models' });
+    const group = await openModels();
     expect(within(group).getByRole('radio', { name: /Model A/ })).toHaveAttribute(
       'aria-disabled',
       'true',
@@ -436,7 +444,9 @@ describe('Settings page', () => {
       finish({ status: 'failed', message: 'offline' });
       await Promise.resolve();
     });
-    expect(await screen.findByText('Could not download Model A. offline')).toBeInTheDocument();
+    expect(
+      await within(modelsDialog()).findByText('Could not download Model A. offline'),
+    ).toBeInTheDocument();
     await waitFor(() => {
       expect(within(group).queryByRole('button', { name: 'Cancel download' })).toBeNull();
     });
@@ -457,11 +467,12 @@ describe('Settings page', () => {
     expect(
       await screen.findByText(/gone\.gguf is not on this PC|selected model gone\.gguf/),
     ).toBeInTheDocument();
+    await openModels();
     await userEvent.click(screen.getByRole('button', { name: 'Delete Model B' }));
     const dialog = await screen.findByRole('dialog', { name: 'Delete Model B?' });
     await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
     expect(
-      await screen.findByText('Model B is downloading. Cancel the download first.'),
+      await within(modelsDialog()).findByText('Model B is downloading. Cancel the download first.'),
     ).toBeInTheDocument();
     expect(calls.some((call) => call.name === 'settings.models.delete')).toBe(true);
   });
@@ -483,6 +494,7 @@ describe('Settings page', () => {
     });
     mount();
     const user = userEvent.setup();
+    await openModels();
     const trigger = await screen.findByRole('button', { name: 'Delete Model B' });
     // The trigger is quiet, so it does not read like Download.
     expect(trigger).toHaveClass('bg-transparent');
@@ -495,8 +507,10 @@ describe('Settings page', () => {
     });
     await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     await waitFor(() => {
-      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(screen.queryByRole('dialog', { name: 'Delete Model B?' })).toBeNull();
     });
+    // The confirmation sits on the model list, which stays open.
+    expect(modelsDialog()).toBeVisible();
     expect(calls.some((call) => call.name === 'settings.models.delete')).toBe(false);
 
     await user.click(screen.getByRole('button', { name: 'Delete Model B' }));
@@ -758,7 +772,7 @@ describe('Settings page', () => {
         }),
     });
     mount();
-    const group = await screen.findByRole('radiogroup', { name: 'Summary models' });
+    const group = await openModels();
     expect(within(group).getByRole('button', { name: 'Cancel download' })).toBeInTheDocument();
     expect(within(group).getByRole('progressbar', { name: 'Downloading' })).toHaveAttribute(
       'aria-valuenow',
@@ -1008,9 +1022,7 @@ describe('Settings page', () => {
       );
       const shown = (query: HTMLElement | null) => query !== null;
       expect(shown(screen.queryByRole('combobox', { name: 'Effort' }))).toBe(expected.effort);
-      expect(shown(screen.queryByRole('radiogroup', { name: 'Summary models' }))).toBe(
-        expected.local,
-      );
+      expect(shown(screen.queryByRole('button', { name: 'Change model' }))).toBe(expected.local);
       expect(shown(screen.queryByText('Detected on PATH.'))).toBe(expected.status);
       view.unmount();
     }
@@ -1204,6 +1216,79 @@ describe('Summary engine list', () => {
     await openRow('Claude Code CLI');
     expect(screen.getByRole('combobox', { name: 'Effort' })).toBeVisible();
     expect(screen.queryByText('low, medium, high, xhigh, or max.')).toBeNull();
+  });
+});
+
+describe('Local engine setup', () => {
+  it('shows the active model on one line and keeps the model list in a dialog', async () => {
+    install({
+      'settings.getPage': () =>
+        pageDto({
+          engines: engines({ Local: 'ready' }),
+          models: {
+            rows: [
+              model('a.gguf', 'Model A'),
+              model('b.gguf', 'Model B', { downloaded: true, active: true, vendor: 'IBM' }),
+            ],
+            missingActiveId: null,
+          },
+        }),
+    });
+    mount();
+    const panel = panelOf(await openRow('Local (on this device)'));
+    expect(within(panel).getByText('Model B')).toBeVisible();
+    expect(
+      within(panel).getByText('Fast · Quality Very good · 3.1 GB download', { exact: false }),
+    ).toBeVisible();
+    expect(screen.queryByRole('radiogroup', { name: 'Summary models' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Set up' })).toBeNull();
+
+    const group = await openModels();
+    expect(within(group).getByRole('radio', { name: /Model B/ })).toBeChecked();
+    expect(within(group).getByRole('radio', { name: /Model A/ })).toBeInTheDocument();
+    await userEvent.click(within(modelsDialog()).getByRole('button', { name: 'Close' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Summary models' })).toBeNull();
+    });
+  });
+
+  it('without an active model offers Set up, Change model, and names a missing model', async () => {
+    install({
+      'settings.getPage': () =>
+        pageDto({
+          models: {
+            rows: [model('b.gguf', 'Model B', { downloaded: true })],
+            missingActiveId: 'gone.gguf',
+          },
+        }),
+    });
+    mount();
+    const panel = panelOf(await openRow('Local (on this device)'));
+    expect(within(panel).getByRole('button', { name: 'Set up' })).toHaveClass('bg-ink');
+    expect(within(panel).getByRole('button', { name: 'Change model' })).not.toHaveClass('bg-ink');
+    expect(within(panel).getByText(/gone\.gguf/)).toBeVisible();
+    const group = await openModels();
+    expect(within(group).getByRole('radio', { name: /Model B/ })).not.toBeChecked();
+  });
+
+  it('downloads a model from the dialog and shows its progress there', async () => {
+    const calls = install({
+      'settings.getPage': () => pageDto(),
+      'settings.models.download': () => new Promise(() => undefined),
+    });
+    mount();
+    const group = await openModels();
+    await userEvent.click(within(group).getByRole('button', { name: 'Download' }));
+    expect(calls).toContainEqual({
+      name: 'settings.models.download',
+      input: { fileName: 'a.gguf' },
+    });
+    act(() => {
+      listeners.get('settings.modelEvent')?.({ type: 'progress', fileName: 'a.gguf', percent: 12 });
+    });
+    expect(
+      await within(modelsDialog()).findByRole('progressbar', { name: 'Downloading' }),
+    ).toHaveAttribute('aria-valuenow', '12');
   });
 });
 

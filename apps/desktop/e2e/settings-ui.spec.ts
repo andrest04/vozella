@@ -48,7 +48,10 @@ test('opening the page writes nothing and shows the saved choices', async () => 
 });
 
 test('a local model downloads, becomes active and is removed', async () => {
-  const group = page.getByRole('radiogroup', { name: 'Summary models' });
+  // The model list lives in a dialog opened from the Local row.
+  await page.getByRole('button', { name: 'Change model' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Summary models' });
+  const group = dialog.getByRole('radiogroup', { name: 'Summary models' });
   const granite = group.getByRole('radio', { name: /Granite 4\.0 Micro/ });
   await expect(granite).toBeDisabled();
   await expect(granite).toHaveAccessibleName(/IBM/);
@@ -82,6 +85,8 @@ test('a local model downloads, becomes active and is removed', async () => {
   await expect(granite).toBeDisabled();
   await expect(granite).not.toBeChecked();
   await expect.poll(() => settingsFile().selectedSummaryModelId).toBeNull();
+  await dialog.getByRole('button', { name: 'Close' }).click();
+  await expect(dialog).toBeHidden();
 });
 
 test('Claude Code shows the PATH check and saves model and effort one field at a time', async () => {
@@ -167,7 +172,7 @@ for (const theme of ['light', 'dark'] as const) {
     await page.reload();
     await expect(page.getByRole('heading', { level: 2, name: 'Summary provider' })).toBeVisible();
     await page.getByRole('button', { name: 'Local (on this device)' }).click();
-    await expect(page.getByRole('radiogroup', { name: 'Summary models' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Change model' })).toBeVisible();
     // Axe reads computed colors, so it must see the settled page. A button that turns enabled when
     // the transcription status arrives fades from the disabled 50% opacity, and in this hidden test
     // window that fade can sit at its first frame for seconds; finish every finite transition first.

@@ -418,5 +418,6 @@
   "Ui_SummaryEngineMissingKey": "Guarda una clave de API para usar {0}.",
   "Ui_SummaryEngineMissingServer": "Agrega la dirección del servidor y un modelo.",
   "Ui_SummaryEngineMissingLocalModel": "Descarga un modelo para usar Local.",
+  "Ui_SummaryEngineChangeModel": "Cambiar modelo",
   "Ui_SummaryEngineMissingApiModel": "Elige un modelo para usar {0}."
 }

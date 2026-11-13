@@ -8,7 +8,7 @@ import { SetupWizardDialog } from '../ai-provider/SetupWizardDialog';
 import { API_NAME_KEYS, isApiKind } from '../ai-provider/api-engines';
 import { ApiProviderOptions } from './ApiProviderOptions';
 import { EngineList, type EngineGroupView } from './EngineList';
-import { LocalModels } from './LocalModels';
+import { LocalEngineSetup } from './LocalEngineSetup';
 import {
   ENGINE_GROUPS,
   ENGINE_STATUS_KEYS,
@@ -106,50 +106,6 @@ function CliSetup({
           }}
         />
       </SettingRow>
-    </div>
-  );
-}
-
-/** The local models: Set up while none is active, then the model list. */
-function LocalSetup({
-  page,
-  model,
-  onSetUp,
-}: {
-  readonly page: SettingsPageDto;
-  readonly model: SettingsPageModel;
-  readonly onSetUp: () => void;
-}): ReactNode {
-  const t = useT();
-  if (!page.capabilities.localModels) return null;
-  const noActiveModel = !page.models.rows.some((row) => row.active);
-  return (
-    <div className="flex flex-col pt-3">
-      <SectionHeader
-        level={3}
-        title={t('Settings_SummaryModels.Header')}
-        description={t('Settings_SummaryModels.Description')}
-        action={
-          noActiveModel ? (
-            <Button variant="primary" size="sm" onClick={onSetUp}>
-              {t('RecordingSetup_SetUp')}
-            </Button>
-          ) : undefined
-        }
-      />
-      <div className="pt-1">
-        <LocalModels
-          rows={page.models.rows}
-          missingActiveId={page.models.missingActiveId}
-          progress={model.progress}
-          onSelect={model.selectModel}
-          onDownload={(fileName) => {
-            void model.downloadModel(fileName);
-          }}
-          onCancel={model.cancelModel}
-          onDelete={model.deleteModel}
-        />
-      </div>
     </div>
   );
 }
@@ -266,7 +222,7 @@ export function ProviderSection({
         }}
       />
       {kind === 'Local' ? (
-        <LocalSetup
+        <LocalEngineSetup
           page={page}
           model={model}
           onSetUp={() => {
