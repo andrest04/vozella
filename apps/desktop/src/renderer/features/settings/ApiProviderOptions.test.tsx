@@ -91,13 +91,15 @@ beforeEach(() => {
 });
 
 describe('Settings: API key engines (BYOK)', () => {
-  it('offers the four API engines in the one provider group, captioned by what the user brings', async () => {
+  it('offers the four API engines in the one engine list, captioned by what the user brings', async () => {
     install({ 'settings.getPage': () => pageDto({ provider: 'Local' }) });
     mount();
-    const group = await screen.findByRole('radiogroup', {
+    const group = await screen.findByRole('group', {
       name: 'Choose where summaries are generated',
     });
-    const radios = within(group).getAllByRole('radio');
+    const rows = within(group)
+      .getAllByRole('button')
+      .filter((button) => button.hasAttribute('aria-expanded'));
     const expected = [
       'Local (on this device)',
       'Claude Code CLI',
@@ -107,31 +109,20 @@ describe('Settings: API key engines (BYOK)', () => {
       'Google Gemini',
       'OpenAI-compatible',
     ];
-    expect(radios).toHaveLength(expected.length);
-    radios.forEach((radio, index) => {
-      expect(radio).toHaveAccessibleName(expected[index]);
+    expect(rows).toHaveLength(expected.length);
+    rows.forEach((button, index) => {
+      expect(button).toHaveAccessibleName(expected[index]);
     });
-    expect(within(group).getByRole('radio', { name: 'OpenAI' })).toHaveAccessibleDescription(
-      'With your API key',
-    );
+    const apiList = screen.getByRole('list', { name: 'With your API key' });
+    expect(within(apiList).getByRole('button', { name: 'OpenAI' })).toBeInTheDocument();
     expect(screen.queryByTestId('ApiProviderOptions')).toBeNull();
   });
 
-  it('selecting an API engine saves its kind and shows its key, model and privacy notice', async () => {
-    let provider = 'Local';
-    const calls = install({
-      'settings.getPage': () => pageDto({ provider }),
-      'settings.setSummaryProvider': (input) => {
-        provider = (input as { kind: string }).kind;
-        return { status: 'saved', settings: {}, feedback: null };
-      },
-    });
+  it('opening an API engine shows its key, model and privacy notice without switching to it', async () => {
+    const calls = install({ 'settings.getPage': () => pageDto({ provider: 'Local' }) });
     mount();
-    await userEvent.click(await screen.findByRole('radio', { name: 'Anthropic' }));
-    expect(calls).toContainEqual({
-      name: 'settings.setSummaryProvider',
-      input: { kind: 'Anthropic' },
-    });
+    await userEvent.click(await screen.findByRole('button', { name: 'Anthropic' }));
+    expect(calls.some((call) => call.name === 'settings.setSummaryProvider')).toBe(false);
     expect(
       await screen.findByText(
         'Transcripts and chat messages are sent to Anthropic to get an answer. Usage is billed to your Anthropic account.',
@@ -319,8 +310,10 @@ describe('Settings: API key engines (BYOK)', () => {
     mount('es');
     expect(await screen.findByLabelText('Clave de API', { selector: 'input' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Verificar' })).toBeVisible();
-    expect(screen.getByRole('radio', { name: 'Google Gemini' })).toHaveAccessibleDescription(
-      'Con tu clave de API',
+    const apiList = screen.getByRole('list', { name: 'Con tu clave de API' });
+    expect(within(apiList).getByRole('button', { name: 'Google Gemini' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
     );
   });
 });

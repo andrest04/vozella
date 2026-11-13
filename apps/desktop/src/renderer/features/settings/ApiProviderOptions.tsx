@@ -3,8 +3,7 @@ import { CircleAlert, CircleCheck, Eye, EyeOff } from 'lucide-react';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import type { StringKey } from '../../i18n/translate';
-import { Autocomplete, Button, Icon, IconButton, Input, SectionHeader } from '../../ui';
-import { ProviderMark } from '../ai-provider/ProviderMark';
+import { Autocomplete, Button, Icon, IconButton, Input } from '../../ui';
 import { API_NAME_KEYS } from '../ai-provider/api-engines';
 import type { ApiKeyAnswer, SettingsPageModel } from './use-settings-page';
 
@@ -64,8 +63,8 @@ function StatusLine({ status, testId }: { readonly status: Status; readonly test
 }
 
 /**
- * The options of an API key engine (BYOK): the server address for the compatible kind, the key,
- * Verify, and the model. The key goes to main once on Save and is never read back; the field then
+ * The setup of an API key engine (BYOK), inside its row of the engine list (which names it): where
+ * the text goes, the server address for the compatible kind, the key, Verify, and the model. The key goes to main once on Save and is never read back; the field then
  * shows a mask. Verify lists the models the key can use and adds them to the model suggestions.
  */
 export function ApiProviderOptions({
@@ -195,16 +194,11 @@ export function ApiProviderOptions({
       : t('Ui_ApiKeyStatusNotSet');
 
   return (
-    <div className="flex flex-col pt-5" data-testid="ApiProviderOptions">
-      <SectionHeader
-        level={3}
-        icon={<ProviderMark kind={kind} />}
-        title={name}
-        description={
-          compatible ? t('Ui_ApiPrivacyNoticeCompatible') : t('Ui_ApiPrivacyNotice', name)
-        }
-      />
-      <div className="pt-1">
+    <div className="flex flex-col" data-testid="ApiProviderOptions">
+      <p className="max-w-prose pt-1 text-ui text-ink-muted">
+        {compatible ? t('Ui_ApiPrivacyNoticeCompatible') : t('Ui_ApiPrivacyNotice', name)}
+      </p>
+      <div>
         {compatible ? (
           <StackedRow title={t('Ui_ApiBaseUrlLabel')} description={t('Ui_ApiBaseUrlHelp')}>
             {({ titleId, descriptionId }) => (

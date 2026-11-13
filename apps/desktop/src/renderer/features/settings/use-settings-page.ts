@@ -13,6 +13,9 @@ export const FEEDBACK_MS = 4000;
 
 type CliProvider = 'claude' | 'codex';
 
+/** The summary engines that run a CLI program. */
+export type CliEngineKind = 'ClaudeCode' | 'Codex';
+
 /** What a key change or a Verify answered, already in words for the API block's status line. */
 export type ApiKeyAnswer =
   | { readonly status: 'saved'; readonly keySet: boolean }
@@ -49,7 +52,8 @@ export interface SettingsPageModel {
   readonly clearApiKey: (kind: ApiProviderKindDto) => Promise<ApiKeyAnswer>;
   /** Lists the models the saved key can use. Changes nothing. */
   readonly verifyApiKey: (kind: ApiProviderKindDto) => Promise<ApiKeyAnswer>;
-  readonly checkCliAgain: () => Promise<void>;
+  /** Looks for one CLI program again; its row in the engine list takes the answer. */
+  readonly checkCliAgain: (kind: CliEngineKind) => Promise<void>;
   readonly downloadModel: (fileName: string) => Promise<void>;
   readonly cancelModel: (fileName: string) => void;
   readonly selectModel: (fileName: string) => void;
@@ -72,14 +76,17 @@ export function resetSettingsPageCache(): void {
 const without = (map: Readonly<Record<string, number>>, key: string): Record<string, number> =>
   Object.fromEntries(Object.entries(map).filter(([name]) => name !== key));
 
-/** The page after Check again: the selected CLI's status, and its row in the engine list. */
+/**
+ * The page after Check again: the CLI's row in the engine list, and the selected CLI's status when
+ * that is the CLI that was checked.
+ */
 const withCliStatus = (
   page: SettingsPageDto,
-  kind: SettingsPageDto['provider'],
+  kind: CliEngineKind,
   status: SettingsPageDto['cliStatus'],
 ): SettingsPageDto => ({
   ...page,
-  cliStatus: status,
+  cliStatus: page.provider === kind ? status : page.cliStatus,
   engines:
     status === null
       ? page.engines
@@ -198,7 +205,7 @@ export function useSettingsPage(): SettingsPageModel {
 
   const setProvider = useCallback(
     async (kind: string): Promise<void> => {
-      // The radio moves at once; `commit` puts it back to what is saved if the save is refused.
+      // The engine reads In use at once; `commit` puts it back to what is saved if refused.
       setPage((current) =>
         current
           ? { ...current, provider: kind as typeof current.provider, providerNotice: null }
@@ -270,17 +277,18 @@ export function useSettingsPage(): SettingsPageModel {
     [keyCommand],
   );
 
-  const checkCliAgain = useCallback(async (): Promise<void> => {
-    if (!page) return;
-    try {
-      const kind = page.provider;
-      const result = await window.vozella.invoke('settings.detectCli', { kind });
-      if (alive.current)
-        setPage((current) => (current ? withCliStatus(current, kind, result.status) : current));
-    } catch (error) {
-      fail(messageOf(error));
-    }
-  }, [fail, page]);
+  const checkCliAgain = useCallback(
+    async (kind: CliEngineKind): Promise<void> => {
+      try {
+        const result = await window.vozella.invoke('settings.detectCli', { kind });
+        if (alive.current)
+          setPage((current) => (current ? withCliStatus(current, kind, result.status) : current));
+      } catch (error) {
+        fail(messageOf(error));
+      }
+    },
+    [fail],
+  );
 
   // ------------------------------------------------------------ local models
 

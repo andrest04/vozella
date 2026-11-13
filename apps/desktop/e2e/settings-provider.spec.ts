@@ -84,30 +84,42 @@ async function seriousViolations(page: Page): Promise<unknown[]> {
   });
 }
 
+/** The engine list's rows: one disclosure button per engine, in display order. */
+function engineRows(page: Page, name = 'Choose where summaries are generated') {
+  return page.getByRole('group', { name }).locator('button[aria-expanded]');
+}
+
 async function pick(page: Page, select: string, option: string): Promise<void> {
   await page.getByRole('combobox', { name: select }).click();
   await page.getByRole('option', { name: option, exact: true }).click();
 }
 
-test('the provider radios are Local, Claude Code, Codex and the API key engines, and a choice saves the enum name (172)', async () => {
+test('the engine rows are Local, Claude Code, Codex and the API key engines, and Use this engine saves the enum name (172)', async () => {
   const s = await start();
   try {
     await seeProvider(s.page);
-    const group = s.page.getByRole('radiogroup', { name: 'Choose where summaries are generated' });
-    await expect(group.getByRole('radio')).toHaveCount(7);
-    await expect(group.getByRole('radio').nth(0)).toHaveAccessibleName('Local (on this device)');
-    await expect(group.getByRole('radio').nth(1)).toHaveAccessibleName('Claude Code CLI');
-    await expect(group.getByRole('radio').nth(2)).toHaveAccessibleName('Codex CLI');
-    await expect(group.getByRole('radio').nth(3)).toHaveAccessibleName('OpenAI');
-    await expect(group.getByRole('radio', { name: 'Local (on this device)' })).toBeChecked();
+    const rows = engineRows(s.page);
+    await expect(rows).toHaveCount(7);
+    await expect(rows.nth(0)).toHaveAccessibleName('Local (on this device)');
+    await expect(rows.nth(1)).toHaveAccessibleName('Claude Code CLI');
+    await expect(rows.nth(2)).toHaveAccessibleName('Codex CLI');
+    await expect(rows.nth(3)).toHaveAccessibleName('OpenAI');
+    await expect(rows.nth(0)).toHaveAccessibleDescription(/In use/);
+    await expect(rows.nth(0)).toHaveAttribute('aria-expanded', 'true');
     expect(fs.existsSync(s.file)).toBe(false);
 
-    await group.getByRole('radio', { name: 'Codex CLI' }).click();
-    await expect.poll(() => s.settings().selectedSummaryProvider).toBe('Codex');
+    // Opening a row never switches engines; a CLI that is not on the PATH cannot be used yet.
+    await rows.nth(2).click();
     await expect(s.page.getByText('Not found on PATH', { exact: false })).toBeVisible();
-    await group.getByRole('radio', { name: 'Claude Code CLI' }).click();
-    await expect.poll(() => s.settings().selectedSummaryProvider).toBe('ClaudeCode');
+    await expect(s.page.getByText('Install Codex, then check again.')).toBeVisible();
+    await expect(s.page.getByRole('button', { name: 'Use this engine' })).toHaveCount(0);
+    expect(fs.existsSync(s.file)).toBe(false);
+
+    await rows.nth(1).click();
     await expect(s.page.getByText('Detected on PATH.')).toBeVisible();
+    await s.page.getByRole('button', { name: 'Use this engine' }).click();
+    await expect.poll(() => s.settings().selectedSummaryProvider).toBe('ClaudeCode');
+    await expect(rows.nth(1)).toHaveAccessibleDescription(/In use/);
   } finally {
     await s.launched.close();
   }
@@ -126,19 +138,23 @@ test('a settings file that names Grok shows the notice, selects nothing and chan
     const notice =
       'Grok (xAI) is no longer available. Pick Local, Claude Code, Codex or an API key engine to summarize your meetings.';
     await expect(s.page.getByText(notice)).toBeVisible();
-    const group = s.page.getByRole('radiogroup', { name: 'Choose where summaries are generated' });
-    await expect(group.getByRole('radio')).toHaveCount(7);
-    for (const radio of await group.getByRole('radio').all()) await expect(radio).not.toBeChecked();
-    await expect(s.page.getByRole('radio', { name: /Grok/ })).toHaveCount(0);
+    const rows = engineRows(s.page);
+    await expect(rows).toHaveCount(7);
+    for (const row of await rows.all()) {
+      await expect(row).not.toHaveAccessibleDescription(/In use/);
+      await expect(row).toHaveAttribute('aria-expanded', 'false');
+    }
+    await expect(s.page.getByRole('button', { name: /Grok/ })).toHaveCount(0);
     // Opening the page wrote nothing.
     expect(s.settings()).toEqual(seedFile);
 
-    await group.getByRole('radio', { name: 'Codex CLI' }).click();
+    await s.page.getByRole('button', { name: 'Claude Code CLI' }).click();
+    await s.page.getByRole('button', { name: 'Use this engine' }).click();
     await expect(s.page.getByText(notice)).toBeHidden();
     await expect
       .poll(() => s.settings())
       .toMatchObject({
-        selectedSummaryProvider: 'Codex',
+        selectedSummaryProvider: 'ClaudeCode',
         selectedXaiModelId: 'grok-4.6',
         typeSafeEnabled: true,
       });
@@ -222,7 +238,7 @@ test('downloading a model in the wizard makes it active and the Set up button go
   }
 });
 
-test('Spanish: radios, notice and toast use the Spanish catalog', async () => {
+test('Spanish: engine rows, notice and toast use the Spanish catalog', async () => {
   const s = await start({ uiLanguage: 'es', selectedSummaryProvider: 'Xai' });
   try {
     await seeProvider(s.page, 'Proveedor de resumen');
@@ -231,13 +247,11 @@ test('Spanish: radios, notice and toast use the Spanish catalog', async () => {
         'Grok (xAI) ya no está disponible. Elige Local, Claude Code, Codex o un motor con clave de API para resumir tus reuniones.',
       ),
     ).toBeVisible();
-    const group = s.page.getByRole('radiogroup', { name: 'Elige dónde se generan los resúmenes' });
-    await expect(group.getByRole('radio').nth(0)).toHaveAccessibleName(
-      'Local (en este dispositivo)',
-    );
-    await expect(group.getByRole('radio').nth(1)).toHaveAccessibleName('CLI de Claude Code');
-    await expect(group.getByRole('radio').nth(2)).toHaveAccessibleName('CLI de Codex');
-    await group.getByRole('radio', { name: 'CLI de Claude Code' }).click();
+    const rows = engineRows(s.page, 'Elige dónde se generan los resúmenes');
+    await expect(rows.nth(0)).toHaveAccessibleName('Local (en este dispositivo)');
+    await expect(rows.nth(1)).toHaveAccessibleName('CLI de Claude Code');
+    await expect(rows.nth(2)).toHaveAccessibleName('CLI de Codex');
+    await rows.nth(1).click();
     await pick(s.page, 'Modelo', 'haiku');
     await expect(s.page.getByText('Guardado. Usando haiku · low.')).toBeVisible();
     await shot(s.page, 'settings-claude-es');
@@ -256,18 +270,18 @@ for (const theme of ['light', 'dark'] as const) {
       await shot(s.page, `settings-grok-notice-${theme}`);
       expect(await seriousViolations(s.page)).toEqual([]);
 
-      await s.page.getByRole('radio', { name: 'Local (on this device)' }).click();
+      await s.page.getByRole('button', { name: 'Local (on this device)' }).click();
       await expect(s.page.getByRole('button', { name: 'Set up' })).toBeVisible();
       await shot(s.page, `settings-local-setup-${theme}`);
       expect(await seriousViolations(s.page)).toEqual([]);
 
-      await s.page.getByRole('radio', { name: 'Claude Code CLI' }).click();
+      await s.page.getByRole('button', { name: 'Claude Code CLI' }).click();
       await pick(s.page, 'Model', 'opus');
       await expect(s.page.getByText('Saved. Using opus · low.')).toBeVisible();
       await shot(s.page, `settings-claude-saved-${theme}`);
       expect(await seriousViolations(s.page)).toEqual([]);
 
-      await s.page.getByRole('radio', { name: 'Local (on this device)' }).click();
+      await s.page.getByRole('button', { name: 'Local (on this device)' }).click();
       await s.page.getByRole('button', { name: 'Set up' }).click();
       await expect(s.page.getByText('Choose a model to generate summaries')).toBeVisible();
       await shot(s.page, `settings-wizard-${theme}`);

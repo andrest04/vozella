@@ -39,6 +39,13 @@ async function useTheme(theme: 'light' | 'dark'): Promise<void> {
   await page.waitForTimeout(350);
 }
 
+/** Opens an engine's row in the summary engine list, unless it is open already. */
+async function openEngine(name: string): Promise<void> {
+  const row = page.getByRole('button', { name, exact: true });
+  if ((await row.getAttribute('aria-expanded')) !== 'true') await row.click();
+  await expect(row).toHaveAttribute('aria-expanded', 'true');
+}
+
 async function shot(name: string): Promise<void> {
   await page.waitForTimeout(250);
   await page.screenshot({ path: path.join(outDir, `${name}.png`) });
@@ -47,7 +54,7 @@ async function shot(name: string): Promise<void> {
 for (const theme of ['light', 'dark'] as const) {
   test(`settings in ${theme}`, async () => {
     await useTheme(theme);
-    await page.getByRole('radio', { name: 'Local (on this device)' }).click();
+    await openEngine('Local (on this device)');
     const group = page.getByRole('radiogroup', { name: 'Summary models' });
     if (theme === 'light') {
       const row = group.locator(':scope > div').filter({
@@ -58,11 +65,11 @@ for (const theme of ['light', 'dark'] as const) {
     }
     await shot(`settings-local-${theme}`);
 
-    await page.getByRole('radio', { name: 'Claude Code CLI' }).click();
+    await openEngine('Claude Code CLI');
     await expect(page.getByText('Detected on PATH.')).toBeVisible();
     await shot(`settings-claude-${theme}`);
 
-    await page.getByRole('radio', { name: 'Local (on this device)' }).click();
+    await openEngine('Local (on this device)');
   });
 }
 

@@ -29,11 +29,40 @@ const model = (fileName: string, displayName: string, extra: Record<string, unkn
   ...extra,
 });
 
+/** Every engine's readiness, in display order, as T1's page answer lists them. */
+const ENGINES = [
+  { kind: 'Local', readiness: 'needs-model', model: null },
+  { kind: 'ClaudeCode', readiness: 'ready', model: 'sonnet' },
+  { kind: 'Codex', readiness: 'ready', model: 'gpt-5.6' },
+  { kind: 'OpenAi', readiness: 'needs-key', model: 'gpt-5-mini' },
+  { kind: 'Anthropic', readiness: 'needs-key', model: 'claude-sonnet-5-5' },
+  { kind: 'Gemini', readiness: 'needs-key', model: 'gemini-2.5-flash' },
+  { kind: 'OpenAiCompatible', readiness: 'needs-server', model: null },
+] as const;
+
+const engines = (readiness: Record<string, string> = {}) =>
+  ENGINES.map((engine) => ({ ...engine, readiness: readiness[engine.kind] ?? engine.readiness }));
+
+const apiEngine = (extra: Record<string, unknown> = {}) => ({
+  keySet: false,
+  model: 'gpt-5-mini',
+  modelOptions: ['gpt-5-mini'],
+  modelLabels: {},
+  baseUrl: null,
+  ...extra,
+});
+
 function pageDto(extra: Record<string, unknown> = {}): SettingsPageDto {
   return {
     settings: {},
     uiLanguage: 'en-US',
     provider: 'Local',
+    api: {
+      OpenAi: apiEngine(),
+      Anthropic: apiEngine({ model: 'claude-sonnet-5-5', modelOptions: ['claude-sonnet-5-5'] }),
+      Gemini: apiEngine({ model: 'gemini-2.5-flash', modelOptions: ['gemini-2.5-flash'] }),
+      OpenAiCompatible: apiEngine({ model: '', modelOptions: [] }),
+    },
     claude: {
       model: 'sonnet',
       effort: 'low',
@@ -47,7 +76,7 @@ function pageDto(extra: Record<string, unknown> = {}): SettingsPageDto {
       effortOptions: ['low'],
     },
     cliStatus: null,
-    engines: [],
+    engines: engines(),
     transcriptionLanguage: 'es',
     summaryLanguage: 'es',
     hardware: { totalRamGb: 16, gpuName: null, gpuVramGb: null },
@@ -62,15 +91,26 @@ function pageDto(extra: Record<string, unknown> = {}): SettingsPageDto {
   } as unknown as SettingsPageDto;
 }
 
-const labelOf = (element: HTMLElement): HTMLElement => {
-  const found: HTMLElement | null = element.closest<HTMLElement>('label');
-  if (found === null) throw new Error('no label around the control');
-  return found;
+/** The engine list: one disclosure button per engine, named by the engine. */
+const engineList = (name = 'Choose where summaries are generated') =>
+  screen.findByRole('group', { name });
+const rowsOf = (list: HTMLElement): HTMLElement[] =>
+  within(list)
+    .getAllByRole('button')
+    .filter((button) => button.hasAttribute('aria-expanded'));
+const row = (name: string | RegExp) => screen.findByRole('button', { name });
+const openRow = (name: string | RegExp) => screen.findByRole('button', { name, expanded: true });
+/** The setup panel a row button controls. */
+const panelOf = (button: HTMLElement): HTMLElement => {
+  const panel = document.getElementById(button.getAttribute('aria-controls') ?? '');
+  if (panel === null) throw new Error('no panel for the row');
+  return panel;
 };
-const groupOf = (element: HTMLElement): HTMLElement => {
-  const found: HTMLElement | null = element.closest<HTMLElement>('[role="radiogroup"]');
-  if (found === null) throw new Error('no radio group around the control');
-  return found;
+/** Waits until the named engine's row says it is the one in use. */
+const inUse = async (name: string | RegExp): Promise<void> => {
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name })).toHaveAccessibleDescription(/In use/);
+  });
 };
 
 const allOn = { localModels: true };
@@ -150,7 +190,7 @@ describe('Settings page', () => {
       await screen.findByText('The settings could not be loaded. disk unreadable'),
     ).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    expect(await screen.findByRole('radio', { name: 'Local (on this device)' })).toBeChecked();
+    await inUse('Local (on this device)');
   });
 
   it('draws only the controls whose module is present', async () => {
@@ -158,11 +198,13 @@ describe('Settings page', () => {
       'settings.getPage': () => pageDto({ capabilities: { localModels: false } }),
     });
     mount();
-    expect(await screen.findByRole('radio', { name: 'Local (on this device)' })).toBeChecked();
+    await inUse('Local (on this device)');
+    expect(await openRow('Local (on this device)')).toBeInTheDocument();
     expect(screen.queryByRole('radiogroup', { name: 'Summary models' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Set up' })).toBeNull();
   });
 
-  it('asks for another provider when the saved one is the removed Grok, and offers no Grok radio', async () => {
+  it('asks for another provider when the saved one is the removed Grok, and offers no Grok row', async () => {
     install({
       'settings.getPage': () => pageDto({ provider: 'Xai', providerNotice: 'xai-removed' }),
     });
@@ -172,9 +214,14 @@ describe('Settings page', () => {
         'Grok (xAI) is no longer available. Pick Local, Claude Code, Codex or an API key engine to summarize your meetings.',
       ),
     ).toBeInTheDocument();
-    expect(screen.queryByRole('radio', { name: /Grok/ })).toBeNull();
-    const group = screen.getByRole('radiogroup', { name: 'Choose where summaries are generated' });
-    for (const radio of within(group).getAllByRole('radio')) expect(radio).not.toBeChecked();
+    expect(screen.queryByRole('button', { name: /Grok/ })).toBeNull();
+    const rows = rowsOf(await engineList());
+    expect(rows).toHaveLength(7);
+    for (const button of rows) {
+      expect(button).not.toHaveAccessibleDescription(/In use/);
+      // Nothing is in use, so nothing opens on its own.
+      expect(button).toHaveAttribute('aria-expanded', 'false');
+    }
     expect(screen.queryByRole('textbox', { name: 'API key' })).toBeNull();
     expect(screen.queryByText('Not signed in')).toBeNull();
   });
@@ -197,10 +244,15 @@ describe('Settings page', () => {
         'Grok (xAI) ya no está disponible. Elige Local, Claude Code, Codex o un motor con clave de API para resumir tus reuniones.',
       ),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('radio', { name: /Codex/ }));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'CLI de Codex' }));
+    await user.click(screen.getByRole('button', { name: 'Usar este motor' }));
     await waitFor(() => {
       expect(screen.queryByText(/Grok \(xAI\) ya no está disponible/)).toBeNull();
     });
+    expect(screen.getByRole('button', { name: 'CLI de Codex' })).toHaveAccessibleDescription(
+      /En uso/,
+    );
   });
 
   it('offers Set up when no model is active, and it opens the wizard on the hardware step (S20)', async () => {
@@ -564,20 +616,20 @@ describe('Settings page', () => {
     });
     mount();
     expect(screen.getByLabelText('Loading settings')).toBeInTheDocument();
-    expect(screen.queryByRole('radio', { name: 'Local (on this device)' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Local (on this device)' })).toBeNull();
     expect(screen.queryByRole('combobox', { name: 'App language' })).toBeNull();
     await act(async () => {
       answer(pageDto());
       await Promise.resolve();
     });
-    expect(await screen.findByRole('radio', { name: 'Local (on this device)' })).toBeChecked();
+    await inUse('Local (on this device)');
     expect(screen.queryByLabelText('Loading settings')).toBeNull();
   });
 
   it('draws the blocks in meeting lifecycle order under the page title (8.1, 8.2)', async () => {
     install({ 'settings.getPage': () => pageDto() });
     mount();
-    await screen.findByRole('radio', { name: 'Local (on this device)' });
+    await row('Local (on this device)');
     expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument();
     const wanted = [
       'Microphone',
@@ -619,7 +671,7 @@ describe('Settings page', () => {
   it('opening the page never writes (8.8, 8.11)', async () => {
     const calls = install({ 'settings.getPage': () => pageDto() });
     mount();
-    await screen.findByRole('radio', { name: 'Local (on this device)' });
+    await row('Local (on this device)');
     const writes = calls.filter((call) =>
       /^settings\.(set|models\.(select|delete))/.test(call.name),
     );
@@ -639,18 +691,18 @@ describe('Settings page', () => {
       },
     });
     const first = mount();
-    await screen.findByRole('radio', { name: 'Local (on this device)' });
+    await row('Local (on this device)');
     first.unmount();
     mount();
-    expect(screen.getByRole('radio', { name: 'Local (on this device)' })).toBeChecked();
+    expect(
+      screen.getByRole('button', { name: 'Local (on this device)' }),
+    ).toHaveAccessibleDescription(/In use/);
     expect(screen.queryByLabelText('Loading settings')).toBeNull();
     await act(async () => {
       second(pageDto({ provider: 'Codex' }));
       await Promise.resolve();
     });
-    await waitFor(() => {
-      expect(screen.getByRole('radio', { name: /Codex/ })).toBeChecked();
-    });
+    await inUse('Codex CLI');
   });
 
   it('overlapping loads: the newest answer wins even when the older one lands last (7.17)', async () => {
@@ -671,8 +723,10 @@ describe('Settings page', () => {
       await Promise.resolve();
     });
     const user = userEvent.setup();
-    await user.click(await screen.findByRole('radio', { name: /Codex/ }));
-    await user.click(screen.getByRole('radio', { name: /Claude Code/ }));
+    await user.click(await row('Codex CLI'));
+    await user.click(screen.getByRole('button', { name: 'Use this engine' }));
+    await user.click(screen.getByRole('button', { name: 'Claude Code CLI' }));
+    await user.click(screen.getByRole('button', { name: 'Use this engine' }));
     await waitFor(() => {
       expect(pending.length).toBeGreaterThanOrEqual(3);
     });
@@ -685,7 +739,12 @@ describe('Settings page', () => {
       pending[1]?.(pageDto({ provider: 'Codex' }));
       await Promise.resolve();
     });
-    expect(screen.getByRole('radio', { name: /Claude Code/ })).toBeChecked();
+    expect(screen.getByRole('button', { name: 'Claude Code CLI' })).toHaveAccessibleDescription(
+      /In use/,
+    );
+    expect(screen.getByRole('button', { name: 'Codex CLI' })).not.toHaveAccessibleDescription(
+      /In use/,
+    );
   });
 
   it('keeps a download in progress when the page is opened again (58)', async () => {
@@ -707,11 +766,11 @@ describe('Settings page', () => {
     );
   });
 
-  it('gives the Claude Code and Codex option blocks their brand mark', async () => {
+  it('gives the Claude Code and Codex rows their brand mark', async () => {
     install({ 'settings.getPage': () => pageDto({ provider: 'Codex' }) });
     mount();
-    const heading = await screen.findByRole('heading', { level: 3, name: /Codex/ });
-    expect(heading.querySelector('svg')).not.toBeNull();
+    expect((await openRow('Codex CLI')).querySelector('svg')).not.toBeNull();
+    expect((await row('Claude Code CLI')).querySelector('svg')).not.toBeNull();
   });
 
   it('keeps the reveal at 150 ms and turns motion off for reduced motion (8.5)', () => {
@@ -757,7 +816,7 @@ describe('Settings page', () => {
   it('stops watching the engine when the page is left (8.12)', async () => {
     install({ 'settings.getPage': () => pageDto() });
     const view = mount();
-    await screen.findByRole('radio', { name: 'Local (on this device)' });
+    await row('Local (on this device)');
     expect(listeners.has('transcription.statusChanged')).toBe(true);
     view.unmount();
     expect(listeners.has('transcription.statusChanged')).toBe(false);
@@ -773,13 +832,15 @@ describe('Settings page', () => {
       },
     });
     const first = mount();
-    await screen.findByRole('radio', { name: 'Local (on this device)' });
+    await row('Local (on this device)');
     first.unmount();
     mount();
     expect(
       await screen.findByText('The settings could not be loaded. disk unreadable'),
     ).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'Local (on this device)' })).toBeChecked();
+    expect(
+      screen.getByRole('button', { name: 'Local (on this device)' }),
+    ).toHaveAccessibleDescription(/In use/);
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
   });
 
@@ -812,12 +873,13 @@ describe('Settings page', () => {
       },
     });
     mount();
-    expect(await screen.findByRole('radio', { name: /Codex/ })).toBeChecked();
+    await inUse('Codex CLI');
     act(() => {
       emit('library.changed', { reason: 'location' });
     });
-    expect(screen.queryByRole('radio', { name: /Codex/ })).toBeNull();
-    expect(await screen.findByRole('radio', { name: /Claude Code CLI/ })).toBeChecked();
+    expect(screen.queryByRole('button', { name: 'Codex CLI' })).toBeNull();
+    await inUse('Claude Code CLI');
+    expect(await openRow('Claude Code CLI')).toBeInTheDocument();
   });
 
   it('fades only on the first reveal, never on a revisit (8.5)', async () => {
@@ -832,46 +894,50 @@ describe('Settings page', () => {
   it('lists Local, Claude Code, Codex and the API key engines in that order, each with its mark (28)', async () => {
     install({ 'settings.getPage': () => pageDto({ capabilities: allOn }) });
     mount();
-    const group = await screen.findByRole('radiogroup', {
-      name: 'Choose where summaries are generated',
-    });
-    const radios = within(group).getAllByRole('radio');
-    expect(radios.map((r) => labelOf(r).textContent.trim())).toEqual([
-      'Local (on this device)',
-      'Claude Code CLI',
-      'Codex CLI',
-      'OpenAI',
-      'Anthropic',
-      'Google Gemini',
-      'OpenAI-compatible',
-    ]);
-    for (const radio of radios) expect(labelOf(radio).querySelector('svg')).not.toBeNull();
+    const rows = rowsOf(await engineList());
+    expect(rows).toEqual(
+      [
+        'Local (on this device)',
+        'Claude Code CLI',
+        'Codex CLI',
+        'OpenAI',
+        'Anthropic',
+        'Google Gemini',
+        'OpenAI-compatible',
+      ].map((name) => screen.getByRole('button', { name })),
+    );
+    for (const button of rows) expect(button.querySelector('svg')).not.toBeNull();
   });
 
   it('labels the providers in Spanish (28)', async () => {
     install({ 'settings.getPage': () => pageDto({ capabilities: allOn }) });
     mount('es');
-    const radio = await screen.findByRole('radio', { name: 'Local (en este dispositivo)' });
-    const group = groupOf(radio);
+    const rows = rowsOf(await engineList('Elige dónde se generan los resúmenes'));
+    expect(rows).toEqual(
+      [
+        'Local (en este dispositivo)',
+        'CLI de Claude Code',
+        'CLI de Codex',
+        'OpenAI',
+        'Anthropic',
+        'Google Gemini',
+        'Compatible con OpenAI',
+      ].map((name) => screen.getByRole('button', { name })),
+    );
     expect(
-      within(group)
-        .getAllByRole('radio')
-        .map((r) => labelOf(r).textContent.trim()),
-    ).toEqual([
-      'Local (en este dispositivo)',
-      'CLI de Claude Code',
-      'CLI de Codex',
-      'OpenAI',
-      'Anthropic',
-      'Google Gemini',
-      'Compatible con OpenAI',
-    ]);
+      screen.getByRole('button', { name: 'Local (en este dispositivo)' }),
+    ).toHaveAccessibleDescription('En uso');
   });
 
   it('shows the detection text in Spanish, and a new answer after Check again (35)', async () => {
     let detected: 'missing' | 'detected' = 'missing';
     install({
-      'settings.getPage': () => pageDto({ provider: 'ClaudeCode', cliStatus: 'missing' }),
+      'settings.getPage': () =>
+        pageDto({
+          provider: 'ClaudeCode',
+          cliStatus: 'missing',
+          engines: engines({ ClaudeCode: 'cli-missing' }),
+        }),
       'settings.detectCli': () => ({ status: detected }),
     });
     mount('es');
@@ -884,7 +950,7 @@ describe('Settings page', () => {
     expect(screen.queryByText(/No se encontró/)).toBeNull();
   });
 
-  it('moves the radio before the save and reload answer (31)', async () => {
+  it('marks the engine in use before the save and reload answer (31)', async () => {
     let releaseSave: (value: unknown) => void = () => undefined;
     install({
       'settings.getPage': () => pageDto({ provider: 'Local' }),
@@ -894,9 +960,14 @@ describe('Settings page', () => {
         }),
     });
     mount();
-    expect(await screen.findByRole('radio', { name: /Local/ })).toBeChecked();
-    await userEvent.click(screen.getByRole('radio', { name: /Codex/ }));
-    expect(screen.getByRole('radio', { name: /Codex/ })).toBeChecked();
+    await inUse('Local (on this device)');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Codex CLI' }));
+    await user.click(screen.getByRole('button', { name: 'Use this engine' }));
+    expect(screen.getByRole('button', { name: 'Codex CLI' })).toHaveAccessibleDescription(/In use/);
+    expect(
+      screen.getByRole('button', { name: 'Local (on this device)' }),
+    ).not.toHaveAccessibleDescription(/In use/);
     await act(async () => {
       releaseSave({ status: 'saved', settings: {}, feedback: null });
       await Promise.resolve();
@@ -913,12 +984,12 @@ describe('Settings page', () => {
     ).toBeInTheDocument();
   });
 
-  it('draws only the block of the chosen provider (38)', async () => {
+  it('opens only the setup of the engine in use (38)', async () => {
     for (const [provider, expected] of [
-      ['Local', { claude: false, codex: false, local: true, status: false }],
-      ['ClaudeCode', { claude: true, codex: false, local: false, status: true }],
-      ['Codex', { claude: false, codex: true, local: false, status: true }],
-      ['Xai', { claude: false, codex: false, local: false, status: false }],
+      ['Local', { open: 'Local (on this device)', effort: false, local: true, status: false }],
+      ['ClaudeCode', { open: 'Claude Code CLI', effort: true, local: false, status: true }],
+      ['Codex', { open: 'Codex CLI', effort: true, local: false, status: true }],
+      ['Xai', { open: null, effort: false, local: false, status: false }],
     ] as const) {
       resetSettingsPageCache();
       install({
@@ -930,15 +1001,14 @@ describe('Settings page', () => {
           }),
       });
       const view = mount();
-      await screen.findByRole('radio', { name: 'Local (on this device)' });
+      const rows = rowsOf(await engineList());
+      const open = rows.filter((button) => button.getAttribute('aria-expanded') === 'true');
+      expect(open).toEqual(
+        expected.open ? [screen.getByRole('button', { name: expected.open })] : [],
+      );
       const shown = (query: HTMLElement | null) => query !== null;
-      expect(shown(screen.queryByRole('heading', { level: 3, name: 'Claude Code' }))).toBe(
-        expected.claude,
-      );
-      expect(shown(screen.queryByRole('heading', { level: 3, name: 'Codex' }))).toBe(
-        expected.codex,
-      );
-      expect(shown(screen.queryByRole('heading', { level: 3, name: 'Summary models' }))).toBe(
+      expect(shown(screen.queryByRole('combobox', { name: 'Effort' }))).toBe(expected.effort);
+      expect(shown(screen.queryByRole('radiogroup', { name: 'Summary models' }))).toBe(
         expected.local,
       );
       expect(shown(screen.queryByText('Detected on PATH.'))).toBe(expected.status);
@@ -946,21 +1016,198 @@ describe('Settings page', () => {
     }
   });
 
-  it('opens the Claude Code and Codex blocks with mark and description (45)', async () => {
+  it('opens the Claude Code and Codex rows with their mark, model and effort (45)', async () => {
     for (const [provider, name, description] of [
-      ['ClaudeCode', 'Claude Code', 'Model alias and effort passed to the Claude CLI.'],
-      ['Codex', 'Codex', 'Model and reasoning effort passed to the Codex CLI.'],
+      ['ClaudeCode', 'Claude Code CLI', 'Model alias and effort passed to the Claude CLI.'],
+      ['Codex', 'Codex CLI', 'Model and reasoning effort passed to the Codex CLI.'],
     ] as const) {
       resetSettingsPageCache();
       install({ 'settings.getPage': () => pageDto({ provider, cliStatus: 'detected' }) });
       const view = mount();
-      const heading = await screen.findByRole('heading', { level: 3, name });
-      expect(heading.querySelector('svg')).not.toBeNull();
-      expect(screen.getByText(description)).toBeInTheDocument();
+      const button = await openRow(name);
+      expect(button.querySelector('svg')).not.toBeNull();
+      const panel = panelOf(button);
+      expect(within(panel).getByText(description)).toBeVisible();
+      expect(within(panel).getByRole('combobox', { name: 'Model' })).toBeVisible();
+      expect(within(panel).getByRole('combobox', { name: 'Effort' })).toBeVisible();
       view.unmount();
     }
   });
+});
 
+describe('Summary engine list', () => {
+  it('shows every engine with its status from the page, and the model of the one in use', async () => {
+    install({
+      'settings.getPage': () =>
+        pageDto({
+          provider: 'ClaudeCode',
+          engines: engines({ Codex: 'cli-missing', OpenAi: 'ready' }),
+          api: { ...pageDto().api, OpenAi: apiEngine({ keySet: true }) },
+        }),
+    });
+    mount();
+    const list = await engineList();
+    expect(rowsOf(list)).toHaveLength(7);
+    expect(
+      within(list).getByRole('button', { name: 'Local (on this device)' }),
+    ).toHaveAccessibleDescription('Not set up');
+    expect(
+      within(list).getByRole('button', { name: 'Claude Code CLI' }),
+    ).toHaveAccessibleDescription('sonnet In use');
+    expect(within(list).getByRole('button', { name: 'Codex CLI' })).toHaveAccessibleDescription(
+      'Not found',
+    );
+    expect(within(list).getByRole('button', { name: 'OpenAI' })).toHaveAccessibleDescription(
+      'Key saved',
+    );
+    expect(within(list).getByRole('button', { name: 'Anthropic' })).toHaveAccessibleDescription(
+      'Needs key',
+    );
+    expect(
+      within(list).getByRole('button', { name: 'OpenAI-compatible' }),
+    ).toHaveAccessibleDescription('Not set up');
+    // Each group caption names its own list of engines.
+    const byCaption = (name: string) =>
+      within(screen.getByRole('list', { name }))
+        .getAllByRole('listitem')
+        .map((item) => within(item).getAllByRole('button')[0]?.getAttribute('aria-controls'));
+    expect(byCaption('On this PC')).toHaveLength(1);
+    expect(byCaption('With a subscription')).toHaveLength(2);
+    expect(byCaption('With your API key')).toHaveLength(4);
+  });
+
+  it('says Ready for a local model or CLI that can answer', async () => {
+    install({
+      'settings.getPage': () =>
+        pageDto({ provider: 'OpenAi', engines: engines({ Local: 'ready', OpenAi: 'ready' }) }),
+    });
+    mount();
+    expect(await row('Local (on this device)')).toHaveAccessibleDescription('Ready');
+    expect(await row('Codex CLI')).toHaveAccessibleDescription('Ready');
+    expect(await row('OpenAI')).toHaveAccessibleDescription('gpt-5-mini In use');
+  });
+
+  it('opens the engine in use on load; opening another row closes it and never switches engines', async () => {
+    const calls = install({
+      'settings.getPage': () => pageDto({ provider: 'ClaudeCode', cliStatus: 'detected' }),
+    });
+    mount();
+    const user = userEvent.setup();
+    const claude = await openRow('Claude Code CLI');
+    const panel = panelOf(claude);
+    expect(within(panel).getByRole('combobox', { name: 'Effort' })).toBeVisible();
+    expect(screen.getByText('Summaries are made with this engine.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Use this engine' })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Codex CLI' }));
+    expect(screen.getByRole('button', { name: 'Codex CLI' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(claude).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getAllByRole('combobox', { name: 'Effort' })).toHaveLength(1);
+    expect(calls.some((call) => call.name === 'settings.setSummaryProvider')).toBe(false);
+    await inUse('Claude Code CLI');
+
+    // The keyboard toggles the focused row.
+    screen.getByRole('button', { name: 'Codex CLI' }).focus();
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('button', { name: 'Codex CLI' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    expect(screen.queryByRole('combobox', { name: 'Effort' })).toBeNull();
+    await user.keyboard(' ');
+    expect(screen.getByRole('button', { name: 'Codex CLI' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
+
+  it('offers Use this engine only for a ready engine, and it switches with the saved feedback', async () => {
+    let provider = 'Local';
+    const calls = install({
+      'settings.getPage': () =>
+        pageDto({
+          provider,
+          engines: engines({ OpenAi: 'ready' }),
+          api: { ...pageDto().api, OpenAi: apiEngine({ keySet: true }) },
+        }),
+      'settings.setSummaryProvider': (input) => {
+        provider = (input as { kind: string }).kind;
+        return {
+          status: 'saved',
+          settings: {},
+          feedback: { key: 'Xai_FeedbackModel', args: ['gpt-5-mini'] },
+        };
+      },
+    });
+    mount();
+    const user = userEvent.setup();
+    await user.click(await row('Anthropic'));
+    expect(screen.getByText('Save an API key to use Anthropic.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Use this engine' })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'OpenAI-compatible' }));
+    expect(screen.getByText('Add the server address and a model.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Use this engine' })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'OpenAI' }));
+    expect(calls.some((call) => call.name === 'settings.setSummaryProvider')).toBe(false);
+    await user.click(screen.getByRole('button', { name: 'Use this engine' }));
+    expect(calls).toContainEqual({
+      name: 'settings.setSummaryProvider',
+      input: { kind: 'OpenAi' },
+    });
+    expect(await screen.findByText('Saved. Using gpt-5-mini.')).toBeInTheDocument();
+    await inUse('OpenAI');
+    // The row stays open and now says it is in use, with no second Use button.
+    expect(await openRow('OpenAI')).toBeInTheDocument();
+    expect(screen.getByText('Summaries are made with this engine.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Use this engine' })).toBeNull();
+  });
+
+  it('says what a Local engine without a model needs', async () => {
+    install({ 'settings.getPage': () => pageDto({ provider: 'Codex' }) });
+    mount();
+    await userEvent.click(await row('Local (on this device)'));
+    expect(screen.getByText('Download a model to use Local.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Use this engine' })).toBeNull();
+  });
+
+  it('Check again detects the CLI of the open row, not the engine in use', async () => {
+    let codex: 'missing' | 'detected' = 'missing';
+    const calls = install({
+      'settings.getPage': () => pageDto({ engines: engines({ Codex: 'cli-missing' }) }),
+      'settings.detectCli': () => ({ status: codex }),
+    });
+    mount();
+    const user = userEvent.setup();
+    await user.click(await row('Codex CLI'));
+    expect(screen.getByText('Not found on PATH — install it before recording.')).toBeVisible();
+    expect(screen.getByText('Install Codex, then check again.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Use this engine' })).toBeNull();
+
+    codex = 'detected';
+    await user.click(screen.getByRole('button', { name: 'Check again' }));
+    expect(calls).toContainEqual({ name: 'settings.detectCli', input: { kind: 'Codex' } });
+    expect(await screen.findByText('Detected on PATH.')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Codex CLI' })).toHaveAccessibleDescription('Ready');
+    expect(screen.getByRole('button', { name: 'Use this engine' })).toBeVisible();
+    // The engine in use is still Local.
+    await inUse('Local (on this device)');
+  });
+
+  it('drops the effort help text from the CLI setup', async () => {
+    install({ 'settings.getPage': () => pageDto({ provider: 'ClaudeCode' }) });
+    mount();
+    await openRow('Claude Code CLI');
+    expect(screen.getByRole('combobox', { name: 'Effort' })).toBeVisible();
+    expect(screen.queryByText('low, medium, high, xhigh, or max.')).toBeNull();
+  });
+});
+
+describe('Settings page (saved bar)', () => {
   it('closes the saved bar when the user presses Close (76)', async () => {
     install({
       'settings.getPage': () => pageDto({ provider: 'ClaudeCode', cliStatus: 'detected' }),
