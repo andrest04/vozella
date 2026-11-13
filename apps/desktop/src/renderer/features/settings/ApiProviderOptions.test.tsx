@@ -14,6 +14,7 @@ const engine = (extra: Record<string, unknown> = {}) => ({
   keySet: false,
   model: 'gpt-5-mini',
   modelOptions: ['gpt-5-mini', 'gpt-5'],
+  modelLabels: { 'gpt-5-mini': 'GPT-5 Mini' },
   baseUrl: null,
   ...extra,
 });
@@ -32,6 +33,7 @@ function pageDto(extra: Record<string, unknown> = {}): SettingsPageDto {
       OpenAiCompatible: engine({ model: '', modelOptions: [] }),
     },
     cliStatus: null,
+    engines: [],
     transcriptionLanguage: 'es',
     summaryLanguage: 'es',
     hardware: null,
@@ -89,13 +91,15 @@ beforeEach(() => {
 });
 
 describe('Settings: API key engines (BYOK)', () => {
-  it('offers the four API engines in the one provider group, captioned by what the user brings', async () => {
+  it('offers the four API engines in the one engine list, captioned by what the user brings', async () => {
     install({ 'settings.getPage': () => pageDto({ provider: 'Local' }) });
     mount();
-    const group = await screen.findByRole('radiogroup', {
+    const group = await screen.findByRole('group', {
       name: 'Choose where summaries are generated',
     });
-    const radios = within(group).getAllByRole('radio');
+    const rows = within(group)
+      .getAllByRole('button')
+      .filter((button) => button.hasAttribute('aria-expanded'));
     const expected = [
       'Local (on this device)',
       'Claude Code CLI',
@@ -105,31 +109,20 @@ describe('Settings: API key engines (BYOK)', () => {
       'Google Gemini',
       'OpenAI-compatible',
     ];
-    expect(radios).toHaveLength(expected.length);
-    radios.forEach((radio, index) => {
-      expect(radio).toHaveAccessibleName(expected[index]);
+    expect(rows).toHaveLength(expected.length);
+    rows.forEach((button, index) => {
+      expect(button).toHaveAccessibleName(expected[index]);
     });
-    expect(within(group).getByRole('radio', { name: 'OpenAI' })).toHaveAccessibleDescription(
-      'With your API key',
-    );
+    const apiList = screen.getByRole('list', { name: 'With your API key' });
+    expect(within(apiList).getByRole('button', { name: 'OpenAI' })).toBeInTheDocument();
     expect(screen.queryByTestId('ApiProviderOptions')).toBeNull();
   });
 
-  it('selecting an API engine saves its kind and shows its key, model and privacy notice', async () => {
-    let provider = 'Local';
-    const calls = install({
-      'settings.getPage': () => pageDto({ provider }),
-      'settings.setSummaryProvider': (input) => {
-        provider = (input as { kind: string }).kind;
-        return { status: 'saved', settings: {}, feedback: null };
-      },
-    });
+  it('opening an API engine shows its key, model and privacy notice without switching to it', async () => {
+    const calls = install({ 'settings.getPage': () => pageDto({ provider: 'Local' }) });
     mount();
-    await userEvent.click(await screen.findByRole('radio', { name: 'Anthropic' }));
-    expect(calls).toContainEqual({
-      name: 'settings.setSummaryProvider',
-      input: { kind: 'Anthropic' },
-    });
+    await userEvent.click(await screen.findByRole('button', { name: 'Anthropic' }));
+    expect(calls.some((call) => call.name === 'settings.setSummaryProvider')).toBe(false);
     expect(
       await screen.findByText(
         'Transcripts and chat messages are sent to Anthropic to get an answer. Usage is billed to your Anthropic account.',
@@ -204,18 +197,78 @@ describe('Settings: API key engines (BYOK)', () => {
     expect(await screen.findByTestId('TxtApiKeyStatus')).toHaveTextContent(
       'Verified. 2 models are listed under Model.',
     );
-    const options = [...screen.getByTestId('ListApiModels').querySelectorAll('option')].map(
-      (option) => option.value,
-    );
-    expect(options).toEqual(['gpt-5', 'o9-preview', 'gpt-5-mini']);
+    const field = screen.getByRole('combobox', { name: 'Model' });
+    await user.click(field);
+    const options = within(await screen.findByTestId('ListApiModels'))
+      .getAllByRole('option')
+      .map((option) => option.textContent);
+    expect(options).toEqual(['gpt-5', 'o9-preview', 'GPT-5 Minigpt-5-mini']);
+    await user.keyboard('{Escape}');
 
-    const field = screen.getByLabelText('Model', { selector: 'input' });
     await user.clear(field);
     await user.type(field, 'o9-preview{Enter}');
     expect(calls).toContainEqual({
       name: 'settings.setApiOption',
       input: { kind: 'OpenAi', field: 'model', value: 'o9-preview' },
     });
+  });
+
+  it('the model picker lists every suggestion even though a model is saved, and a pick saves', async () => {
+    const calls = install({
+      'settings.getPage': () =>
+        pageDto({
+          provider: 'Anthropic',
+          api: {
+            ...pageDto().api,
+            Anthropic: engine({
+              model: 'claude-opus-5-5',
+              modelOptions: ['claude-opus-5-5', 'claude-sonnet-5-5'],
+              modelLabels: {
+                'claude-opus-5-5': 'Claude Opus 5.5',
+                'claude-sonnet-5-5': 'Claude Sonnet 5.5',
+              },
+            }),
+          },
+        }),
+      'settings.setApiOption': () => ({ status: 'saved', settings: {}, feedback: null }),
+    });
+    mount();
+    const user = userEvent.setup();
+    const field = await screen.findByRole('combobox', { name: 'Model' });
+    // At rest a known model reads by its name; its id is in the description.
+    expect(field).toHaveValue('Claude Opus 5.5');
+    expect(field).toHaveAccessibleDescription(
+      'Pick a suggestion or type any model id. Verify lists the models your key can use. claude-opus-5-5',
+    );
+    await user.click(field);
+    expect(await screen.findAllByRole('option')).toHaveLength(2);
+    await user.click(screen.getByRole('option', { name: /Claude Sonnet 5\.5/ }));
+    expect(calls).toContainEqual({
+      name: 'settings.setApiOption',
+      input: { kind: 'Anthropic', field: 'model', value: 'claude-sonnet-5-5' },
+    });
+    expect(calls.filter((call) => call.name === 'settings.setApiOption')).toHaveLength(1);
+  });
+
+  it('a model id with spaces is refused inline, and a blank one quietly goes back', async () => {
+    const calls = install({
+      'settings.getPage': () => pageDto(),
+      'settings.setApiOption': () => ({ status: 'saved', settings: {}, feedback: null }),
+    });
+    mount();
+    const user = userEvent.setup();
+    const field = await screen.findByRole('combobox', { name: 'Model' });
+    await user.clear(field);
+    await user.type(field, 'gpt 5{Enter}');
+    expect(await screen.findByText('A model id has no spaces.')).toBeVisible();
+    expect(field).toHaveAttribute('aria-invalid', 'true');
+
+    await user.clear(field);
+    await user.click(keyField());
+    // Back to the saved model, which reads by its name now the field is left.
+    expect(field).toHaveValue('GPT-5 Mini');
+    expect(screen.queryByText('A model id has no spaces.')).toBeNull();
+    expect(calls.filter((call) => call.name === 'settings.setApiOption')).toHaveLength(0);
   });
 
   it('a refused key is explained inline, in the live region', async () => {
@@ -259,8 +312,10 @@ describe('Settings: API key engines (BYOK)', () => {
     mount('es');
     expect(await screen.findByLabelText('Clave de API', { selector: 'input' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Verificar' })).toBeVisible();
-    expect(screen.getByRole('radio', { name: 'Google Gemini' })).toHaveAccessibleDescription(
-      'Con tu clave de API',
+    const apiList = screen.getByRole('list', { name: 'Con tu clave de API' });
+    expect(within(apiList).getByRole('button', { name: 'Google Gemini' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
     );
   });
 });

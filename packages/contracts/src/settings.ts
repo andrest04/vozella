@@ -60,10 +60,44 @@ const apiEngineOptionsSchema = z
     keySet: z.boolean(),
     model: z.string(),
     modelOptions: z.array(z.string()).readonly(),
+    /** Readable names of the options the app knows, by id. A page without them parses as none. */
+    modelLabels: z.record(z.string(), z.string()).readonly().default({}),
     baseUrl: z.string().nullable(),
   })
   .strict();
 export type ApiEngineOptionsDto = z.infer<typeof apiEngineOptionsSchema>;
+
+/** The engines the user can pick, in the order the page lists them. Xai is gone, so never here. */
+export const selectableEngineKindSchema = z.enum([
+  'Local',
+  'ClaudeCode',
+  'Codex',
+  'OpenAi',
+  'Anthropic',
+  'Gemini',
+  'OpenAiCompatible',
+]);
+export type SelectableEngineKindDto = z.infer<typeof selectableEngineKindSchema>;
+
+/** Whether an engine could answer if picked now, else the first thing it still needs. */
+export const summaryEngineReadinessSchema = z.enum([
+  'ready',
+  'cli-missing',
+  'needs-key',
+  'needs-server',
+  'needs-model',
+]);
+export type SummaryEngineReadinessDto = z.infer<typeof summaryEngineReadinessSchema>;
+
+const summaryEngineStatusSchema = z
+  .object({
+    kind: selectableEngineKindSchema,
+    readiness: summaryEngineReadinessSchema,
+    /** The model the engine would use, for display; null when there is none yet. */
+    model: z.string().nullable(),
+  })
+  .strict();
+export type SummaryEngineStatusDto = z.infer<typeof summaryEngineStatusSchema>;
 
 export const modelRowSchema = z.object({
   fileName: z.string(),
@@ -101,6 +135,8 @@ export const settingsPageSchema = z.object({
     OpenAiCompatible: apiEngineOptionsSchema,
   }),
   cliStatus: cliStatusSchema.nullable(),
+  /** Every selectable engine with its readiness, so the list needs no selection to show it. */
+  engines: z.array(summaryEngineStatusSchema).readonly(),
   transcriptionLanguage: z.string(),
   summaryLanguage: z.string(),
   hardware: z

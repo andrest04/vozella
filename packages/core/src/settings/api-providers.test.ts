@@ -9,6 +9,7 @@ import {
   API_ENGINE_LIST,
   API_ENGINES,
   apiEngineByProviderId,
+  apiModelLabels,
   apiSetupGap,
   estimateTokens,
   isApiEngine,
@@ -87,6 +88,25 @@ describe('API_ENGINES', () => {
       'gemini-3.6-flash',
       'gemini-3.5-flash-lite',
     ]);
+  });
+
+  it('gives every suggested model a readable name, and nothing else', () => {
+    for (const engine of API_ENGINE_LIST) {
+      expect(Object.keys(engine.modelNames)).toEqual(engine.models);
+    }
+    expect(API_ENGINES.Anthropic.modelNames['claude-opus-5-5']).toBe('Claude Opus 5.5');
+    expect(API_ENGINES.Anthropic.modelNames['claude-fable-5-2']).toBe('Claude Fable 5.2');
+    expect(API_ENGINES.OpenAi.modelNames['gpt-6-astra']).toBe('GPT-6 Astra');
+    expect(API_ENGINES.OpenAi.modelNames['gpt-6.1-sol']).toBe('GPT-6.1 Sol');
+    expect(API_ENGINES.Gemini.modelNames['gemini-3.8-flash']).toBe('Gemini 3.8 Flash');
+    expect(API_ENGINES.Gemini.modelNames['gemini-3.5-flash-lite']).toBe('Gemini 3.5 Flash-Lite');
+  });
+
+  it('labels the known ids of a list and leaves the others to show their id', () => {
+    expect(
+      apiModelLabels(API_ENGINES.Anthropic, ['claude-opus-5-5', 'claude-custom', 'gpt-6-astra']),
+    ).toEqual({ 'claude-opus-5-5': 'Claude Opus 5.5' });
+    expect(apiModelLabels(API_ENGINES.OpenAiCompatible, ['llama3.1'])).toEqual({});
   });
 
   it('offers a suggested list that holds the default model', () => {

@@ -18,6 +18,8 @@ export interface DialogProps {
   readonly initialFocus?: RefObject<HTMLElement | null>;
   /** False for a dialog that only informs while work runs: no close button, Escape does nothing. */
   readonly dismissible?: boolean;
+  /** `wide` (40rem) for a dialog that holds a list of rows with actions; the default is 30rem. */
+  readonly size?: 'default' | 'wide';
 }
 
 /** Modal: focus is trapped, Escape closes, focus returns to what opened it. */
@@ -31,6 +33,7 @@ export function Dialog({
   actions,
   initialFocus,
   dismissible = true,
+  size = 'default',
 }: DialogProps) {
   return (
     <BaseDialog.Root
@@ -56,7 +59,8 @@ export function Dialog({
           className={cn(
             popupSurface,
             popupColors,
-            'fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100vh-4rem)] w-[min(30rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 p-5',
+            'fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100vh-4rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 p-5',
+            size === 'wide' ? 'w-[min(40rem,calc(100vw-2rem))]' : 'w-[min(30rem,calc(100vw-2rem))]',
             'data-starting-style:-translate-y-[calc(50%-4px)] data-ending-style:-translate-y-[calc(50%-4px)]',
           )}
         >

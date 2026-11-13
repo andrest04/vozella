@@ -2,7 +2,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { settingsPageSchema, type EventChannel, type ModelEventDto } from '@vozella/contracts';
+import {
+  settingsPageSchema,
+  type EventChannel,
+  type ModelEventDto,
+  type SettingsPageDto,
+} from '@vozella/contracts';
 import { readSettings, type Logger } from '@vozella/core';
 import {
   FakeApiKeyStore,
@@ -198,6 +203,10 @@ describe('settings handlers', () => {
       summaryLanguage: 'en',
       codex: { effort: 'high' },
     });
+    // Both CLIs are reported, not only the selected one.
+    const { engines } = page as SettingsPageDto;
+    expect(engines.find((engine) => engine.kind === 'Codex')?.readiness).toBe('ready');
+    expect(engines.find((engine) => engine.kind === 'ClaudeCode')?.readiness).toBe('cli-missing');
   });
 
   it('detects the CLI again on request', async () => {

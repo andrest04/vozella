@@ -1,4 +1,5 @@
 // The design system. Pure components: no IPC, no routing, no i18n. Text arrives as props.
+export { Autocomplete, type AutocompleteOption, type AutocompleteProps } from './Autocomplete';
 export { Badge, type BadgeTone } from './Badge';
 export { Button, IconButton, type ButtonProps, type IconButtonProps } from './Button';
 export { Checkbox, type CheckboxProps } from './Checkbox';

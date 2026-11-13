@@ -12,9 +12,15 @@ import {
   type SummaryProviderKind,
 } from '../library';
 import type { ApiKeyStore } from '../api-keys/api-key-store';
-import { API_PROVIDER_KINDS, isCliProvider, type ApiProviderKind } from '../library/settings';
-import { API_ENGINES } from './api-providers';
+import {
+  API_PROVIDER_KINDS,
+  isCliProvider,
+  type ApiProviderKind,
+  type CliProviderKind,
+} from '../library/settings';
+import { API_ENGINES, apiModelLabels } from './api-providers';
 import { cliExecutableName } from './cli-providers';
+import { engineStatuses, type SummaryEngineStatus } from './engine-readiness';
 import {
   CLAUDE_EFFORTS,
   CLAUDE_MODELS,
@@ -47,6 +53,8 @@ export interface ApiEngineOptions {
   readonly model: string;
   /** Suggestions, plus the saved model when it is not on the list (B13). */
   readonly modelOptions: readonly string[];
+  /** Readable names of the options the engine knows, by id. An id without one shows as itself. */
+  readonly modelLabels: Readonly<Record<string, string>>;
   /** The endpoint of the compatible engine; null for the others or when none is saved. */
   readonly baseUrl: string | null;
 }
@@ -61,6 +69,8 @@ export interface SettingsPageSnapshot {
   readonly api: Readonly<Record<ApiProviderKind, ApiEngineOptions>>;
   /** For the selected CLI provider only; null for Local and a removed provider. */
   readonly cliStatus: CliStatus | null;
+  /** Every selectable engine, in display order, with whether it could answer if picked now. */
+  readonly engines: readonly SummaryEngineStatus[];
   readonly transcriptionLanguage: string;
   readonly summaryLanguage: string;
   /** Null when the machine could not be read. */
@@ -104,18 +114,38 @@ export class SettingsPageService {
       this.deps.hardware.detect().catch(() => null),
     ]);
     const provider = resolveSummaryProviderKind(settings);
-    const [models, cliStatus, api] = await Promise.all([
+    // Both CLIs are probed every time, together, so the list can show each one without picking it.
+    const [models, claudeFound, codexFound, api] = await Promise.all([
       this.deps.models.rows(
         hardware,
         hardware ? { gpuOffload: gpuOffloadFor(hardware, this.deps.activeGpuOffload?.()) } : {},
       ),
-      this.detectCli(provider),
+      // A probe that fails reads as not found: it must not keep the page from loading.
+      this.isCliFound('ClaudeCode').catch(() => false),
+      this.isCliFound('Codex').catch(() => false),
       this.apiOptions(settings),
     ]);
+    const cliFound: Record<CliProviderKind, boolean> = {
+      ClaudeCode: claudeFound,
+      Codex: codexFound,
+    };
+    const cliStatus = isCliProvider(provider) ? cliStatusOf(cliFound[provider]) : null;
     const claudeModel = resolveClaudeModelId(settings);
     const claudeEffort = resolveClaudeEffort(settings);
     const codexModel = resolveCodexModelId(settings);
     const codexEffort = resolveCodexEffort(settings);
+    const engines = engineStatuses({
+      settings,
+      cliFound,
+      cliModel: { ClaudeCode: claudeModel, Codex: codexModel },
+      keySet: {
+        OpenAi: api.OpenAi.keySet,
+        Anthropic: api.Anthropic.keySet,
+        Gemini: api.Gemini.keySet,
+        OpenAiCompatible: api.OpenAiCompatible.keySet,
+      },
+      models,
+    });
     return {
       settings,
       uiLanguage: resolveUiLanguage(settings.uiLanguage, this.deps.osLanguages()),
@@ -134,6 +164,7 @@ export class SettingsPageService {
       },
       api,
       cliStatus,
+      engines,
       transcriptionLanguage: resolveMeetingLanguageCode(settings.transcriptionLanguage),
       summaryLanguage: resolveSummaryLanguageCode(settings.summaryLanguage),
       hardware,
@@ -152,10 +183,12 @@ export class SettingsPageService {
         const engine = API_ENGINES[kind];
         const model = engine.resolveModel(settings);
         const keySet = (await this.deps.apiKeys?.has(kind)) ?? false;
+        const modelOptions = model === '' ? engine.models : optionsIncluding(engine.models, model);
         const options: ApiEngineOptions = {
           keySet,
           model,
-          modelOptions: model === '' ? engine.models : optionsIncluding(engine.models, model),
+          modelOptions,
+          modelLabels: apiModelLabels(engine, modelOptions),
           baseUrl: engine.defaultBaseUrl === null ? engine.resolveBaseUrl(settings) : null,
         };
         return [kind, options] as const;
@@ -167,7 +200,12 @@ export class SettingsPageService {
   /** Looks for the program again, so installing it while Settings is open is noticed (B15). */
   async detectCli(kind: SummaryProviderKind): Promise<CliStatus | null> {
     if (!isCliProvider(kind)) return null;
-    const found = await this.deps.cli.isOnPath(cliExecutableName(kind));
-    return found ? 'detected' : 'missing';
+    return cliStatusOf(await this.isCliFound(kind));
+  }
+
+  private isCliFound(kind: CliProviderKind): Promise<boolean> {
+    return this.deps.cli.isOnPath(cliExecutableName(kind));
   }
 }
+
+const cliStatusOf = (found: boolean): CliStatus => (found ? 'detected' : 'missing');

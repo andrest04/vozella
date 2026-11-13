@@ -109,6 +109,48 @@ describe('settings contracts', () => {
     expect(api.safeParse({ ...all, OpenAi: { ...engine, key: 'sk-secret' } }).success).toBe(false);
   });
 
+  it('BYOK: the page carries readable model names, and an older page without them still parses', () => {
+    const engine = {
+      keySet: false,
+      model: 'gpt-6-astra',
+      modelOptions: ['gpt-6-astra', 'gpt-custom'],
+      modelLabels: { 'gpt-6-astra': 'GPT-6 Astra' },
+      baseUrl: null,
+    };
+    const api = settingsPageSchema.shape.api;
+    const all = { OpenAi: engine, Anthropic: engine, Gemini: engine, OpenAiCompatible: engine };
+    const parsed = api.safeParse(all);
+    expect(parsed.success).toBe(true);
+    expect(parsed.data?.OpenAi.modelLabels).toEqual({ 'gpt-6-astra': 'GPT-6 Astra' });
+
+    const older = { ...engine, modelLabels: undefined };
+    const olderPage = api.safeParse({ ...all, OpenAi: older });
+    expect(olderPage.success).toBe(true);
+    expect(olderPage.data?.OpenAi.modelLabels).toEqual({});
+    expect(
+      api.safeParse({ ...all, OpenAi: { ...engine, modelLabels: { 'gpt-6-astra': 6 } } }).success,
+    ).toBe(false);
+  });
+
+  it('the page lists every selectable engine with its readiness, and refuses Xai', () => {
+    const engines = settingsPageSchema.shape.engines;
+    expect(
+      engines.safeParse([
+        { kind: 'Local', readiness: 'needs-model', model: null },
+        { kind: 'ClaudeCode', readiness: 'ready', model: 'sonnet' },
+        { kind: 'Codex', readiness: 'cli-missing', model: 'gpt-5.6' },
+        { kind: 'OpenAi', readiness: 'needs-key', model: 'gpt-6-astra' },
+        { kind: 'OpenAiCompatible', readiness: 'needs-server', model: null },
+      ]).success,
+    ).toBe(true);
+    expect(engines.safeParse([{ kind: 'Xai', readiness: 'ready', model: null }]).success).toBe(
+      false,
+    );
+    expect(engines.safeParse([{ kind: 'Local', readiness: 'whatever', model: null }]).success).toBe(
+      false,
+    );
+  });
+
   it('BYOK: the provider gate can say a key or an endpoint is missing', () => {
     for (const reason of ['key-missing', 'base-url-missing']) {
       expect(

@@ -392,6 +392,7 @@
   "Ui_ApiModelLabel": "Modelo",
   "Ui_ApiModelHelp": "Elige una sugerencia o escribe cualquier id de modelo. Verificar muestra los modelos que tu clave puede usar.",
   "Ui_ApiModelInvalid": "Un id de modelo no lleva espacios.",
+  "Ui_ApiModelShowSuggestions": "Mostrar modelos sugeridos",
   "Ui_ApiBaseUrlLabel": "Dirección del servidor",
   "Ui_ApiBaseUrlHelp": "OpenRouter, Groq, Ollama, LM Studio o cualquier servidor compatible con la API de OpenAI. Por ejemplo, http://localhost:11434/v1.",
   "Ui_ApiBaseUrlInvalid": "Escribe una dirección que empiece por http:// o https://.",
@@ -404,5 +405,19 @@
   "Ui_UpdateReadyBody": "¿Desea instalarla ahora? Vozella se reiniciará.",
   "Ui_UpdateRemindLater": "Recordármelo más tarde",
   "Ui_UpdateInstallNow": "Instalar ahora",
-  "Ui_UpdateInstallFailed": "No se pudo iniciar la actualización. Se instalará la próxima vez que cierre Vozella."
+  "Ui_UpdateInstallFailed": "No se pudo iniciar la actualización. Se instalará la próxima vez que cierre Vozella.",
+  "Ui_SummaryEngineInUse": "En uso",
+  "Ui_SummaryEngineReady": "Listo",
+  "Ui_SummaryEngineKeySaved": "Clave guardada",
+  "Ui_SummaryEngineNotFound": "No encontrado",
+  "Ui_SummaryEngineNeedsKey": "Falta la clave",
+  "Ui_SummaryEngineNotSetUp": "Sin configurar",
+  "Ui_SummaryEngineUse": "Usar este motor",
+  "Ui_SummaryEngineInUseLine": "Los resúmenes se generan con este motor.",
+  "Ui_SummaryEngineMissingCli": "Instala {0} y vuelve a comprobar.",
+  "Ui_SummaryEngineMissingKey": "Guarda una clave de API para usar {0}.",
+  "Ui_SummaryEngineMissingServer": "Agrega la dirección del servidor y un modelo.",
+  "Ui_SummaryEngineMissingLocalModel": "Descarga un modelo para usar Local.",
+  "Ui_SummaryEngineChangeModel": "Cambiar modelo",
+  "Ui_SummaryEngineMissingApiModel": "Elige un modelo para usar {0}."
 }

@@ -38,7 +38,9 @@ test.afterAll(async () => {
 });
 
 test('opening the page writes nothing and shows the saved choices', async () => {
-  await expect(page.getByRole('radio', { name: 'Local (on this device)' })).toBeChecked();
+  await expect(
+    page.getByRole('button', { name: 'Local (on this device)' }),
+  ).toHaveAccessibleDescription(/In use/);
   await expect(page.getByRole('combobox', { name: 'Transcription language' })).toContainText(
     'Spanish',
   );
@@ -46,7 +48,10 @@ test('opening the page writes nothing and shows the saved choices', async () => 
 });
 
 test('a local model downloads, becomes active and is removed', async () => {
-  const group = page.getByRole('radiogroup', { name: 'Summary models' });
+  // The model list lives in a dialog opened from the Local row.
+  await page.getByRole('button', { name: 'Change model' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Summary models' });
+  const group = dialog.getByRole('radiogroup', { name: 'Summary models' });
   const granite = group.getByRole('radio', { name: /Granite 4\.0 Micro/ });
   await expect(granite).toBeDisabled();
   await expect(granite).toHaveAccessibleName(/IBM/);
@@ -80,11 +85,17 @@ test('a local model downloads, becomes active and is removed', async () => {
   await expect(granite).toBeDisabled();
   await expect(granite).not.toBeChecked();
   await expect.poll(() => settingsFile().selectedSummaryModelId).toBeNull();
+  await dialog.getByRole('button', { name: 'Close' }).click();
+  await expect(dialog).toBeHidden();
 });
 
 test('Claude Code shows the PATH check and saves model and effort one field at a time', async () => {
-  await page.getByRole('radio', { name: 'Claude Code CLI' }).click();
+  await page.getByRole('button', { name: 'Claude Code CLI' }).click();
   await expect(page.getByText('Detected on PATH.')).toBeVisible();
+  await page.getByRole('button', { name: 'Use this engine' }).click();
+  await expect(page.getByRole('button', { name: 'Claude Code CLI' })).toHaveAccessibleDescription(
+    /In use/,
+  );
   await expect(page.getByRole('combobox', { name: 'Model' })).toContainText('sonnet');
 
   await choose('Model', 'opus');
@@ -101,18 +112,22 @@ test('Claude Code shows the PATH check and saves model and effort one field at a
   await page.getByRole('button', { name: 'Check again' }).click();
   await expect(page.getByText('Detected on PATH.')).toBeVisible();
 
-  await page.getByRole('radio', { name: 'Codex CLI' }).click();
+  await page.getByRole('button', { name: 'Codex CLI' }).click();
   await expect(page.getByText('Not found on PATH', { exact: false })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Codex CLI' })).toHaveAccessibleDescription(
+    'Not found',
+  );
   await expect(page.getByRole('combobox', { name: 'Model' })).toContainText('gpt-5.6');
 });
 
 test('Grok is not offered as a provider', async () => {
-  await expect(page.getByRole('radio', { name: 'Local (on this device)' })).toBeVisible();
-  await expect(page.getByRole('radio', { name: /Grok/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Local (on this device)' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Grok/ })).toHaveCount(0);
+  // Only the row disclosures: an open row's pickers are buttons with aria-expanded too.
   await expect(
     page
-      .getByRole('radiogroup', { name: 'Choose where summaries are generated' })
-      .getByRole('radio'),
+      .getByRole('group', { name: 'Choose where summaries are generated' })
+      .locator('li > button[aria-expanded]'),
   ).toHaveCount(7);
 });
 
@@ -157,8 +172,8 @@ for (const theme of ['light', 'dark'] as const) {
     }, theme);
     await page.reload();
     await expect(page.getByRole('heading', { level: 2, name: 'Summary provider' })).toBeVisible();
-    await page.getByRole('radio', { name: 'Local (on this device)' }).click();
-    await expect(page.getByRole('radiogroup', { name: 'Summary models' })).toBeVisible();
+    await page.getByRole('button', { name: 'Local (on this device)' }).click();
+    await expect(page.getByRole('button', { name: 'Change model' })).toBeVisible();
     // Axe reads computed colors, so it must see the settled page. A button that turns enabled when
     // the transcription status arrives fades from the disabled 50% opacity, and in this hidden test
     // window that fade can sit at its first frame for seconds; finish every finite transition first.

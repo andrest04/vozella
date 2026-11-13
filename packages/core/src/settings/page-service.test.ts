@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { InMemorySettingsStore } from '../library';
 import { ExitGateRegistry, RestartService } from './exit-gate';
 import { LocalModelsService } from './local-models';
@@ -17,6 +17,8 @@ function page(
     models?: Set<string>;
     store?: InMemorySettingsStore;
     activeGpuOffload?: () => boolean | undefined;
+    keys?: readonly string[];
+    probe?: CliPathProbe;
   } = {},
 ) {
   const store = options.store ?? new InMemorySettingsStore();
@@ -26,9 +28,10 @@ function page(
     download: () => Promise.resolve(),
     delete: () => Promise.resolve(),
   };
-  const probe: CliPathProbe = {
+  const probe: CliPathProbe = options.probe ?? {
     isOnPath: (name) => Promise.resolve(options.cli?.[name] ?? false),
   };
+  const keys = options.keys;
   const notices = new SettingsNotices();
   const service = new SettingsPageService({
     store,
@@ -39,6 +42,7 @@ function page(
     notices,
     capabilities: { localModels: true },
     ...(options.activeGpuOffload ? { activeGpuOffload: options.activeGpuOffload } : {}),
+    ...(keys ? { apiKeys: { has: (kind: string) => Promise.resolve(keys.includes(kind)) } } : {}),
   });
   return { store, service, notices, files };
 }
@@ -91,10 +95,14 @@ describe('SettingsPageService.load', () => {
     expect(api.OpenAi.keySet).toBe(false);
     expect(api.Anthropic.model).toBe('claude-custom');
     expect(api.Anthropic.modelOptions).toContain('claude-custom');
+    expect(api.Anthropic.modelLabels['claude-opus-5-5']).toBe('Claude Opus 5.5');
+    expect(api.Anthropic.modelLabels).not.toHaveProperty('claude-custom');
+    expect(api.Gemini.modelLabels['gemini-3.8-flash']).toBe('Gemini 3.8 Flash');
     expect(api.OpenAiCompatible).toEqual({
       keySet: false,
       model: '',
       modelOptions: [],
+      modelLabels: {},
       baseUrl: 'http://localhost:11434/v1',
     });
     expect(JSON.stringify(api)).not.toMatch(/key"\s*:/i);
@@ -134,6 +142,77 @@ describe('SettingsPageService.load', () => {
     expect((await service.load()).cliStatus).toBeNull();
   });
 
+  it('reports the readiness of every selectable engine in display order, never Xai', async () => {
+    const { service, store } = page();
+    await store.update({ selectedSummaryProvider: 'Xai' });
+    const { engines } = await service.load();
+    expect(engines).toEqual([
+      { kind: 'Local', readiness: 'needs-model', model: null },
+      { kind: 'ClaudeCode', readiness: 'cli-missing', model: 'sonnet' },
+      { kind: 'Codex', readiness: 'cli-missing', model: 'gpt-5.6' },
+      { kind: 'OpenAi', readiness: 'needs-key', model: 'gpt-6-astra' },
+      { kind: 'Anthropic', readiness: 'needs-key', model: 'claude-opus-5-5' },
+      { kind: 'Gemini', readiness: 'needs-key', model: 'gemini-3.8-flash' },
+      { kind: 'OpenAiCompatible', readiness: 'needs-server', model: null },
+    ]);
+  });
+
+  it('probes both CLIs together, whatever engine is selected', async () => {
+    const asked: string[] = [];
+    const answers = new Map<string, (found: boolean) => void>();
+    const probe: CliPathProbe = {
+      isOnPath: (name) => {
+        asked.push(name);
+        return new Promise((resolve) => answers.set(name, resolve));
+      },
+    };
+    const { service } = page({ probe });
+    const loading = service.load();
+    await vi.waitFor(() => expect(asked.sort()).toEqual(['claude', 'codex']));
+    answers.get('claude')?.(true);
+    answers.get('codex')?.(false);
+    const snapshot = await loading;
+    expect(snapshot.cliStatus).toBeNull();
+    expect(snapshot.engines.find((e) => e.kind === 'ClaudeCode')?.readiness).toBe('ready');
+    expect(snapshot.engines.find((e) => e.kind === 'Codex')?.readiness).toBe('cli-missing');
+  });
+
+  it('an API engine is ready with its key; the compatible one with an address and a model', async () => {
+    const { service, store } = page({ keys: ['Gemini', 'Anthropic'] });
+    await store.update({
+      selectedAnthropicModelId: 'claude-custom',
+      openAiCompatibleBaseUrl: 'http://localhost:11434/v1',
+    });
+    const readiness = async () =>
+      Object.fromEntries((await service.load()).engines.map((e) => [e.kind, e]));
+    let engines = await readiness();
+    expect(engines.Gemini).toEqual({
+      kind: 'Gemini',
+      readiness: 'ready',
+      model: 'gemini-3.8-flash',
+    });
+    expect(engines.Anthropic).toMatchObject({ readiness: 'ready', model: 'claude-custom' });
+    expect(engines.OpenAi?.readiness).toBe('needs-key');
+    expect(engines.OpenAiCompatible).toMatchObject({ readiness: 'needs-model', model: null });
+    await store.update({ selectedOpenAiCompatibleModelId: 'llama3' });
+    engines = await readiness();
+    // A local server takes no key: the address and a model are enough.
+    expect(engines.OpenAiCompatible).toMatchObject({ readiness: 'ready', model: 'llama3' });
+  });
+
+  it('Local is ready only with an active model on disk, and names it', async () => {
+    const files = new Set(['granite-4.0-micro-Q4_K_M.gguf']);
+    const { service, store } = page({ models: files });
+    const local = async () => (await service.load()).engines.find((e) => e.kind === 'Local');
+    expect(await local()).toMatchObject({ readiness: 'needs-model', model: null });
+    await store.update({ selectedSummaryModelId: 'granite-4.0-micro-Q4_K_M.gguf' });
+    const active = await local();
+    expect(active?.readiness).toBe('ready');
+    expect(active?.model).toMatch(/Granite/);
+    files.clear();
+    expect(await local()).toMatchObject({ readiness: 'needs-model', model: null });
+  });
+
   it('a saved Xai provider is reported as removed, never as Local', async () => {
     const { service, store } = page();
     await store.update({
@@ -161,6 +240,19 @@ describe('SettingsPageService.load', () => {
     cli.claude = true;
     expect(await service.detectCli('ClaudeCode')).toBe('detected');
     expect(await service.detectCli('Local')).toBeNull();
+  });
+
+  it('a CLI probe that fails reads as not found and leaves the page loading', async () => {
+    const probe: CliPathProbe = {
+      isOnPath: (name) =>
+        name === 'codex' ? Promise.reject(new Error('PATH unreadable')) : Promise.resolve(true),
+    };
+    const { service, store } = page({ probe });
+    await store.update({ selectedSummaryProvider: 'Codex' });
+    const snapshot = await service.load();
+    expect(snapshot.cliStatus).toBe('missing');
+    expect(snapshot.engines.find((e) => e.kind === 'Codex')?.readiness).toBe('cli-missing');
+    expect(snapshot.engines.find((e) => e.kind === 'ClaudeCode')?.readiness).toBe('ready');
   });
 
   it('a hardware probe that fails leaves the page loading, without fit ratings', async () => {

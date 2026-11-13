@@ -37,17 +37,14 @@ test('OpenAI: save a key, see it saved but never shown, verify it, and pass axe'
     });
     await expect(page.getByRole('heading', { level: 2, name: 'Summary provider' })).toBeVisible();
 
-    const group = page.getByRole('radiogroup', { name: 'Choose where summaries are generated' });
-    await group.getByRole('radio', { name: 'OpenAI', exact: true }).click();
+    const list = page.getByRole('group', { name: 'Choose where summaries are generated' });
+    const row = list.getByRole('button', { name: 'OpenAI', exact: true });
+    await expect(row).toHaveAccessibleDescription('Needs key');
+    await row.click();
+    // Without a key OpenAI cannot be used yet, and opening its row switches nothing.
+    await expect(page.getByText('Save an API key to use OpenAI.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Use this engine' })).toHaveCount(0);
     const settingsFile = path.join(launched.dataRoot, 'app', 'settings.json');
-    await expect
-      .poll(() =>
-        fs.existsSync(settingsFile)
-          ? (JSON.parse(fs.readFileSync(settingsFile, 'utf8')) as Record<string, unknown>)
-              .selectedSummaryProvider
-          : null,
-      )
-      .toBe('OpenAi');
 
     await expect(page.getByText(/are sent to OpenAI to get an answer/)).toBeVisible();
     const key = page.getByLabel('API key', { exact: true }).and(page.locator('input'));
@@ -62,13 +59,34 @@ test('OpenAI: save a key, see it saved but never shown, verify it, and pass axe'
     await expect(key).toHaveValue('');
     await expect(page.getByRole('button', { name: 'Remove key' })).toBeVisible();
     expect(await page.content()).not.toContain(SECRET);
+    await expect(row).toHaveAccessibleDescription('Key saved');
+    await page.getByRole('button', { name: 'Use this engine' }).click();
+    await expect
+      .poll(
+        () =>
+          (JSON.parse(fs.readFileSync(settingsFile, 'utf8')) as Record<string, unknown>)
+            .selectedSummaryProvider,
+      )
+      .toBe('OpenAi');
+    await expect(row).toHaveAccessibleDescription(/In use/);
     expect(fs.readFileSync(settingsFile, 'utf8')).not.toContain(SECRET);
 
     await page.getByRole('button', { name: 'Verify' }).click();
     await expect(page.getByTestId('TxtApiKeyStatus')).toHaveText(
       'Verified. 2 models are listed under Model.',
     );
-    await expect(page.getByTestId('ListApiModels').locator('option')).toHaveCount(6);
+    // The saved model fills the field by its name, yet opening the picker lists every suggestion
+    // and the field shows the id to edit.
+    const modelField = page.getByRole('combobox', { name: 'Model' });
+    await expect(modelField).toHaveValue('GPT-6 Astra');
+    await expect(modelField).toHaveAccessibleDescription(/gpt-6-astra/);
+    await modelField.click();
+    await expect(modelField).toHaveValue('gpt-6-astra');
+    const modelList = page.getByTestId('ListApiModels');
+    await expect(modelList.getByRole('option')).toHaveCount(6);
+    await expect(modelList.getByRole('option', { name: /GPT-6 Astra/ })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(modelList).toBeHidden();
 
     expect(await seriousViolations(page)).toEqual([]);
   } finally {

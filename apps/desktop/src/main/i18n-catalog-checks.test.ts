@@ -251,6 +251,10 @@ describe('references in the code (item 118, B21)', () => {
     'Fit_Recommended',
     'Fit_MayBeSlow',
     'Fit_NotRecommended',
+    // The CLI setup dropped the effort help text (the Select lists the values); the carried-over
+    // catalog keeps its keys.
+    'Settings_ClaudeEffort.Description',
+    'Settings_CodexEffort.Description',
   ];
 
   /** The whole quoted key, so a key is not found inside a longer one. */

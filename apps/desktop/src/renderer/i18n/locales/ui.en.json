@@ -392,6 +392,7 @@
   "Ui_ApiModelLabel": "Model",
   "Ui_ApiModelHelp": "Pick a suggestion or type any model id. Verify lists the models your key can use.",
   "Ui_ApiModelInvalid": "A model id has no spaces.",
+  "Ui_ApiModelShowSuggestions": "Show suggested models",
   "Ui_ApiBaseUrlLabel": "Server address",
   "Ui_ApiBaseUrlHelp": "OpenRouter, Groq, Ollama, LM Studio, or any server that speaks the OpenAI API. For example, http://localhost:11434/v1.",
   "Ui_ApiBaseUrlInvalid": "Enter an address that starts with http:// or https://.",
@@ -404,5 +405,19 @@
   "Ui_UpdateReadyBody": "Would you like to install it now? Vozella will restart.",
   "Ui_UpdateRemindLater": "Remind me later",
   "Ui_UpdateInstallNow": "Install now",
-  "Ui_UpdateInstallFailed": "The update could not start. It will install the next time you quit Vozella."
+  "Ui_UpdateInstallFailed": "The update could not start. It will install the next time you quit Vozella.",
+  "Ui_SummaryEngineInUse": "In use",
+  "Ui_SummaryEngineReady": "Ready",
+  "Ui_SummaryEngineKeySaved": "Key saved",
+  "Ui_SummaryEngineNotFound": "Not found",
+  "Ui_SummaryEngineNeedsKey": "Needs key",
+  "Ui_SummaryEngineNotSetUp": "Not set up",
+  "Ui_SummaryEngineUse": "Use this engine",
+  "Ui_SummaryEngineInUseLine": "Summaries are made with this engine.",
+  "Ui_SummaryEngineMissingCli": "Install {0}, then check again.",
+  "Ui_SummaryEngineMissingKey": "Save an API key to use {0}.",
+  "Ui_SummaryEngineMissingServer": "Add the server address and a model.",
+  "Ui_SummaryEngineMissingLocalModel": "Download a model to use Local.",
+  "Ui_SummaryEngineChangeModel": "Change model",
+  "Ui_SummaryEngineMissingApiModel": "Choose a model to use {0}."
 }
