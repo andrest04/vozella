@@ -44,6 +44,8 @@ class FakeChatService implements ChatServicePort {
     live: string | LiveContextSnapshot | null;
     attachmentIds?: readonly string[];
     engine?: string;
+    model?: string;
+    effort?: string;
   }[] = [];
   chunks: string[] = [];
   outcome: (draft: string) => ChatSendOutcome = (draft) => ({
@@ -105,7 +107,12 @@ class FakeChatService implements ChatServicePort {
     draft: string,
     scope: ChatScopeDecision,
     live: string | LiveContextSnapshot | null,
-    options?: { readonly attachmentIds?: readonly string[]; readonly engine?: string },
+    options?: {
+      readonly attachmentIds?: readonly string[];
+      readonly engine?: string;
+      readonly model?: string;
+      readonly effort?: string;
+    },
   ): Promise<ChatSendOutcome> {
     this.sendCalls.push({
       draft,
@@ -113,6 +120,8 @@ class FakeChatService implements ChatServicePort {
       live,
       ...(options?.attachmentIds ? { attachmentIds: options.attachmentIds } : {}),
       ...(options?.engine ? { engine: options.engine } : {}),
+      ...(options?.model ? { model: options.model } : {}),
+      ...(options?.effort ? { effort: options.effort } : {}),
     });
     this.sending = true;
     this.pending = { userText: draft, assistantText: '' };
@@ -142,6 +151,7 @@ function setup(
     liveContext?: ChatControllerDeps['liveContext'];
     attachments?: ChatControllerDeps['attachments'];
     pickAttachments?: ChatControllerDeps['pickAttachments'];
+    engineChoices?: ChatControllerDeps['engineChoices'];
   } = {},
 ) {
   const handlers = new Map<string, (event: never, ...args: unknown[]) => unknown>();
@@ -168,6 +178,7 @@ function setup(
     ...(options.liveContext ? { liveContext: options.liveContext } : {}),
     ...(options.attachments ? { attachments: options.attachments } : {}),
     ...(options.pickAttachments ? { pickAttachments: options.pickAttachments } : {}),
+    ...(options.engineChoices ? { engineChoices: options.engineChoices } : {}),
   });
   registerChatHandlers({
     server: { ipc, logger: logger(), isTrusted: () => true },
@@ -197,7 +208,7 @@ describe('chat handlers', () => {
     const expected = Object.keys(requestChannels).filter(
       (name) => name.startsWith('chat.') && !name.startsWith('chat.prompts.'),
     );
-    expect(expected).toHaveLength(12);
+    expect(expected).toHaveLength(13);
     for (const name of expected) expect(handlers.has(name)).toBe(true);
   });
 
@@ -222,6 +233,53 @@ describe('chat handlers', () => {
     await call('chat.send', sendInput({ engine: 'codex' }));
     await call('chat.send', sendInput());
     expect(service.sendCalls.map((c) => c.engine)).toEqual(['codex', undefined]);
+  });
+
+  it('send passes the picked model and effort with the engine', async () => {
+    const { call, service } = setup();
+    await call('chat.send', sendInput({ engine: 'codex', model: 'gpt-5.5', effort: 'high' }));
+    await call('chat.send', sendInput({ engine: 'openai', model: 'gpt-6-luna' }));
+    expect(service.sendCalls.map((c) => [c.engine, c.model, c.effort])).toEqual([
+      ['codex', 'gpt-5.5', 'high'],
+      ['openai', 'gpt-6-luna', undefined],
+    ]);
+  });
+
+  it('send refuses a model or effort without an engine', async () => {
+    const { call, service } = setup();
+    const result = await call('chat.send', sendInput({ model: 'opus' }));
+    expect(result).toMatchObject({ ok: false });
+    expect(service.sendCalls).toEqual([]);
+  });
+
+  it('getEngineChoices answers the choices from core, and an empty list without them', async () => {
+    const choices = {
+      defaultEngine: 'claude-code' as const,
+      engines: [
+        {
+          engine: 'claude-code' as const,
+          readiness: 'ready' as const,
+          models: [{ id: 'opus', label: 'opus' }],
+          effortOptions: ['low', 'high'],
+          defaultModel: 'opus',
+          defaultEffort: 'low',
+        },
+      ],
+    };
+    const read = vi.fn(() => Promise.resolve(choices));
+    expect(ok(await setup({ engineChoices: read }).call('chat.getEngineChoices', {}))).toEqual(
+      choices,
+    );
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(ok(await setup().call('chat.getEngineChoices', {}))).toEqual({
+      defaultEngine: null,
+      engines: [],
+    });
+    const failing = setup({ engineChoices: () => Promise.reject(new Error('settings broken')) });
+    expect(ok(await failing.call('chat.getEngineChoices', {}))).toEqual({
+      defaultEngine: null,
+      engines: [],
+    });
   });
 
   it('Live scope: adds the digest, title and notes read at send start (T2)', async () => {
@@ -468,11 +526,13 @@ describe('chatProviderSource', () => {
     await source.resolve('claude-code');
     await source.resolve('local');
     await source.resolve();
+    await source.resolve('codex', { model: 'gpt-5.5', effort: 'high' });
     expect(asked).toEqual([
       { kind: 'Codex' },
       { kind: 'ClaudeCode' },
       { kind: 'Local' },
       undefined,
+      { kind: 'Codex', choice: { model: 'gpt-5.5', effort: 'high' } },
     ]);
   });
 });

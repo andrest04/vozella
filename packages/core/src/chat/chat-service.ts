@@ -6,6 +6,7 @@ import type { Logger } from '../logging';
 import { isRemoteEngine } from '../settings/api-providers';
 import { isCliEngine, readsImagesFromDisk } from '../settings/cli-providers';
 import type { CliPromptOptions } from '../summaries/cli-provider';
+import type { ModelChoice } from '../summaries/model-choice';
 import type { ProviderId } from '../summaries/provider';
 import type { SetupKind } from '../summaries/provider-resolver';
 import {
@@ -70,8 +71,11 @@ export type ChatProviderResolution =
   | { readonly status: 'unavailable' };
 
 export interface ProviderSource {
-  /** `engine` is a saved prompt's engine for this send only; unset uses the one from Settings. */
-  resolve(engine?: ChatEngine): Promise<ChatProviderResolution>;
+  /**
+   * `engine` is the engine for this send only (a saved prompt's, or the model picker's); unset uses
+   * the one from Settings. `choice` is the picker's model and effort, only ever with an engine.
+   */
+  resolve(engine?: ChatEngine, choice?: ModelChoice): Promise<ChatProviderResolution>;
 }
 
 /**
@@ -148,7 +152,19 @@ export interface SendOptions {
   readonly attachmentIds?: readonly string[];
   /** A saved prompt's engine (Phase 5). Used for this send only, with the usual setup outcomes. */
   readonly engine?: ChatEngine;
+  /** The model picker's model for `engine`, this send only. Ignored without an engine. */
+  readonly model?: string;
+  /** The model picker's effort for `engine`, this send only. Ignored without an engine. */
+  readonly effort?: string;
 }
+
+/** The picker's model and effort, or undefined when the send names neither. */
+const choiceOf = (options: SendOptions): ModelChoice | undefined => {
+  const choice: { model?: string; effort?: string } = {};
+  if (options.model !== undefined) choice.model = options.model;
+  if (options.effort !== undefined) choice.effort = options.effort;
+  return Object.keys(choice).length === 0 ? undefined : choice;
+};
 
 const NO_FILES: ResolvedAttachments = { documents: [], imageNames: [] };
 
@@ -293,10 +309,13 @@ export class ChatService {
           : [];
 
       // T2: the engine decides the context size, so it is resolved before packing.
+      const choice = choiceOf(options);
       const resolution =
         options.engine === undefined
           ? await this.deps.providers.resolve()
-          : await this.deps.providers.resolve(options.engine);
+          : choice === undefined
+            ? await this.deps.providers.resolve(options.engine)
+            : await this.deps.providers.resolve(options.engine, choice);
       let provider: ChatStreamProvider;
       if (resolution.status === 'unavailable') return fail(providerRemovedFailure(t));
       if (resolution.status === 'needs-setup') {

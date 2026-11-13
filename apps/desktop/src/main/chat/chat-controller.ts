@@ -3,6 +3,7 @@ import {
   chatStateChanged,
   type ChatAttachmentDto,
   type ChatAttachmentListDto,
+  type ChatEngineChoicesDto,
   type ChatScopeDto,
   type ChatSendOutcomeDto,
   type ChatStateDto,
@@ -10,11 +11,13 @@ import {
 import type {
   ChatEngine,
   ChatMessage,
+  EngineChoices,
   ChatProviderResolution,
   ChatSendOutcome,
   ChatService,
   LiveContextSnapshot,
   Logger,
+  ModelChoice,
   ProviderSource,
   SummaryProviderResolver,
 } from '@vozella/core';
@@ -59,7 +62,11 @@ export interface ChatControllerDeps {
   readonly attachments?: ChatAttachmentsPort;
   /** The system file dialog, several files at once. Empty when the user cancels. */
   readonly pickAttachments?: () => Promise<readonly string[]>;
+  /** What the model picker offers (core `readEngineChoices`). Unset: no engines. */
+  readonly engineChoices?: () => Promise<EngineChoices>;
 }
+
+const NO_ENGINE_CHOICES: ChatEngineChoicesDto = { defaultEngine: null, engines: [] };
 
 /** S2: only http and https leave the app. Anything else, or a string that is not a URL, is refused. */
 export function allowedExternalUrl(raw: string): string | null {
@@ -74,17 +81,21 @@ export function allowedExternalUrl(raw: string): string | null {
 
 /**
  * Chat's provider comes from the summaries resolver, so one setting picks the engine for both. A
- * saved prompt's engine asks the resolver for that kind instead, for that send only (Phase 5).
+ * saved prompt's engine, or the model picker's engine, model and effort, ask the resolver for that
+ * kind instead, for that send only. Settings are never written.
  */
 export function chatProviderSource(
   resolver: Pick<SummaryProviderResolver, 'resolveSummaryProvider'>,
 ): ProviderSource {
   return {
-    resolve: async (engine?: ChatEngine): Promise<ChatProviderResolution> => {
+    resolve: async (engine?: ChatEngine, choice?: ModelChoice): Promise<ChatProviderResolution> => {
       const gate =
         engine === undefined
           ? await resolver.resolveSummaryProvider()
-          : await resolver.resolveSummaryProvider({ kind: summaryKindOf(engine) });
+          : await resolver.resolveSummaryProvider({
+              kind: summaryKindOf(engine),
+              ...(choice === undefined ? {} : { choice }),
+            });
       if (gate.status === 'ready') return { status: 'ready', provider: gate.provider };
       if (gate.status === 'needs-setup') return { status: 'needs-setup', kind: gate.kind };
       return { status: 'unavailable' };
@@ -125,8 +136,11 @@ export class ChatController {
     readonly scope: ChatScopeDto;
     readonly liveTranscript: string | null;
     readonly attachmentIds?: readonly string[];
-    /** A saved prompt's engine, for this send only. */
+    /** A saved prompt's or the model picker's engine, for this send only. */
     readonly engine?: ChatEngine;
+    /** The model picker's model and effort for `engine` (the contract refuses them without). */
+    readonly model?: string;
+    readonly effort?: string;
   }): Promise<ChatSendOutcomeDto> {
     const { service, broadcast } = this.deps;
     let lastText = '';
@@ -143,6 +157,8 @@ export class ChatController {
       const options = {
         ...(ids.length > 0 ? { attachmentIds: ids } : {}),
         ...(input.engine === undefined ? {} : { engine: input.engine }),
+        ...(input.model === undefined ? {} : { model: input.model }),
+        ...(input.effort === undefined ? {} : { effort: input.effort }),
       };
       const outcome =
         Object.keys(options).length === 0
@@ -236,6 +252,26 @@ export class ChatController {
 
   state(): ChatStateDto {
     return this.stateDto();
+  }
+
+  /** The model picker's engines. A failed read is an empty list, never an error on the page. */
+  async engineChoices(): Promise<ChatEngineChoicesDto> {
+    const read = this.deps.engineChoices;
+    if (read === undefined) return NO_ENGINE_CHOICES;
+    try {
+      const choices = await read();
+      return {
+        defaultEngine: choices.defaultEngine,
+        engines: choices.engines.map((e) => ({
+          ...e,
+          models: e.models.map((m) => ({ ...m })),
+          effortOptions: [...e.effortOptions],
+        })),
+      };
+    } catch (error) {
+      this.deps.logger.warn('chat engine choices unavailable', { error });
+      return NO_ENGINE_CHOICES;
+    }
   }
 
   setScope(scope: ChatScopeDto): ChatStateDto {

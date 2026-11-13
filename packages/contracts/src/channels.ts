@@ -188,6 +188,7 @@ export const requestChannels = {
   [recording.recordingCancelAsk.name]: recording.recordingCancelAsk,
   [recording.recordingDismissQuestion.name]: recording.recordingDismissQuestion,
   [chat.chatSend.name]: chat.chatSend,
+  [chat.chatGetEngineChoices.name]: chat.chatGetEngineChoices,
   [chat.chatCancel.name]: chat.chatCancel,
   [chat.chatNewChat.name]: chat.chatNewChat,
   [chat.chatState.name]: chat.chatState,

@@ -5,6 +5,7 @@ import { Worker } from 'node:worker_threads';
 import {
   ATTACHMENT_EXTENSIONS,
   ChatService,
+  type EngineChoices,
   type Logger,
   type SummaryProviderResolver,
   type TranslateFn,
@@ -26,7 +27,7 @@ import type { IpcServerDeps } from '../ipc/ipc-server';
 import type { LiveChatContext } from '../recording/live-ask-handlers';
 import type { WindowDialogs } from '../window-dialogs';
 import { ChatController, chatProviderSource, type ChatControllerDeps } from './chat-controller';
-import { recordingProviderSource } from './chat-prompt-log';
+import { promptLogEntry, recordingProviderSource } from './chat-prompt-log';
 import { ChatPromptsController } from './chat-prompts-controller';
 
 export interface ComposeChatDeps {
@@ -48,8 +49,10 @@ export interface ComposeChatDeps {
   readonly writeClipboard: ChatControllerDeps['writeClipboard'];
   /** Opens a link in the browser; the fake native build substitutes its double. */
   readonly openExternal: ChatControllerDeps['openExternal'];
-  /** E2E double: when set, each prompt and its engine are appended to this file. */
+  /** E2E double: when set, each prompt, its engine and any picked model go to this file. */
   readonly promptLogFile?: string;
+  /** What the model picker offers (core `readEngineChoices`). Unset: no engines. */
+  readonly engineChoices?: () => Promise<EngineChoices>;
 }
 
 export interface ComposedChat {
@@ -79,11 +82,8 @@ export function composeChat(deps: ComposeChatDeps): ComposedChat {
   const chatPromptLog = deps.promptLogFile;
   const chatProviders = chatPromptLog
     ? // E2E double: each prompt and the engine that answers it go to a file the spec reads.
-      recordingProviderSource(chatProviderSource(deps.resolver), (prompt, engine) => {
-        fs.appendFileSync(
-          chatPromptLog,
-          `${prompt}\n<<<ENGINE ${engine ?? 'local'}>>>\n<<<END>>>\n`,
-        );
+      recordingProviderSource(chatProviderSource(deps.resolver), (prompt, engine, choice) => {
+        fs.appendFileSync(chatPromptLog, promptLogEntry(prompt, engine, choice));
       })
     : chatProviderSource(deps.resolver);
   const chatService = new ChatService({
@@ -106,6 +106,7 @@ export function composeChat(deps: ComposeChatDeps): ComposedChat {
     logger,
     liveContext: () => deps.liveContext(),
     attachments: chatAttachments,
+    ...(deps.engineChoices === undefined ? {} : { engineChoices: deps.engineChoices }),
     pickAttachments: async () => {
       const result = await deps.dialogs.showOpenDialog({
         properties: ['openFile', 'multiSelections'],

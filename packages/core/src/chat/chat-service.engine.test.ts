@@ -19,6 +19,27 @@ describe('ChatService.send engine override', () => {
     expect(rig.source.engines).toEqual(['codex']);
   });
 
+  it('passes the model and effort with the engine for that send only', async () => {
+    const rig = createChatRig();
+    rig.provider.chunks = ['ok'];
+    await rig.service.send('First', scopeOf(), null, {
+      engine: 'claude-code',
+      model: 'opus',
+      effort: 'high',
+    });
+    await rig.service.send('Second', scopeOf(), null, { engine: 'claude-code' });
+    expect(rig.source.engines).toEqual(['claude-code', 'claude-code']);
+    expect(rig.source.choices).toEqual([{ model: 'opus', effort: 'high' }, undefined]);
+  });
+
+  it('ignores a model or effort sent without an engine', async () => {
+    const rig = createChatRig();
+    rig.provider.chunks = ['ok'];
+    await rig.service.send('Hi', scopeOf(), null, { model: 'opus', effort: 'high' });
+    expect(rig.source.engines).toEqual([undefined]);
+    expect(rig.source.choices).toEqual([undefined]);
+  });
+
   it('a named engine that is gone fails like a normal send', async () => {
     const rig = createChatRig();
     rig.source.resolution = { status: 'unavailable' };

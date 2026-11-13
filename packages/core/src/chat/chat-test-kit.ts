@@ -1,5 +1,6 @@
 import type { CancelSignal } from '../cancel';
 import type { Clock } from '../clock';
+import type { ModelChoice } from '../summaries/model-choice';
 import { CancelledError, type ProviderId } from '../summaries/provider';
 import {
   ChatService,
@@ -122,11 +123,14 @@ export class FakeProviderSource implements ProviderSource {
   resolutions = 0;
   /** The engine each resolve asked for; undefined is the engine from Settings. */
   readonly engines: (ChatEngine | undefined)[] = [];
+  /** The model and effort each resolve asked for; undefined is the ones from Settings. */
+  readonly choices: (ModelChoice | undefined)[] = [];
   constructor(public resolution: ChatProviderResolution) {}
 
-  resolve(engine?: ChatEngine): Promise<ChatProviderResolution> {
+  resolve(engine?: ChatEngine, choice?: ModelChoice): Promise<ChatProviderResolution> {
     this.resolutions += 1;
     this.engines.push(engine);
+    this.choices.push(choice);
     return Promise.resolve(this.resolution);
   }
 }

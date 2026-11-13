@@ -32,13 +32,17 @@ export interface ChatController {
 
 export interface ChatSendRequestOptions {
   readonly engine?: ChatEngineDto;
+  /** The model picker's model and effort for `engine` (never a saved prompt's). */
+  readonly model?: string;
+  readonly effort?: string;
 }
 
 /**
  * How a send ended for the page: `answered`, `restored` (stopped or failed, the text went back to
- * the composer), or `ignored` (blank, already sending, or no scope; nothing was sent).
+ * the composer), `unavailable` (the picked model's engine is no longer ready; the text went back and
+ * no setup ran), or `ignored` (blank, already sending, or no scope; nothing was sent).
  */
-export type ChatSendResult = 'answered' | 'restored' | 'ignored';
+export type ChatSendResult = 'answered' | 'restored' | 'unavailable' | 'ignored';
 
 /** The default engine in Settings, or undefined when it cannot be read. */
 async function readDefaultEngine(): Promise<string | null | undefined> {
@@ -165,11 +169,24 @@ export function useChat(
           liveTranscript: workspace.liveTranscript === '' ? null : workspace.liveTranscript,
           ...(attachmentIds.length > 0 ? { attachmentIds } : {}),
           ...(options.engine === undefined ? {} : { engine: options.engine }),
+          ...(options.engine === undefined || options.model === undefined
+            ? {}
+            : { model: options.model }),
+          ...(options.engine === undefined || options.effort === undefined
+            ? {}
+            : { effort: options.effort }),
         });
       };
 
       try {
         let outcome = await request();
+        const picked = options.model !== undefined || options.effort !== undefined;
+        if (outcome.status === 'setup-required' && picked) {
+          // The picker offers only ready engines, so this one stopped being ready since. The
+          // setup gate would make it the Settings engine; the page drops the pick instead.
+          rollBack();
+          return 'unavailable';
+        }
         if (outcome.status === 'setup-required') {
           // Only a prompt's own engine keeps the default; a normal send sets it up on purpose.
           const keptDefault = options.engine === undefined ? undefined : await readDefaultEngine();

@@ -305,6 +305,94 @@ describe('API key engines', () => {
   });
 });
 
+// Chat's model picker: a model and effort for one request, never written to Settings.
+describe('SummaryProviderResolver model choice', () => {
+  const TWO_B = SUMMARY_MODELS[1]!;
+
+  it('a CLI choice reaches the argv; the next request without one uses Settings', async () => {
+    const t = setup();
+    t.probe.present.add('claude');
+    await t.settings.update({ selectedClaudeModelId: 'sonnet', selectedClaudeEffort: 'low' });
+    const before = await t.settings.load();
+    const chosen = await t.resolver.resolveSummaryProvider({
+      kind: 'ClaudeCode',
+      choice: { model: 'opus', effort: 'max' },
+    });
+    if (chosen.status !== 'ready') throw new Error('expected ready');
+    await summarize(chosen.provider);
+    const plain = await t.resolver.resolveSummaryProvider({ kind: 'ClaudeCode' });
+    if (plain.status !== 'ready') throw new Error('expected ready');
+    await summarize(plain.provider);
+    const [first, second] = t.runner.calls;
+    expect(first!.args).toEqual(expect.arrayContaining(['opus', 'max']));
+    expect(second!.args).toEqual(expect.arrayContaining(['sonnet', 'low']));
+    expect(await t.settings.load()).toEqual(before);
+  });
+
+  it('a CLI model or effort the engine does not offer falls back to Settings', async () => {
+    const t = setup();
+    t.probe.present.add('codex');
+    await t.settings.update({ selectedCodexModelId: 'gpt-5.5', selectedCodexEffort: 'medium' });
+    const r = await t.resolver.resolveSummaryProvider({
+      kind: 'Codex',
+      choice: { model: 'opus', effort: 'max' },
+    });
+    if (r.status !== 'ready') throw new Error('expected ready');
+    await summarize(r.provider);
+    const args = t.runner.calls[0]!.args.join(' ');
+    expect(args).toContain('gpt-5.5');
+    expect(args).toContain('"medium"');
+    expect(args).not.toContain('opus');
+    expect(args).not.toContain('max');
+  });
+
+  it('an API choice sets the model id and ignores effort; a blank or spaced id is ignored', async () => {
+    const t = setup();
+    t.keys.keys.set('OpenAi', 'sk-test');
+    await t.resolver.resolveSummaryProvider({
+      kind: 'OpenAi',
+      choice: { model: 'gpt-6-luna', effort: 'max' },
+    });
+    await t.resolver.resolveSummaryProvider({ kind: 'OpenAi', choice: { model: 'gpt 6' } });
+    await t.resolver.resolveSummaryProvider({ kind: 'OpenAi', choice: { model: '  ' } });
+    expect(t.built.map((b) => b.model)).toEqual(['gpt-6-luna', 'gpt-6-astra', 'gpt-6-astra']);
+    expect((await t.settings.load()).selectedOpenAiModelId).toBeNull();
+  });
+
+  it('a model id lets the compatible engine answer without a saved model', async () => {
+    const t = setup();
+    await t.settings.update({ openAiCompatibleBaseUrl: 'http://localhost:11434/v1' });
+    const r = await t.resolver.resolveSummaryProvider({
+      kind: 'OpenAiCompatible',
+      choice: { model: 'llama3.1' },
+    });
+    expect(r).toMatchObject({ status: 'ready' });
+    expect(t.built.map((b) => b.model)).toEqual(['llama3.1']);
+  });
+
+  it('a Local choice uses that downloaded model, not the one in Settings', async () => {
+    const t = setup([ONE_B.fileName, TWO_B.fileName]);
+    await t.settings.update({ selectedSummaryModelId: ONE_B.fileName });
+    const r = await t.resolver.resolveSummaryProvider({
+      kind: 'Local',
+      choice: { model: TWO_B.fileName, effort: 'high' },
+    });
+    expect(r).toMatchObject({ status: 'ready', modelPath: `C:/models/${TWO_B.fileName}` });
+    expect((await t.settings.load()).selectedSummaryModelId).toBe(ONE_B.fileName);
+  });
+
+  it('a Local choice that is not downloaded needs setup and never builds a provider', async () => {
+    const t = setup([ONE_B.fileName]);
+    await t.settings.update({ selectedSummaryModelId: ONE_B.fileName });
+    for (const model of [TWO_B.fileName, 'unknown.gguf']) {
+      expect(await t.resolver.resolveSummaryProvider({ kind: 'Local', choice: { model } })).toEqual(
+        { status: 'needs-setup', kind: 'Local', reason: 'model-missing' },
+      );
+    }
+    expect(t.localPaths).toEqual([]);
+  });
+});
+
 describe('cliExecutableName', () => {
   it('throws RangeError for non CLI kinds', () => {
     expect(() => cliExecutableName('Local')).toThrow(RangeError);

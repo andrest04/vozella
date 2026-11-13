@@ -5,6 +5,7 @@ import {
   chatAttachRemove,
   chatCancel,
   chatCopyText,
+  chatGetEngineChoices,
   chatMeetingExists,
   chatNewChat,
   chatOpenExternal,
@@ -23,6 +24,7 @@ export interface ChatHandlerDeps {
 /** Wires the chat channels. One line per channel; the rules live in core. */
 export function registerChatHandlers({ server, controller }: ChatHandlerDeps): void {
   registerRequest(server, chatSend, (input) => controller.send(input));
+  registerRequest(server, chatGetEngineChoices, () => controller.engineChoices());
   registerRequest(server, chatCancel, () => ({ cancelled: controller.cancel() }));
   registerRequest(server, chatNewChat, () => ({ started: controller.newChat() }));
   registerRequest(server, chatState, () => controller.state());

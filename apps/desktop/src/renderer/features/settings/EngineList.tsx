@@ -57,6 +57,7 @@ function EngineRow({
     <li className="border-b border-hairline py-1 last:border-b-0">
       <button
         type="button"
+        data-engine={row.kind}
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         aria-describedby={describedBy === '' ? undefined : describedBy}

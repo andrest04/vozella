@@ -7,6 +7,7 @@ import { ThemeProvider } from '../../app/theme';
 import { Providers } from '../../app/test-providers';
 import { SettingsRoute } from './SettingsRoute';
 import { resetSettingsPageCache } from './use-settings-page';
+import { openEngineInSettings } from './engine-focus';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -1331,5 +1332,63 @@ describe('Settings page (saved bar)', () => {
     expect(await screen.findByText('Saved. Using opus.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Close' }));
     expect(screen.queryByText('Saved. Using opus.')).toBeNull();
+  });
+});
+
+describe('Settings page (engine link, C3)', () => {
+  const scrolled = vi.fn();
+  beforeEach(() => {
+    // jsdom has no layout, so it has no scrollIntoView.
+    scrolled.mockClear();
+    Element.prototype.scrollIntoView = scrolled;
+  });
+
+  it('opens the linked engine row and brings it into view, without changing the engine in use', async () => {
+    const calls = install({
+      'settings.getPage': () => pageDto({ provider: 'Local' }),
+      'workspace.dispatch': () => ({}),
+    });
+    openEngineInSettings('Codex');
+    expect(calls).toContainEqual({
+      name: 'workspace.dispatch',
+      input: { action: { type: 'navigateTo', tag: 'Settings' } },
+    });
+    mount();
+    const codex = await openRow('Codex CLI');
+    expect(await row('Local (on this device)')).toHaveAttribute('aria-expanded', 'false');
+    await waitFor(() => {
+      expect(codex).toHaveFocus();
+    });
+    expect(scrolled).toHaveBeenCalled();
+    await inUse('Local (on this device)');
+    expect(calls.some((call) => call.name.startsWith('settings.set'))).toBe(false);
+    expect(calls.some((call) => call.name === 'settings.update')).toBe(false);
+  });
+
+  it('opens the linked row when Settings is already on screen', async () => {
+    install({
+      'settings.getPage': () => pageDto({ provider: 'Local' }),
+      'workspace.dispatch': () => ({}),
+    });
+    mount();
+    await openRow('Local (on this device)');
+    act(() => {
+      openEngineInSettings('Anthropic');
+    });
+    expect(await openRow('Anthropic')).toBeInTheDocument();
+    expect(await row('Local (on this device)')).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('a link is used once: the next visit opens the engine in use again', async () => {
+    install({
+      'settings.getPage': () => pageDto({ provider: 'Local' }),
+      'workspace.dispatch': () => ({}),
+    });
+    openEngineInSettings('Gemini');
+    const first = mount();
+    await openRow('Google Gemini');
+    first.unmount();
+    mount();
+    expect(await openRow('Local (on this device)')).toBeInTheDocument();
   });
 });
