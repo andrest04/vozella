@@ -43,3 +43,7 @@ target/
 .agents/skills/electron-best-practices/
 .agents/skills/electron-builder/
 .agents/skills/impeccable/
+
+# Local environment and recordings
+.env.local
+video/
