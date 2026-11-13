@@ -15,14 +15,18 @@ export interface AsrResult {
   readonly words: readonly AsrWord[];
 }
 
-/** Right-context of the encoder. Live is 3 frames (320 ms); offline is 13 frames (1.12 s). */
+/**
+ * Right-context of the encoder. Live is 6 frames (560 ms); offline is 13 frames (1.12 s).
+ * Live moved from 3 to 6: in the second-pass spike it fixed the live word errors for about
+ * 0.15-0.19 s more delay per final (odd/tasks/second-pass-spike.md on spike/second-pass-measure).
+ */
 export type AsrLatencyProfile = 'live' | 'offline';
 
 /** Frames of 80 ms. Only 0, 1, 3, 6 and 13 are values the model supports. */
 export const SUPPORTED_RIGHT_CONTEXT_FRAMES: readonly number[] = [0, 1, 3, 6, 13];
 
 export function rightContextFrames(profile: AsrLatencyProfile): number {
-  return profile === 'live' ? 3 : 13;
+  return profile === 'live' ? 6 : 13;
 }
 
 /** Sortformer geometry in 80 ms frames. Zero means the library default; left -1 is "default". */

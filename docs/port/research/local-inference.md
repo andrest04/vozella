@@ -8,7 +8,7 @@ Status labels: **Verified** = read in a primary source or in this repo this sess
 ASR
 - `MeetingLive.Core/Native/NemoSpeechNativeLibrary.cs` loads `nemo_speech_asr_c.dll` from an extracted NeMo-Speech.cpp zip and binds 17 C exports by name (`nemo_speech_asr_create`, `_recognize_f32`, `_streaming_recognize`, `_stream_push_f32`, `_stream_next`, `_stream_finish`, `_stream_close`, `_result_*`, `_last_error`).
 - All config structs are size-prefixed and built by hand (backend, model, streaming, endpointing, diarization, recognizer, recognition options).
-- Settings in use: GPU index `0`, or `-1` for CPU; streaming chunk 0.16 s; `rnnt_right_context` 3 frames (320 ms) for live and 13 (1.12 s) for the offline post-Stop pass; energy endpointing at 800 ms; word timestamps, punctuation and optional Sortformer speaker tags on.
+- Settings in use: GPU index `0`, or `-1` for CPU; streaming chunk 0.16 s; `rnnt_right_context` 6 frames (560 ms) for live and 13 (1.12 s) for the offline post-Stop pass; energy endpointing at 800 ms; word timestamps, punctuation and optional Sortformer speaker tags on.
 - The DLL is never unloaded. The code comment says unloading it while ONNX/CUDA worker threads run kills the process (`0xC0000409`). `FinishAndDrain` also aborts CUDA, so the app never closes a stream the normal way.
 - `NemoSpeechRuntimeManager` downloads a pinned zip (v0.1.0, SHA-256 checked), extracts it to `cuda` or `cpu`, and uses an `.incomplete` marker. `SelectBackend` picks CUDA when an NVIDIA GPU is detected.
 - Models (`NemotronAsrCatalog`): `nemotron-3.5-asr-streaming-0.6b.q8_0.gguf` (0.74 GB) and `diar_streaming_sortformer_4spk-v2.q8_0.gguf` (0.14 GB), downloaded from Hugging Face.
@@ -40,7 +40,7 @@ Nemotron 3.5 ASR Streaming 0.6B, FLEURS WER by chunk size, from the model card (
 | Spanish | 4.64 | 4.39 | 4.26 | 4.11 |
 | English | 8.88 | 8.27 | 7.99 | 7.91 |
 
-NVIDIA notes text normalization can inflate these. License OpenMDW-1.1, stated ready for commercial use. English-only users can use the separate English streaming model. The app's 320 ms live and 1.12 s offline profiles match these columns.
+NVIDIA notes text normalization can inflate these. License OpenMDW-1.1, stated ready for commercial use. English-only users can use the separate English streaming model. The app's 560 ms live and 1.12 s offline profiles match these columns.
 
 ### 2.3 sherpa-onnx
 
@@ -99,7 +99,7 @@ LLM options
 ## 4. Recommendation
 
 **ASR: keep NeMo-Speech.cpp and Nemotron. Load the C ABI with koffi inside a dedicated `utilityProcess`, and bump the runtime pin from v0.1.0 to v0.3.0.**
-- Same model, same quality, same behavior the product already tuned (800 ms endpointing, 320 ms live and 1.12 s offline profiles, Sortformer tags). Porting is a 1:1 binding job.
+- Same model, same quality, same behavior the product already tuned (800 ms endpointing, 560 ms live and 1.12 s offline profiles, Sortformer tags). Porting is a 1:1 binding job.
 - v0.3.0 fixes the speaker-collapse bug on long recordings, which is the common meeting case.
 - Fallback if koffi in utilityProcess fails the spike: run `nemo-speech serve` as a child process (option B) behind the same ASR interface.
 - Keep the runtime download manager design (pinned URL + SHA-256, backend folder, incomplete marker). Add `vulkan` as a third backend for non-NVIDIA GPUs; macOS maps to the `metal` and `cpu` archives.

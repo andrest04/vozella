@@ -184,7 +184,7 @@ Status words: `done`, `improved` (a section 7 fix or a recorded decision changed
 
 | #   | Status   | Note                                                                                                                                                                                                  |
 | --- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 96  | done     | Chunk 0.16, padding 1.92/1.92, right context 3 or 13, endpointing on, energy based, 800 ms, offsets and punctuation on, max alternatives 1. Used against the real engine                              |
+| 96  | done     | Chunk 0.16, padding 1.92/1.92, right context 6 or 13, endpointing on, energy based, 800 ms, offsets and punctuation on, max alternatives 1. Used against the real engine                              |
 | 97  | done     | Meeting 340/40/-1/40/188/300 and Streaming zeros with left -1, in `asr-types.ts`; both ran with the real Sortformer                                                                                    |
 | 98  | done     | `readResult` copies the transcript, flags, seconds and words, then destroys the handle in a `finally`                                                                                                  |
 | 99  | done     | Errors read `<function> failed: <last_error>`; a null handle after a good status is also an error                                                                                                     |

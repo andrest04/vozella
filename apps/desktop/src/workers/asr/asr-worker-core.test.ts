@@ -152,7 +152,7 @@ describe('asr worker core', () => {
   it('maps the latency profile to the encoder right context', async () => {
     const { rpc, library } = setup();
     await rpc({ method: 'createRecognizer', recognizerId: 'live', settings: settings() });
-    expect(library.lastConfig?.rnntRightContext).toBe(3);
+    expect(library.lastConfig?.rnntRightContext).toBe(6);
     await rpc({
       method: 'createRecognizer',
       recognizerId: 'off',

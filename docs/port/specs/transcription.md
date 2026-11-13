@@ -150,7 +150,7 @@ Trim + lowercase; null/whitespace gives `auto`.
 
 ### 3.3 Latency profiles and geometry
 
-- `AsrLatencyProfile.Live` = encoder right-context 3 frames (80 ms each, so 320 ms). `Offline` = 13 frames (1.12 s). Supported model values are 0, 1, 3, 6, 13 only (160 ms = 1, 560 ms = 6).
+- `AsrLatencyProfile.Live` = encoder right-context 6 frames (560 ms; it was 3 frames, 320 ms, until the second-pass spike showed 6 fixes live word errors for about 0.15-0.19 s more delay). `Offline` = 13 frames (1.12 s). Supported model values are 0, 1, 3, 6, 13 only (160 ms = 1, 560 ms = 6).
 - `SortformerGeometry.Streaming` passes 0 for every frame field (library defaults, about 1.6 s). `Meeting` passes the very-high-latency NVIDIA profile (80 ms frames): chunk 340, right context 40, left context -1, fifo 40, speaker cache 188, update period 300 (30.4 s input buffer). Left context is `-1` in both geometries (0 is a valid value so -1 is the "default" sentinel). The C ABI applies a field only when chunk/right/fifo/spkcache/update > 0 and left >= 0.
 - **Port divergence: live preset.** The Electron port's Streaming geometry is the model card "low latency" profile instead of the library defaults: chunk 6, right context 7, left context -1, fifo 188, speaker cache 188, update period 144 (1.04 s input buffer). The library defaults are not documented in the v0.3.0 header (it only says "geometry uses streaming defaults unless overridden"), so the live labels now come from a published, reproducible preset. Meeting (offline) is unchanged. Source: https://huggingface.co/nvidia/diar_streaming_sortformer_4spk-v2.
 - Live pass: Live latency + Streaming geometry. Offline pass: Offline latency + Meeting geometry.
@@ -631,7 +631,7 @@ Model and downloader
 95. Runtime and model downloads must not run concurrently on the same paths [B17].
 
 Native binding
-96. Config values: chunk 0.16, CTC padding 1.92/1.92, RNNT right context 3 or 13, endpointing enabled energy-based with 800 ms, word offsets and automatic punctuation on, verbatim and profanity off, max alternatives 1, max speakers 0.
+96. Config values: chunk 0.16, CTC padding 1.92/1.92, RNNT right context 6 or 13, endpointing enabled energy-based with 800 ms, word offsets and automatic punctuation on, verbatim and profanity off, max alternatives 1, max speakers 0.
 97. Diarization geometry values exactly as in 3.3 (Meeting: 340/40/-1/40/188/300; Streaming: 0 except left -1).
 98. Native results are read fully (transcript alt 0, final flag, audio processed seconds, words with start ms, end ms, speaker tag, text) and destroyed immediately.
 99. Native failure statuses throw with the library's last error text.
