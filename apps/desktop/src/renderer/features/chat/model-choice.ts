@@ -5,6 +5,7 @@ import type {
   ChatModelOptionDto,
 } from '@vozella/contracts';
 import type { StringKey } from '../../i18n/translate';
+import { byApiEngineId } from '../ai-provider/api-engines';
 import type { EngineKind } from '../settings/engine-status';
 
 /** What the chat answers with: an engine, its model and, for a CLI, its effort. */
@@ -26,11 +27,7 @@ export const SETTINGS_KIND: Readonly<Record<ChatEngineDto, EngineKind>> = {
   local: 'Local',
   'claude-code': 'ClaudeCode',
   codex: 'Codex',
-  openai: 'OpenAi',
-  anthropic: 'Anthropic',
-  gemini: 'Gemini',
-  groq: 'Groq',
-  'openai-compatible': 'OpenAiCompatible',
+  ...byApiEngineId((engine) => engine.kind),
 };
 
 const engineOf = (
@@ -97,16 +94,11 @@ export const GROUP_CAPTION: Readonly<Record<PickerGroupId, StringKey>> = {
   apiKey: 'Ui_ProviderGroupApiKey',
 };
 
-const GROUP_OF: Readonly<Record<ChatEngineDto, PickerGroupId>> = {
-  local: 'device',
-  'claude-code': 'subscription',
-  codex: 'subscription',
-  openai: 'apiKey',
-  anthropic: 'apiKey',
-  gemini: 'apiKey',
-  groq: 'apiKey',
-  'openai-compatible': 'apiKey',
-};
+const isCli = (engine: ChatEngineDto): boolean => engine === 'claude-code' || engine === 'codex';
+
+/** This PC, a subscription's CLI, or anything else: an API key engine. */
+const groupOf = (engine: ChatEngineDto): PickerGroupId =>
+  engine === 'local' ? 'device' : isCli(engine) ? 'subscription' : 'apiKey';
 
 const GROUP_ORDER: readonly PickerGroupId[] = ['device', 'subscription', 'apiKey'];
 
@@ -149,11 +141,9 @@ export function pickerGroups(
   }
   return GROUP_ORDER.map((id) => ({
     id,
-    engines: engines.filter((item) => GROUP_OF[item.engine] === id),
+    engines: engines.filter((item) => groupOf(item.engine) === id),
   })).filter((group) => group.engines.length > 0);
 }
-
-const isCli = (engine: ChatEngineDto): boolean => engine === 'claude-code' || engine === 'codex';
 
 /** A CLI alias reads as a name (`sonnet` → Sonnet, `gpt-5.6` → GPT-5.6); other labels stay. */
 export function readableModel(engine: ChatEngineDto, model: ChatModelOptionDto): string {

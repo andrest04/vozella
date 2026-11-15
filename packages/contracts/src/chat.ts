@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { API_PROVIDER_IDS } from './api-providers';
 import { defineEvent, defineRequest } from './channel';
 import { summaryEngineReadinessSchema } from './settings';
 import { summarySetupKindSchema } from './summaries';
@@ -111,16 +112,7 @@ export const chatStateSchema = z.object({
 export type ChatStateDto = z.infer<typeof chatStateSchema>;
 
 /** Engines a saved prompt can name (Phase 5), API key engines included (BYOK). Core ids. */
-export const chatEngineSchema = z.enum([
-  'claude-code',
-  'codex',
-  'local',
-  'openai',
-  'anthropic',
-  'gemini',
-  'groq',
-  'openai-compatible',
-]);
+export const chatEngineSchema = z.enum(['claude-code', 'codex', 'local', ...API_PROVIDER_IDS]);
 export type ChatEngineDto = z.infer<typeof chatEngineSchema>;
 
 export const chatSend = defineRequest('chat.send', {

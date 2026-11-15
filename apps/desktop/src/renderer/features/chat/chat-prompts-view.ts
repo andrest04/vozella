@@ -5,6 +5,7 @@ import type {
 } from '@vozella/contracts';
 import { USER_PROMPT_LIMIT, USER_PROMPT_NAME_MAX, type ChatScopeKind } from '@vozella/core';
 import type { StringKey, Translate } from '../../i18n/translate';
+import { byApiEngineId } from '../ai-provider/api-engines';
 
 /** What the create and edit dialog holds. `engine` null is the engine chosen in Settings. */
 export interface PromptFormValues {
@@ -18,11 +19,7 @@ export const ENGINE_LABEL: Readonly<Record<ChatEngineDto, StringKey>> = {
   'claude-code': 'Ui_ChatPromptEngineClaude',
   codex: 'Ui_ChatPromptEngineCodex',
   local: 'Ui_ChatPromptEngineLocal',
-  openai: 'Ui_ApiOpenAiName',
-  anthropic: 'Ui_ApiAnthropicName',
-  gemini: 'Ui_ApiGeminiName',
-  groq: 'Ui_ApiGroqName',
-  'openai-compatible': 'Ui_ApiOpenAiCompatibleName',
+  ...byApiEngineId((engine) => engine.nameKey),
 };
 
 /** A meeting (or Live) gets one-meeting prompts; a folder or all meetings get several. */

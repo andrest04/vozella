@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { API_PROVIDER_KINDS } from './api-providers';
 import { defineEvent, defineRequest } from './channel';
 import { appSettingsSchema } from './library';
 
@@ -17,19 +18,9 @@ export const summaryProviderSchema = z.enum([
   'ClaudeCode',
   'Codex',
   'Xai',
-  'OpenAi',
-  'Anthropic',
-  'Gemini',
-  'Groq',
-  'OpenAiCompatible',
+  ...API_PROVIDER_KINDS,
 ]);
-export const apiProviderKindSchema = z.enum([
-  'OpenAi',
-  'Anthropic',
-  'Gemini',
-  'Groq',
-  'OpenAiCompatible',
-]);
+export const apiProviderKindSchema = z.enum(API_PROVIDER_KINDS);
 export type ApiProviderKindDto = z.infer<typeof apiProviderKindSchema>;
 export type SummaryProviderDto = z.infer<typeof summaryProviderSchema>;
 export const cliStatusSchema = z.enum(['detected', 'missing']);
@@ -74,16 +65,17 @@ const apiEngineOptionsSchema = z
   .strict();
 export type ApiEngineOptionsDto = z.infer<typeof apiEngineOptionsSchema>;
 
+/** The page's `api` object: one entry per API key engine, keyed by its kind. */
+const apiEnginesShape = Object.fromEntries(
+  API_PROVIDER_KINDS.map((kind) => [kind, apiEngineOptionsSchema]),
+) as Record<ApiProviderKindDto, typeof apiEngineOptionsSchema>;
+
 /** The engines the user can pick, in the order the page lists them. Xai is gone, so never here. */
 export const selectableEngineKindSchema = z.enum([
   'Local',
   'ClaudeCode',
   'Codex',
-  'OpenAi',
-  'Anthropic',
-  'Gemini',
-  'Groq',
-  'OpenAiCompatible',
+  ...API_PROVIDER_KINDS,
 ]);
 export type SelectableEngineKindDto = z.infer<typeof selectableEngineKindSchema>;
 
@@ -136,13 +128,7 @@ export const settingsPageSchema = z.object({
   provider: summaryProviderSchema,
   claude: providerOptionsSchema,
   codex: providerOptionsSchema,
-  api: z.object({
-    OpenAi: apiEngineOptionsSchema,
-    Anthropic: apiEngineOptionsSchema,
-    Gemini: apiEngineOptionsSchema,
-    Groq: apiEngineOptionsSchema,
-    OpenAiCompatible: apiEngineOptionsSchema,
-  }),
+  api: z.object(apiEnginesShape),
   cliStatus: cliStatusSchema.nullable(),
   /** Every selectable engine with its readiness, so the list needs no selection to show it. */
   engines: z.array(summaryEngineStatusSchema).readonly(),

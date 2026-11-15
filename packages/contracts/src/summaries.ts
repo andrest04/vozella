@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { API_PROVIDER_IDS, API_PROVIDER_KINDS } from './api-providers';
 import { defineEvent, defineRequest } from './channel';
 import { actionItemSchema, appSettingsSchema } from './library';
 import { modelRowSchema } from './settings';
@@ -13,13 +14,7 @@ const meetingId = z.string().min(1).max(200);
 
 export const summaryCliKindSchema = z.enum(['ClaudeCode', 'Codex']);
 export type SummaryCliKindDto = z.infer<typeof summaryCliKindSchema>;
-export const summaryApiKindSchema = z.enum([
-  'OpenAi',
-  'Anthropic',
-  'Gemini',
-  'Groq',
-  'OpenAiCompatible',
-]);
+export const summaryApiKindSchema = z.enum(API_PROVIDER_KINDS);
 export type SummaryApiKindDto = z.infer<typeof summaryApiKindSchema>;
 export const summarySetupKindSchema = z.enum([
   'Local',
@@ -38,11 +33,7 @@ export const summaryProviderIdSchema = z.enum([
   'local',
   'claude-code',
   'codex',
-  'openai',
-  'anthropic',
-  'gemini',
-  'groq',
-  'openai-compatible',
+  ...API_PROVIDER_IDS,
 ]);
 
 const templateOptionSchema = z.object({

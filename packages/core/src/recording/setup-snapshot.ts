@@ -1,3 +1,4 @@
+import { isApiProvider } from '../library/settings';
 import { API_ENGINES } from '../settings/api-providers';
 import { CLI_ENGINES } from '../settings/cli-providers';
 import { findSummaryModel } from '../settings/summary-models';
@@ -42,14 +43,10 @@ export function summaryCaption(provider: SetupFacts['provider'], modelId: string
     case 'ClaudeCode':
     case 'Codex':
       return ref(CLI_ENGINES[provider].nameKey);
-    case 'OpenAi':
-    case 'Anthropic':
-    case 'Gemini':
-    case 'Groq':
-    case 'OpenAiCompatible':
-      return ref(API_ENGINES[provider].nameKey);
     default:
-      return ref('RecordingSetup_SummaryNotChosen');
+      return isApiProvider(provider)
+        ? ref(API_ENGINES[provider].nameKey)
+        : ref('RecordingSetup_SummaryNotChosen');
   }
 }
 
