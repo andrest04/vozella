@@ -52,6 +52,19 @@ describe('SafeStorageKeyStore', () => {
     expect(await second.get('Gemini')).toBeNull();
   });
 
+  it('keeps the key of a transcription-only provider next to the API engines, apart from them', async () => {
+    const first = new SafeStorageKeyStore({ file, cipher: fakeCipher() });
+    await first.set('Deepgram', 'dg-secret-value');
+    await first.set('Groq', 'gsk-other');
+    expect(fs.readFileSync(file, 'utf8')).not.toContain('dg-secret-value');
+
+    const second = new SafeStorageKeyStore({ file, cipher: fakeCipher() });
+    expect(await second.get('Deepgram')).toBe('dg-secret-value');
+    await second.delete('Deepgram');
+    expect(await second.has('Deepgram')).toBe(false);
+    expect(await second.get('Groq')).toBe('gsk-other');
+  });
+
   it('trims the key and deletes it', async () => {
     const store = new SafeStorageKeyStore({ file, cipher: fakeCipher() });
     await store.set('Gemini', '  g-key \n');

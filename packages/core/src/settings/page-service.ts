@@ -21,6 +21,10 @@ import {
 import { API_ENGINES, apiModelLabels, apiModelOptions } from './api-providers';
 import { cliExecutableName } from './cli-providers';
 import {
+  CLOUD_TRANSCRIPTION_KINDS,
+  type CloudTranscriptionKind,
+} from './cloud-transcription-engines';
+import {
   engineStatuses,
   readEngineAccess,
   type EngineAccess,
@@ -72,6 +76,11 @@ export interface SettingsPageSnapshot {
   readonly claude: ProviderOptions;
   readonly codex: ProviderOptions;
   readonly api: Readonly<Record<ApiProviderKind, ApiEngineOptions>>;
+  /**
+   * Whether the key of each cloud transcription engine is saved. An engine that is also an API
+   * engine shares that engine's key; a transcription-only provider has its own.
+   */
+  readonly transcriptionKeys: Readonly<Record<CloudTranscriptionKind, boolean>>;
   /** For the selected CLI provider only; null for Local and a removed provider. */
   readonly cliStatus: CliStatus | null;
   /** Every selectable engine, in display order, with whether it could answer if picked now. */
@@ -100,7 +109,7 @@ export interface SettingsPageDeps {
    * ratings and the recommendation follow it, so a CPU-only runtime does not count the VRAM.
    */
   readonly activeGpuOffload?: () => boolean | undefined;
-  /** Whether a key is saved per API engine. Without it, no key reads as set. */
+  /** Whether a key is saved, per kind that holds one. Without it, no key reads as set. */
   readonly apiKeys?: Pick<ApiKeyStore, 'has'>;
 }
 
@@ -120,12 +129,13 @@ export class SettingsPageService {
     ]);
     const provider = resolveSummaryProviderKind(settings);
     // Both CLIs are probed every time, together, so the list can show each one without picking it.
-    const [models, access] = await Promise.all([
+    const [models, access, transcriptionKeys] = await Promise.all([
       this.deps.models.rows(
         hardware,
         hardware ? { gpuOffload: gpuOffloadFor(hardware, this.deps.activeGpuOffload?.()) } : {},
       ),
       readEngineAccess(this.deps),
+      this.transcriptionKeys(),
     ]);
     const { cliFound, keySet } = access;
     const api = this.apiOptions(settings, access);
@@ -158,6 +168,7 @@ export class SettingsPageService {
         effortOptions: optionsIncluding(CODEX_EFFORTS, codexEffort),
       },
       api,
+      transcriptionKeys,
       cliStatus,
       engines,
       transcriptionLanguage: resolveMeetingLanguageCode(settings.transcriptionLanguage),
@@ -188,6 +199,16 @@ export class SettingsPageService {
       return [kind, options] as const;
     });
     return Object.fromEntries(entries) as Record<ApiProviderKind, ApiEngineOptions>;
+  }
+
+  /** One flag per cloud transcription engine, each under the kind its key is stored as. */
+  private async transcriptionKeys(): Promise<Readonly<Record<CloudTranscriptionKind, boolean>>> {
+    const entries = await Promise.all(
+      CLOUD_TRANSCRIPTION_KINDS.map(
+        async (kind) => [kind, (await this.deps.apiKeys?.has(kind)) ?? false] as const,
+      ),
+    );
+    return Object.fromEntries(entries) as Record<CloudTranscriptionKind, boolean>;
   }
 
   /** Looks for the program again, so installing it while Settings is open is noticed (B15). */

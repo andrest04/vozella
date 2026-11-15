@@ -2,6 +2,11 @@ import { z } from 'zod';
 import { API_PROVIDER_KINDS } from './api-providers';
 import { defineEvent, defineRequest } from './channel';
 import { appSettingsSchema } from './library';
+import {
+  cloudTranscriptionKindSchema,
+  type CloudTranscriptionKindDto,
+  type TranscriptionProviderKindDto,
+} from './transcription';
 
 /**
  * Settings page channels (module: settings-i18n). The generic `settings.get` and
@@ -22,6 +27,8 @@ export const summaryProviderSchema = z.enum([
 ]);
 export const apiProviderKindSchema = z.enum(API_PROVIDER_KINDS);
 export type ApiProviderKindDto = z.infer<typeof apiProviderKindSchema>;
+/** Every kind a key is stored under: an API engine or a transcription-only provider. */
+export type ApiKeyKindDto = ApiProviderKindDto | TranscriptionProviderKindDto;
 export type SummaryProviderDto = z.infer<typeof summaryProviderSchema>;
 export const cliStatusSchema = z.enum(['detected', 'missing']);
 
@@ -69,6 +76,11 @@ export type ApiEngineOptionsDto = z.infer<typeof apiEngineOptionsSchema>;
 const apiEnginesShape = Object.fromEntries(
   API_PROVIDER_KINDS.map((kind) => [kind, apiEngineOptionsSchema]),
 ) as Record<ApiProviderKindDto, typeof apiEngineOptionsSchema>;
+
+/** The page's `transcriptionKeys` object: whether a key is saved, per cloud transcription engine. */
+const transcriptionKeysShape = Object.fromEntries(
+  cloudTranscriptionKindSchema.options.map((kind) => [kind, z.boolean()]),
+) as Record<CloudTranscriptionKindDto, z.ZodBoolean>;
 
 /** The engines the user can pick, in the order the page lists them. Xai is gone, so never here. */
 export const selectableEngineKindSchema = z.enum([
@@ -129,6 +141,11 @@ export const settingsPageSchema = z.object({
   claude: providerOptionsSchema,
   codex: providerOptionsSchema,
   api: z.object(apiEnginesShape),
+  /**
+   * Whether the key of each cloud transcription engine is saved, never the key. An engine that is
+   * also an API engine shares that engine's key; a transcription-only provider has its own.
+   */
+  transcriptionKeys: z.object(transcriptionKeysShape),
   cliStatus: cliStatusSchema.nullable(),
   /** Every selectable engine with its readiness, so the list needs no selection to show it. */
   engines: z.array(summaryEngineStatusSchema).readonly(),

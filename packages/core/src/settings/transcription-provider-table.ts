@@ -1,0 +1,73 @@
+import type { AppSettings } from '../library/settings';
+
+/*
+ * This module imports types only, like `api-engine-table`, so `api-keys` and the cloud
+ * transcription table can read it without an import cycle.
+ */
+
+/**
+ * How a stored key is checked without transcribing anything: a GET of `path` under the provider's
+ * endpoint with `Authorization: <authScheme> <key>`. Any 2xx answer means the key is accepted.
+ */
+export interface TranscriptionKeyCheck {
+  readonly path: string;
+  readonly authScheme: string;
+}
+
+/** What one row declares. The saved `kind` (also the row's key) never changes. */
+interface TranscriptionProviderDeclaration {
+  readonly kind: string;
+  /** The product name in errors and status lines. */
+  readonly displayName: string;
+  /** Catalog key of the product name in the UI. */
+  readonly nameKey: `Ui_${string}Name`;
+  /** The endpoint without a trailing slash. */
+  readonly defaultBaseUrl: string;
+  /** The same shape as an API engine's, so both serve a cloud transcription engine alike. */
+  readonly resolveBaseUrl: (settings: AppSettings) => string;
+  readonly keyCheck: TranscriptionKeyCheck;
+}
+
+/**
+ * The providers that only transcribe, each with the user's own key (BYOK). They are not summary or
+ * chat engines, so they are not rows of `API_ENGINES`: nothing that lists the API engines (the
+ * summary and chat choices, the setup wizard, the API key group of Settings) ever shows them. What
+ * they share with the API engines is the `ApiKeyStore`, which keeps one key per kind of either
+ * table.
+ *
+ * A new transcription-only provider is one row here plus its row in `CLOUD_TRANSCRIPTION_ENGINES`.
+ * What it still needs by hand is listed in `api-provider-edit-points.test.tsx` (apps/desktop).
+ *
+ * Deepgram (docs checked 2026-11-15): developers.deepgram.com/reference/management-api/projects/list
+ * is the key check (`GET /v1/projects`, 401 for a key it does not know); the `Token` scheme is in
+ * developers.deepgram.com/docs/authenticating.
+ */
+export const TRANSCRIPTION_PROVIDERS = {
+  Deepgram: {
+    kind: 'Deepgram',
+    displayName: 'Deepgram',
+    nameKey: 'Ui_DeepgramName',
+    defaultBaseUrl: 'https://api.deepgram.com/v1',
+    resolveBaseUrl: () => 'https://api.deepgram.com/v1',
+    keyCheck: { path: '/projects', authScheme: 'Token' },
+  },
+} as const satisfies Readonly<Record<string, TranscriptionProviderDeclaration>>;
+
+/** The kinds that hold a key for transcription only. */
+export type TranscriptionProviderKind = keyof typeof TRANSCRIPTION_PROVIDERS;
+type DeclaredTranscriptionProvider = (typeof TRANSCRIPTION_PROVIDERS)[TranscriptionProviderKind];
+
+export interface TranscriptionProvider extends TranscriptionProviderDeclaration {
+  readonly kind: TranscriptionProviderKind;
+  readonly nameKey: DeclaredTranscriptionProvider['nameKey'];
+}
+
+export const TRANSCRIPTION_PROVIDER_LIST: readonly TranscriptionProvider[] =
+  Object.values(TRANSCRIPTION_PROVIDERS);
+export const TRANSCRIPTION_PROVIDER_KINDS: readonly TranscriptionProviderKind[] =
+  TRANSCRIPTION_PROVIDER_LIST.map((provider) => provider.kind);
+
+export const isTranscriptionProviderKind = (
+  kind: string | null | undefined,
+): kind is TranscriptionProviderKind =>
+  kind !== null && kind !== undefined && Object.hasOwn(TRANSCRIPTION_PROVIDERS, kind);

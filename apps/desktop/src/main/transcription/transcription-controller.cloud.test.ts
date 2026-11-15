@@ -223,6 +223,45 @@ describe('status with a cloud engine', () => {
   });
 });
 
+describe('an engine that cannot run yet (temporary until its adapter exists)', () => {
+  it.each([true, false])(
+    'Deepgram is selected and not ready, and the reason is not the key (key saved: %s)',
+    async (key) => {
+      const { controller } = setup({ engine: 'Deepgram', key, localReady: true });
+      const status = await controller.status();
+      expect(engineStatusSchema.parse(status)).toEqual(status);
+      expect(status).toMatchObject({
+        engine: 'Deepgram',
+        ready: false,
+        cloudNotReadyReason: 'unavailable',
+      });
+    },
+  );
+
+  it('the Record gate is told why, and nothing is downloaded or uploaded', async () => {
+    const { controller, models, runtimes, clients } = setup({ engine: 'Deepgram' });
+    expect(await controller.ensureEngine()).toEqual({
+      status: 'failed',
+      message: 'Deepgram cannot transcribe in this version yet. Choose another engine to record.',
+    });
+    expect(models.downloads).toEqual([]);
+    expect(runtimes.downloads).toEqual([]);
+    expect(clients).toEqual([]);
+  });
+
+  it('a re-transcription ends with the same reason and keeps the saved transcript', async () => {
+    const { controller, meetings, events, clients } = setup({ engine: 'Deepgram' });
+    await meetings.save(record());
+    await controller.startRetranscription('m1');
+    expect(await finished(events)).toMatchObject({
+      outcome: 'Failed',
+      message: 'Deepgram cannot transcribe in this version yet. Choose another engine to record.',
+    });
+    expect((await meetings.get('m1'))?.transcript).toBe('[00:00.00-00:01.00] old words');
+    expect(clients).toEqual([]);
+  });
+});
+
 describe('the status after the engine setting or a key changed', () => {
   const published = (events: { channel: string; payload: unknown }[]) =>
     events

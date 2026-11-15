@@ -8,6 +8,7 @@ import {
   MeetingBusyRegistry,
   PatchQueue,
   Workspace,
+  type ApiKeyStore,
   type AppSettings,
   type AsrEngine,
   type HardwareProbe,
@@ -103,6 +104,67 @@ describe('composeTranscription', () => {
   });
 });
 
+describe('composeTranscription: the key of a transcription-only provider', () => {
+  /** Calls a registered request the way the IPC server does, from a trusted frame. */
+  function composeWithHandlers(overrides: Partial<ComposeTranscriptionDeps>) {
+    const handlers = new Map<string, (event: unknown, input: unknown) => unknown>();
+    const server = {
+      ipc: {
+        handle: (name: string, handler: (event: unknown, input: unknown) => unknown) => {
+          handlers.set(name, handler);
+        },
+      },
+      logger: silentLogger(),
+      isTrusted: () => true,
+    };
+    compose({ ...overrides, server: server as unknown as ComposeTranscriptionDeps['server'] });
+    return (name: string, input: unknown) => {
+      const handler = handlers.get(name);
+      if (!handler) throw new Error(`${name} is not registered`);
+      return handler({ senderFrame: null }, input);
+    };
+  }
+
+  it('saves it in the app key store, where the engine status reads it', async () => {
+    const apiKeys: ApiKeyStore = new FakeApiKeyStore();
+    const call = composeWithHandlers({ apiKeys });
+    expect(await call('transcription.setProviderKey', { kind: 'Deepgram', key: 'dg-key' })).toEqual(
+      {
+        ok: true,
+        value: { status: 'saved', keySet: true },
+      },
+    );
+    expect(await apiKeys.get('Deepgram')).toBe('dg-key');
+  });
+
+  it('fake native: Verify answers without opening a connection', async () => {
+    const fake = new FakeFetch({ networkError: true });
+    const apiKeys: ApiKeyStore = new FakeApiKeyStore();
+    await apiKeys.set('Deepgram', 'dg-key');
+    const call = composeWithHandlers({ apiKeys, fakeNative: true, fetch: fake.fetch });
+    expect(await call('transcription.verifyProviderKey', { kind: 'Deepgram' })).toEqual({
+      ok: true,
+      value: { status: 'verified' },
+    });
+    expect(fake.calls).toHaveLength(0);
+  });
+
+  it('the app: Verify asks the provider with the stored key', async () => {
+    const fake = new FakeFetch({ status: 401 });
+    const apiKeys: ApiKeyStore = new FakeApiKeyStore();
+    await apiKeys.set('Deepgram', 'dg-stored-key');
+    const call = composeWithHandlers({ apiKeys, fakeNative: false, fetch: fake.fetch });
+    expect(await call('transcription.verifyProviderKey', { kind: 'Deepgram' })).toEqual({
+      ok: true,
+      value: { status: 'failed', errorKey: 'Ui_ApiKeyInvalid' },
+    });
+    expect(fake.calls[0]).toMatchObject({
+      url: 'https://api.deepgram.com/v1/projects',
+      headers: { authorization: 'Token dg-stored-key' },
+    });
+  });
+});
+
 describe('composeTranscription: cloud transcription engines', () => {
   const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'vozella-compose-cloud-test-'));
   const wav = path.join(folder, 'take.wav');
@@ -160,6 +222,16 @@ describe('composeTranscription: cloud transcription engines', () => {
       engine: 'Groq',
       ready: false,
       cloudNotReadyReason: 'key-missing',
+    });
+    // Deepgram has no adapter yet: with or without its key it cannot run (temporary, T3).
+    const deepgram = compose({
+      library: await cloudLibrary({ transcriptionEngine: 'Deepgram' }),
+      fakeNative: true,
+    });
+    expect(await deepgram.controller.status()).toMatchObject({
+      engine: 'Deepgram',
+      ready: false,
+      cloudNotReadyReason: 'unavailable',
     });
     const local = compose({ library: await cloudLibrary({}), fakeNative: true });
     expect(await local.controller.status()).toMatchObject({

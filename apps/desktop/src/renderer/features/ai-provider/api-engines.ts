@@ -1,5 +1,15 @@
-import type { ApiProviderKindDto, ChatEngineDto } from '@vozella/contracts';
-import { API_ENGINE_LIST, type ApiEngine, type ApiProviderId } from '@vozella/core';
+import type {
+  ApiKeyKindDto,
+  ApiProviderKindDto,
+  ChatEngineDto,
+  TranscriptionProviderKindDto,
+} from '@vozella/contracts';
+import {
+  API_ENGINE_LIST,
+  TRANSCRIPTION_PROVIDER_LIST,
+  type ApiEngine,
+  type ApiProviderId,
+} from '@vozella/core';
 import type { StringKey } from '../../i18n/translate';
 
 /*
@@ -17,6 +27,22 @@ export const API_KINDS: readonly ApiProviderKindDto[] = API_ENGINE_LIST.map(
 export const API_NAME_KEYS = Object.fromEntries(
   API_ENGINE_LIST.map((engine): [ApiProviderKindDto, StringKey] => [engine.kind, engine.nameKey]),
 ) as Readonly<Record<ApiProviderKindDto, StringKey>>;
+
+/**
+ * Catalog key of the product name of everything that holds a key: the API engines, and the
+ * providers that only transcribe (core's `TRANSCRIPTION_PROVIDERS`). The key row and the
+ * transcription section name a provider from here. The lists above stay the API engines only, so
+ * a transcription-only provider is never offered for summaries or chat.
+ */
+export const KEY_PROVIDER_NAME_KEYS: Readonly<Record<ApiKeyKindDto, StringKey>> = {
+  ...API_NAME_KEYS,
+  ...(Object.fromEntries(
+    TRANSCRIPTION_PROVIDER_LIST.map((provider): [TranscriptionProviderKindDto, StringKey] => [
+      provider.kind,
+      provider.nameKey,
+    ]),
+  ) as Readonly<Record<TranscriptionProviderKindDto, StringKey>>),
+};
 
 /** One value per API key engine, keyed by its chat engine id. */
 export const byApiEngineId = <T>(

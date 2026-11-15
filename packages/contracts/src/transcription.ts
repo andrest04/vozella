@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TRANSCRIPTION_PROVIDER_KINDS } from './api-providers';
 import { defineEvent, defineRequest } from './channel';
 
 /**
@@ -30,12 +31,30 @@ export const installProgressSchema = z.object({
 });
 export type InstallProgressDto = z.infer<typeof installProgressSchema>;
 
+/** The providers that only transcribe (core's `TRANSCRIPTION_PROVIDERS`). */
+export const transcriptionProviderKindSchema = z.enum(TRANSCRIPTION_PROVIDER_KINDS);
+export type TranscriptionProviderKindDto = z.infer<typeof transcriptionProviderKindSchema>;
+
+/**
+ * The cloud kinds that can transcribe: the API engines that also transcribe, then the
+ * transcription-only providers. It restates core's `CLOUD_TRANSCRIPTION_KINDS`.
+ */
+export const cloudTranscriptionKindSchema = z.enum([
+  'Groq',
+  'OpenAi',
+  ...TRANSCRIPTION_PROVIDER_KINDS,
+]);
+export type CloudTranscriptionKindDto = z.infer<typeof cloudTranscriptionKindSchema>;
+
 /**
  * The engines that can transcribe: the local one and the cloud kinds. It restates core's
  * `TRANSCRIPTION_ENGINE_KINDS`: contracts depends on zod only, so it cannot import core.
  * `transcription-controller.cloud.test.ts` (apps/desktop) compares the two.
  */
-export const transcriptionEngineKindSchema = z.enum(['Local', 'Groq', 'OpenAi']);
+export const transcriptionEngineKindSchema = z.enum([
+  'Local',
+  ...cloudTranscriptionKindSchema.options,
+]);
 export type TranscriptionEngineKindDto = z.infer<typeof transcriptionEngineKindSchema>;
 
 export const engineStatusSchema = z.object({
@@ -46,8 +65,11 @@ export const engineStatusSchema = z.object({
   ready: z.boolean(),
   /** The engine the settings select. The fields below it describe the local engine only. */
   engine: transcriptionEngineKindSchema,
-  /** Why a cloud engine is not ready. Null for the local engine and for a ready cloud engine. */
-  cloudNotReadyReason: z.enum(['key-missing']).nullable(),
+  /**
+   * Why a cloud engine is not ready. Null for the local engine and for a ready cloud engine.
+   * `unavailable` is an engine this version can select but cannot run yet, key or no key.
+   */
+  cloudNotReadyReason: z.enum(['key-missing', 'unavailable']).nullable(),
   modelInstalled: z.boolean(),
   runtimes: z.object({ cpu: z.boolean(), cuda: z.boolean() }),
   speakerModelInstalled: z.boolean(),
@@ -137,6 +159,41 @@ export const transcriptionDeleteSpeakerModel = defineRequest('transcription.dele
   output: z.discriminatedUnion('status', [
     z.object({ status: z.literal('deleted') }),
     z.object({ status: z.literal('failed'), message: z.string() }),
+  ]),
+});
+
+// ------------------------------------------- keys of transcription-only providers
+
+const providerKeyOutcomeSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('saved'), keySet: z.boolean() }).strict(),
+  z.object({ status: z.literal('failed'), errorKey: z.string() }).strict(),
+]);
+
+/**
+ * Saves the user's key for a provider that only transcribes. Like `settings.setApiKey`, the key
+ * travels from the page to main once and is never sent back, and a blank key removes it. These
+ * providers are not API engines, so their keys have their own channels: nothing a summary or a
+ * chat can select takes one of these kinds.
+ */
+export const transcriptionSetProviderKey = defineRequest('transcription.setProviderKey', {
+  input: z.object({ kind: transcriptionProviderKindSchema, key: z.string().max(2_000) }).strict(),
+  output: providerKeyOutcomeSchema,
+});
+
+export const transcriptionClearProviderKey = defineRequest('transcription.clearProviderKey', {
+  input: z.object({ kind: transcriptionProviderKindSchema }).strict(),
+  output: providerKeyOutcomeSchema,
+});
+
+/**
+ * Asks the provider whether it accepts the saved key. It transcribes nothing and lists no models.
+ * A failure is the catalog key of the reason; `{0}` in it is the provider's name.
+ */
+export const transcriptionVerifyProviderKey = defineRequest('transcription.verifyProviderKey', {
+  input: z.object({ kind: transcriptionProviderKindSchema }).strict(),
+  output: z.discriminatedUnion('status', [
+    z.object({ status: z.literal('verified') }).strict(),
+    z.object({ status: z.literal('failed'), errorKey: z.string() }).strict(),
   ]),
 });
 

@@ -5,11 +5,12 @@ import type {
 } from '@vozella/contracts';
 import {
   CLOUD_TRANSCRIPTION_ENGINE_LIST,
-  CLOUD_TRANSCRIPTION_KINDS,
+  CLOUD_TRANSCRIPTION_ENGINES,
   INSTALL_STAGE_LABEL_KEYS,
   isCloudTranscriptionKind,
   LIVE_DROP_WARNING_PERCENT,
   LOCAL_TRANSCRIPTION_ENGINE,
+  type CloudLiveText,
   type CloudTranscriptionKind,
 } from '@vozella/core';
 import { CircleDashed, KeyRound } from 'lucide-react';
@@ -30,7 +31,7 @@ import {
   type RadioOption,
 } from '../../ui';
 import type { ApiKeyActions } from '../ai-provider/ApiKeyField';
-import { API_NAME_KEYS } from '../ai-provider/api-engines';
+import { KEY_PROVIDER_NAME_KEYS } from '../ai-provider/api-engines';
 import { ProviderMark } from '../ai-provider/ProviderMark';
 import { CloudEngineSetup } from './CloudEngineSetup';
 import { overallPercent } from './live-lines';
@@ -44,9 +45,20 @@ import { useEngineInstall } from './use-engine-install';
 import { useEngineStatus } from './use-engine-status';
 import { useSpeakerModel } from './use-speaker-model';
 
+/**
+ * The words that depend on how the live text of a cloud engine arrives: the line under its name
+ * in the engine choice, and the description of the live switch. `{0}` is the provider's name.
+ */
+const LIVE_TEXT_KEYS: Readonly<
+  Record<CloudLiveText, { readonly choice: StringKey; readonly live: StringKey }>
+> = {
+  pieces: { choice: 'Ui_TranscriptionCloudHelp', live: 'Ui_LiveCloudDescription' },
+  streaming: { choice: 'Ui_TranscriptionStreamingHelp', live: 'Ui_LiveStreamingDescription' },
+};
+
 export interface TranscriptionSectionProps {
-  /** The Settings page snapshot: which API keys are saved, and the saved cloud model. */
-  readonly page: Pick<SettingsPageDto, 'api' | 'settings'>;
+  /** The Settings page snapshot: which cloud engines have their key, and the saved cloud model. */
+  readonly page: Pick<SettingsPageDto, 'transcriptionKeys' | 'settings'>;
   /** The key commands of the Settings page, and its reload after a setting changed. */
   readonly model: ApiKeyActions & { readonly load: () => Promise<void> };
 }
@@ -87,8 +99,12 @@ export function TranscriptionSection({ page, model }: TranscriptionSectionProps)
   const selected: TranscriptionEngineKindDto =
     chosen ?? status?.engine ?? LOCAL_TRANSCRIPTION_ENGINE;
   const cloud = isCloudTranscriptionKind(selected) ? selected : null;
-  const cloudName = cloud ? t(API_NAME_KEYS[cloud]) : '';
-  const cloudKeySet = cloud !== null && page.api[cloud].keySet;
+  const cloudName = cloud ? t(KEY_PROVIDER_NAME_KEYS[cloud]) : '';
+  const cloudKeySet = cloud !== null && page.transcriptionKeys[cloud];
+  // TEMPORARY (deepgram-streaming-transcription T1): an engine this version cannot run yet. The
+  // status of main is about the saved engine, so it only counts once the choice has settled.
+  const cloudUnavailable =
+    cloud !== null && status?.engine === cloud && status.cloudNotReadyReason === 'unavailable';
 
   // The recognizer snapshot only counts while it still matches the current settings.
   const speakerModelMissing =
@@ -179,9 +195,9 @@ export function TranscriptionSection({ page, model }: TranscriptionSectionProps)
       ),
       description: t('Ui_TranscriptionLocalHelp'),
     },
-    ...CLOUD_TRANSCRIPTION_KINDS.map((kind): RadioOption => {
-      const name = t(API_NAME_KEYS[kind]);
-      const keySet = page.api[kind].keySet;
+    ...CLOUD_TRANSCRIPTION_ENGINE_LIST.map(({ kind, liveText }): RadioOption => {
+      const name = t(KEY_PROVIDER_NAME_KEYS[kind]);
+      const keySet = page.transcriptionKeys[kind];
       const keyText = t(keySet ? 'Ui_SummaryEngineKeySaved' : 'Ui_SummaryEngineNeedsKey');
       return {
         value: kind,
@@ -194,7 +210,7 @@ export function TranscriptionSection({ page, model }: TranscriptionSectionProps)
             <span className="sr-only">, {keyText}</span>
           </span>
         ),
-        description: t('Ui_TranscriptionCloudHelp', name),
+        description: t(LIVE_TEXT_KEYS[liveText].choice, name),
         trailing: (
           <span
             aria-hidden="true"
@@ -237,6 +253,7 @@ export function TranscriptionSection({ page, model }: TranscriptionSectionProps)
           reveal={choseHere}
           kind={cloud}
           keySet={cloudKeySet}
+          unavailable={cloudUnavailable}
           keys={model}
           savedModel={page.settings.cloudTranscriptionModelId ?? null}
           onModelChange={(next) => {
@@ -313,10 +330,10 @@ export function TranscriptionSection({ page, model }: TranscriptionSectionProps)
         description={
           liveUnavailable
             ? cloud
-              ? t('Ui_LiveNeedsKey', cloudName)
+              ? t(cloudUnavailable ? 'Ui_CloudEngineUnavailable' : 'Ui_LiveNeedsKey', cloudName)
               : t('Ui_LiveNeedsEngine')
             : cloud
-              ? t('Ui_LiveCloudDescription', cloudName)
+              ? t(LIVE_TEXT_KEYS[CLOUD_TRANSCRIPTION_ENGINES[cloud].liveText].live, cloudName)
               : t('Ui_LiveTranscriptionDescription')
         }
       >

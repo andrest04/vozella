@@ -6,6 +6,7 @@ import {
   FakeRuntimeStore,
   FakeSpeechTimer,
   InMemorySettingsStore,
+  type ApiKeyStore,
   type AppSettings,
   type CancelSignal,
   type CloudTranscriptionKind,
@@ -14,7 +15,11 @@ import {
 import { describe, expect, it, vi } from 'vitest';
 import { FakeApiKeyStore } from '../fakes/fake-api-key-store';
 import { FakeSpeechToTextClient } from '../fakes/fake-speech-to-text-client';
-import { systemSpeechTimer, TranscriptionRuntime } from './transcription-runtime';
+import {
+  systemSpeechTimer,
+  TranscriptionRuntime,
+  UnavailableSpeechEngineProvider,
+} from './transcription-runtime';
 
 const RATE = 16_000;
 const logger: Logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
@@ -126,6 +131,40 @@ describe('TranscriptionRuntime: the selected engine', () => {
     expect(text).toBe('[00:00.00-00:00.90] uno dos');
     expect(engine.recognizers).toHaveLength(0);
     expect(runtime.live.lastDraftIsComplete).toBe(true);
+  });
+});
+
+describe('TranscriptionRuntime: an engine whose adapter does not exist yet (temporary)', () => {
+  it('Deepgram is the selected engine but is not ready, with or without its key', async () => {
+    const { runtime, settings, keys, clients } = setup();
+    const store: ApiKeyStore = keys;
+    await settings.update({ transcriptionEngine: 'Deepgram' });
+    const engine = await runtime.engine();
+    expect(engine.kind).toBe('Deepgram');
+    expect(engine).toBeInstanceOf(UnavailableSpeechEngineProvider);
+    expect(await engine.isReady()).toBe(false);
+    await store.set('Deepgram', 'dg-test');
+    expect(await (await runtime.engine()).isReady()).toBe(false);
+    // The OpenAI-compatible client is never built for a provider that does not speak it.
+    expect(clients).toEqual([]);
+  });
+
+  it('a pass on it fails with a plain reason and uploads nothing', async () => {
+    const { runtime, settings, clients, engine } = setup();
+    await settings.update({ transcriptionEngine: 'Deepgram' });
+    await expect(offline(runtime)).rejects.toMatchObject({
+      kind: 'Unknown',
+      displayName: 'Deepgram',
+    });
+    expect(clients).toEqual([]);
+    // It never falls back to the engine on this PC behind the user's back.
+    expect(engine.recognizers).toHaveLength(0);
+  });
+
+  it('the engines that have an adapter are not affected', async () => {
+    const { runtime, settings } = setup();
+    await settings.update({ transcriptionEngine: 'Groq' });
+    expect(await runtime.engine()).not.toBeInstanceOf(UnavailableSpeechEngineProvider);
   });
 });
 

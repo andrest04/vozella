@@ -44,10 +44,12 @@ describe('TranscriptionSection: the engine choice', () => {
       'true',
       'false',
       'false',
+      'false',
     ]);
     expect(within(group).getByRole('radio', { name: /^On this PC/ })).toBeChecked();
     expect(within(group).getByRole('radio', { name: /^Groq/ })).not.toBeChecked();
     expect(within(group).getByRole('radio', { name: /^OpenAI/ })).not.toBeChecked();
+    expect(within(group).getByRole('radio', { name: /^Deepgram/ })).not.toBeChecked();
     // Nothing about a cloud engine is shown while this PC transcribes.
     expect(screen.queryByTestId('cloud-engine-setup')).toBeNull();
     expect(screen.queryByText(/is sent to/)).toBeNull();
@@ -63,6 +65,42 @@ describe('TranscriptionSection: the engine choice', () => {
     expect(within(group).getByTestId('engine-key-Groq')).toHaveTextContent('Needs key');
     expect(within(group).getByTestId('engine-key-OpenAi')).toHaveTextContent('Key saved');
     expect(within(group).queryByTestId('engine-key-Local')).toBeNull();
+  });
+
+  it('offers Deepgram last, with its own key and the promise of text as you speak', async () => {
+    installTranscriptionApi();
+    mount(sectionProps({ keys: ['Deepgram'] }));
+    const group = await choice();
+    const deepgram = within(group).getByRole('radio', { name: /^Deepgram.*Key saved/ });
+    expect(within(group).getAllByRole('radio').at(-1)).toBe(deepgram);
+    expect(
+      within(group).getByText(
+        'In the cloud, with your own Deepgram API key. The text appears as you speak.',
+      ),
+    ).toBeVisible();
+    expect(within(group).getByTestId('engine-key-Deepgram')).toHaveTextContent('Key saved');
+    // The key of Groq is another key: saving Deepgram's says nothing about it.
+    expect(within(group).getByTestId('engine-key-Groq')).toHaveTextContent('Needs key');
+    // The engines that upload pieces keep their own words.
+    expect(
+      within(group).getByText('In the cloud, with your own Groq API key. Works on any computer.'),
+    ).toBeVisible();
+    expect(
+      within(group).queryByText(
+        'In the cloud, with your own Groq API key. The text appears as you speak.',
+      ),
+    ).toBeNull();
+  });
+
+  it('choosing Deepgram saves it and drops a model that is not its own', async () => {
+    const api = installTranscriptionApi({ 'transcription.getStatus': () => groqReady });
+    mount(sectionProps({ keys: ['Groq'], cloudModel: 'whisper-large-v3' }));
+    await userEvent.click(within(await choice()).getByRole('radio', { name: /^Deepgram/ }));
+    await waitFor(() => {
+      expect(updates(api)).toEqual([
+        { patch: { transcriptionEngine: 'Deepgram', cloudTranscriptionModelId: null } },
+      ]);
+    });
   });
 
   it('choosing a cloud engine saves it and asks for the status again', async () => {
@@ -287,6 +325,134 @@ describe('TranscriptionSection: a cloud engine with its key', () => {
   });
 });
 
+describe('TranscriptionSection: Deepgram, a provider that only transcribes', () => {
+  const deepgramNoKey = {
+    ...baseStatus,
+    engine: 'Deepgram',
+    ready: false,
+    cloudNotReadyReason: 'key-missing',
+  };
+  const deepgramReady = { ...baseStatus, engine: 'Deepgram', ready: true };
+
+  it('names the provider the audio goes to and saves the key for Deepgram', async () => {
+    installTranscriptionApi({ 'transcription.getStatus': () => deepgramNoKey });
+    const props = mount();
+    const setup = await screen.findByRole('group', { name: 'Deepgram setup' });
+    expect(
+      within(setup).getByText(
+        'While Deepgram is selected, the audio of each meeting is sent to Deepgram to be turned into text.',
+      ),
+    ).toBeVisible();
+    const key = within(setup).getByLabelText('API key', { selector: 'input' });
+    await userEvent.type(key, 'dg-test-123');
+    await userEvent.click(within(setup).getByRole('button', { name: 'Save key' }));
+    expect(props.model.calls).toEqual([
+      { name: 'setApiKey', kind: 'Deepgram', key: 'dg-test-123' },
+    ]);
+    expect(await within(setup).findByText('Key saved.')).toBeVisible();
+  });
+
+  it('links the Deepgram console in the key guide', async () => {
+    installTranscriptionApi({ 'transcription.getStatus': () => deepgramNoKey });
+    mount();
+    const setup = await screen.findByRole('group', { name: 'Deepgram setup' });
+    expect(
+      within(setup).getByRole('button', { name: 'How to get a Deepgram API key' }),
+    ).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      within(setup).getByRole('link', { name: /Open the Deepgram API keys page/ }),
+    ).toHaveAttribute('href', 'https://console.deepgram.com/');
+  });
+
+  it('says the key only transcribes, never that it serves summaries and chat', async () => {
+    installTranscriptionApi({ 'transcription.getStatus': () => deepgramReady });
+    mount(sectionProps({ keys: ['Deepgram'] }));
+    const setup = await screen.findByRole('group', { name: 'Deepgram setup' });
+    expect(
+      within(setup).getByText(
+        'This key is used only to transcribe. Summaries and chat use the engine you choose for them.',
+      ),
+    ).toBeVisible();
+    expect(within(setup).queryByText(/also works for summaries and chat/)).toBeNull();
+    expect(within(setup).getByRole('button', { name: 'Remove key' })).toBeEnabled();
+  });
+
+  it('Verify and Remove go to Deepgram, and a Verify that passes says the key works', async () => {
+    installTranscriptionApi({ 'transcription.getStatus': () => deepgramReady });
+    const props = mount(sectionProps({ keys: ['Deepgram'] }));
+    const setup = await screen.findByRole('group', { name: 'Deepgram setup' });
+    await userEvent.click(within(setup).getByRole('button', { name: 'Verify' }));
+    expect(await within(setup).findByText('Verified. Deepgram accepted the key.')).toBeVisible();
+    await userEvent.click(within(setup).getByRole('button', { name: 'Remove key' }));
+    expect(props.model.calls).toEqual([
+      { name: 'verifyApiKey', kind: 'Deepgram' },
+      { name: 'clearApiKey', kind: 'Deepgram' },
+    ]);
+  });
+
+  it('offers Nova-3 as its one model', async () => {
+    installTranscriptionApi({ 'transcription.getStatus': () => deepgramReady });
+    mount(sectionProps({ keys: ['Deepgram'] }));
+    const picker = await screen.findByRole('combobox', { name: 'Transcription model' });
+    expect(picker).toHaveTextContent('Nova-3');
+    await userEvent.click(picker);
+    expect((await screen.findAllByRole('option')).map((option) => option.textContent)).toEqual([
+      'Nova-3',
+    ]);
+  });
+
+  it('says live captions appear as you speak', async () => {
+    installTranscriptionApi({ 'transcription.getStatus': () => deepgramReady });
+    mount(sectionProps({ keys: ['Deepgram'] }));
+    const live = await screen.findByRole('switch', { name: 'Live transcription during recording' });
+    await waitFor(() => {
+      expect(live).toBeChecked();
+    });
+    expect(
+      screen.getByRole('group', { name: 'Live transcription during recording' }),
+    ).toHaveAccessibleDescription(
+      'Shows captions on screen while you record. With Deepgram the text appears as you speak.',
+    );
+  });
+
+  it('keeps speaker labels off with the reason, as with every cloud engine', async () => {
+    installTranscriptionApi({
+      'transcription.getStatus': () => ({ ...deepgramReady, speakerLabelsEnabled: true }),
+    });
+    mount(sectionProps({ keys: ['Deepgram'] }));
+    const labels = await screen.findByRole('switch', { name: 'Speaker labels' });
+    await waitFor(() => {
+      expect(labels).toHaveAttribute('aria-disabled', 'true');
+    });
+    expect(labels).toHaveAccessibleDescription(
+      'Not available with Deepgram in this version. Your choice is kept for when you transcribe on this PC.',
+    );
+  });
+
+  it('while it cannot run yet, says so instead of asking for a key that is already saved', async () => {
+    installTranscriptionApi({
+      'transcription.getStatus': () => ({ ...deepgramNoKey, cloudNotReadyReason: 'unavailable' }),
+    });
+    mount(sectionProps({ keys: ['Deepgram'] }));
+    const live = await screen.findByRole('switch', { name: 'Live transcription during recording' });
+    await waitFor(() => {
+      expect(live).toHaveAttribute('aria-disabled', 'true');
+    });
+    expect(
+      screen.getByRole('group', { name: 'Live transcription during recording' }),
+    ).toHaveAccessibleDescription(
+      'Deepgram cannot transcribe in this version yet. Choose another engine to record.',
+    );
+    const setup = screen.getByRole('group', { name: 'Deepgram setup' });
+    expect(
+      within(setup).getByText(
+        'Deepgram cannot transcribe in this version yet. Choose another engine to record.',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText('Add your Deepgram API key to use this.')).toBeNull();
+  });
+});
+
 describe('TranscriptionSection: the local engine while a cloud engine is selected', () => {
   const ENGINE = 'Nemotron 3.5 ASR Streaming 0.6B';
   const noLocal = {
@@ -397,5 +563,28 @@ describe('TranscriptionSection: Spanish', () => {
     expect(
       within(setup).getByRole('link', { name: /Abre la página de claves de API de Groq/ }),
     ).toHaveAttribute('href', 'https://console.groq.com/keys');
+  });
+
+  it('words Deepgram in Spanish: the choice, the key hint and the live captions', async () => {
+    installTranscriptionApi({
+      'transcription.getStatus': () => ({ ...baseStatus, engine: 'Deepgram', ready: true }),
+    });
+    mount(sectionProps({ keys: ['Deepgram'] }), 'es');
+    const setup = await screen.findByRole('group', { name: 'Configuración de Deepgram' });
+    expect(
+      screen.getByText(
+        'En la nube, con tu propia clave de API de Deepgram. El texto aparece mientras hablas.',
+      ),
+    ).toBeVisible();
+    expect(
+      within(setup).getByText(
+        'Esta clave solo se usa para transcribir. Los resúmenes y el chat usan el motor que elijas para ellos.',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('group', { name: 'Transcripción en vivo durante la grabación' }),
+    ).toHaveAccessibleDescription(
+      'Muestra subtítulos en pantalla mientras grabas. Con Deepgram, el texto aparece mientras hablas.',
+    );
   });
 });

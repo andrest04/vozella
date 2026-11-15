@@ -1,10 +1,10 @@
-import type { ApiProviderKindDto } from '@vozella/contracts';
+import type { ApiKeyKindDto } from '@vozella/contracts';
 import { CircleAlert, CircleCheck, Eye, EyeOff } from 'lucide-react';
 import { useId, useState, type ReactNode } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import type { StringKey } from '../../i18n/translate';
 import { Button, Icon, IconButton, Input } from '../../ui';
-import { API_NAME_KEYS } from './api-engines';
+import { KEY_PROVIDER_NAME_KEYS } from './api-engines';
 
 /** Shown in the empty key field once a key is saved. A mask, never the key or any part of it. */
 const SAVED_KEY_MASK = '•'.repeat(16);
@@ -15,12 +15,15 @@ export type ApiKeyAnswer =
   | { readonly status: 'verified'; readonly models: readonly string[] }
   | { readonly status: 'failed'; readonly errorKey: string };
 
-/** The three things the key row asks of the Settings page. The key goes to main once, on Save. */
+/**
+ * The three things the key row asks of the Settings page. The key goes to main once, on Save. The
+ * kind is an API engine or a provider that only transcribes: the page sends each to its channel.
+ */
 export interface ApiKeyActions {
-  readonly setApiKey: (kind: ApiProviderKindDto, key: string) => Promise<ApiKeyAnswer>;
-  readonly clearApiKey: (kind: ApiProviderKindDto) => Promise<ApiKeyAnswer>;
-  /** Lists the models the saved key can use. Changes nothing. */
-  readonly verifyApiKey: (kind: ApiProviderKindDto) => Promise<ApiKeyAnswer>;
+  readonly setApiKey: (kind: ApiKeyKindDto, key: string) => Promise<ApiKeyAnswer>;
+  readonly clearApiKey: (kind: ApiKeyKindDto) => Promise<ApiKeyAnswer>;
+  /** Asks the provider about the saved key; an API engine also lists its models. Changes nothing. */
+  readonly verifyApiKey: (kind: ApiKeyKindDto) => Promise<ApiKeyAnswer>;
 }
 
 /** The status line under a control: one sentence, announced politely, ink only (no status colors). */
@@ -96,7 +99,7 @@ export function ApiKeyField({
   verifiedText,
   footnote,
 }: {
-  readonly kind: ApiProviderKindDto;
+  readonly kind: ApiKeyKindDto;
   /** A key is saved for this provider. */
   readonly keySet: boolean;
   /** The provider works without a key (a local OpenAI-compatible server). */
@@ -110,7 +113,7 @@ export function ApiKeyField({
   readonly footnote?: string;
 }): ReactNode {
   const t = useT();
-  const name = t(API_NAME_KEYS[kind]);
+  const name = t(KEY_PROVIDER_NAME_KEYS[kind]);
   const [keyDraft, setKeyDraft] = useState('');
   const [revealed, setRevealed] = useState(false);
   const [busy, setBusy] = useState<'save' | 'remove' | 'verify' | null>(null);

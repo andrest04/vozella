@@ -1,7 +1,10 @@
 import {
+  ApiProviderError,
   AsrBackendStatus,
+  CLOUD_TRANSCRIPTION_ENGINES,
   CloudRequestPacer,
   CloudSpeechEngineProvider,
+  cloudTranscriptionProvider,
   isFatalSpeechFailure,
   LiveTranscriptionService,
   LocalSpeechEngineProvider,
@@ -21,6 +24,7 @@ import {
   type MicActivityReader,
   type RecognizerSource,
   type RuntimeStore,
+  type SessionRecognizer,
   type SettingsStore,
   type SpeechEngineProvider,
   type SpeechToTextClient,
@@ -83,6 +87,31 @@ export interface TranscriptionRuntimeOptions {
    * whatever clock the uploads use.
    */
   readonly liveStopWait?: CloudSpeechTimer['wait'];
+}
+
+/**
+ * TEMPORARY (odd/tasks/deepgram-streaming-transcription.md, T1): a cloud engine the settings can
+ * select but that has no adapter yet. It is never ready, whether or not its key is stored, and a
+ * pass on it fails with a plain reason instead of sending audio anywhere or falling back to another
+ * engine. T3 replaces it with the real engine of the provider's protocol and removes this class,
+ * the `unavailable` reason of the engine status and the `Ui_CloudEngineUnavailable` string.
+ */
+export class UnavailableSpeechEngineProvider implements SpeechEngineProvider {
+  constructor(readonly kind: CloudTranscriptionKind) {}
+
+  isReady(): Promise<boolean> {
+    return Promise.resolve(false);
+  }
+
+  create(): Promise<SessionRecognizer> {
+    return Promise.reject(
+      new ApiProviderError(
+        cloudTranscriptionProvider(this.kind).displayName,
+        'Unknown',
+        'This transcription engine is not available in this version yet.',
+      ),
+    );
+  }
 }
 
 /** A live pass on a cloud engine ended early: which engine, and the failure the provider gave. */
@@ -193,6 +222,10 @@ export class TranscriptionRuntime {
     const saved = await settings.load();
     const kind = resolveTranscriptionEngine(saved);
     if (kind === 'Local') return this.local;
+    // TEMPORARY (T1): only the OpenAI-compatible protocol has an adapter. See the class above.
+    if (CLOUD_TRANSCRIPTION_ENGINES[kind].protocol !== 'openai-audio-transcriptions') {
+      return new UnavailableSpeechEngineProvider(kind);
+    }
     return new CloudSpeechEngineProvider({
       kind,
       keys: cloud.keys,

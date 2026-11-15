@@ -15,11 +15,13 @@ import {
   createCloudSpeechToTextClient,
   fakeAsrPhrasesFromEnv,
   fakeEngineOptionsFromEnv,
+  FakeFetch,
   FakeSpeechEngine,
   FakeSpeechToTextClient,
   fakeSpeechToTextOptionsFromEnv,
   SteppedModelStore,
   SteppedRuntimeStore,
+  TranscriptionProviderKeys,
   TranscriptionRuntime,
   type LibraryRuntime,
   liveRepository,
@@ -42,10 +44,11 @@ export interface ComposeTranscriptionDeps {
   readonly env: NodeJS.ProcessEnv;
   /**
    * The app's API key store. A cloud transcription engine uses the key saved for its provider and
-   * is ready when that key is stored.
+   * is ready when that key is stored. The keys of the providers that only transcribe are saved
+   * and removed here too, since no other module knows those providers.
    */
-  readonly apiKeys: Pick<ApiKeyStore, 'has' | 'get'>;
-  /** Tests replace it; the cloud engines use the global `fetch`. */
+  readonly apiKeys: ApiKeyStore;
+  /** Tests replace it; the cloud engines and the key check use the global `fetch`. */
   readonly fetch?: typeof fetch;
   readonly hardware: HardwareProbe;
   /** The audio worker's push events; recording frames feed the live pass. */
@@ -134,7 +137,19 @@ export function composeTranscription(deps: ComposeTranscriptionDeps): Transcript
     formatFailure: (error) =>
       isApiProviderError(error) ? formatFailure(error, deps.translate) : deps.formatFailure(error),
   });
-  registerTranscriptionHandlers({ server: deps.server, controller: transcriptionController });
+  registerTranscriptionHandlers({
+    server: deps.server,
+    controller: transcriptionController,
+    providerKeys: new TranscriptionProviderKeys({
+      keys: deps.apiKeys,
+      // The fake native build never opens a connection: Verify hears that the key is accepted.
+      ...(deps.fakeNative
+        ? { fetch: new FakeFetch({ chunks: ['{}'] }).fetch }
+        : deps.fetch
+          ? { fetch: deps.fetch }
+          : {}),
+    }),
+  });
   registerSessionHandlers({
     server: deps.server,
     meetings: liveRepository(() => library.meetings),

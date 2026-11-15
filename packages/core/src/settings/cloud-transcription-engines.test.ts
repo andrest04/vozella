@@ -2,12 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { API_PROVIDER_KINDS, readSettings } from '../library/settings';
 import { API_ENGINES } from './api-providers';
 import {
+  TRANSCRIPTION_PROVIDERS,
+  TRANSCRIPTION_PROVIDER_KINDS,
+} from './transcription-provider-table';
+import {
   CLOUD_TRANSCRIPTION_ENGINES,
   CLOUD_TRANSCRIPTION_ENGINE_LIST,
   CLOUD_TRANSCRIPTION_KINDS,
   CLOUD_TRANSCRIPTION_MAX_FILE_BYTES,
   cloudTranscriptionApiEngine,
   cloudTranscriptionBaseUrl,
+  cloudTranscriptionProvider,
   isCloudTranscriptionKind,
   LOCAL_TRANSCRIPTION_ENGINE,
   resolveCloudTranscriptionModel,
@@ -16,19 +21,20 @@ import {
 } from './cloud-transcription-engines';
 
 describe('the cloud transcription engine table', () => {
-  it('offers Groq first, then OpenAI', () => {
-    expect([...CLOUD_TRANSCRIPTION_KINDS]).toEqual(['Groq', 'OpenAi']);
+  it('offers Groq first, then OpenAI, then Deepgram', () => {
+    expect([...CLOUD_TRANSCRIPTION_KINDS]).toEqual(['Groq', 'OpenAi', 'Deepgram']);
     expect(CLOUD_TRANSCRIPTION_ENGINE_LIST.map((engine) => engine.kind)).toEqual([
       'Groq',
       'OpenAi',
+      'Deepgram',
     ]);
   });
 
   it.each(Object.entries(CLOUD_TRANSCRIPTION_ENGINES))(
-    'files %s under its own kind, which is an API engine kind',
+    'files %s under its own kind, which holds a key: an API engine or a transcription-only provider',
     (key, engine) => {
       expect(engine.kind).toBe(key);
-      expect(API_PROVIDER_KINDS).toContain(engine.kind);
+      expect([...API_PROVIDER_KINDS, ...TRANSCRIPTION_PROVIDER_KINDS]).toContain(engine.kind);
     },
   );
 
@@ -40,6 +46,9 @@ describe('the cloud transcription engine table', () => {
     expect(CLOUD_TRANSCRIPTION_ENGINES.Groq.defaultModel).toBe('whisper-large-v3-turbo');
     expect(CLOUD_TRANSCRIPTION_ENGINES.OpenAi.models).toEqual(['whisper-1']);
     expect(CLOUD_TRANSCRIPTION_ENGINES.OpenAi.defaultModel).toBe('whisper-1');
+    expect(CLOUD_TRANSCRIPTION_ENGINES.Deepgram.models).toEqual(['nova-3']);
+    expect(CLOUD_TRANSCRIPTION_ENGINES.Deepgram.modelNames).toEqual({ 'nova-3': 'Nova-3' });
+    expect(CLOUD_TRANSCRIPTION_ENGINES.Deepgram.defaultModel).toBe('nova-3');
   });
 
   it.each(CLOUD_TRANSCRIPTION_ENGINE_LIST)(
@@ -50,8 +59,18 @@ describe('the cloud transcription engine table', () => {
     },
   );
 
-  it.each(CLOUD_TRANSCRIPTION_ENGINE_LIST)('$kind speaks the OpenAI audio protocol', (engine) => {
-    expect(engine.protocol).toBe('openai-audio-transcriptions');
+  it('names the protocol each provider speaks and how its live text arrives', () => {
+    expect(
+      CLOUD_TRANSCRIPTION_ENGINE_LIST.map((engine) => [
+        engine.kind,
+        engine.protocol,
+        engine.liveText,
+      ]),
+    ).toEqual([
+      ['Groq', 'openai-audio-transcriptions', 'pieces'],
+      ['OpenAi', 'openai-audio-transcriptions', 'pieces'],
+      ['Deepgram', 'deepgram-listen', 'streaming'],
+    ]);
   });
 
   it('links the page of each provider where a key is created', () => {
@@ -59,6 +78,7 @@ describe('the cloud transcription engine table', () => {
     expect(CLOUD_TRANSCRIPTION_ENGINES.OpenAi.keyPageUrl).toBe(
       'https://platform.openai.com/api-keys',
     );
+    expect(CLOUD_TRANSCRIPTION_ENGINES.Deepgram.keyPageUrl).toBe('https://console.deepgram.com/');
   });
 
   it.each(CLOUD_TRANSCRIPTION_ENGINE_LIST)(
@@ -81,28 +101,49 @@ describe('the cloud transcription engine table', () => {
       audioSecondsPerHour: null,
       minBilledSeconds: null,
     });
+    // Deepgram's docs give no request or audio quota: nothing is invented.
+    expect(CLOUD_TRANSCRIPTION_ENGINES.Deepgram.limits).toEqual({
+      requestsPerMinute: null,
+      audioSecondsPerHour: null,
+      minBilledSeconds: null,
+    });
   });
 });
 
-describe('what the table reuses from the API engine table', () => {
-  it.each(CLOUD_TRANSCRIPTION_KINDS)('%s resolves to the API engine of the same kind', (kind) => {
-    expect(cloudTranscriptionApiEngine(kind)).toBe(API_ENGINES[kind]);
+describe('where the name, the endpoint and the key of a cloud engine come from', () => {
+  it.each(['Groq', 'OpenAi'] as const)('%s resolves to the API engine of the same kind', (kind) => {
+    expect(cloudTranscriptionProvider(kind)).toBe(API_ENGINES[kind]);
+  });
+
+  it('Deepgram resolves to its transcription-only provider', () => {
+    expect(cloudTranscriptionProvider('Deepgram')).toBe(TRANSCRIPTION_PROVIDERS.Deepgram);
+    expect(cloudTranscriptionProvider('Deepgram').displayName).toBe('Deepgram');
+  });
+
+  it('keeps the older name of the lookup for its callers', () => {
+    expect(cloudTranscriptionApiEngine).toBe(cloudTranscriptionProvider);
   });
 
   it('takes the base URL from the API engine', () => {
     const settings = readSettings({});
     expect(cloudTranscriptionBaseUrl('Groq', settings)).toBe('https://api.groq.com/openai/v1');
     expect(cloudTranscriptionBaseUrl('OpenAi', settings)).toBe('https://api.openai.com/v1');
-    for (const kind of CLOUD_TRANSCRIPTION_KINDS) {
+    for (const kind of ['Groq', 'OpenAi'] as const) {
       expect(cloudTranscriptionBaseUrl(kind, settings)).toBe(
         API_ENGINES[kind].resolveBaseUrl(settings),
       );
     }
   });
+
+  it('takes the base URL of Deepgram from its provider', () => {
+    expect(cloudTranscriptionBaseUrl('Deepgram', readSettings({}))).toBe(
+      'https://api.deepgram.com/v1',
+    );
+  });
 });
 
 describe('isCloudTranscriptionKind', () => {
-  it.each(['Groq', 'OpenAi'])('%s can transcribe', (kind) => {
+  it.each(['Groq', 'OpenAi', 'Deepgram'])('%s can transcribe', (kind) => {
     expect(isCloudTranscriptionKind(kind)).toBe(true);
   });
 
@@ -119,6 +160,7 @@ describe('resolveCloudTranscriptionModel', () => {
     expect(resolveCloudTranscriptionModel('Groq', null)).toBe('whisper-large-v3-turbo');
     expect(resolveCloudTranscriptionModel('Groq', '  ')).toBe('whisper-large-v3-turbo');
     expect(resolveCloudTranscriptionModel('OpenAi', undefined)).toBe('whisper-1');
+    expect(resolveCloudTranscriptionModel('Deepgram', null)).toBe('nova-3');
   });
 
   it('keeps a saved id, trimmed, even one the table does not list', () => {
@@ -140,9 +182,11 @@ describe('the transcription engine setting', () => {
     ['Local', 'Local'],
     ['Groq', 'Groq'],
     ['OpenAi', 'OpenAi'],
+    ['Deepgram', 'Deepgram'],
     // An API engine that cannot transcribe, another case, or anything unknown is Local.
     ['Anthropic', 'Local'],
     ['groq', 'Local'],
+    ['deepgram', 'Local'],
     ['Whisper', 'Local'],
   ] as const)('reads %j as %s', (saved, kind) => {
     expect(resolveTranscriptionEngine({ transcriptionEngine: saved })).toBe(kind);

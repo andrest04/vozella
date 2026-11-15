@@ -36,6 +36,7 @@ function pageDto(extra: Record<string, unknown> = {}): SettingsPageDto {
       }),
       OpenAiCompatible: engine({ model: '', modelOptions: [] }),
     },
+    transcriptionKeys: { Groq: false, OpenAi: false, Deepgram: false },
     cliStatus: null,
     engines: [],
     transcriptionLanguage: 'es',

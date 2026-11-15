@@ -18,7 +18,17 @@ The cloud engines built in `odd/tasks/cloud-transcription-byok.md` (Groq, OpenAI
 - Prerecorded: `POST https://api.deepgram.com/v1/listen` with a raw `audio/wav` body, up to 2 GB, 504 after 10 min of processing.
 - REST errors: 401 `INVALID_AUTH`, 402 `ASR_PAYMENT_REQUIRED`, 429 `TOO_MANY_REQUESTS`. Key check: `GET https://api.deepgram.com/v1/projects`.
 - nova-3 languages include `es`, `es-419`, `en`, and `multi` (code-switching, `endpointing=100` recommended). Streaming $0.0048/min monolingual, $0.0058/min multilingual; prerecorded $0.0043/min. New accounts get $200 credit.
-- Not verified (settle with the real test, T4): per-word field names (`word`, `punctuated_word`, `start`, `end`), the handshake status for a bad key, any `retry-after`, whether KeepAlive alone holds the socket before the first audio frame, key format.
+- Not verified: any `retry-after` on a 429, the 402 body, key format.
+
+## Observed against the real API (probe with the user's key, 2026-11-15, Node 24 global `WebSocket`)
+
+- `GET /v1/projects`: 200 for the real key; 401 with body `{"category":"UNAUTHORIZED",...}` for an unknown key; no `retry-after` header.
+- `POST /v1/listen` with a raw `audio/wav` body: 200; unknown key 401 `{"err_code":"INVALID_AUTH",...}`. Words are `{word, start, end, confidence, punctuated_word}` with times in float seconds; `metadata.duration` is the audio length in seconds.
+- WebSocket: `new WebSocket(url, { headers: { Authorization: 'Token <key>' } })` opens in about 470 ms, so no `ws` dependency is needed (the `['token', key]` subprotocol opens too). An unknown key never opens: an `error` event, then `close` with code 1006 and an empty reason after about 320 ms, with no HTTP status visible.
+- `Results` keys: `type, channel_index, duration, start, is_final, speech_final, channel, metadata, from_finalize`. Interim results repeat the same `start` with a growing `duration`; the final replaces them and the next segment starts at `start + duration`. Word times are absolute seconds from the start of the stream. An interim can carry zero words and an empty transcript.
+- End of stream: `Finalize` returned a `from_finalize: true` final within about 160 ms; `CloseStream` returned a last empty final, a `Metadata` message whose `duration` is the total audio received, then `close` with code 1000.
+- Silence: a `KeepAlive` text frame every 4 s with no audio at all kept the socket open for 25 s.
+- Latency at real-time pacing with 100 ms frames: results arrive about 0.2 to 1 s behind the speech.
 
 ## Scope
 
@@ -40,10 +50,17 @@ Out of scope: diarization through Deepgram, Flux (`/v2/listen`), ElevenLabs, rec
 
 ## Tasks
 
-- [ ] **T1 Provider declaration and settings.** Deepgram as a transcription-only kind: key storage, key verification, engine tables, contracts enum, settings, engine choice row, brand mark, strings. It must not show in any summary or chat list. Checks: unit tests for tables, derivations, settings, renderer section; typecheck; lint. Route: delegated (many files).
+- [x] **T1 Provider declaration and settings.** Deepgram as a transcription-only kind: key storage, key verification, engine tables, contracts enum, settings, engine choice row, brand mark, strings. It must not show in any summary or chat list. Checks: unit tests for tables, derivations, settings, renderer section; typecheck; lint. Route: delegated (many files).
 - [ ] **T2 Streaming seam, Deepgram adapters and fakes.** Core streaming port, platform WebSocket `AsrEngine`/`AsrStream` (interim/final mapping, KeepAlive, drain, cancel, close-code mapping, lost audio), prerecorded `SpeechToTextClient` (raw body in `api-http`), streaming fake. Checks: unit tests against a scripted socket; typecheck; lint. Route: delegated.
 - [ ] **T3 Wiring, live behavior and e2e.** Runtime and composition select the streaming engine for live and the prerecorded client for offline; live failure notice; `liveDraftIsFinal`; e2e with the fake; spec docs. Checks: unit tests, affected e2e specs, typecheck, lint. Route: delegated.
 - [ ] **T4 Real endpoint proof and review.** Opt-in live test (rejected key, real stream, real prerecorded) with a key the user supplies; independent review; fix what it finds; merge and push. Route: delegated verifier plus inline.
+
+## Design decisions
+
+- **T1, how Deepgram is declared: a separate transcription-only provider table (option b), not a capability flag on `API_ENGINES`.** `ApiProviderKind` means "summary and chat engine" in about 60 files (records keyed by it, the summary resolver, the chat picker, the wizard, the contracts enums). A row there would have to be filtered out of every one of those derivations, and a missed filter would show Deepgram as a summary engine. Instead `TRANSCRIPTION_PROVIDERS` (core, `settings/transcription-provider-table.ts`) holds the name, endpoint and key check; `CLOUD_TRANSCRIPTION_ENGINES` gains the Deepgram row; `cloudTranscriptionProvider(kind)` answers the name, endpoint and key kind from whichever table holds the kind. No API engine list changes, so absence from summaries, chat and the wizard holds by construction and `api-provider-edit-points.test.tsx` asserts it. The next transcription-only provider (ElevenLabs) is one row in each of the two tables, its kind in contracts, its name in both locales and its mark.
+- **T1, the key: same store, own channels.** `ApiKeyStore` takes `ApiKeyKind = ApiProviderKind | TranscriptionProviderKind`. The settings key channels stay typed to API engines; a transcription-only key travels on `transcription.setProviderKey`, `transcription.clearProviderKey` and `transcription.verifyProviderKey`, served by `TranscriptionProviderKeys` (platform, `api-keys/`). Trade-off: two command paths for one key row in the UI (`use-settings-page` picks the channel by kind) in exchange for leaving `ApiKeySettings.verify`, which lists chat models, untouched. Folding both into `ApiKeySettings` is possible later; it lives in `packages/platform/src/settings/settings-runtime.ts`.
+- **T1, the page:** `SettingsPageDto.transcriptionKeys` says per cloud engine whether its key is saved, so the Transcription section reads every key flag from one place.
+- **T1, temporary guard for T3 to remove:** `UnavailableSpeechEngineProvider` (platform, `transcription-runtime.ts`, returned by `TranscriptionRuntime.engine()` for a protocol other than `openai-audio-transcriptions`), the `unavailable` value of `EngineStatusDto.cloudNotReadyReason`, the `cloudNotReadyReason` helper and the branch in `notReadyMessage` (desktop, `transcription-controller.ts`), the `unavailable` prop of `CloudEngineSetup`, `cloudUnavailable` in `TranscriptionSection`, and the string `Ui_CloudEngineUnavailable`.
 
 ## Acceptance
 
@@ -55,7 +72,10 @@ Out of scope: diarization through Deepgram, Flux (`/v2/listen`), ElevenLabs, rec
 ## Progress
 
 - 2026-11-15: feature document created after codebase mapping and Deepgram docs research; 4 tasks.
+- 2026-11-15: T1 done. Route: delegated writer; the parent applied the two type-only fixes the writer found outside its surfaces (`cloud-speech-services.test.ts`, `real-speech-to-text.integration.test.ts`) and replaced the placeholder icon with the Deepgram mark from simple-icons 16.38.0 (CC0-1.0). Design: separate transcription-only provider table, same key store, own key channels (see Design decisions). Observed: `pnpm typecheck` and `pnpm lint` clean; core 2576 tests, contracts 90, platform 708 (28 skipped), desktop 2659 (6 skipped) passing. One desktop run showed a single failure that did not repeat in three further full runs and was not identified. About 1,700 authored lines, most of them tests.
+  - Limitations: the Record gate (core `recording/setup-snapshot.ts`) words a selected Deepgram as a missing key even when the key is saved, until T3 wires the engine. `FakeApiKeyStore` (platform `fakes/`) is still typed to API engine kinds; it stores any kind at run time and tests reach Deepgram through the `ApiKeyStore` port. No e2e spec was run.
+- 2026-11-15: real API probed with the user's key before T2 (see Observed against the real API).
 
 ## Next step
 
-T1.
+T2.

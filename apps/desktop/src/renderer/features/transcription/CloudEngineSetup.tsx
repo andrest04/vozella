@@ -8,7 +8,7 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import { Button, Icon, Notice, Select, SettingRow, cn } from '../../ui';
 import { ApiKeyField, type ApiKeyActions } from '../ai-provider/ApiKeyField';
-import { API_NAME_KEYS } from '../ai-provider/api-engines';
+import { isApiKind, KEY_PROVIDER_NAME_KEYS } from '../ai-provider/api-engines';
 
 /**
  * How to get a key, for someone who has never seen an API key: where to go, what to do there, and
@@ -89,9 +89,11 @@ function KeyGuide({
 
 /**
  * The setup of the cloud transcription engine in use, under the engine choice: that the meeting
- * audio goes to this provider, its API key (the same row and the same key as the API engines of
- * the summaries), how to get one, and the speech model. Models come from core's table: the list a
- * Verify returns leaves the speech models out.
+ * audio goes to this provider, its API key, how to get one, and the speech model. The key row is
+ * the one of the API engines of the summaries. For a provider that is also one of them it is the
+ * same key, and the row says so; a provider that only transcribes has its own key, and the row
+ * says it is used for nothing else. Models come from core's table: the list a Verify returns
+ * leaves the speech models out.
  */
 export function CloudEngineSetup({
   kind,
@@ -100,9 +102,15 @@ export function CloudEngineSetup({
   savedModel,
   onModelChange,
   reveal = false,
+  unavailable = false,
 }: {
   /** The panel opened because the user just chose this engine: it fades in. */
   readonly reveal?: boolean;
+  /**
+   * TEMPORARY (deepgram-streaming-transcription T1): this version can select the engine but cannot
+   * run it yet. T3 removes the prop and its notice.
+   */
+  readonly unavailable?: boolean;
   readonly kind: CloudTranscriptionKind;
   readonly keySet: boolean;
   readonly keys: ApiKeyActions;
@@ -111,7 +119,7 @@ export function CloudEngineSetup({
   readonly onModelChange: (model: string) => void;
 }): ReactNode {
   const t = useT();
-  const name = t(API_NAME_KEYS[kind]);
+  const name = t(KEY_PROVIDER_NAME_KEYS[kind]);
   const engine = CLOUD_TRANSCRIPTION_ENGINE_LIST.find((entry) => entry.kind === kind);
   if (!engine) return null;
 
@@ -130,6 +138,7 @@ export function CloudEngineSetup({
         reveal && 'animate-fade-in',
       )}
     >
+      {unavailable ? <Notice tone="warning">{t('Ui_CloudEngineUnavailable', name)}</Notice> : null}
       <Notice tone="info">{t('Ui_CloudAudioNotice', name)}</Notice>
       <div data-cloud-key>
         <ApiKeyField
@@ -139,7 +148,9 @@ export function CloudEngineSetup({
           keySet={keySet}
           actions={keys}
           verifiedText={() => t('Ui_ApiVerifiedKeyWorks', name)}
-          footnote={t('Ui_CloudSameKey', name)}
+          footnote={
+            isApiKind(kind) ? t('Ui_CloudSameKey', name) : t('Ui_CloudKeyTranscriptionOnly')
+          }
         />
       </div>
       <KeyGuide key={`${kind}-guide`} name={name} url={engine.keyPageUrl} keySet={keySet} />

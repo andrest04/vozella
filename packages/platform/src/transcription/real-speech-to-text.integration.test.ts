@@ -18,7 +18,6 @@ import {
   CancelSource,
   cloudTranscriptionApiEngine,
   resolveCloudTranscriptionModel,
-  type CloudTranscriptionKind,
 } from '@vozella/core';
 import { OpenAiSpeechToTextClient } from './openai-speech-to-text-client';
 
@@ -26,11 +25,14 @@ const enabled = process.env.VOZELLA_REAL_STT === '1';
 const wavPath = process.env.VOZELLA_REAL_STT_WAV ?? '';
 const language = process.env.VOZELLA_REAL_STT_LANGUAGE ?? 'en-US';
 
-const KEYS: Record<CloudTranscriptionKind, string> = {
+/** The kinds served by the OpenAI-compatible client; Deepgram has its own adapters and test. */
+type OpenAiCompatibleKind = 'Groq' | 'OpenAi';
+
+const KEYS: Record<OpenAiCompatibleKind, string> = {
   Groq: process.env.VOZELLA_REAL_STT_GROQ_KEY ?? '',
   OpenAi: process.env.VOZELLA_REAL_STT_OPENAI_KEY ?? '',
 };
-const KINDS = Object.keys(KEYS) as CloudTranscriptionKind[];
+const KINDS = Object.keys(KEYS) as OpenAiCompatibleKind[];
 
 interface Pcm {
   readonly samples: Float32Array;
@@ -71,7 +73,7 @@ function tone(): Pcm {
   return { samples, sampleRate };
 }
 
-function client(kind: CloudTranscriptionKind, key: string): OpenAiSpeechToTextClient {
+function client(kind: OpenAiCompatibleKind, key: string): OpenAiSpeechToTextClient {
   const engine = cloudTranscriptionApiEngine(kind);
   return new OpenAiSpeechToTextClient({
     displayName: engine.displayName,

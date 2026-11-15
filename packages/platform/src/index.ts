@@ -64,6 +64,7 @@ export * from './api-providers/openai-chat-provider';
 export * from './api-providers/anthropic-messages-provider';
 export * from './api-providers/list-models';
 export * from './api-providers/api-provider-builder';
+export * from './api-keys/transcription-provider-keys';
 export * from './fakes/fake-api-key-store';
 export * from './fakes/fake-fetch';
 export * from './transcription/openai-speech-to-text-client';
