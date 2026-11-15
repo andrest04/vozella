@@ -32,6 +32,11 @@ export interface SettingsHandlerDeps {
   readonly broadcast: Broadcast;
   /** Called after the summary provider was saved (the live ask toggle follows it). */
   readonly onSummaryProviderSaved?: () => void;
+  /**
+   * Called after a key was saved or removed. A cloud transcription engine is ready only with its
+   * key, so the transcription module publishes its status again.
+   */
+  readonly onApiKeyChanged?: () => void;
 }
 
 /** Forwards model download progress to every window. Pass it to `SettingsRuntime` as `notifyModel`. */
@@ -65,8 +70,16 @@ export function registerSettingsHandlers(deps: SettingsHandlerDeps): void {
   registerRequest(server, settingsSetCliOption, (input) => runtime.commands.setCliOption(input));
   registerRequest(server, settingsSetApiOption, (input) => runtime.commands.setApiOption(input));
   // The key arrives once and goes straight into the encrypted store; answers carry only a flag.
-  registerRequest(server, settingsSetApiKey, ({ kind, key }) => runtime.apiKeys.set(kind, key));
-  registerRequest(server, settingsClearApiKey, ({ kind }) => runtime.apiKeys.clear(kind));
+  registerRequest(server, settingsSetApiKey, async ({ kind, key }) => {
+    const result = await runtime.apiKeys.set(kind, key);
+    deps.onApiKeyChanged?.();
+    return result;
+  });
+  registerRequest(server, settingsClearApiKey, async ({ kind }) => {
+    const result = await runtime.apiKeys.clear(kind);
+    deps.onApiKeyChanged?.();
+    return result;
+  });
   registerRequest(server, settingsVerifyApiKey, ({ kind }) => runtime.apiKeys.verify(kind));
   registerRequest(server, settingsSetMeetingLanguage, ({ kind, code }) =>
     runtime.commands.setMeetingLanguage(kind, code),

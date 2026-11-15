@@ -1,5 +1,6 @@
 import type { SummaryApiKindDto, SummaryCliKindDto } from '@vozella/contracts';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { isApiKind } from './api-engines';
 
 /** What a `needs-setup` or `unavailable` outcome from the summary service asks for. */
 export interface SetupRequest {
@@ -23,22 +24,18 @@ export type GateSurface =
   | { readonly surface: 'notice'; readonly notice: GateNotice };
 
 export function decideSurface(request: SetupRequest): GateSurface {
-  switch (request.kind) {
+  const { kind } = request;
+  // API key engines are set up in Settings (key, model, address). The notice says what is
+  // missing and offers Settings; the page the user is on stays where it is.
+  if (isApiKind(kind)) {
+    return { surface: 'notice', notice: { type: 'api-setup', kind, reason: request.reason } };
+  }
+  switch (kind) {
     case 'Local':
       return { surface: 'wizard' };
     case 'ClaudeCode':
     case 'Codex':
-      return { surface: 'cli', kind: request.kind };
-    // API key engines are set up in Settings (key, model, address). The notice says what is
-    // missing and offers Settings; the page the user is on stays where it is.
-    case 'OpenAi':
-    case 'Anthropic':
-    case 'Gemini':
-    case 'OpenAiCompatible':
-      return {
-        surface: 'notice',
-        notice: { type: 'api-setup', kind: request.kind, reason: request.reason },
-      };
+      return { surface: 'cli', kind };
     case 'Xai':
       return { surface: 'notice', notice: { type: 'removed' } };
   }

@@ -31,6 +31,7 @@ const idleState: RecordingStateDto = {
   micLevel: 0,
   microphoneActive: true,
   captureNotices: [],
+  liveNotice: null,
   meetingId: null,
   title: '',
   recordedAtMs: null,
@@ -616,6 +617,163 @@ describe('RecordRoute accelerator and missing steps', () => {
     });
     expect(screen.queryByText('Setup cancelled.')).toBeNull();
     expect(api.named('recording.start')).toHaveLength(0);
+  });
+});
+
+describe('RecordRoute with a cloud transcription engine', () => {
+  /** Groq is selected for transcription and its key is not saved. */
+  const needsKey: RecordingSetupDto = {
+    ...readySetup,
+    canRecord: false,
+    engine: {
+      ...card('RecordingSetup_Engine.Header', false),
+      detail: { key: 'Ui_ApiKeyMissing', args: ['Groq'] },
+      reason: 'key-missing',
+    },
+    idleStatus: { key: 'Status_NeedsSetup', args: [] },
+  };
+  const toSettings = { action: { type: 'navigateTo', tag: 'Settings' } };
+
+  it('says the key is what is missing, and that nothing is downloaded', async () => {
+    installApi({ 'recording.getSetup': () => needsKey });
+    mount();
+    const panel = await screen.findByTestId('setup-checklist');
+    expect(
+      within(panel).getByText('Add your Groq API key to record. Nothing needs to be downloaded.'),
+    ).toBeVisible();
+    expect(panel).not.toHaveTextContent('Nothing downloads once a recording starts.');
+    const [, engine] = within(panel).getAllByTestId('setup-card');
+    expect(engine).toHaveTextContent('Transcript');
+    expect(engine).toHaveTextContent('Groq needs your API key. Add it in Settings.');
+    expect(engine).toHaveTextContent('Needs setup');
+  });
+
+  it('offers one action, which opens Settings on the key and never the download', async () => {
+    const api = installApi({ 'recording.getSetup': () => needsKey });
+    mount();
+    const add = await screen.findByRole('button', { name: 'Add API key' });
+    expect(screen.queryByRole('button', { name: 'Set up to record' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Record' })).toBeNull();
+    await userEvent.click(add);
+    await waitFor(() => {
+      expect(api.named('workspace.dispatch').map((call) => call.input)).toContainEqual(toSettings);
+    });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(api.named('transcription.ensureEngine')).toHaveLength(0);
+    expect(api.named('recording.start')).toHaveLength(0);
+  });
+
+  it('a Record refused for the key opens the checklist with the same action, not the download', async () => {
+    let setup = readySetup;
+    const api = installApi({ 'recording.getSetup': () => setup });
+    mount();
+    await screen.findByRole('button', { name: 'Record' });
+    // The key was removed after the page read the setup.
+    setup = needsKey;
+    await userEvent.click(screen.getByRole('button', { name: 'Record' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Set up recording' });
+    expect(dialog).toHaveAccessibleDescription(
+      'Add your Groq API key to record. Nothing needs to be downloaded.',
+    );
+    expect(within(dialog).queryByRole('button', { name: 'Set up' })).toBeNull();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add API key' }));
+    await waitFor(() => {
+      expect(api.named('workspace.dispatch').map((call) => call.input)).toContainEqual(toSettings);
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    expect(screen.queryByText('Download transcription engine')).toBeNull();
+    expect(screen.queryByText('Download failed')).toBeNull();
+    expect(api.named('transcription.ensureEngine')).toHaveLength(0);
+    expect(screen.queryByText('Setup cancelled.')).toBeNull();
+    expect(api.named('recording.start')).toHaveLength(0);
+  });
+
+  it('the local download dialog offers the cloud instead, which opens Settings and selects nothing', async () => {
+    const api = installApi({
+      'recording.getSetup': () => needsSetup,
+      'transcription.ensureEngine': () => new Promise(() => undefined),
+      'transcription.cancelInstall': () => ({ cancelled: true }),
+    });
+    mount();
+    await userEvent.click(await screen.findByRole('button', { name: 'Set up to record' }));
+    const checklist = await screen.findByRole('dialog', { name: 'Set up recording' });
+    await userEvent.click(within(checklist).getByRole('button', { name: 'Set up' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Download transcription engine' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Use the cloud instead' }));
+    await waitFor(() => {
+      expect(api.named('workspace.dispatch').map((call) => call.input)).toContainEqual(toSettings);
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+    expect(api.named('transcription.cancelInstall')).toHaveLength(1);
+    expect(api.named('settings.update')).toHaveLength(0);
+    expect(screen.queryByText('Setup cancelled.')).toBeNull();
+  });
+
+  it('reads the setup again when main says the engine or its key changed', async () => {
+    let setup = needsKey;
+    const api = installApi({ 'recording.getSetup': () => setup });
+    mount();
+    await screen.findByRole('button', { name: 'Add API key' });
+    const asked = api.named('recording.getSetup').length;
+    // The key was saved in Settings (another window, or the pill): no reload, no restart.
+    setup = readySetup;
+    api.emit('transcription.statusChanged', { ready: true, liveEnabled: true, engine: 'Groq' });
+    expect(await screen.findByRole('button', { name: 'Record' })).toBeEnabled();
+    expect(api.named('recording.getSetup').length).toBe(asked + 1);
+    expect(screen.queryByTestId('setup-checklist')).toBeNull();
+  });
+
+  const recordingState = {
+    ...idleState,
+    phase: 'Recording',
+    isRecording: true,
+    isTicking: true,
+    meetingId: 'm1',
+    title: 'Weekly',
+    recordedAtMs: 1,
+  };
+
+  it('says captions come a few seconds late on the empty canvas', async () => {
+    installApi({
+      'transcription.getStatus': () => ({ ready: true, liveEnabled: true, engine: 'Groq' }),
+      'recording.getState': () => ({ ...recordingState, liveText: '' }),
+    });
+    mount();
+    expect(await screen.findByTestId('canvas-empty')).toHaveTextContent(
+      'Captions appear here a few seconds after people speak.',
+    );
+  });
+
+  it('shows why the live captions stopped while the take goes on, and says the audio is kept', async () => {
+    const reason = 'Groq did not accept your API key. Check it in Settings.';
+    const api = installApi({
+      'transcription.getStatus': () => ({ ready: true, liveEnabled: true, engine: 'Groq' }),
+      'recording.getState': () => ({ ...recordingState, liveText: '' }),
+    });
+    mount();
+    await screen.findByTestId('live-canvas');
+    expect(screen.queryByTestId('live-notice')).toBeNull();
+    api.emit('recording.state', {
+      ...recordingState,
+      liveNotice: { key: 'Ui_CloudLiveStopped', args: [reason], severity: 'warning' },
+    });
+    const notice = await screen.findByTestId('live-notice');
+    expect(notice).toHaveTextContent('Live captions stopped');
+    expect(notice).toHaveTextContent(
+      `${reason} The recording continues, and you can transcribe it after you stop.`,
+    );
+    // The empty canvas no longer promises captions.
+    expect(screen.getByTestId('canvas-empty')).toHaveTextContent('Live captions stopped');
+    expect(screen.getByTestId('canvas-empty')).not.toHaveTextContent('Captions appear here');
+    // Announced politely, never as an alert, and the take's controls stay as they were.
+    expect(notice).toHaveAttribute('role', 'status');
+    expect(notice.closest('[aria-live="polite"]')).not.toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Stop' })).toBeEnabled();
   });
 });
 

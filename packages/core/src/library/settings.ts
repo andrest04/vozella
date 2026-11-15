@@ -1,3 +1,8 @@
+import {
+  API_ENGINE_LIST,
+  API_PROVIDER_KINDS,
+  type ApiProviderKind,
+} from '../settings/api-engine-table';
 import { resolveMeetingLanguageCode, resolveSummaryLanguageCode } from '../settings/languages';
 import {
   DEFAULT_CLAUDE_MODEL,
@@ -45,11 +50,25 @@ export interface AppSettings {
   readonly selectedGeminiModelId: string | null;
   readonly selectedOpenAiCompatibleModelId: string | null;
   readonly openAiCompatibleBaseUrl: string | null;
+  /** Port addition (BYOK): the Groq chat model. Declared last so older files keep their order. */
+  readonly selectedGroqModelId: string | null;
+  /**
+   * Port addition: the engine that transcribes. `Local` (also the meaning of null and of any
+   * unknown value) or a cloud transcription kind (`Groq`, `OpenAi`). Read it through
+   * `resolveTranscriptionEngine`.
+   */
+  readonly transcriptionEngine: string | null;
+  /** Port addition: the model of the cloud transcription engine; null is the provider's default. */
+  readonly cloudTranscriptionModelId: string | null;
 }
 
 type Kind = 'string' | 'bool-true' | 'bool-false' | 'strings' | 'number';
 
-/** Declaration order is the order in the file. */
+/**
+ * Declaration order is the order in the file, so a new field goes last. The model field of an API
+ * key engine is named by its row in `API_ENGINES` and still listed here by hand, because its
+ * position is the persisted order (`api-provider-derivation.test.ts` names a missing one).
+ */
 const FIELDS: readonly (readonly [keyof AppSettings, Kind])[] = [
   ['selectedSummaryModelId', 'string'],
   ['selectedSummaryProvider', 'string'],
@@ -85,19 +104,21 @@ const FIELDS: readonly (readonly [keyof AppSettings, Kind])[] = [
   ['selectedGeminiModelId', 'string'],
   ['selectedOpenAiCompatibleModelId', 'string'],
   ['openAiCompatibleBaseUrl', 'string'],
+  ['selectedGroqModelId', 'string'],
+  ['transcriptionEngine', 'string'],
+  ['cloudTranscriptionModelId', 'string'],
 ];
 
 /**
  * Port additions the WinUI app does not know. They are written only once set, so a file the
- * user never changed them in keeps the WinUI property set.
+ * user never changed them in keeps the WinUI property set. Every API key engine's model is one.
  */
 const OMITTED_WHEN_NULL: ReadonlySet<string> = new Set([
   'liveQuestions',
-  'selectedOpenAiModelId',
-  'selectedAnthropicModelId',
-  'selectedGeminiModelId',
-  'selectedOpenAiCompatibleModelId',
+  ...API_ENGINE_LIST.map((engine) => engine.modelSetting),
   'openAiCompatibleBaseUrl',
+  'transcriptionEngine',
+  'cloudTranscriptionModelId',
 ]);
 
 /** The raw document: every key in the file, known or not. */
@@ -198,15 +219,13 @@ export function serializeSettings(raw: RawSettings, newline: '\r\n' | '\n' = '\r
 
 const blank = (value: string | null): boolean => value === null || value.trim() === '';
 
+/** Local, the CLI engines, the removed Xai, then the API key engines in their table's order. */
 export const SUMMARY_PROVIDERS = [
   'Local',
   'ClaudeCode',
   'Codex',
   'Xai',
-  'OpenAi',
-  'Anthropic',
-  'Gemini',
-  'OpenAiCompatible',
+  ...API_PROVIDER_KINDS,
 ] as const;
 export type SummaryProviderKind = (typeof SUMMARY_PROVIDERS)[number];
 
@@ -226,15 +245,10 @@ export const isCliProvider = (kind: string | null | undefined): kind is CliProvi
 
 /**
  * The summary kinds backed by an HTTP API with the user's own key (BYOK). Their per-engine facts
- * live in the `API_ENGINES` table (settings/api-providers), type-checked against this list.
+ * live in the `API_ENGINES` table (settings/api-engine-table); this list is that table's kinds, in
+ * its order.
  */
-export const API_PROVIDER_KINDS = [
-  'OpenAi',
-  'Anthropic',
-  'Gemini',
-  'OpenAiCompatible',
-] as const satisfies readonly SummaryProviderKind[];
-export type ApiProviderKind = (typeof API_PROVIDER_KINDS)[number];
+export { API_PROVIDER_KINDS, type ApiProviderKind };
 
 export const isApiProvider = (kind: string | null | undefined): kind is ApiProviderKind =>
   API_PROVIDER_KINDS.some((api) => api === kind);

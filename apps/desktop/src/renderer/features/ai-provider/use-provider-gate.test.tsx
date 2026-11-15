@@ -19,6 +19,7 @@ describe('decideSurface', () => {
     [{ kind: 'Codex', reason: 'cli-missing' }, 'cli'],
     [{ kind: 'Xai', reason: 'unavailable' }, 'notice'],
     [{ kind: 'OpenAi', reason: 'key-missing' }, 'notice'],
+    [{ kind: 'Groq', reason: 'key-missing' }, 'notice'],
     [{ kind: 'OpenAiCompatible', reason: 'base-url-missing' }, 'notice'],
   ];
   it.each(table)('%j opens %s', (request, surface) => {

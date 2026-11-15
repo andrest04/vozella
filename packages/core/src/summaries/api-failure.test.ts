@@ -5,6 +5,8 @@ import {
   ApiProviderError,
   apiFailureFromHttpStatus,
   isApiProviderError,
+  retryAfterMsFromHeader,
+  speechFailureFromHttpStatus,
 } from './api-failure';
 import {
   API_FAILURE_UI_KEYS,
@@ -20,7 +22,11 @@ describe('apiFailureFromHttpStatus', () => {
     [429, '{"error":{"code":"insufficient_quota"}}', 'QuotaExceeded'],
     [429, 'You exceeded your current QUOTA', 'QuotaExceeded'],
     [429, 'Rate limit reached for requests', 'RateLimited'],
+    // OpenAI billing exhaustion is a 429 too; it must never read as a rate limit to retry.
+    [429, '{"error":{"code":"credit_balance_exhausted"}}', 'QuotaExceeded'],
     [404, 'model not found', 'ModelNotFound'],
+    // No kind for "file too large": it stays Unknown and keeps the server text.
+    [413, 'Request Entity Too Large', 'Unknown'],
     [408, '', 'TimedOut'],
     [504, '', 'TimedOut'],
     [500, 'oops', 'Unknown'],
@@ -28,6 +34,47 @@ describe('apiFailureFromHttpStatus', () => {
   ] as const)('%i %j is %s', (status, body, kind) => {
     expect(apiFailureFromHttpStatus(status, body)).toBe(kind);
   });
+});
+
+describe('speechFailureFromHttpStatus', () => {
+  it.each([
+    [429, '{"error":{"code":"insufficient_quota"}}', 'QuotaExceeded'],
+    [429, '{"error":{"type":"insufficient_quota","message":"x"}}', 'QuotaExceeded'],
+    [429, '{"error":{"code":"credit_balance_exhausted"}}', 'QuotaExceeded'],
+    [429, '{"code":"insufficient_quota"}', 'QuotaExceeded'],
+    // A message that only mentions a quota is a limit that lifts: it must stay retryable.
+    [429, '{"error":{"message":"audio seconds quota exceeded","type":"seconds"}}', 'RateLimited'],
+    [
+      429,
+      '{"error":{"message":"insufficient_quota is not this","code":"rate_limit_exceeded"}}',
+      'RateLimited',
+    ],
+    [429, '{"error":{"code":"insufficient_quota_soon"}}', 'RateLimited'],
+    [429, 'You exceeded your current QUOTA', 'RateLimited'],
+    [429, '', 'RateLimited'],
+    // Every other status maps as it does for the chat engines.
+    [401, '', 'KeyInvalid'],
+    [402, '', 'QuotaExceeded'],
+    [404, 'model not found', 'ModelNotFound'],
+    [413, 'Request Entity Too Large', 'Unknown'],
+    [504, '', 'TimedOut'],
+    [400, 'bad request', 'Unknown'],
+    // A server that is failing right now may answer the same request a moment later: a kind the
+    // speech engine sends again, not Unknown, which it never retries.
+    [500, 'oops', 'TimedOut'],
+    [502, 'Bad Gateway', 'TimedOut'],
+    [503, '{"error":{"message":"Service Unavailable"}}', 'TimedOut'],
+    [529, '', 'TimedOut'],
+  ] as const)('%i %j is %s', (status, body, kind) => {
+    expect(speechFailureFromHttpStatus(status, body)).toBe(kind);
+  });
+
+  it.each([500, 502, 503, 529])(
+    'leaves a %i of the chat and summary engines as it was',
+    (status) => {
+      expect(apiFailureFromHttpStatus(status, 'oops')).toBe('Unknown');
+    },
+  );
 });
 
 describe('ApiProviderError', () => {
@@ -42,6 +89,31 @@ describe('ApiProviderError', () => {
     expect(unknown.detail).not.toContain('sk-abcdefghijklmnop');
     expect(unknown.detail).toContain('[redacted]');
   });
+
+  it('carries the wait the server asked for, null when it asked for none', () => {
+    expect(new ApiProviderError('Groq', 'RateLimited').retryAfterMs).toBeNull();
+    expect(new ApiProviderError('Groq', 'RateLimited', null, undefined, 7000).retryAfterMs).toBe(
+      7000,
+    );
+  });
+});
+
+describe('retryAfterMsFromHeader', () => {
+  it.each([
+    ['7', 7000],
+    [' 2 ', 2000],
+    ['0', 0],
+    ['1.5', 1500],
+  ])('reads %j seconds as %i ms', (header, ms) => {
+    expect(retryAfterMsFromHeader(header)).toBe(ms);
+  });
+
+  it.each([null, '', 'soon', '-3', 'Wed, 21 Oct 2026 07:28:00 GMT'])(
+    'ignores %j (only a count of seconds is honored)',
+    (header) => {
+      expect(retryAfterMsFromHeader(header)).toBeNull();
+    },
+  );
 });
 
 describe('formatFailure for API engines', () => {

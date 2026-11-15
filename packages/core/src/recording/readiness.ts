@@ -6,6 +6,10 @@ import type {
 } from '../library/settings';
 import { isApiProvider, isCliProvider, SUMMARY_PROVIDERS } from '../library/settings';
 import { API_ENGINES, apiSetupGap } from '../settings/api-providers';
+import {
+  resolveTranscriptionEngine,
+  type TranscriptionEngineKind,
+} from '../settings/cloud-transcription-engines';
 import { findSummaryModel } from '../settings/summary-models';
 
 /** Readiness gate for Record and Import (spec 3.2). Pure rules plus a fact gatherer behind ports. */
@@ -62,7 +66,10 @@ export interface RecordingSetupPorts {
   localModelFileExists(fileName: string): Promise<boolean>;
   /** The CLI executable resolves on PATH. Sign-in is not checked. */
   cliOnPath(kind: CliProviderKind): Promise<boolean>;
-  /** The Nemotron model is on disk and the CUDA or CPU runtime is ready. */
+  /**
+   * The selected transcription engine can run: the Nemotron model is on disk and the CUDA or CPU
+   * runtime is ready, or the key of the selected cloud engine is stored.
+   */
   engineReady(): Promise<boolean>;
   /**
    * A key is saved for the API engine. Optional until the key store is wired; without it an API
@@ -76,6 +83,8 @@ export interface SetupFacts extends ReadinessInput {
   readonly summaryModelId: string | null;
   /** The settings file still selects the removed xAI provider (owner cut 2026-11-03). */
   readonly summaryProviderRemoved: boolean;
+  /** The engine that transcribes; absent means `Local`. It words why the engine is not ready. */
+  readonly transcriptionEngine?: TranscriptionEngineKind;
 }
 
 export interface SetupEvaluation {
@@ -103,6 +112,7 @@ export async function gatherSetupFacts(ports: RecordingSetupPorts): Promise<Setu
     provider,
     summaryModelId: modelId,
     summaryProviderRemoved: removed,
+    transcriptionEngine: resolveTranscriptionEngine(settings),
     liveTranscriptionEnabled: settings.liveTranscriptionEnabled,
     engineReady: await ports.engineReady(),
     summaryProviderChosen: provider !== null && !removed,

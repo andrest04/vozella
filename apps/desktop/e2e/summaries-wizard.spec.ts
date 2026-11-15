@@ -89,6 +89,7 @@ test.describe('with a GPU and a slow download', () => {
       'BtnEngineOpenAi',
       'BtnEngineAnthropic',
       'BtnEngineGemini',
+      'BtnEngineGroq',
       'BtnEngineOpenAiCompatible',
     ]);
     await expect(

@@ -7,8 +7,14 @@ export const WAV_HEADER_BYTES = 46;
 export const WAV_DATA_SIZE_OFFSET = 42;
 export const WAV_RIFF_SIZE_OFFSET = 4;
 
-/** The 46-byte header of 16 kHz mono PCM16 with both sizes zero, as a crashed file has it. */
-export function buildWavHeader(dataSize = 0): Uint8Array {
+/**
+ * The 46-byte header of mono PCM16, at 16 kHz unless another rate is given. With no data size both
+ * sizes are zero, as a crashed file has them.
+ */
+export function buildWavHeader(
+  dataSize = 0,
+  sampleRate = MIX_SAMPLE_RATE,
+): Uint8Array<ArrayBuffer> {
   const bytes = new Uint8Array(WAV_HEADER_BYTES);
   const view = new DataView(bytes.buffer);
   const ascii = (offset: number, text: string): void => {
@@ -21,13 +27,31 @@ export function buildWavHeader(dataSize = 0): Uint8Array {
   view.setUint32(16, 18, true);
   view.setUint16(20, 1, true); // PCM
   view.setUint16(22, 1, true); // mono
-  view.setUint32(24, MIX_SAMPLE_RATE, true);
-  view.setUint32(28, FILE_BYTES_PER_SECOND, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true); // bytes per second: one 2-byte sample per frame
   view.setUint16(32, 2, true); // block align
   view.setUint16(34, 16, true);
   view.setUint16(36, 0, true); // cbSize
   ascii(38, 'data');
   view.setUint32(42, dataSize, true);
+  return bytes;
+}
+
+/**
+ * A whole mono PCM16 WAV in memory from float samples in -1..1, the reverse of `pcm16ToFloat32`:
+ * the app's header with its sizes set, then one little-endian sample per input sample. Samples
+ * outside the range are clamped; NaN is written as silence.
+ */
+export function encodePcm16Wav(samples: Float32Array, sampleRate: number): Uint8Array<ArrayBuffer> {
+  const dataSize = samples.length * 2;
+  const bytes = new Uint8Array(WAV_HEADER_BYTES + dataSize);
+  bytes.set(buildWavHeader(dataSize, sampleRate));
+  const view = new DataView(bytes.buffer, WAV_HEADER_BYTES);
+  for (let i = 0; i < samples.length; i += 1) {
+    const scaled = Math.round((samples[i] ?? 0) * 32768);
+    const value = Number.isNaN(scaled) ? 0 : Math.max(-32768, Math.min(32767, scaled));
+    view.setInt16(i * 2, value, true);
+  }
   return bytes;
 }
 

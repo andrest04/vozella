@@ -28,6 +28,7 @@ function setup() {
     micLevel: 0,
     microphoneActive: true,
     captureNotices: [],
+    liveNotice: null,
     meetingId: null,
     title: '',
     recordedAtMs: null,

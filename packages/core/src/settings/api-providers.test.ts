@@ -19,10 +19,10 @@ import {
 } from './api-providers';
 import { isCliEngine, readsImagesFromDisk } from './cli-providers';
 
-const API_IDS = ['openai', 'anthropic', 'gemini', 'openai-compatible'] as const;
+const API_IDS = ['openai', 'anthropic', 'gemini', 'groq', 'openai-compatible'] as const;
 
 describe('API_ENGINES', () => {
-  it('lists the four key engines with their ids, protocol and default base URL', () => {
+  it('lists the five key engines with their ids, protocol and default base URL', () => {
     expect(
       API_ENGINE_LIST.map((e) => [e.kind, e.providerId, e.protocol, e.defaultBaseUrl]),
     ).toEqual([
@@ -34,6 +34,7 @@ describe('API_ENGINES', () => {
         'openai-chat',
         'https://generativelanguage.googleapis.com/v1beta/openai',
       ],
+      ['Groq', 'groq', 'openai-chat', 'https://api.groq.com/openai/v1'],
       ['OpenAiCompatible', 'openai-compatible', 'openai-chat', null],
     ]);
   });
@@ -51,6 +52,7 @@ describe('API_ENGINES', () => {
       'OpenAi',
       'Anthropic',
       'Gemini',
+      'Groq',
     ]);
   });
 
@@ -59,15 +61,18 @@ describe('API_ENGINES', () => {
     expect(API_ENGINES.OpenAi.resolveModel(blank)).toBe('gpt-6-astra');
     expect(API_ENGINES.Anthropic.resolveModel(blank)).toBe('claude-opus-5-5');
     expect(API_ENGINES.Gemini.resolveModel(blank)).toBe('gemini-3.8-flash');
+    expect(API_ENGINES.Groq.resolveModel(blank)).toBe('llama-3.3-70b-versatile');
     expect(API_ENGINES.OpenAiCompatible.resolveModel(blank)).toBe('');
     const saved = readSettings({
       selectedOpenAiModelId: 'gpt-5',
       selectedOpenAiCompatibleModelId: ' llama3.1 ',
       selectedAnthropicModelId: '   ',
+      selectedGroqModelId: 'openai/gpt-oss-120b',
     });
     expect(API_ENGINES.OpenAi.resolveModel(saved)).toBe('gpt-5');
     expect(API_ENGINES.OpenAiCompatible.resolveModel(saved)).toBe('llama3.1');
     expect(API_ENGINES.Anthropic.resolveModel(saved)).toBe('claude-opus-5-5');
+    expect(API_ENGINES.Groq.resolveModel(saved)).toBe('openai/gpt-oss-120b');
   });
 
   it('suggests the current models from each provider catalog (checked 2026-11-10)', () => {
@@ -90,6 +95,16 @@ describe('API_ENGINES', () => {
     ]);
   });
 
+  it('suggests the Groq production chat models (checked 2026-11-15)', () => {
+    expect(API_ENGINES.Groq.models).toEqual([
+      'llama-3.3-70b-versatile',
+      'llama-3.1-8b-instant',
+      'openai/gpt-oss-120b',
+      'openai/gpt-oss-20b',
+    ]);
+    expect(API_ENGINES.Groq.defaultModel).toBe('llama-3.3-70b-versatile');
+  });
+
   it('gives every suggested model a readable name, and nothing else', () => {
     for (const engine of API_ENGINE_LIST) {
       expect(Object.keys(engine.modelNames)).toEqual(engine.models);
@@ -100,6 +115,8 @@ describe('API_ENGINES', () => {
     expect(API_ENGINES.OpenAi.modelNames['gpt-6.1-sol']).toBe('GPT-6.1 Sol');
     expect(API_ENGINES.Gemini.modelNames['gemini-3.8-flash']).toBe('Gemini 3.8 Flash');
     expect(API_ENGINES.Gemini.modelNames['gemini-3.5-flash-lite']).toBe('Gemini 3.5 Flash-Lite');
+    expect(API_ENGINES.Groq.modelNames['llama-3.3-70b-versatile']).toBe('Llama 3.3 70B Versatile');
+    expect(API_ENGINES.Groq.modelNames['openai/gpt-oss-120b']).toBe('GPT-OSS 120B');
   });
 
   it('labels the known ids of a list and leaves the others to show their id', () => {
@@ -124,6 +141,12 @@ describe('API_ENGINES', () => {
       ),
     ).toBe('http://localhost:11434/v1');
     expect(API_ENGINES.OpenAi.resolveBaseUrl(readSettings({}))).toBe('https://api.openai.com/v1');
+    // The Groq endpoint is fixed: the address saved for the compatible engine never moves it.
+    expect(
+      API_ENGINES.Groq.resolveBaseUrl(
+        readSettings({ openAiCompatibleBaseUrl: 'http://localhost:11434/v1' }),
+      ),
+    ).toBe('https://api.groq.com/openai/v1');
   });
 });
 
@@ -137,6 +160,10 @@ describe('isChatModelId', () => {
       'gemini-3.8-flash',
       'gemini-3.5-flash-lite',
       'gemini-flash-latest',
+      'llama-3.3-70b-versatile',
+      'llama-3.1-8b-instant',
+      'openai/gpt-oss-120b',
+      'openai/gpt-oss-20b',
     ]) {
       expect(isChatModelId(id), id).toBe(true);
     }
@@ -175,6 +202,11 @@ describe('isChatModelId', () => {
       'gemini-robotics-er-1.5',
       'antigravity-preview-1',
       'aqa',
+      'whisper-large-v3',
+      'whisper-large-v3-turbo',
+      'meta-llama/llama-prompt-guard-2-86m',
+      'openai/gpt-oss-safeguard-20b',
+      'canopylabs/orpheus-v1-english',
     ]) {
       expect(isChatModelId(id), id).toBe(false);
     }
@@ -186,6 +218,8 @@ describe('apiSetupGap', () => {
     const blank = readSettings({});
     expect(apiSetupGap(API_ENGINES.OpenAi, blank, false)).toBe('key-missing');
     expect(apiSetupGap(API_ENGINES.OpenAi, blank, true)).toBeNull();
+    expect(apiSetupGap(API_ENGINES.Groq, blank, false)).toBe('key-missing');
+    expect(apiSetupGap(API_ENGINES.Groq, blank, true)).toBeNull();
     expect(apiSetupGap(API_ENGINES.OpenAiCompatible, blank, false)).toBe('base-url-missing');
     const withUrl = readSettings({ openAiCompatibleBaseUrl: 'http://localhost:1234/v1' });
     expect(apiSetupGap(API_ENGINES.OpenAiCompatible, withUrl, false)).toBe('model-missing');
@@ -206,7 +240,7 @@ describe('estimateTokens', () => {
 });
 
 describe('API engine lookups', () => {
-  it('isApiProvider knows the four kinds only', () => {
+  it('isApiProvider knows the five kinds only', () => {
     for (const engine of API_ENGINE_LIST) {
       expect(isApiProvider(engine.kind)).toBe(true);
       expect(isCliProvider(engine.kind)).toBe(false);
@@ -218,6 +252,8 @@ describe('API engine lookups', () => {
 
   it('finds an engine by provider id and maps it back to its saved kind', () => {
     expect(apiEngineByProviderId('gemini')).toBe(API_ENGINES.Gemini);
+    expect(apiEngineByProviderId('groq')).toBe(API_ENGINES.Groq);
+    expect(summaryKindOf('groq')).toBe('Groq');
     expect(apiEngineByProviderId('codex')).toBeUndefined();
     expect(summaryKindOf('openai')).toBe('OpenAi');
     expect(summaryKindOf('openai-compatible')).toBe('OpenAiCompatible');

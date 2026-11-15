@@ -21,6 +21,7 @@ const recording: RecordingStateDto = {
   micLevel: 0,
   microphoneActive: true,
   captureNotices: [],
+  liveNotice: null,
   meetingId: 'm1',
   title: 'Weekly sync',
   recordedAtMs: 1,

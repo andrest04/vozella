@@ -49,7 +49,13 @@ const record = (id: string = ID, title = 'Standup'): MeetingRecord => ({
   projectPlan: null,
 });
 
-async function setup(options: { discard?: (path: string) => Promise<void> } = {}) {
+async function setup(
+  options: {
+    discard?: (path: string) => Promise<void>;
+    onSettingsSaved?: (patch: Record<string, unknown>) => void;
+  } = {},
+) {
+  const { onSettingsSaved, ...runtimeOptions } = options;
   const handlers = new Map<string, (event: never, ...args: unknown[]) => unknown>();
   const ipc: IpcMainLike = { handle: (name, listener) => void handlers.set(name, listener) };
   const busy = new MeetingBusyRegistry();
@@ -68,7 +74,7 @@ async function setup(options: { discard?: (path: string) => Promise<void> } = {}
     openPath: () => Promise.resolve(''),
     pickFolder: () => Promise.resolve(null),
     version: '1.0.0.0',
-    ...options,
+    ...runtimeOptions,
   });
   await runtime.start();
   const workspace = new Workspace();
@@ -81,6 +87,7 @@ async function setup(options: { discard?: (path: string) => Promise<void> } = {}
     runtime,
     workspace,
     broadcast,
+    ...(onSettingsSaved ? { onSettingsSaved } : {}),
   });
   bridgeWorkspace(workspace, broadcast);
   const call = async (name: string, input: unknown = {}) =>
@@ -326,6 +333,16 @@ describe('library handlers', () => {
     expect((await t.call('settings.update', { patch: { bogus: 1 } })).error?.code).toBe(
       'invalid-input',
     );
+  });
+
+  it('tells the app which fields a settings patch saved, and nothing for a refused patch', async () => {
+    const saved = vi.fn();
+    const t = await setup({ onSettingsSaved: saved });
+    await t.call('settings.update', { patch: { transcriptionEngine: 'Groq' } });
+    expect(saved).toHaveBeenCalledTimes(1);
+    expect(saved).toHaveBeenLastCalledWith({ transcriptionEngine: 'Groq' });
+    await t.call('settings.update', { patch: { bogus: 1 } });
+    expect(saved).toHaveBeenCalledTimes(1);
   });
 
   it('reports the location and refuses a MeetingLive folder in test mode', async () => {

@@ -7,6 +7,7 @@ import type {
 } from '@vozella/contracts';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useT } from '../../i18n/I18nProvider';
+import type { ApiKeyAnswer } from '../ai-provider/ApiKeyField';
 
 /** How long the saved-feedback bar stays (spec 2.5: one non-repeating 4 second timer). */
 export const FEEDBACK_MS = 4000;
@@ -16,11 +17,7 @@ type CliProvider = 'claude' | 'codex';
 /** The summary engines that run a CLI program. */
 export type CliEngineKind = 'ClaudeCode' | 'Codex';
 
-/** What a key change or a Verify answered, already in words for the API block's status line. */
-export type ApiKeyAnswer =
-  | { readonly status: 'saved'; readonly keySet: boolean }
-  | { readonly status: 'verified'; readonly models: readonly string[] }
-  | { readonly status: 'failed'; readonly errorKey: string };
+export type { ApiKeyAnswer };
 
 export interface SettingsPageModel {
   /** Null until the first answer. */

@@ -11,13 +11,20 @@ import { useEngineInstall } from './use-engine-install';
  * the download by itself and closes with `true` once the engine is ready. Cancel, Escape and the
  * close button all cancel the transfer and close with `false`; the caller then does not record.
  * A failure keeps the dialog open with the raw message and a Try again button.
+ *
+ * For a PC that cannot run the engine, the dialog also offers the way around it: transcribe in the
+ * cloud with an API key. That choice cancels the transfer and calls `onUseCloud` instead of
+ * `onFinished`; it changes no setting, and the caller takes the user to the engine choice.
  */
 export function EngineSetupDialog({
   open,
   onFinished,
+  onUseCloud,
 }: {
   open: boolean;
   onFinished: (ready: boolean) => void;
+  /** Without it the alternative is not drawn. */
+  onUseCloud?: () => void;
 }) {
   const t = useT();
   const install = useEngineInstall();
@@ -46,6 +53,12 @@ export function EngineSetupDialog({
     run.current += 1;
     void cancel();
     finished.current(false);
+  };
+
+  const useCloud = (): void => {
+    run.current += 1;
+    void cancel();
+    onUseCloud?.();
   };
 
   const failed = install.phase === 'failed';
@@ -94,6 +107,15 @@ export function EngineSetupDialog({
             <span className="block font-medium">{t('EngineSetup_Failed.Title')}</span>
             <span className="block text-ink-muted">{install.error}</span>
           </Notice>
+        ) : null}
+        {onUseCloud ? (
+          // Set apart and small: the download is the way most people go.
+          <div className="flex flex-col items-start gap-2 border-t border-hairline pt-3">
+            <p className="text-ui text-ink-muted">{t('Ui_EngineSetupCloudHint')}</p>
+            <Button size="sm" onClick={useCloud}>
+              {t('Ui_EngineSetupUseCloud')}
+            </Button>
+          </div>
         ) : null}
       </div>
     </Dialog>

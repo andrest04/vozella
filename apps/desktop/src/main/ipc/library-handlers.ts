@@ -42,6 +42,11 @@ export interface LibraryHandlerDeps {
   readonly runtime: LibraryRuntime;
   readonly workspace: Workspace;
   readonly broadcast: Broadcast;
+  /**
+   * Called with the patch after `settings.update` saved it. Modules that publish a state built
+   * from a setting (the transcription status) refresh it here.
+   */
+  readonly onSettingsSaved?: (patch: Readonly<Record<string, unknown>>) => void;
 }
 
 /** Pushes workspace changes to every window. Returns the unsubscribe function. */
@@ -228,7 +233,11 @@ export function registerLibraryHandlers(deps: LibraryHandlerDeps): LibraryWrites
   registerRequest(server, librarySetLocation, ({ path }) => runtime.setLocation(path));
 
   registerRequest(server, settingsGet, () => runtime.settings.load());
-  registerRequest(server, settingsUpdate, ({ patch }) => runtime.settings.update(patch));
+  registerRequest(server, settingsUpdate, async ({ patch }) => {
+    const saved = await runtime.settings.update(patch);
+    deps.onSettingsSaved?.(patch);
+    return saved;
+  });
 
   registerRequest(server, workspaceGetState, () => workspace.state);
   registerRequest(server, workspaceDispatch, ({ action }) => {

@@ -125,6 +125,8 @@ Flow of `EnsureReadyAsync(root)`: evaluate; if `CanRecord` return true without s
 
 `RunMissingStepsAsync`: evaluate; if the engine is not ready show the transcription engine setup dialog (`TranscriptionEngineSetupDialog`, owned by another module); if it returns false stop this step (the outer loop re-shows the checklist); re-evaluate. If the summary is not ready show the summary model chooser (`SummaryModelSetupDialog`); if it returns null stop; the chosen `(kind, model)` is persisted by that dialog. If kind is ClaudeCode or Codex run `CliProviderResolver.EnsureAvailableAsync(kind)`; if Xai run `XaiProviderResolver.EnsureAvailableAsync`. Local model download happens inside the chooser dialog.
 
+Port addition (cloud transcription, transcription spec 2.9): when the engine card carries `reason = 'key-missing'` (a cloud transcription engine without its API key) there is no engine step. The panel and the dialog name the missing key, their button reads "Add API key", and it opens Settings on the key field and ends the loop without the cancelled notice. The download dialog of the local engine can also be left for the cloud ("Use the cloud instead"), which ends the loop the same way and opens Settings on the engine choice. The setup snapshot is read again whenever main publishes the transcription status while the page is idle.
+
 Page-level readiness state: `RefreshReadinessAsync` evaluates the snapshot and applies it (`IsReadyToRecord`, the six text fields); if idle it sets `StatusText = "Ready to record." (Status_ReadyToRecord)` when ready else `"Set up recording before you start." (Status_NeedsSetup)`. It is refreshed on every navigation to the page, after `SetUpToRecord`, and before every Start and Import.
 
 ### 2.5 Start recording

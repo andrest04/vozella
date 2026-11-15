@@ -1,31 +1,75 @@
-import type { EngineStatusDto } from '@vozella/contracts';
-import { INSTALL_STAGE_LABEL_KEYS, LIVE_DROP_WARNING_PERCENT } from '@vozella/core';
-import { useState } from 'react';
+import type {
+  EngineStatusDto,
+  SettingsPageDto,
+  TranscriptionEngineKindDto,
+} from '@vozella/contracts';
+import {
+  CLOUD_TRANSCRIPTION_ENGINE_LIST,
+  CLOUD_TRANSCRIPTION_KINDS,
+  INSTALL_STAGE_LABEL_KEYS,
+  isCloudTranscriptionKind,
+  LIVE_DROP_WARNING_PERCENT,
+  LOCAL_TRANSCRIPTION_ENGINE,
+  type CloudTranscriptionKind,
+} from '@vozella/core';
+import { CircleDashed, KeyRound } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
 import type { StringKey, Translate } from '../../i18n/translate';
 import {
   Badge,
   Button,
   ConfirmDialog,
+  Icon,
   Notice,
   Progress,
+  RadioGroup,
   SectionHeader,
   SettingRow,
   Switch,
+  type RadioOption,
 } from '../../ui';
+import type { ApiKeyActions } from '../ai-provider/ApiKeyField';
+import { API_NAME_KEYS } from '../ai-provider/api-engines';
+import { ProviderMark } from '../ai-provider/ProviderMark';
+import { CloudEngineSetup } from './CloudEngineSetup';
 import { overallPercent } from './live-lines';
+import {
+  onTranscriptionFocus,
+  takeTranscriptionFocus,
+  type TranscriptionFocus,
+} from './transcription-focus';
 import { useEngineActions } from './use-engine-actions';
 import { useEngineInstall } from './use-engine-install';
 import { useEngineStatus } from './use-engine-status';
 import { useSpeakerModel } from './use-speaker-model';
 
+export interface TranscriptionSectionProps {
+  /** The Settings page snapshot: which API keys are saved, and the saved cloud model. */
+  readonly page: Pick<SettingsPageDto, 'api' | 'settings'>;
+  /** The key commands of the Settings page, and its reload after a setting changed. */
+  readonly model: ApiKeyActions & { readonly load: () => Promise<void> };
+}
+
+/** A cloud model is kept across a change of engine only when the new engine lists it. */
+function keepsModel(kind: CloudTranscriptionKind, saved: string | null | undefined): boolean {
+  const id = saved?.trim() ?? '';
+  if (id === '') return true;
+  return CLOUD_TRANSCRIPTION_ENGINE_LIST.some(
+    (engine) => engine.kind === kind && engine.models.includes(id),
+  );
+}
+
 /**
- * Settings, Transcription (spec 2.6): the engine (download, delete, which processor it runs on),
- * the live preview, and speaker labels with their model in one row. Labels are plain words; model
- * names stay in descriptions and in the buttons' accessible names. The language is chosen in the meeting language
- * block above. Everything shown comes from the status the main process keeps.
+ * Settings, Transcription (spec 2.6, 2.6.1): where meetings are transcribed (this PC or a cloud
+ * engine with the user's API key), the setup of the cloud engine in use, the engine on this PC
+ * (download, delete, which processor it runs on), the live preview, and speaker labels with their
+ * model in one row. Labels are plain words; model names stay in descriptions and in the buttons'
+ * accessible names. The language is chosen in the meeting language block above. What is shown
+ * comes from the status the main process keeps, which main publishes again whenever the engine
+ * setting or a key changes.
  */
-export function TranscriptionSection() {
+export function TranscriptionSection({ page, model }: TranscriptionSectionProps) {
   const { t, locale } = useI18n();
   const { status, refresh } = useEngineStatus();
   const install = useEngineInstall();
@@ -34,8 +78,21 @@ export function TranscriptionSection() {
   const [announcement, setAnnouncement] = useState('');
   const engine = useEngineActions({ start: install.start, refresh, announce: setAnnouncement });
   const speaker = useSpeakerModel({ refresh, announce: setAnnouncement });
+  // The radio moves at once; the status main answers with is what stays.
+  const [chosen, setChosen] = useState<TranscriptionEngineKindDto | null>(null);
+  // The cloud setup fades in when a choice opens it, not when the page draws it on a visit.
+  const [choseHere, setChoseHere] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+
+  const selected: TranscriptionEngineKindDto =
+    chosen ?? status?.engine ?? LOCAL_TRANSCRIPTION_ENGINE;
+  const cloud = isCloudTranscriptionKind(selected) ? selected : null;
+  const cloudName = cloud ? t(API_NAME_KEYS[cloud]) : '';
+  const cloudKeySet = cloud !== null && page.api[cloud].keySet;
+
   // The recognizer snapshot only counts while it still matches the current settings.
   const speakerModelMissing =
+    cloud === null &&
     status !== null &&
     status.usage?.diarization === 'model-missing' &&
     status.speakerLabelsEnabled &&
@@ -47,25 +104,156 @@ export function TranscriptionSection() {
   };
 
   const installing = install.phase === 'running';
-  // Live captions need the engine: without it the switch says why instead of showing On.
+  // `ready` is about the engine in use. With a cloud engine, the one on this PC is ready when its
+  // model and a runtime are on disk.
+  const localReady =
+    status !== null &&
+    (status.engine === LOCAL_TRANSCRIPTION_ENGINE
+      ? status.ready
+      : status.modelInstalled && (status.runtimes.cpu || status.runtimes.cuda));
+  // Live captions need the engine in use: without it the switch says why instead of showing On.
   const liveUnavailable = status !== null && !status.ready;
   const liveOn = !liveUnavailable && (status?.liveEnabled ?? false);
   const anyEngineFile =
     status !== null && (status.modelInstalled || status.runtimes.cpu || status.runtimes.cuda);
 
+  const save = async (patch: Record<string, string | null>): Promise<void> => {
+    try {
+      await window.vozella.invoke('settings.update', { patch });
+    } catch {
+      // The status read below puts the control back to what is saved.
+    }
+    await Promise.all([refresh(), model.load()]);
+  };
+
+  const choose = (next: string): void => {
+    if (next === selected) return;
+    const kind = isCloudTranscriptionKind(next) ? next : LOCAL_TRANSCRIPTION_ENGINE;
+    setChosen(kind);
+    setChoseHere(true);
+    const patch: Record<string, string | null> =
+      kind === LOCAL_TRANSCRIPTION_ENGINE
+        ? // A null engine is this PC; the cloud model stays for the next time.
+          { transcriptionEngine: null }
+        : keepsModel(kind, page.settings.cloudTranscriptionModelId)
+          ? { transcriptionEngine: kind }
+          : { transcriptionEngine: kind, cloudTranscriptionModelId: null };
+    void save(patch).finally(() => {
+      setChosen(null);
+    });
+  };
+
+  // A link from the Record page lands here: on the key field, or on the engine in use.
+  const [focusTarget, setFocusTarget] = useState<TranscriptionFocus | null>(null);
+  useEffect(() => {
+    const linked = takeTranscriptionFocus();
+    if (linked) setFocusTarget(linked);
+    return onTranscriptionFocus((target) => {
+      takeTranscriptionFocus();
+      setFocusTarget(target);
+    });
+  }, []);
+  const statusKnown = status !== null;
+  useEffect(() => {
+    if (focusTarget === null || !statusKnown) return;
+    const section = root.current;
+    const key =
+      focusTarget === 'key' ? section?.querySelector<HTMLElement>('[data-cloud-key] input') : null;
+    const target =
+      key ?? section?.querySelector<HTMLElement>('[role="radio"][aria-checked="true"]') ?? null;
+    if (target === null) return;
+    if (typeof target.scrollIntoView === 'function') target.scrollIntoView({ block: 'center' });
+    target.focus({ preventScroll: true });
+    setFocusTarget(null);
+  }, [focusTarget, statusKnown, cloud]);
+
+  const options: RadioOption[] = [
+    {
+      value: LOCAL_TRANSCRIPTION_ENGINE,
+      disabled: status === null,
+      label: (
+        <span className="flex items-center gap-2">
+          <ProviderMark kind="Local" />
+          {t('Ui_TranscriptionLocalName')}
+        </span>
+      ),
+      description: t('Ui_TranscriptionLocalHelp'),
+    },
+    ...CLOUD_TRANSCRIPTION_KINDS.map((kind): RadioOption => {
+      const name = t(API_NAME_KEYS[kind]);
+      const keySet = page.api[kind].keySet;
+      const keyText = t(keySet ? 'Ui_SummaryEngineKeySaved' : 'Ui_SummaryEngineNeedsKey');
+      return {
+        value: kind,
+        disabled: status === null,
+        label: (
+          <span className="flex items-center gap-2">
+            <ProviderMark kind={kind} />
+            {name}
+            {/* Read with the name; the same words are drawn beside the row. */}
+            <span className="sr-only">, {keyText}</span>
+          </span>
+        ),
+        description: t('Ui_TranscriptionCloudHelp', name),
+        trailing: (
+          <span
+            aria-hidden="true"
+            data-testid={`engine-key-${kind}`}
+            className="flex items-center gap-1.5 text-ui text-ink-muted"
+          >
+            <Icon icon={keySet ? KeyRound : CircleDashed} size={14} />
+            {keyText}
+          </span>
+        ),
+      };
+    }),
+  ];
+
   return (
-    <div data-testid="transcription-section">
+    <div data-testid="transcription-section" ref={root}>
       <SectionHeader level={2} compact title={t('Settings_Transcription.Text')} className="pb-2" />
       {/* Kept above the rows: a trailing sibling would stop the last row dropping its hairline. */}
       <p role="status" className="sr-only">
         {announcement}
       </p>
+
+      <div className="border-b border-hairline pb-1">
+        <p className="max-w-prose pb-1 text-ui text-ink-muted">
+          {t('Ui_TranscriptionEngineChoiceHelp')}
+        </p>
+        <RadioGroup
+          label={t('Ui_TranscriptionEngineChoiceLabel')}
+          layout="rows"
+          value={selected}
+          onValueChange={choose}
+          options={options}
+        />
+      </div>
+
+      {cloud ? (
+        <CloudEngineSetup
+          // One panel per engine: a switch between two cloud engines draws the new one afresh.
+          key={cloud}
+          reveal={choseHere}
+          kind={cloud}
+          keySet={cloudKeySet}
+          keys={model}
+          savedModel={page.settings.cloudTranscriptionModelId ?? null}
+          onModelChange={(next) => {
+            void save({ cloudTranscriptionModelId: next });
+          }}
+        />
+      ) : null}
+
       <SettingRow
-        title={t('Ui_EngineTitle')}
+        title={cloud ? t('Ui_EngineLocalTitle') : t('Ui_EngineTitle')}
         description={
           <>
-            <span className="block">{t('Ui_EngineDescription')}</span>
-            {status ? (
+            <span className="block">
+              {cloud ? t('Ui_EngineLocalUnused', cloudName) : t('Ui_EngineDescription')}
+            </span>
+            {/* The processor line is about a pass on this PC; a failed download always shows. */}
+            {status && (cloud === null || engine.note) ? (
               <span className="block pt-1" data-testid="acceleration-caption">
                 {engine.note ?? backendCaption(status, t)}
               </span>
@@ -75,14 +263,15 @@ export function TranscriptionSection() {
       >
         {status ? (
           <Badge tone="outline">
-            {status.ready ? t('Ui_EngineInstalled') : t('Ui_EngineNotInstalled')}
+            {localReady ? t('Ui_EngineInstalled') : t('Ui_EngineNotInstalled')}
           </Badge>
         ) : null}
         <Button
-          disabled={status === null || status.ready || installing}
+          disabled={status === null || localReady || installing}
           aria-label={`${t('Settings_DownloadEngine.Content')} ${t('Settings_NemotronCard.Header')}`}
           onClick={() => {
-            void engine.download();
+            // With a cloud engine in use the selected engine downloads nothing: ask for this one.
+            void engine.download(cloud ? { local: true } : undefined);
           }}
         >
           {t('Settings_DownloadEngine.Content')}
@@ -122,7 +311,13 @@ export function TranscriptionSection() {
       <SettingRow
         title={t('Settings_LiveTranscription.Header')}
         description={
-          liveUnavailable ? t('Ui_LiveNeedsEngine') : t('Ui_LiveTranscriptionDescription')
+          liveUnavailable
+            ? cloud
+              ? t('Ui_LiveNeedsKey', cloudName)
+              : t('Ui_LiveNeedsEngine')
+            : cloud
+              ? t('Ui_LiveCloudDescription', cloudName)
+              : t('Ui_LiveTranscriptionDescription')
         }
       >
         {({ titleId }) => (
@@ -139,18 +334,25 @@ export function TranscriptionSection() {
       {/* One row: the switch and the model it needs (download and delete). */}
       <SettingRow
         title={t('Settings_SpeakerLabels.Header')}
-        description={t('Ui_SpeakerLabelsDescription')}
+        description={
+          cloud
+            ? t('Ui_SpeakerLabelsCloudUnavailable', cloudName)
+            : t('Ui_SpeakerLabelsDescription')
+        }
       >
-        {({ titleId }) => (
+        {({ titleId, descriptionId }) => (
           <>
-            <Button
-              disabled={status === null || status.speakerModelInstalled || speaker.busy !== null}
-              aria-label={`${t('Settings_DownloadSpeakers.Content')} ${t('Ui_SpeakerModel')}`}
-              onClick={speaker.download}
-            >
-              {t('Settings_DownloadSpeakers.Content')}
-            </Button>
-            {status?.speakerModelInstalled ? (
+            {/* A cloud engine hears no speakers, so the model it would need is not offered. */}
+            {cloud ? null : (
+              <Button
+                disabled={status === null || status.speakerModelInstalled || speaker.busy !== null}
+                aria-label={`${t('Settings_DownloadSpeakers.Content')} ${t('Ui_SpeakerModel')}`}
+                onClick={speaker.download}
+              >
+                {t('Settings_DownloadSpeakers.Content')}
+              </Button>
+            )}
+            {cloud === null && status?.speakerModelInstalled ? (
               <Button
                 variant="quiet"
                 disabled={speaker.busy !== null}
@@ -162,12 +364,14 @@ export function TranscriptionSection() {
                 {t('Settings_DeleteSpeakers.Content')}
               </Button>
             ) : null}
+            {/* With a cloud engine the saved choice stays on screen, disabled, with the reason. */}
             <Switch
               aria-labelledby={titleId}
+              aria-describedby={cloud ? descriptionId : undefined}
               className="pl-2"
               label={status?.speakerLabelsEnabled ? t('Ui_SwitchOn') : t('Ui_SwitchOff')}
               checked={status?.speakerLabelsEnabled ?? false}
-              disabled={status === null || speaker.busy !== null}
+              disabled={status === null || speaker.busy !== null || cloud !== null}
               onCheckedChange={speaker.setLabels}
             />
           </>

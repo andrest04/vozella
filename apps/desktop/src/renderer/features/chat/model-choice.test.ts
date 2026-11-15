@@ -8,6 +8,7 @@ import {
   pickerGroups,
   readableModel,
   sendOverride,
+  SETTINGS_KIND,
 } from './model-choice';
 
 const CHOICES: ChatEngineChoicesDto = {
@@ -131,6 +132,13 @@ describe('chat model choice', () => {
     expect(readableModel('claude-code', { id: 'sonnet', label: 'sonnet' })).toBe('Sonnet');
     expect(readableModel('codex', { id: 'gpt-5.6-sol', label: 'gpt-5.6-sol' })).toBe('GPT-5.6-sol');
     expect(readableModel('openai', { id: 'gpt-4o', label: 'gpt-4o' })).toBe('gpt-4o');
+  });
+
+  it('puts Groq with the API key engines and opens its own Settings row', () => {
+    const groq = { ...CHOICES.engines[1]!, engine: 'groq' as const };
+    const groups = pickerGroups({ ...CHOICES, engines: [...CHOICES.engines, groq] }, '', names);
+    expect(groups.find((g) => g.id === 'apiKey')?.engines.map((e) => e.engine)).toContain('groq');
+    expect(SETTINGS_KIND.groq).toBe('Groq');
   });
 
   it('names known effort levels and leaves unknown ones as they are', () => {

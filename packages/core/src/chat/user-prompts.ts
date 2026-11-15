@@ -6,6 +6,7 @@ import {
   type RecipeContext,
   type RecipeNameLookup,
 } from './recipes';
+import { API_PROVIDER_IDS } from '../settings/api-engine-table';
 import type { ChatScopeKind } from './scope-resolver';
 
 /**
@@ -14,15 +15,7 @@ import type { ChatScopeKind } from './scope-resolver';
  * engine that answers them. Pure rules only; the file and the dialogs live in platform and main.
  */
 
-export const CHAT_ENGINES = [
-  'claude-code',
-  'codex',
-  'local',
-  'openai',
-  'anthropic',
-  'gemini',
-  'openai-compatible',
-] as const;
+export const CHAT_ENGINES = ['claude-code', 'codex', 'local', ...API_PROVIDER_IDS] as const;
 /** An engine a saved prompt can ask for. Null on a prompt means the engine chosen in Settings. */
 export type ChatEngine = (typeof CHAT_ENGINES)[number];
 

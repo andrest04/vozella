@@ -81,7 +81,7 @@ export function SettingsRoute() {
           />
         );
       case 'transcription':
-        return <TranscriptionSection />;
+        return <TranscriptionSection page={page} model={model} />;
       case 'callDetection':
         return <CallDetectionSection />;
       case 'appearance':

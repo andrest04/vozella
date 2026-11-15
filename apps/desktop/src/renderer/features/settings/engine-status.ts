@@ -1,6 +1,6 @@
 import type { SettingsPageDto, SummaryEngineReadinessDto } from '@vozella/contracts';
 import type { StringKey } from '../../i18n/translate';
-import { isApiKind } from '../ai-provider/api-engines';
+import { API_KINDS, API_NAME_KEYS, isApiKind } from '../ai-provider/api-engines';
 
 export type EngineKind = SettingsPageDto['engines'][number]['kind'];
 
@@ -25,12 +25,7 @@ export const ENGINE_GROUPS: readonly {
   },
   {
     caption: 'Ui_ProviderGroupApiKey',
-    engines: [
-      { kind: 'OpenAi', name: 'Ui_ApiOpenAiName' },
-      { kind: 'Anthropic', name: 'Ui_ApiAnthropicName' },
-      { kind: 'Gemini', name: 'Ui_ApiGeminiName' },
-      { kind: 'OpenAiCompatible', name: 'Ui_ApiOpenAiCompatibleName' },
-    ],
+    engines: API_KINDS.map((kind) => ({ kind, name: API_NAME_KEYS[kind] })),
   },
 ];
 

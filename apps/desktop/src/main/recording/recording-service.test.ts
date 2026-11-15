@@ -140,6 +140,8 @@ interface Options {
   transcript?: string;
   liveStartFails?: boolean;
   liveDraft?: string | null;
+  /** What the transcription module says of the last live draft; absent: the port has no answer. */
+  draftIsFinal?: boolean;
   providerReady?: boolean;
   fileTimeMs?: number | null;
   ownsMarkdown?: (meetingId: string, markdownPath: string) => boolean;
@@ -168,6 +170,7 @@ function build(options: Options = {}) {
     scheduler: { every: () => () => undefined },
   });
   const liveListeners = new Set<(text: string, committed: string) => void>();
+  const liveFailureListeners = new Set<(reason: string) => void>();
   const liveAskCalls: string[] = [];
   const order: string[] = [];
   const live = {
@@ -255,6 +258,13 @@ function build(options: Options = {}) {
         liveListeners.add(listener);
         return () => liveListeners.delete(listener);
       },
+      onFailure: (listener) => {
+        liveFailureListeners.add(listener);
+        return () => liveFailureListeners.delete(listener);
+      },
+      ...(options.draftIsFinal === undefined
+        ? {}
+        : { draftIsFinal: () => options.draftIsFinal === true }),
     },
     broadcast,
     logger,
@@ -273,6 +283,7 @@ function build(options: Options = {}) {
     takes,
     live,
     liveListeners,
+    liveFailureListeners,
     liveAskCalls,
     order,
     store,
@@ -673,6 +684,87 @@ describe('RecordingService stop', () => {
     expect(state.lastMeeting).toMatchObject({ id: 'meeting-1' });
     expect(t.repaired).toContain(saved?.audioFilePath);
     expect(t.workspace.state.lastProcessedMeetingId).toBe('meeting-1');
+  });
+
+  it('cloud: a live draft that covers the take is the transcript, and the pass after Stop does not run', async () => {
+    const t = build({ liveDraft: '[00:00.00-00:01.00] live', draftIsFinal: true });
+    await t.service.start(sources);
+    await t.service.stop();
+    await t.service.completion;
+    expect(t.transcriber.calls).toHaveLength(0);
+    expect(t.store.saves.at(-1)?.transcript).toContain('[00:00.00-00:01.00] live');
+  });
+
+  it('cloud: when stopping the capture failed, the draft is not taken as the whole take', async () => {
+    const t = build({ liveDraft: '[00:00.00-00:01.00] live', draftIsFinal: true });
+    await t.service.start(sources);
+    // The capture did not confirm it stopped, so nobody knows the live pass heard all it wrote.
+    t.host.failStop = new Error('the audio worker did not answer');
+    await t.service.stop();
+    await t.service.completion;
+    expect(t.transcriber.calls).toHaveLength(1);
+    expect(t.store.saves.at(-1)?.transcript).toContain(TRANSCRIPT);
+  });
+
+  it('a live draft with gaps, or from the local engine, is replaced by the pass after Stop', async () => {
+    for (const draftIsFinal of [false, undefined]) {
+      const t = build({
+        liveDraft: '[00:00.00-00:01.00] live',
+        ...(draftIsFinal === undefined ? {} : { draftIsFinal }),
+      });
+      await t.service.start(sources);
+      await t.service.stop();
+      await t.service.completion;
+      expect(t.transcriber.calls).toHaveLength(1);
+      expect(t.store.saves.at(-1)?.transcript).toContain(TRANSCRIPT);
+    }
+  });
+
+  it('cloud: a live pass the provider refuses shows a notice while the take goes on recording', async () => {
+    const t = build({ liveDraft: null });
+    const reason = 'Groq did not accept your API key. Check it in Settings.';
+    expect(t.service.getState().liveNotice).toBeNull();
+    await t.service.start(sources);
+    expect(t.service.getState().liveNotice).toBeNull();
+    for (const listener of t.liveFailureListeners) listener(reason);
+    const state = t.service.getState();
+    expect(state.liveNotice).toEqual({
+      key: 'Ui_CloudLiveStopped',
+      args: [reason],
+      severity: 'warning',
+    });
+    // The take is untouched: it still records.
+    expect(state.phase).toBe('Recording');
+    expect(state.isRecording).toBe(true);
+    const published = t.events.filter((e) => e.name === 'recording.state').at(-1)?.payload;
+    expect(published).toMatchObject({ liveNotice: { key: 'Ui_CloudLiveStopped' } });
+
+    await t.service.stop();
+    await t.service.completion;
+    expect(t.service.getState().liveNotice).toBeNull();
+  });
+
+  it('cloud: the notice of one take does not carry over to the next, and none appears while idle', async () => {
+    const t = build({ liveDraft: null });
+    for (const listener of t.liveFailureListeners) listener('late failure');
+    expect(t.service.getState().liveNotice).toBeNull();
+    await t.service.start(sources);
+    for (const listener of t.liveFailureListeners) listener('first take');
+    await t.service.stop();
+    await t.service.completion;
+    await t.service.start(sources);
+    expect(t.service.getState().liveNotice).toBeNull();
+    await t.service.stop();
+    await t.service.completion;
+  });
+
+  it('the text on screen is never taken as final when the live pass left no draft', async () => {
+    const t = build({ liveDraft: null, draftIsFinal: true });
+    await t.service.start(sources);
+    for (const listener of t.liveListeners) listener('[00:00.00-00:01.00] on screen', '');
+    await t.service.stop();
+    await t.service.completion;
+    expect(t.transcriber.calls).toHaveLength(1);
   });
 
   it('the result card follows a title the summary replaced after the meeting was saved', async () => {

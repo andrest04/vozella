@@ -30,9 +30,24 @@ export const installProgressSchema = z.object({
 });
 export type InstallProgressDto = z.infer<typeof installProgressSchema>;
 
+/**
+ * The engines that can transcribe: the local one and the cloud kinds. It restates core's
+ * `TRANSCRIPTION_ENGINE_KINDS`: contracts depends on zod only, so it cannot import core.
+ * `transcription-controller.cloud.test.ts` (apps/desktop) compares the two.
+ */
+export const transcriptionEngineKindSchema = z.enum(['Local', 'Groq', 'OpenAi']);
+export type TranscriptionEngineKindDto = z.infer<typeof transcriptionEngineKindSchema>;
+
 export const engineStatusSchema = z.object({
-  /** The model and a runtime are on disk. The speaker model is not part of it. */
+  /**
+   * The selected engine can transcribe. Local: the model and a runtime are on disk (the speaker
+   * model is not part of it). Cloud: the key of that provider is stored.
+   */
   ready: z.boolean(),
+  /** The engine the settings select. The fields below it describe the local engine only. */
+  engine: transcriptionEngineKindSchema,
+  /** Why a cloud engine is not ready. Null for the local engine and for a ready cloud engine. */
+  cloudNotReadyReason: z.enum(['key-missing']).nullable(),
   modelInstalled: z.boolean(),
   runtimes: z.object({ cpu: z.boolean(), cuda: z.boolean() }),
   speakerModelInstalled: z.boolean(),
@@ -72,10 +87,14 @@ export type InstallOutcomeDto = z.infer<typeof installOutcomeSchema>;
 
 /**
  * Downloads what the engine is missing and answers when it is ready. The Record gate and the
- * Settings button both use it. A second call while one runs shares the first.
+ * Settings button both use it. A second call while one runs shares the first. A cloud engine
+ * downloads nothing: it is ready, or it fails with the sentence that names the missing key.
+ *
+ * `local: true` asks for the engine on this device whatever the settings select, so Settings can
+ * still download it while a cloud engine transcribes.
  */
 export const transcriptionEnsureEngine = defineRequest('transcription.ensureEngine', {
-  input: empty,
+  input: z.object({ local: z.boolean().optional() }).strict(),
   output: installOutcomeSchema,
 });
 

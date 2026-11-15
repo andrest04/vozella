@@ -95,10 +95,27 @@ export interface AsrRecognizer {
   dispose(): Promise<void>;
 }
 
+/** What a stream that can drain says about the audio it was given. */
+export interface AsrStreamCoverage {
+  /**
+   * Audio the stream was given and could not turn into text: a piece that failed, or audio it had
+   * to drop. Zero means every pushed sample was transcribed.
+   */
+  readonly lostMs: number;
+}
+
 /** Spec 3.5: no `finish` here on purpose. Closing a stream with finish aborts the process. */
 export interface AsrStream {
   push(samples: Float32Array, sampleRate: number): Promise<void>;
   /** Drains every result available now, each already copied and released. */
   pullAvailable(): Promise<readonly AsrResult[]>;
+  /**
+   * Optional, and not `finish`: a stream that transcribes in pieces behind the caller (the cloud
+   * engine) transcribes what is still buffered here and waits for the request in flight, so the
+   * results of the last audio can be pulled. The callers use it at the end of a file and when a
+   * live session stops. The local engine has none: it emits as it is fed and must never be
+   * finished, so its callers behave exactly as before.
+   */
+  drain?(): Promise<AsrStreamCoverage>;
   dispose(): Promise<void>;
 }

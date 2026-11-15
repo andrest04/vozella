@@ -4,6 +4,8 @@ import {
   cliExecutableName,
   defaultMeetingTitle,
   findSummaryModel,
+  formatFailure,
+  isApiProviderError,
   RecordingPipeline,
   SummaryStage,
   type ApiKeyStore,
@@ -90,7 +92,9 @@ export function composeRecording(deps: ComposeRecordingDeps): RecordingService {
     meetings: liveRepository(() => library.meetings),
     settings: deps.settings,
     transcriber: offlineTranscriber(deps.transcription),
-    formatFailure: deps.formatFailure,
+    // A cloud transcription engine fails with an API failure, which has its own sentence.
+    formatFailure: (error) =>
+      isApiProviderError(error) ? formatFailure(error, deps.translate) : deps.formatFailure(error),
     previousAudio: previousAudioKeeper(),
     summary,
   });
@@ -138,7 +142,11 @@ export function composeRecording(deps: ComposeRecordingDeps): RecordingService {
     },
     pipeline,
     workspace: deps.workspace,
-    live: { onUpdate: (listener) => deps.transcription.onLiveUpdate(listener) },
+    live: {
+      onUpdate: (listener) => deps.transcription.onLiveUpdate(listener),
+      draftIsFinal: () => deps.transcription.liveDraftIsFinal,
+      onFailure: (listener) => deps.transcription.onLiveFailure(listener),
+    },
     broadcast: deps.broadcast,
     logger: deps.logger,
     nowMs: () => Date.now(),

@@ -72,9 +72,10 @@ describe('parseSummaryProvider (B-20, one rule)', () => {
     expect(parseSummaryProvider('Codex')).toBe('Codex');
     expect(parseSummaryProvider('Xai')).toBe('Xai');
     expect(parseSummaryProvider('Gemini')).toBe('Gemini');
+    expect(parseSummaryProvider('Groq')).toBe('Groq');
     expect(parseSummaryProvider('OpenAiCompatible')).toBe('OpenAiCompatible');
   });
-  it.each([null, undefined, '', '   ', 'local', 'CODEX', '1', '0', 'gemini', 'Mistral'])(
+  it.each([null, undefined, '', '   ', 'local', 'CODEX', '1', '0', 'gemini', 'groq', 'Mistral'])(
     'treats %j as not chosen',
     (value) => {
       expect(parseSummaryProvider(value)).toBeNull();
@@ -185,6 +186,30 @@ describe('evaluateSetup (resolver)', () => {
       portsFor({ settings: { selectedSummaryProvider: 'Local' } }),
     );
     expect(facts.summaryProviderRemoved).toBe(false);
+  });
+  it('names the transcription engine the settings select; missing or unknown is Local', async () => {
+    const engineOf = async (transcriptionEngine: string | null) =>
+      (await evaluateSetup(portsFor({ settings: { transcriptionEngine } }))).facts
+        .transcriptionEngine;
+    expect(await engineOf(null)).toBe('Local');
+    expect(await engineOf('Nemotron')).toBe('Local');
+    expect(await engineOf('Groq')).toBe('Groq');
+    expect(await engineOf('OpenAi')).toBe('OpenAi');
+  });
+  it('a cloud engine that is not ready blocks Record like a missing local engine', async () => {
+    const { readiness } = await evaluateSetup(
+      portsFor({
+        settings: {
+          transcriptionEngine: 'Groq',
+          selectedSummaryProvider: 'Local',
+          selectedSummaryModelId: MODEL,
+        },
+        files: [MODEL],
+        engine: false,
+      }),
+    );
+    expect(readiness.engineReady).toBe(false);
+    expect(readiness.canRecord).toBe(false);
   });
   it('carries the live setting and the engine fact through', async () => {
     const { facts, readiness } = await evaluateSetup(

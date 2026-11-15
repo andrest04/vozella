@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 import { Providers } from '../../app/test-providers';
 import { TranscriptionSection } from './TranscriptionSection';
-import { baseStatus, installTranscriptionApi } from './transcription-test-kit';
+import { baseStatus, installTranscriptionApi, sectionProps } from './transcription-test-kit';
 
 afterEach(() => {
   cleanup();
@@ -14,7 +14,7 @@ afterEach(() => {
 const mount = () =>
   render(
     <Providers>
-      <TranscriptionSection />
+      <TranscriptionSection {...sectionProps()} />
     </Providers>,
   );
 
@@ -387,7 +387,7 @@ describe('TranscriptionSection number format', () => {
     });
     render(
       <Providers locale="es">
-        <TranscriptionSection />
+        <TranscriptionSection {...sectionProps()} />
       </Providers>,
     );
     expect(await screen.findByText(/12,3\s?%/)).toBeVisible();

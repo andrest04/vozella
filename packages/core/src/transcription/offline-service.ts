@@ -8,7 +8,7 @@ import {
   type AudioFrameReader,
   type MicActivityReader,
 } from './ports';
-import type { NemoSpeechRecognizerFactory } from './recognizer-factory';
+import type { RecognizerSource } from './recognizer-factory';
 
 /** 100 ms of 16 kHz audio, per channel. */
 export const OFFLINE_FRAME_SAMPLES = 1600;
@@ -24,7 +24,8 @@ export interface TranscribeRequest {
 }
 
 export interface TranscriptionServiceDeps {
-  readonly factory: NemoSpeechRecognizerFactory;
+  /** The engine of the pass: the local factory, or whichever engine is selected when it starts. */
+  readonly factory: RecognizerSource;
   readonly audio: AudioFrameReader;
   /** When the local user spoke in a recording; absent: no `[ You ]` labels. */
   readonly micActivity?: MicActivityReader;
@@ -42,6 +43,7 @@ export class TranscriptionService {
       enableDiarization: request.speakerDiarization,
       geometry: MEETING_GEOMETRY,
       latency: 'offline',
+      ...(cancel ? { cancel } : {}),
     });
     let stream: Awaited<ReturnType<typeof created.recognizer.startStream>> | null = null;
     let source: ReturnType<AudioFrameReader['open']> | null = null;
@@ -76,6 +78,13 @@ export class TranscriptionService {
         const positionMs = (readSamples / channels / source.sampleRate) * 1000;
         report(toPercent(positionMs, source.durationMs));
       }
+      // The end of the file: an engine that works in pieces transcribes its last one now. A failed
+      // piece rejects here, so a transcript with a hole is never returned as the whole one.
+      if (stream.drain) {
+        await stream.drain();
+        for (const result of await stream.pullAvailable()) accumulator.apply(result);
+      }
+      if (cancel?.cancelled) throw new TranscriptionCancelledError();
       accumulator.commitRemainingInterim();
       report(100);
       return accumulator.committedText;

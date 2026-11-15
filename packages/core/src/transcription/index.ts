@@ -1,6 +1,7 @@
 export * from './accumulator';
 export * from './asr-types';
 export * from './backend-status';
+export * from './cloud-speech-engine';
 export * from './committed-line';
 export * from './engine-catalog';
 export * from './engine-installer';
@@ -15,6 +16,8 @@ export * from './polish';
 export * from './ports';
 export * from './progress';
 export * from './recognizer-factory';
+export * from './speech-to-text';
+export * from './speech-engine-provider';
 export * from './retranscription';
 export * from './stamp-format';
 export * from './test-kit';

@@ -48,6 +48,12 @@ export const recordingStateSchema = z.object({
   microphoneActive: z.boolean(),
   /** The hard failure of the take first, then the soft warning. */
   captureNotices: z.array(recordingMessageSchema),
+  /**
+   * The live transcript stopped while the take goes on recording: a cloud engine whose provider
+   * refused the request (key, credit, model). `args[0]` is the provider's reason as a sentence.
+   * Null otherwise, and always null when nothing records.
+   */
+  liveNotice: recordingMessageSchema.nullable(),
   /** The meeting the take writes to; null while idle. */
   meetingId: z.string().nullable(),
   title: z.string(),
@@ -68,6 +74,11 @@ const setupCardSchema = z.object({
   status: textRefSchema,
   detail: textRefSchema,
   ready: z.boolean(),
+  /**
+   * Why the card is not ready when a download cannot fix it: `key-missing` is a cloud
+   * transcription engine without its API key (add it in Settings). Absent otherwise.
+   */
+  reason: z.enum(['key-missing']).optional(),
 });
 
 /**

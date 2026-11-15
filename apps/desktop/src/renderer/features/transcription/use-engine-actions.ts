@@ -5,7 +5,8 @@ import { useI18n } from '../../i18n/I18nProvider';
 export interface EngineActions {
   /** The failure of the last download or delete, ready to show, or null. */
   readonly note: string | null;
-  readonly download: () => Promise<void>;
+  /** `local`: the engine on this PC, asked for by name while a cloud engine is selected. */
+  readonly download: (options?: { readonly local?: boolean }) => Promise<void>;
   readonly remove: () => Promise<void>;
   /** Turns live captions on or off; failures only show as the refreshed status. */
   readonly setLive: (enabled: boolean) => void;
@@ -13,7 +14,7 @@ export interface EngineActions {
 
 export interface EngineActionsOptions {
   /** The shared engine download from `useEngineInstall`. */
-  readonly start: () => Promise<InstallOutcomeDto>;
+  readonly start: (options?: { readonly local?: boolean }) => Promise<InstallOutcomeDto>;
   /** Reloads the engine status after every action. */
   readonly refresh: () => Promise<unknown>;
   /** Speaks an outcome through the section's polite live region. */
@@ -43,14 +44,17 @@ export function useEngineActions({
     };
   }, []);
 
-  const download = useCallback(async () => {
-    setNote(null);
-    const outcome = await start();
-    if (outcome.status === 'failed') {
-      setNote(t('Error_DownloadFailedCaption', outcome.message));
-    }
-    await refresh();
-  }, [start, refresh, t]);
+  const download = useCallback(
+    async (options?: { readonly local?: boolean }) => {
+      setNote(null);
+      const outcome = await start(options);
+      if (outcome.status === 'failed') {
+        setNote(t('Error_DownloadFailedCaption', outcome.message));
+      }
+      await refresh();
+    },
+    [start, refresh, t],
+  );
 
   const remove = useCallback(async () => {
     setNote(null);

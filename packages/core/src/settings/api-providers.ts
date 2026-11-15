@@ -5,160 +5,33 @@ import {
   type CliProviderKind,
 } from '../library/settings';
 import type { ProviderId } from '../summaries/provider';
+import {
+  API_ENGINES,
+  API_ENGINE_LIST,
+  type ApiEngine,
+  type ApiProviderId,
+} from './api-engine-table';
 import { CLI_ENGINES, cliEngineByProviderId, type CliProviderId } from './cli-providers';
 
-/** Settings fields that hold a string per engine. */
-type StringSettingKey = {
-  [K in keyof AppSettings]: AppSettings[K] extends string | null ? K : never;
-}[keyof AppSettings];
-
-/** The wire format an engine speaks. Gemini and the compatible kind reuse the OpenAI one. */
-export type ApiProtocol = 'openai-chat' | 'anthropic-messages';
+// The table itself lives in `api-engine-table`; `ApiProviderKind` and `API_PROVIDER_KINDS` are
+// exported by `library/settings`, next to the other summary-provider kinds.
+export {
+  API_ENGINES,
+  API_ENGINE_LIST,
+  API_PROVIDER_IDS,
+  type ApiEngine,
+  type ApiProtocol,
+  type ApiProviderId,
+} from './api-engine-table';
 
 /** What is still missing before an API key engine can answer. */
 export type ApiSetupGap = 'base-url-missing' | 'key-missing' | 'model-missing';
 
-export type ApiProviderId = Extract<
-  ProviderId,
-  'openai' | 'anthropic' | 'gemini' | 'openai-compatible'
->;
-
-/**
- * What the app knows about one engine reached over HTTP with the user's own key (BYOK). Like the
- * CLI table, the saved `kind` and the `providerId` are stored on disk and sent over IPC, so they
- * never change. The key itself never lives here or in settings: it is in the `ApiKeyStore`.
- */
-export interface ApiEngine {
-  readonly kind: ApiProviderKind;
-  readonly providerId: ApiProviderId;
-  readonly protocol: ApiProtocol;
-  /** The product name in errors and status lines. */
-  readonly displayName: string;
-  /** Catalog key of the product name in the UI. */
-  readonly nameKey:
-    'Ui_ApiOpenAiName' | 'Ui_ApiAnthropicName' | 'Ui_ApiGeminiName' | 'Ui_ApiOpenAiCompatibleName';
-  /** Null when the user supplies the endpoint (the compatible kind). */
-  readonly defaultBaseUrl: string | null;
-  /** The compatible kind also serves local servers (Ollama, LM Studio) that take no key. */
-  readonly requiresKey: boolean;
-  /** Suggestions for the model picker. The user may type any other id. */
-  readonly models: readonly string[];
-  /** The readable name of each suggested model, in the same order. Other ids show as typed. */
-  readonly modelNames: Readonly<Record<string, string>>;
-  /** Null when there is no sensible default (the compatible kind). */
-  readonly defaultModel: string | null;
-  readonly modelSetting: StringSettingKey;
-  /** The saved model, trimmed, else the default, else an empty string. */
-  readonly resolveModel: (settings: AppSettings) => string;
-  /** The endpoint without a trailing slash; null when none is known. */
-  readonly resolveBaseUrl: (settings: AppSettings) => string | null;
-}
-
-const trimmed = (value: string | null): string | null => {
-  const text = value?.trim() ?? '';
-  return text === '' ? null : text;
-};
-
-const modelResolver =
-  (setting: StringSettingKey, fallback: string | null) =>
-  (settings: AppSettings): string =>
-    trimmed(settings[setting]) ?? fallback ?? '';
-
-const fixedBaseUrl =
-  (url: string): ApiEngine['resolveBaseUrl'] =>
-  () =>
-    url;
-
-/**
- * The single table of API key engines. Add or change an engine here.
- * Defaults and suggestions follow each provider's own model catalog (checked 2026-11-10):
- * developers.openai.com/api/docs/models, platform.claude.com/docs/en/about-claude/models/overview,
- * aistudio.google.com/docs/models. Verify lists the models a key can really use.
- */
-export const API_ENGINES = {
-  OpenAi: {
-    kind: 'OpenAi',
-    providerId: 'openai',
-    protocol: 'openai-chat',
-    displayName: 'OpenAI',
-    nameKey: 'Ui_ApiOpenAiName',
-    defaultBaseUrl: 'https://api.openai.com/v1',
-    requiresKey: true,
-    models: ['gpt-6-astra', 'gpt-6.1-sol', 'gpt-6.1-terra', 'gpt-6-luna'],
-    modelNames: {
-      'gpt-6-astra': 'GPT-6 Astra',
-      'gpt-6.1-sol': 'GPT-6.1 Sol',
-      'gpt-6.1-terra': 'GPT-6.1 Terra',
-      'gpt-6-luna': 'GPT-6 Luna',
-    },
-    defaultModel: 'gpt-6-astra',
-    modelSetting: 'selectedOpenAiModelId',
-    resolveModel: modelResolver('selectedOpenAiModelId', 'gpt-6-astra'),
-    resolveBaseUrl: fixedBaseUrl('https://api.openai.com/v1'),
-  },
-  Anthropic: {
-    kind: 'Anthropic',
-    providerId: 'anthropic',
-    protocol: 'anthropic-messages',
-    displayName: 'Anthropic',
-    nameKey: 'Ui_ApiAnthropicName',
-    defaultBaseUrl: 'https://api.anthropic.com/v1',
-    requiresKey: true,
-    models: ['claude-opus-5-5', 'claude-fable-5-2', 'claude-sonnet-5-5', 'claude-haiku-5-5'],
-    modelNames: {
-      'claude-opus-5-5': 'Claude Opus 5.5',
-      'claude-fable-5-2': 'Claude Fable 5.2',
-      'claude-sonnet-5-5': 'Claude Sonnet 5.5',
-      'claude-haiku-5-5': 'Claude Haiku 5.5',
-    },
-    defaultModel: 'claude-opus-5-5',
-    modelSetting: 'selectedAnthropicModelId',
-    resolveModel: modelResolver('selectedAnthropicModelId', 'claude-opus-5-5'),
-    resolveBaseUrl: fixedBaseUrl('https://api.anthropic.com/v1'),
-  },
-  Gemini: {
-    kind: 'Gemini',
-    providerId: 'gemini',
-    protocol: 'openai-chat',
-    displayName: 'Google Gemini',
-    nameKey: 'Ui_ApiGeminiName',
-    defaultBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    requiresKey: true,
-    models: ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'],
-    modelNames: {
-      'gemini-3.8-flash': 'Gemini 3.8 Flash',
-      'gemini-3.6-flash': 'Gemini 3.6 Flash',
-      'gemini-3.5-flash-lite': 'Gemini 3.5 Flash-Lite',
-    },
-    defaultModel: 'gemini-3.8-flash',
-    modelSetting: 'selectedGeminiModelId',
-    resolveModel: modelResolver('selectedGeminiModelId', 'gemini-3.8-flash'),
-    resolveBaseUrl: fixedBaseUrl('https://generativelanguage.googleapis.com/v1beta/openai'),
-  },
-  OpenAiCompatible: {
-    kind: 'OpenAiCompatible',
-    providerId: 'openai-compatible',
-    protocol: 'openai-chat',
-    displayName: 'OpenAI-compatible',
-    nameKey: 'Ui_ApiOpenAiCompatibleName',
-    defaultBaseUrl: null,
-    requiresKey: false,
-    models: [],
-    modelNames: {},
-    defaultModel: null,
-    modelSetting: 'selectedOpenAiCompatibleModelId',
-    resolveModel: modelResolver('selectedOpenAiCompatibleModelId', null),
-    resolveBaseUrl: (settings) =>
-      trimmed(settings.openAiCompatibleBaseUrl)?.replace(/\/+$/, '') ?? null,
-  },
-} as const satisfies Readonly<Record<ApiProviderKind, ApiEngine>>;
-
-export const API_ENGINE_LIST: readonly ApiEngine[] = Object.values(API_ENGINES);
-
 /**
  * Name fragments of the models a provider's model list returns that cannot answer a text chat:
  * embeddings, images, video, music, speech, realtime and live audio, moderation, translation and
- * specialist agents. Taken from the OpenAI and Gemini catalogs (checked 2026-11-10).
+ * specialist agents. Taken from the OpenAI and Gemini catalogs (checked 2026-11-10), plus the
+ * safety classifiers (`guard`) and the speech voices (`orpheus`) in Groq's (checked 2026-11-15).
  */
 const NON_CHAT_MODEL_FRAGMENTS = [
   'embed',
@@ -176,6 +49,8 @@ const NON_CHAT_MODEL_FRAGMENTS = [
   'realtime',
   'live',
   'moderation',
+  'guard',
+  'orpheus',
   'translate',
   'cyber',
   'rosalind',

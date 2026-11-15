@@ -1,5 +1,10 @@
+import { isApiProvider } from '../library/settings';
 import { API_ENGINES } from '../settings/api-providers';
 import { CLI_ENGINES } from '../settings/cli-providers';
+import {
+  cloudTranscriptionApiEngine,
+  isCloudTranscriptionKind,
+} from '../settings/cloud-transcription-engines';
 import { findSummaryModel } from '../settings/summary-models';
 import type { Readiness, SetupFacts } from './readiness';
 
@@ -15,7 +20,15 @@ export interface SetupCard {
   readonly status: TextRef;
   readonly detail: TextRef;
   readonly ready: boolean;
+  /**
+   * Why the card is not ready, when the wording of `detail` is not enough for the page to act on:
+   * `key-missing` is a cloud transcription engine without its API key, which is fixed in Settings
+   * and not by a download. Absent otherwise.
+   */
+  readonly reason?: SetupCardReason;
 }
+
+export type SetupCardReason = 'key-missing';
 
 export interface SetupSnapshot {
   readonly canRecord: boolean;
@@ -42,18 +55,32 @@ export function summaryCaption(provider: SetupFacts['provider'], modelId: string
     case 'ClaudeCode':
     case 'Codex':
       return ref(CLI_ENGINES[provider].nameKey);
-    case 'OpenAi':
-    case 'Anthropic':
-    case 'Gemini':
-    case 'OpenAiCompatible':
-      return ref(API_ENGINES[provider].nameKey);
     default:
-      return ref('RecordingSetup_SummaryNotChosen');
+      return isApiProvider(provider)
+        ? ref(API_ENGINES[provider].nameKey)
+        : ref('RecordingSetup_SummaryNotChosen');
   }
 }
 
 const statusRef = (ready: boolean): TextRef =>
   ref(ready ? 'RecordingSetup_Ready' : 'RecordingSetup_NeedsSetup');
+
+/** The engine card. A cloud engine without its key says which provider needs one. */
+function engineCard(facts: SetupFacts, readiness: Readiness): SetupCard {
+  const card: SetupCard = {
+    headerKey: 'RecordingSetup_Engine.Header',
+    status: statusRef(readiness.engineReady),
+    detail: ref('RecordingSetup_EngineDetail'),
+    ready: readiness.engineReady,
+  };
+  const engine = facts.transcriptionEngine;
+  if (readiness.engineReady || !isCloudTranscriptionKind(engine)) return card;
+  return {
+    ...card,
+    detail: ref('Ui_ApiKeyMissing', cloudTranscriptionApiEngine(engine).displayName),
+    reason: 'key-missing',
+  };
+}
 
 export function buildSetupSnapshot(facts: SetupFacts, readiness: Readiness): SetupSnapshot {
   return {
@@ -68,12 +95,7 @@ export function buildSetupSnapshot(facts: SetupFacts, readiness: Readiness): Set
       ),
       ready: readiness.liveReady,
     },
-    engine: {
-      headerKey: 'RecordingSetup_Engine.Header',
-      status: statusRef(readiness.engineReady),
-      detail: ref('RecordingSetup_EngineDetail'),
-      ready: readiness.engineReady,
-    },
+    engine: engineCard(facts, readiness),
     summary: {
       headerKey: 'RecordingSetup_Summary.Header',
       status: statusRef(readiness.summaryReady),

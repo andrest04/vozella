@@ -59,6 +59,20 @@ describe('library contracts', () => {
     );
   });
 
+  it('a settings patch can choose the transcription engine and its cloud model', () => {
+    const patch = { transcriptionEngine: 'Groq', cloudTranscriptionModelId: 'whisper-large-v3' };
+    expect(settingsUpdate.input.safeParse({ patch }).success).toBe(true);
+    // Back to the local engine and to the provider's default model.
+    expect(
+      settingsUpdate.input.safeParse({
+        patch: { transcriptionEngine: null, cloudTranscriptionModelId: null },
+      }).success,
+    ).toBe(true);
+    expect(settingsUpdate.input.safeParse({ patch: { transcriptionEngine: 1 } }).success).toBe(
+      false,
+    );
+  });
+
   it('validates workspace actions', () => {
     expect(workspaceActionSchema.safeParse({ type: 'navigateTo', tag: 'History' }).success).toBe(
       true,

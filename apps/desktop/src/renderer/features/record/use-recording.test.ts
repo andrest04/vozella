@@ -25,6 +25,7 @@ const idle: RecordingStateDto = {
   micLevel: 0,
   microphoneActive: true,
   captureNotices: [],
+  liveNotice: null,
   meetingId: null,
   title: '',
   recordedAtMs: null,
@@ -198,6 +199,7 @@ describe('the recording store', () => {
     first();
     expect(api.offs.count).toBe(0);
     second();
-    expect(api.offs.count).toBe(4);
+    // State, live text, committed text, a deleted meeting, and the transcription status.
+    expect(api.offs.count).toBe(5);
   });
 });

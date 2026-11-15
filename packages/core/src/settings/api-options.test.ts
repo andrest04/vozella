@@ -8,7 +8,7 @@ function commands() {
 }
 
 describe('SettingsCommands: API key engines', () => {
-  it.each(['OpenAi', 'Anthropic', 'Gemini', 'OpenAiCompatible'])(
+  it.each(['OpenAi', 'Anthropic', 'Gemini', 'Groq', 'OpenAiCompatible'])(
     'selects %s as the summary engine',
     async (kind) => {
       const { store, commands: c } = commands();
@@ -26,6 +26,9 @@ describe('SettingsCommands: API key engines', () => {
     // Free text: a model the list does not suggest is still saved.
     await c.setApiOption({ kind: 'Anthropic', field: 'model', value: 'claude-custom-1' });
     expect((await store.load()).selectedAnthropicModelId).toBe('claude-custom-1');
+    // A Groq id may carry a vendor prefix.
+    await c.setApiOption({ kind: 'Groq', field: 'model', value: 'openai/gpt-oss-120b' });
+    expect((await store.load()).selectedGroqModelId).toBe('openai/gpt-oss-120b');
   });
 
   it('ignores a blank, unchanged or whitespace-bearing model id', async () => {

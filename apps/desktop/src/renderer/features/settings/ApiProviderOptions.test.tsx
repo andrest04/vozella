@@ -30,6 +30,10 @@ function pageDto(extra: Record<string, unknown> = {}): SettingsPageDto {
       OpenAi: engine(),
       Anthropic: engine({ model: 'claude-sonnet-5-5', modelOptions: ['claude-sonnet-5-5'] }),
       Gemini: engine({ model: 'gemini-2.5-flash', modelOptions: ['gemini-2.5-flash'] }),
+      Groq: engine({
+        model: 'llama-3.3-70b-versatile',
+        modelOptions: ['llama-3.3-70b-versatile', 'openai/gpt-oss-120b'],
+      }),
       OpenAiCompatible: engine({ model: '', modelOptions: [] }),
     },
     cliStatus: null,
@@ -91,7 +95,7 @@ beforeEach(() => {
 });
 
 describe('Settings: API key engines (BYOK)', () => {
-  it('offers the four API engines in the one engine list, captioned by what the user brings', async () => {
+  it('offers the five API engines in the one engine list, captioned by what the user brings', async () => {
     install({ 'settings.getPage': () => pageDto({ provider: 'Local' }) });
     mount();
     const group = await screen.findByRole('group', {
@@ -107,6 +111,7 @@ describe('Settings: API key engines (BYOK)', () => {
       'OpenAI',
       'Anthropic',
       'Google Gemini',
+      'Groq',
       'OpenAI-compatible',
     ];
     expect(rows).toHaveLength(expected.length);
@@ -292,7 +297,9 @@ describe('Settings: API key engines (BYOK)', () => {
     mount();
     const user = userEvent.setup();
     const address = await screen.findByLabelText('Server address', { selector: 'input' });
-    expect(screen.getByText(/OpenRouter, Groq, Ollama, LM Studio/)).toBeVisible();
+    // Groq has its own engine, so the compatible one no longer sends the user there for it.
+    expect(screen.getByText(/OpenRouter, Ollama, LM Studio/)).toBeVisible();
+    expect(screen.queryByText(/Groq, Ollama/)).toBeNull();
     expect(
       screen.getByText('Optional. Local servers such as Ollama or LM Studio usually need none.'),
     ).toBeVisible();
@@ -305,6 +312,29 @@ describe('Settings: API key engines (BYOK)', () => {
       await screen.findByText('Enter an address that starts with http:// or https://.'),
     ).toBeVisible();
     expect(address).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('Groq asks for a key and a model, never a server address, and saves the key under Groq', async () => {
+    const calls = install({
+      'settings.getPage': () => pageDto({ provider: 'Groq' }),
+      'settings.setApiKey': () => ({ status: 'saved', keySet: true }),
+    });
+    mount();
+    const user = userEvent.setup();
+    const key = await screen.findByLabelText('API key', { selector: 'input' });
+    const apiList = screen.getByRole('list', { name: 'With your API key' });
+    expect(within(apiList).getByRole('button', { name: 'Groq' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(screen.queryByLabelText('Server address', { selector: 'input' })).toBeNull();
+    expect(screen.getByText(/are sent to Groq to get an answer/)).toBeVisible();
+    await user.type(key, SECRET);
+    await user.click(screen.getByRole('button', { name: 'Save key' }));
+    expect(calls).toContainEqual({
+      name: 'settings.setApiKey',
+      input: { kind: 'Groq', key: SECRET },
+    });
   });
 
   it('shows the API block in Spanish', async () => {

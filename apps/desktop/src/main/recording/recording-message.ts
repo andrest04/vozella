@@ -13,7 +13,8 @@ export function typed(message: Message | CaptureNotice): RecordingMessageDto {
       : message.key.startsWith('Error_') ||
           message.key.startsWith('Ui_Error') ||
           message.key === 'Ui_ProcessLoopbackUnsupported' ||
-          message.key === 'Ui_TranscriptionEngineUnavailable'
+          message.key === 'Ui_TranscriptionEngineUnavailable' ||
+          message.key === 'Ui_CloudTranscriptionKeyMissingAudioKept'
         ? 'error'
         : message.key === 'Ui_SummaryProviderXaiRemoved'
           ? 'warning'

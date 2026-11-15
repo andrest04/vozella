@@ -11,11 +11,14 @@ import {
   type PayloadInputOf,
 } from '@vozella/contracts';
 import {
+  API_FAILURE_UI_KEYS,
   applyHighlights,
   CancelSource,
+  cloudTranscriptionApiEngine,
   droppedPercent,
   ensureEndedHeader,
   evaluateRetranscription,
+  isApiProviderError,
   MeetingRetranscriptionRunner,
   parseOffsetDate,
   pcm16ToFloat32,
@@ -33,6 +36,7 @@ import {
   type RetranscriptionResult,
   type SettingsStore,
   type SourceLevels,
+  type SpeechEngineProvider,
   type TranslateFn,
 } from '@vozella/core';
 import type { TranscriptionRuntime } from '@vozella/platform';
@@ -98,6 +102,13 @@ export interface OfflineRun {
 const messageOf = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
+/** The settings the engine status is built from besides the two this module saves itself. */
+const ENGINE_STATUS_SETTINGS = ['transcriptionEngine', 'cloudTranscriptionModelId'] as const;
+
+/** True when a saved settings patch changes which engine transcribes, so the status is stale. */
+export const changesTranscriptionEngine = (patch: Readonly<Record<string, unknown>>): boolean =>
+  ENGINE_STATUS_SETTINGS.some((field) => Object.hasOwn(patch, field));
+
 /**
  * What the pages and the recording module use of the transcription module: the engine state and
  * its downloads, the two settings, the live session fed by the recording frames, the offline
@@ -108,12 +119,15 @@ export class TranscriptionController {
   private install: {
     cancel: CancelSource;
     done: Promise<InstallOutcomeDto>;
-    kind: 'engine' | 'speaker-model';
+    /** `engine`: the selected one. `local-engine`: the local one while a cloud engine is selected. */
+    kind: 'engine' | 'local-engine' | 'speaker-model';
   } | null = null;
   private unsubscribeFrames: (() => void) | null = null;
   private unsubscribeUpdates: (() => void) | null = null;
   private lastDisplayText = '';
+  private lastLiveDraftIsFinal = false;
   private readonly liveListeners = new Set<(displayText: string, committedText: string) => void>();
+  private readonly liveFailureListeners = new Set<(reason: string) => void>();
   private readonly runner: MeetingRetranscriptionRunner;
   private readonly disposers: (() => void)[] = [];
 
@@ -146,6 +160,11 @@ export class TranscriptionController {
       deps.runtime.status.onLiveDropsChanged(() => {
         void this.publishStatus();
       }),
+      deps.runtime.onLiveFailure(({ error }) => {
+        // The provider's reason as a sentence, in the app language of this moment.
+        const reason = (deps.formatFailure ?? messageOf)(error);
+        for (const listener of [...this.liveFailureListeners]) listener(reason);
+      }),
     );
   }
 
@@ -164,8 +183,13 @@ export class TranscriptionController {
     const saved = await settings.load();
     const usage = runtime.status.current;
     const drops = runtime.status.lastLiveDrops;
+    const engine = await runtime.engine();
+    const ready = await engine.isReady();
     return {
-      ready: runtime.installer.isReady(),
+      ready,
+      engine: engine.kind,
+      // The only thing a cloud engine can be missing is its key: nothing is installed for it.
+      cloudNotReadyReason: engine.kind !== 'Local' && !ready ? 'key-missing' : null,
       modelInstalled: runtime.models.isModelDownloaded(),
       runtimes: { cpu: runtime.runtimes.isReady('cpu'), cuda: runtime.runtimes.isReady('cuda') },
       speakerModelInstalled: runtime.models.isDiarizationModelDownloaded(),
@@ -185,6 +209,15 @@ export class TranscriptionController {
     };
   }
 
+  /**
+   * Publishes the status again. The engine setting and the API keys are saved by other modules, so
+   * whoever saves one calls this: the Record gate, the live switch and the Settings section then
+   * show the new engine and whether it can run, without a restart.
+   */
+  refreshStatus(): Promise<void> {
+    return this.publishStatus();
+  }
+
   private async publishStatus(): Promise<void> {
     try {
       this.deps.broadcast(transcriptionStatusChanged, await this.status());
@@ -195,21 +228,44 @@ export class TranscriptionController {
 
   // ---------------------------------------------------------------- download
 
+  /** The sentence for an engine that cannot run: which key is missing, or that it is not installed. */
+  private async notReadyMessage(engine: SpeechEngineProvider): Promise<string | null> {
+    if (await engine.isReady()) return null;
+    if (engine.kind === 'Local') return this.deps.t('Ui_RetranscriptionEngineNotInstalled');
+    return this.deps.t(
+      API_FAILURE_UI_KEYS.KeyMissing,
+      cloudTranscriptionApiEngine(engine.kind).displayName,
+    );
+  }
+
   /**
    * Downloads what is missing and checks the engine is ready afterwards. A second call while one
-   * runs shares the first (B17). Cancelling is not an error.
+   * runs shares the first (B17). Cancelling is not an error. A cloud engine has nothing to
+   * download: it is ready, or it fails saying which key is missing.
+   *
+   * `local` asks for the engine on this device whatever the settings select: Settings offers the
+   * download while a cloud engine transcribes, so the user can go back to this device later.
    */
-  ensureEngine(): Promise<InstallOutcomeDto> {
+  ensureEngine(options: { readonly local?: boolean } = {}): Promise<InstallOutcomeDto> {
+    const kind = options.local === true ? 'local-engine' : 'engine';
     // A transfer that was cancelled still ends on its own time; a new call waits for it and starts
     // again, so it is not handed the cancelled outcome.
-    if (this.install?.cancel.cancelled) return this.install.done.then(() => this.ensureEngine());
+    if (this.install?.cancel.cancelled) {
+      return this.install.done.then(() => this.ensureEngine(options));
+    }
     // Another kind of install is not this one: wait for it, then check again.
-    if (this.install && this.install.kind !== 'engine') {
-      return this.install.done.then(() => this.ensureEngine());
+    if (this.install && this.install.kind !== kind) {
+      return this.install.done.then(() => this.ensureEngine(options));
     }
     if (this.install) return this.install.done;
     const cancel = new CancelSource();
     const done = this.runInstall(cancel, async () => {
+      const engine =
+        options.local === true ? this.deps.runtime.local : await this.deps.runtime.engine();
+      if (engine.kind !== 'Local') {
+        const message = await this.notReadyMessage(engine);
+        return message === null ? { status: 'ready' } : { status: 'failed', message };
+      }
       await this.deps.runtime.installer.ensure((p) => {
         this.reportProgress({
           stage: p.stage,
@@ -223,7 +279,7 @@ export class TranscriptionController {
       }
       return { status: 'ready' };
     });
-    this.install = { cancel, done, kind: 'engine' };
+    this.install = { cancel, done, kind };
     return done;
   }
 
@@ -349,6 +405,18 @@ export class TranscriptionController {
   }
 
   /**
+   * A live pass on a cloud engine stopped because the provider refused it (key, credit, model),
+   * with the reason as a sentence. The take goes on recording; the recording module shows the
+   * reason while it does. Returns the unsubscribe.
+   */
+  onLiveFailure(listener: (reason: string) => void): () => void {
+    this.liveFailureListeners.add(listener);
+    return () => {
+      this.liveFailureListeners.delete(listener);
+    };
+  }
+
+  /**
    * Starts the live pass for a take when Settings allows it and feeds it the mixed recording
    * frames. The recording module calls this after the capture has started.
    */
@@ -357,6 +425,7 @@ export class TranscriptionController {
     if (!settings.liveTranscriptionEnabled) return { active: false };
     const { live } = this.deps.runtime;
     this.lastDisplayText = '';
+    this.lastLiveDraftIsFinal = false;
     this.unsubscribeUpdates?.();
     this.unsubscribeUpdates = live.onTranscriptUpdated((update) => {
       this.lastDisplayText = update.displayText;
@@ -390,8 +459,11 @@ export class TranscriptionController {
     this.unsubscribeFrames?.();
     this.unsubscribeFrames = null;
     // Updates stay subscribed while Stop drains the queue, so the last text still reaches the pane.
+    this.lastLiveDraftIsFinal = false;
     try {
-      return await this.deps.runtime.live.stop();
+      const draft = await this.deps.runtime.live.stop();
+      this.lastLiveDraftIsFinal = this.deps.runtime.live.lastDraftIsComplete;
+      return draft;
     } catch (error) {
       this.deps.logger.warn('live transcription did not stop cleanly', { error: messageOf(error) });
       return this.lastDisplayText.trim() === '' ? null : this.lastDisplayText;
@@ -399,6 +471,15 @@ export class TranscriptionController {
       this.unsubscribeUpdates?.();
       this.unsubscribeUpdates = null;
     }
+  }
+
+  /**
+   * True when the draft the last `stopLive` returned is the transcript of the whole take, so the
+   * pass after Stop would only upload the same audio again. Only a cloud engine whose live pass
+   * transcribed every sample says so; with the local engine it is always false.
+   */
+  get liveDraftIsFinal(): boolean {
+    return this.lastLiveDraftIsFinal;
   }
 
   /** The offline pass over a finished WAV, with the language and speaker labels from Settings. */
@@ -515,8 +596,9 @@ export class TranscriptionController {
     cancel: CancelSignal,
   ): Promise<boolean> {
     const { t } = this.deps;
-    if (!this.deps.runtime.installer.isReady()) {
-      callbacks.onFinished(t('Ui_RetranscriptionEngineNotInstalled'));
+    const notReady = await this.notReadyMessage(await this.deps.runtime.engine());
+    if (notReady !== null) {
+      callbacks.onFinished(notReady);
       return false;
     }
     const recordedAt = parseOffsetDate(request.recordedAt)?.ms ?? null;
@@ -534,7 +616,12 @@ export class TranscriptionController {
       });
     } catch (error) {
       if (error instanceof TranscriptionCancelledError || cancel.cancelled) throw error;
-      callbacks.onFinished(t('Error_TranscriptionFailedAudioKept', messageOf(error)));
+      // A cloud engine fails with an API failure, which has its own sentence. Anything else (the
+      // engine on this PC, the audio file) keeps its own message, as before cloud engines existed.
+      const detail = isApiProviderError(error)
+        ? (this.deps.formatFailure ?? messageOf)(error)
+        : messageOf(error);
+      callbacks.onFinished(t('Error_TranscriptionFailedAudioKept', detail));
       return false;
     }
     if (text.trim() === '') {
