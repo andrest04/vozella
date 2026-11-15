@@ -161,7 +161,16 @@ Transcription is local only: it needs the Nemotron model plus a CPU or CUDA runt
 
 ## Next step
 
-None in this feature. Still open outside it: a first run against a real Groq and OpenAI account (everything here ran against fakes).
+Run the real transcription test with a real key; it is blocked on the user supplying one:
+
+`VOZELLA_REAL_STT=1 VOZELLA_REAL_STT_WAV=<speech.wav> VOZELLA_REAL_STT_GROQ_KEY=<key> pnpm --filter @vozella/platform exec vitest run real-speech-to-text`
+
+Read the printed words for punctuation, spacing and timings, and compare `wordCount` with `textTokenCount` (the engine takes punctuation from the text only when they match).
+
+## Live verification
+
+- 2026-11-15: `packages/platform/src/transcription/real-speech-to-text.integration.test.ts` added (opt-in, `VOZELLA_REAL_STT=1`; commits `998f2ee`, `28c6919`). Observed against the real endpoints with a key the providers do not know: Groq and OpenAI both answered and the client reported `KeyInvalid` without the key in the message (4 passed, the two transcription cases returning early for lack of a key). This proves the base URLs, the multipart upload up to authentication, and the 401 mapping.
+- Not yet observed: a real transcription. Open facts: whether `words[].word` carries spaces or punctuation, whether `whisper-1` and `whisper-large-v3-turbo` accept the request as sent, the wording of a Groq 429 and its `retry-after` values.
 
 ## Closure
 
