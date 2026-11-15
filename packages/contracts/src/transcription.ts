@@ -30,9 +30,24 @@ export const installProgressSchema = z.object({
 });
 export type InstallProgressDto = z.infer<typeof installProgressSchema>;
 
+/**
+ * The engines that can transcribe: the local one and the cloud kinds. It restates core's
+ * `TRANSCRIPTION_ENGINE_KINDS`: contracts depends on zod only, so it cannot import core.
+ * `transcription-controller.cloud.test.ts` (apps/desktop) compares the two.
+ */
+export const transcriptionEngineKindSchema = z.enum(['Local', 'Groq', 'OpenAi']);
+export type TranscriptionEngineKindDto = z.infer<typeof transcriptionEngineKindSchema>;
+
 export const engineStatusSchema = z.object({
-  /** The model and a runtime are on disk. The speaker model is not part of it. */
+  /**
+   * The selected engine can transcribe. Local: the model and a runtime are on disk (the speaker
+   * model is not part of it). Cloud: the key of that provider is stored.
+   */
   ready: z.boolean(),
+  /** The engine the settings select. The fields below it describe the local engine only. */
+  engine: transcriptionEngineKindSchema,
+  /** Why a cloud engine is not ready. Null for the local engine and for a ready cloud engine. */
+  cloudNotReadyReason: z.enum(['key-missing']).nullable(),
   modelInstalled: z.boolean(),
   runtimes: z.object({ cpu: z.boolean(), cuda: z.boolean() }),
   speakerModelInstalled: z.boolean(),

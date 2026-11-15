@@ -68,6 +68,11 @@ const setupCardSchema = z.object({
   status: textRefSchema,
   detail: textRefSchema,
   ready: z.boolean(),
+  /**
+   * Why the card is not ready when a download cannot fix it: `key-missing` is a cloud
+   * transcription engine without its API key (add it in Settings). Absent otherwise.
+   */
+  reason: z.enum(['key-missing']).optional(),
 });
 
 /**

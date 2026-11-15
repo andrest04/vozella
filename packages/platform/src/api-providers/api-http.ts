@@ -4,6 +4,7 @@ import {
   CancelledError,
   retryAfterMsFromHeader,
   throwIfCancelled,
+  type ApiFailureKind,
   type CancelSignal,
 } from '@vozella/core';
 
@@ -32,6 +33,11 @@ export interface ApiCallOptions {
   readonly displayName: string;
   /** The key of this call, scrubbed from any server text kept in an error. */
   readonly secret: string | null;
+  /**
+   * The failure kind of a non-2xx answer. Defaults to `apiFailureFromHttpStatus`; the
+   * speech-to-text adapter reads a 429 more strictly.
+   */
+  readonly classify?: (status: number, bodyText: string) => ApiFailureKind;
 }
 
 /** The global `fetch`, called as a plain function (no `this` surprises). */
@@ -82,7 +88,7 @@ export async function* apiBody(
     });
     if (!response.ok) {
       const text = scrubSecret(await response.text().catch(() => ''), options.secret);
-      const kind = apiFailureFromHttpStatus(response.status, text);
+      const kind = (options.classify ?? apiFailureFromHttpStatus)(response.status, text);
       throw new ApiProviderError(
         displayName,
         kind,

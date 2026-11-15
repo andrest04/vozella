@@ -387,6 +387,26 @@ describe('OpenAiSpeechToTextClient: failures', () => {
     },
   );
 
+  it('keeps a 429 that only mentions a quota a rate limit, with its wait', async () => {
+    // Groq words its audio-seconds limit as a quota; it lifts on its own, so it is retried.
+    const { made } = client({
+      status: 429,
+      chunks: [
+        JSON.stringify({
+          error: {
+            message: 'Rate limit reached: audio seconds per hour quota exceeded. Try again in 42s.',
+            type: 'seconds',
+            code: 'rate_limit_exceeded',
+          },
+        }),
+      ],
+      headers: { 'retry-after': '42' },
+    });
+    const error = await failure(() => made.transcribe(chunk(1), none()));
+    expect((error as ApiProviderError).kind).toBe('RateLimited');
+    expect((error as ApiProviderError).retryAfterMs).toBe(42_000);
+  });
+
   it('never puts the key in the error message', async () => {
     const { made } = client({ status: 500, chunks: [`bad key ${KEY}`] });
     const error = await failure(() => made.transcribe(chunk(1), none()));

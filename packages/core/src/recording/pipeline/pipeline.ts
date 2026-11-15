@@ -248,9 +248,11 @@ export class RecordingPipeline {
     const settings = await this.deps.settings.load();
     const language = resolveTranscriptionLanguage(settings);
 
-    // 3. Offline pass.
+    // 3. Offline pass. Not when the live pass already transcribed all of the recording.
     let transcriptionWarning: Message | null = null;
-    if (await this.deps.transcriber.isReady()) {
+    if (request.liveDraftIsFinal === true && !isBlankText(state.transcript)) {
+      // The draft is the transcript: step 4 saves it.
+    } else if (await this.deps.transcriber.isReady()) {
       host.onStatusChanged({ key: 'Status_Transcribing', args: [] });
       let offline: string | null = null;
       let failure: unknown = null;

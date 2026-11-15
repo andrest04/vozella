@@ -63,6 +63,8 @@ describe('defaults', () => {
       selectedOpenAiCompatibleModelId: null,
       openAiCompatibleBaseUrl: null,
       selectedGroqModelId: null,
+      transcriptionEngine: null,
+      cloudTranscriptionModelId: null,
     });
   });
 
@@ -302,6 +304,33 @@ describe('reading and writing', () => {
     expect(partial).toContain('"selectedGeminiModelId": "g"');
     expect(partial).not.toContain('selectedOpenAiModelId');
     expect(partial).not.toContain('openAiCompatibleBaseUrl');
+  });
+
+  it('cloud transcription: an old file is rewritten unchanged while the engine is Local', () => {
+    const old = serializeSettings({ uiLanguage: 'es', selectedGroqModelId: 'openai/gpt-oss-120b' });
+    expect(old).not.toContain('transcriptionEngine');
+    expect(old).not.toContain('cloudTranscriptionModelId');
+    const { raw, settings } = parseSettingsJson(old);
+    expect(settings.transcriptionEngine).toBeNull();
+    expect(settings.cloudTranscriptionModelId).toBeNull();
+    // A save of something else writes the same bytes plus that change only.
+    expect(serializeSettings(raw)).toBe(old);
+    expect(serializeSettings(applySettingsPatch(raw, { transcriptionEngine: null }))).toBe(old);
+  });
+
+  it('cloud transcription: the engine and its model are appended last once set, and round-trip', () => {
+    const patch = { transcriptionEngine: 'Groq', cloudTranscriptionModelId: 'whisper-large-v3' };
+    const text = serializeSettings(
+      applySettingsPatch({ selectedGroqModelId: 'openai/gpt-oss-120b' }, patch),
+    );
+    expect(parseSettingsJson(text).settings).toMatchObject(patch);
+    const lines = text.split('\r\n');
+    expect(lines.at(-3)).toBe('  "transcriptionEngine": "Groq",');
+    expect(lines.at(-2)).toBe('  "cloudTranscriptionModelId": "whisper-large-v3"');
+    expect(text.indexOf('selectedGroqModelId')).toBeLessThan(text.indexOf('transcriptionEngine'));
+    const engineOnly = serializeSettings(applySettingsPatch({}, { transcriptionEngine: 'OpenAi' }));
+    expect(engineOnly).toContain('"transcriptionEngine": "OpenAi"');
+    expect(engineOnly).not.toContain('cloudTranscriptionModelId');
   });
 
   it('B17: unknown keys survive a patch and stay after the known ones', () => {

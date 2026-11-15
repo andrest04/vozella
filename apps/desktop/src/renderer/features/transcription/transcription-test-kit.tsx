@@ -5,6 +5,8 @@ type Handler = (input: Record<string, unknown>) => unknown;
 
 export const baseStatus = {
   ready: true,
+  engine: 'Local',
+  cloudNotReadyReason: null,
   modelInstalled: true,
   runtimes: { cpu: true, cuda: false },
   speakerModelInstalled: false,

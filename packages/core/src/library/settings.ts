@@ -52,6 +52,14 @@ export interface AppSettings {
   readonly openAiCompatibleBaseUrl: string | null;
   /** Port addition (BYOK): the Groq chat model. Declared last so older files keep their order. */
   readonly selectedGroqModelId: string | null;
+  /**
+   * Port addition: the engine that transcribes. `Local` (also the meaning of null and of any
+   * unknown value) or a cloud transcription kind (`Groq`, `OpenAi`). Read it through
+   * `resolveTranscriptionEngine`.
+   */
+  readonly transcriptionEngine: string | null;
+  /** Port addition: the model of the cloud transcription engine; null is the provider's default. */
+  readonly cloudTranscriptionModelId: string | null;
 }
 
 type Kind = 'string' | 'bool-true' | 'bool-false' | 'strings' | 'number';
@@ -97,6 +105,8 @@ const FIELDS: readonly (readonly [keyof AppSettings, Kind])[] = [
   ['selectedOpenAiCompatibleModelId', 'string'],
   ['openAiCompatibleBaseUrl', 'string'],
   ['selectedGroqModelId', 'string'],
+  ['transcriptionEngine', 'string'],
+  ['cloudTranscriptionModelId', 'string'],
 ];
 
 /**
@@ -107,6 +117,8 @@ const OMITTED_WHEN_NULL: ReadonlySet<string> = new Set([
   'liveQuestions',
   ...API_ENGINE_LIST.map((engine) => engine.modelSetting),
   'openAiCompatibleBaseUrl',
+  'transcriptionEngine',
+  'cloudTranscriptionModelId',
 ]);
 
 /** The raw document: every key in the file, known or not. */

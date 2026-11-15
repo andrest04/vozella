@@ -55,6 +55,49 @@ export function apiFailureFromHttpStatus(status: number, bodyText: string): ApiF
   }
 }
 
+/** The exact error codes of a 429 that mean billing exhaustion (OpenAI's documented two). */
+const BILLING_EXHAUSTED_CODES: readonly string[] = [
+  'insufficient_quota',
+  'credit_balance_exhausted',
+];
+
+/** The `code` and `type` of an error body: `{"error":{"code","type"}}`, or the same at the top. */
+function errorCodes(bodyText: string): readonly unknown[] {
+  let body: unknown;
+  try {
+    body = JSON.parse(bodyText);
+  } catch {
+    return [];
+  }
+  if (typeof body !== 'object' || body === null) return [];
+  const top = body as {
+    readonly error?: unknown;
+    readonly code?: unknown;
+    readonly type?: unknown;
+  };
+  const inner =
+    typeof top.error === 'object' && top.error !== null
+      ? (top.error as { readonly code?: unknown; readonly type?: unknown })
+      : top;
+  return [inner.code, inner.type];
+}
+
+/**
+ * The failure kind of a speech-to-text answer. It differs from `apiFailureFromHttpStatus` in one
+ * case: a 429 is `QuotaExceeded` only when its error `code` or `type` is exactly a billing code.
+ * Speech limits are worded as quotas (Groq: audio seconds per hour) and lift on their own, so a
+ * 429 that merely mentions one stays `RateLimited` and keeps its `Retry-After`. The chat engines
+ * keep the looser word match, where a missed billing failure would only cost one useless retry.
+ */
+export function speechFailureFromHttpStatus(status: number, bodyText: string): ApiFailureKind {
+  if (status !== 429) return apiFailureFromHttpStatus(status, bodyText);
+  return errorCodes(bodyText).some(
+    (code) => typeof code === 'string' && BILLING_EXHAUSTED_CODES.includes(code),
+  )
+    ? 'QuotaExceeded'
+    : 'RateLimited';
+}
+
 /**
  * An API engine failure as data, like `CliToolError`: the kind and display name pick the
  * localized text; `detail` is a sanitized snippet kept only for Unknown. The key is never part

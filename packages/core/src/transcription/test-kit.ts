@@ -9,7 +9,9 @@ import type {
 import type { AudioFrameReader, AudioFrameSource, EngineModelStore, RuntimeStore } from './ports';
 import type { AsrBackend } from './asr-types';
 import type { CancelSignal } from '../cancel';
+import type { CloudSpeechTimer } from './cloud-speech-engine';
 import type { PinnedFile } from './engine-catalog';
+import type { SpeechToTextClient, SpeechToTextRequest, SpeechToTextResult } from './speech-to-text';
 
 /** Doubles for the engine and its stores. Used by the tests of core, platform and the desktop app. */
 
@@ -187,4 +189,73 @@ export class FakeAudioReader implements AudioFrameReader {
       },
     };
   }
+}
+
+/**
+ * A speech-to-text client that answers `piece<n>` with one word from 100 to 200 ms of the piece,
+ * unless told otherwise. It records what it was asked and how many calls ran at once.
+ */
+export class ScriptedSpeechToTextClient implements SpeechToTextClient {
+  readonly requests: SpeechToTextRequest[] = [];
+  readonly cancels: CancelSignal[] = [];
+  /** Consumed one per call: the error that call throws. With none left, calls answer. */
+  errors: Error[] = [];
+  inFlight = 0;
+  maxInFlight = 0;
+  answer: (call: number, request: SpeechToTextRequest) => SpeechToTextResult = (call, request) => ({
+    text: `piece${String(call)}`,
+    words: [{ text: `piece${String(call)}`, startMs: 100, endMs: 200 }],
+    durationMs: (request.samples.length * 1000) / request.sampleRate,
+  });
+  /** When set, every call waits for `release()`. */
+  private gates: (() => void)[] | null = null;
+
+  /** Makes every call wait until `release()` lets the oldest one go (a slow upload). */
+  hold(): void {
+    this.gates = [];
+  }
+
+  release(): void {
+    this.gates?.shift()?.();
+  }
+
+  async transcribe(
+    request: SpeechToTextRequest,
+    cancel: CancelSignal,
+  ): Promise<SpeechToTextResult> {
+    const call = this.requests.length;
+    this.requests.push(request);
+    this.cancels.push(cancel);
+    this.inFlight += 1;
+    this.maxInFlight = Math.max(this.maxInFlight, this.inFlight);
+    try {
+      if (this.gates !== null) {
+        const gates = this.gates;
+        await new Promise<void>((resolve) => {
+          gates.push(resolve);
+          cancel.onCancel(resolve);
+        });
+        if (cancel.cancelled) throw new Error('aborted');
+      } else {
+        await Promise.resolve();
+      }
+      const error = this.errors.shift();
+      if (error !== undefined) throw error;
+      return this.answer(call, request);
+    } finally {
+      this.inFlight -= 1;
+    }
+  }
+}
+
+/** The cloud engine's clock for tests: it moves only when the engine waits, and never sleeps. */
+export class FakeSpeechTimer implements CloudSpeechTimer {
+  now = 0;
+  readonly waits: number[] = [];
+  nowMs = (): number => this.now;
+  wait = (waitMs: number): Promise<void> => {
+    this.waits.push(waitMs);
+    this.now += waitMs;
+    return Promise.resolve();
+  };
 }

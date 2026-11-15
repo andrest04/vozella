@@ -11,8 +11,10 @@ import {
   type PayloadInputOf,
 } from '@vozella/contracts';
 import {
+  API_FAILURE_UI_KEYS,
   applyHighlights,
   CancelSource,
+  cloudTranscriptionApiEngine,
   droppedPercent,
   ensureEndedHeader,
   evaluateRetranscription,
@@ -33,6 +35,7 @@ import {
   type RetranscriptionResult,
   type SettingsStore,
   type SourceLevels,
+  type SpeechEngineProvider,
   type TranslateFn,
 } from '@vozella/core';
 import type { TranscriptionRuntime } from '@vozella/platform';
@@ -113,6 +116,7 @@ export class TranscriptionController {
   private unsubscribeFrames: (() => void) | null = null;
   private unsubscribeUpdates: (() => void) | null = null;
   private lastDisplayText = '';
+  private lastLiveDraftIsFinal = false;
   private readonly liveListeners = new Set<(displayText: string, committedText: string) => void>();
   private readonly runner: MeetingRetranscriptionRunner;
   private readonly disposers: (() => void)[] = [];
@@ -164,8 +168,13 @@ export class TranscriptionController {
     const saved = await settings.load();
     const usage = runtime.status.current;
     const drops = runtime.status.lastLiveDrops;
+    const engine = await runtime.engine();
+    const ready = await engine.isReady();
     return {
-      ready: runtime.installer.isReady(),
+      ready,
+      engine: engine.kind,
+      // The only thing a cloud engine can be missing is its key: nothing is installed for it.
+      cloudNotReadyReason: engine.kind !== 'Local' && !ready ? 'key-missing' : null,
       modelInstalled: runtime.models.isModelDownloaded(),
       runtimes: { cpu: runtime.runtimes.isReady('cpu'), cuda: runtime.runtimes.isReady('cuda') },
       speakerModelInstalled: runtime.models.isDiarizationModelDownloaded(),
@@ -195,9 +204,20 @@ export class TranscriptionController {
 
   // ---------------------------------------------------------------- download
 
+  /** The sentence for an engine that cannot run: which key is missing, or that it is not installed. */
+  private async notReadyMessage(engine: SpeechEngineProvider): Promise<string | null> {
+    if (await engine.isReady()) return null;
+    if (engine.kind === 'Local') return this.deps.t('Ui_RetranscriptionEngineNotInstalled');
+    return this.deps.t(
+      API_FAILURE_UI_KEYS.KeyMissing,
+      cloudTranscriptionApiEngine(engine.kind).displayName,
+    );
+  }
+
   /**
    * Downloads what is missing and checks the engine is ready afterwards. A second call while one
-   * runs shares the first (B17). Cancelling is not an error.
+   * runs shares the first (B17). Cancelling is not an error. A cloud engine has nothing to
+   * download: it is ready, or it fails saying which key is missing.
    */
   ensureEngine(): Promise<InstallOutcomeDto> {
     // A transfer that was cancelled still ends on its own time; a new call waits for it and starts
@@ -210,6 +230,11 @@ export class TranscriptionController {
     if (this.install) return this.install.done;
     const cancel = new CancelSource();
     const done = this.runInstall(cancel, async () => {
+      const engine = await this.deps.runtime.engine();
+      if (engine.kind !== 'Local') {
+        const message = await this.notReadyMessage(engine);
+        return message === null ? { status: 'ready' } : { status: 'failed', message };
+      }
       await this.deps.runtime.installer.ensure((p) => {
         this.reportProgress({
           stage: p.stage,
@@ -357,6 +382,7 @@ export class TranscriptionController {
     if (!settings.liveTranscriptionEnabled) return { active: false };
     const { live } = this.deps.runtime;
     this.lastDisplayText = '';
+    this.lastLiveDraftIsFinal = false;
     this.unsubscribeUpdates?.();
     this.unsubscribeUpdates = live.onTranscriptUpdated((update) => {
       this.lastDisplayText = update.displayText;
@@ -390,8 +416,11 @@ export class TranscriptionController {
     this.unsubscribeFrames?.();
     this.unsubscribeFrames = null;
     // Updates stay subscribed while Stop drains the queue, so the last text still reaches the pane.
+    this.lastLiveDraftIsFinal = false;
     try {
-      return await this.deps.runtime.live.stop();
+      const draft = await this.deps.runtime.live.stop();
+      this.lastLiveDraftIsFinal = this.deps.runtime.live.lastDraftIsComplete;
+      return draft;
     } catch (error) {
       this.deps.logger.warn('live transcription did not stop cleanly', { error: messageOf(error) });
       return this.lastDisplayText.trim() === '' ? null : this.lastDisplayText;
@@ -399,6 +428,15 @@ export class TranscriptionController {
       this.unsubscribeUpdates?.();
       this.unsubscribeUpdates = null;
     }
+  }
+
+  /**
+   * True when the draft the last `stopLive` returned is the transcript of the whole take, so the
+   * pass after Stop would only upload the same audio again. Only a cloud engine whose live pass
+   * transcribed every sample says so; with the local engine it is always false.
+   */
+  get liveDraftIsFinal(): boolean {
+    return this.lastLiveDraftIsFinal;
   }
 
   /** The offline pass over a finished WAV, with the language and speaker labels from Settings. */
@@ -515,8 +553,9 @@ export class TranscriptionController {
     cancel: CancelSignal,
   ): Promise<boolean> {
     const { t } = this.deps;
-    if (!this.deps.runtime.installer.isReady()) {
-      callbacks.onFinished(t('Ui_RetranscriptionEngineNotInstalled'));
+    const notReady = await this.notReadyMessage(await this.deps.runtime.engine());
+    if (notReady !== null) {
+      callbacks.onFinished(notReady);
       return false;
     }
     const recordedAt = parseOffsetDate(request.recordedAt)?.ms ?? null;
@@ -534,7 +573,9 @@ export class TranscriptionController {
       });
     } catch (error) {
       if (error instanceof TranscriptionCancelledError || cancel.cancelled) throw error;
-      callbacks.onFinished(t('Error_TranscriptionFailedAudioKept', messageOf(error)));
+      // A cloud engine fails with an API failure, which has its own sentence.
+      const detail = (this.deps.formatFailure ?? messageOf)(error);
+      callbacks.onFinished(t('Error_TranscriptionFailedAudioKept', detail));
       return false;
     }
     if (text.trim() === '') {

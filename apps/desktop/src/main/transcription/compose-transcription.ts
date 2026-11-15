@@ -1,5 +1,8 @@
 import {
+  formatFailure,
+  isApiProviderError,
   resolveTemplateInstructions,
+  type ApiKeyStore,
   type AsrEngine,
   type HardwareProbe,
   type Logger,
@@ -9,9 +12,12 @@ import {
   type Workspace,
 } from '@vozella/core';
 import {
+  createCloudSpeechToTextClient,
   fakeAsrPhrasesFromEnv,
   fakeEngineOptionsFromEnv,
   FakeSpeechEngine,
+  FakeSpeechToTextClient,
+  fakeSpeechToTextOptionsFromEnv,
   SteppedModelStore,
   SteppedRuntimeStore,
   TranscriptionRuntime,
@@ -34,6 +40,13 @@ export interface ComposeTranscriptionDeps {
   readonly asr: AsrEngine;
   readonly fakeNative: boolean;
   readonly env: NodeJS.ProcessEnv;
+  /**
+   * The app's API key store. A cloud transcription engine uses the key saved for its provider and
+   * is ready when that key is stored.
+   */
+  readonly apiKeys: Pick<ApiKeyStore, 'has' | 'get'>;
+  /** Tests replace it; the cloud engines use the global `fetch`. */
+  readonly fetch?: typeof fetch;
   readonly hardware: HardwareProbe;
   /** The audio worker's push events; recording frames feed the live pass. */
   readonly audio: { onPush(listener: (event: AudioPushEvent) => void): () => void };
@@ -71,6 +84,18 @@ export function composeTranscription(deps: ComposeTranscriptionDeps): Transcript
       : deps.asr,
     hardware: () => deps.hardware.detect(),
     logger: deps.logger,
+    settings: library.settings,
+    cloud: {
+      keys: deps.apiKeys,
+      // The fake native build never opens a connection: its cloud engines hear a script.
+      client: (kind, settings) =>
+        deps.fakeNative
+          ? new FakeSpeechToTextClient(fakeSpeechToTextOptionsFromEnv(deps.env))
+          : createCloudSpeechToTextClient(
+              { keys: deps.apiKeys, ...(deps.fetch ? { fetch: deps.fetch } : {}) },
+              { kind, settings, model: settings.cloudTranscriptionModelId },
+            ),
+    },
     ...(deps.fakeNative
       ? {
           stores: (() => {
@@ -105,7 +130,9 @@ export function composeTranscription(deps: ComposeTranscriptionDeps): Transcript
     summarize: deps.summarize,
     templateInstructions: (record) =>
       Promise.resolve(resolveTemplateInstructions(record.noteTemplateId)),
-    formatFailure: deps.formatFailure,
+    // A cloud transcription engine fails with an API failure, which has its own sentence.
+    formatFailure: (error) =>
+      isApiProviderError(error) ? formatFailure(error, deps.translate) : deps.formatFailure(error),
   });
   registerTranscriptionHandlers({ server: deps.server, controller: transcriptionController });
   registerSessionHandlers({

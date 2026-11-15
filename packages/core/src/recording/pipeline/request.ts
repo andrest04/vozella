@@ -11,6 +11,13 @@ export interface PipelineRequest {
   readonly title: string;
   /** The live transcript, or null so the offline pass becomes the transcript. */
   readonly liveDraft: string | null;
+  /**
+   * The live draft is already the transcript of the whole recording, so the pass after Stop is
+   * skipped. Only a cloud engine sets it, when its live pass transcribed every sample: uploading
+   * the audio again would spend the provider's hourly allowance for the same text. Absent or
+   * false, the pass after Stop runs as always.
+   */
+  readonly liveDraftIsFinal?: boolean;
   /** The time the user paused, in milliseconds. Passed to the offline pass as clock skew. */
   readonly pausedDurationMs: number;
   readonly folderId: string | null;

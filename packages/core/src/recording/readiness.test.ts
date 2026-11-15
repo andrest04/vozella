@@ -187,6 +187,30 @@ describe('evaluateSetup (resolver)', () => {
     );
     expect(facts.summaryProviderRemoved).toBe(false);
   });
+  it('names the transcription engine the settings select; missing or unknown is Local', async () => {
+    const engineOf = async (transcriptionEngine: string | null) =>
+      (await evaluateSetup(portsFor({ settings: { transcriptionEngine } }))).facts
+        .transcriptionEngine;
+    expect(await engineOf(null)).toBe('Local');
+    expect(await engineOf('Nemotron')).toBe('Local');
+    expect(await engineOf('Groq')).toBe('Groq');
+    expect(await engineOf('OpenAi')).toBe('OpenAi');
+  });
+  it('a cloud engine that is not ready blocks Record like a missing local engine', async () => {
+    const { readiness } = await evaluateSetup(
+      portsFor({
+        settings: {
+          transcriptionEngine: 'Groq',
+          selectedSummaryProvider: 'Local',
+          selectedSummaryModelId: MODEL,
+        },
+        files: [MODEL],
+        engine: false,
+      }),
+    );
+    expect(readiness.engineReady).toBe(false);
+    expect(readiness.canRecord).toBe(false);
+  });
   it('carries the live setting and the engine fact through', async () => {
     const { facts, readiness } = await evaluateSetup(
       portsFor({

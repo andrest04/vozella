@@ -6,6 +6,7 @@ import {
   apiFailureFromHttpStatus,
   isApiProviderError,
   retryAfterMsFromHeader,
+  speechFailureFromHttpStatus,
 } from './api-failure';
 import {
   API_FAILURE_UI_KEYS,
@@ -32,6 +33,33 @@ describe('apiFailureFromHttpStatus', () => {
     [400, 'bad request', 'Unknown'],
   ] as const)('%i %j is %s', (status, body, kind) => {
     expect(apiFailureFromHttpStatus(status, body)).toBe(kind);
+  });
+});
+
+describe('speechFailureFromHttpStatus', () => {
+  it.each([
+    [429, '{"error":{"code":"insufficient_quota"}}', 'QuotaExceeded'],
+    [429, '{"error":{"type":"insufficient_quota","message":"x"}}', 'QuotaExceeded'],
+    [429, '{"error":{"code":"credit_balance_exhausted"}}', 'QuotaExceeded'],
+    [429, '{"code":"insufficient_quota"}', 'QuotaExceeded'],
+    // A message that only mentions a quota is a limit that lifts: it must stay retryable.
+    [429, '{"error":{"message":"audio seconds quota exceeded","type":"seconds"}}', 'RateLimited'],
+    [
+      429,
+      '{"error":{"message":"insufficient_quota is not this","code":"rate_limit_exceeded"}}',
+      'RateLimited',
+    ],
+    [429, '{"error":{"code":"insufficient_quota_soon"}}', 'RateLimited'],
+    [429, 'You exceeded your current QUOTA', 'RateLimited'],
+    [429, '', 'RateLimited'],
+    // Every other status maps as it does for the chat engines.
+    [401, '', 'KeyInvalid'],
+    [402, '', 'QuotaExceeded'],
+    [404, 'model not found', 'ModelNotFound'],
+    [413, 'Request Entity Too Large', 'Unknown'],
+    [504, '', 'TimedOut'],
+  ] as const)('%i %j is %s', (status, body, kind) => {
+    expect(speechFailureFromHttpStatus(status, body)).toBe(kind);
   });
 });
 

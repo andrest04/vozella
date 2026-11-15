@@ -14,6 +14,8 @@ const event: IpcEventLike = {
 
 const status = {
   ready: true,
+  engine: 'Local' as const,
+  cloudNotReadyReason: null,
   modelInstalled: true,
   runtimes: { cpu: true, cuda: false },
   speakerModelInstalled: false,

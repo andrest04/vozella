@@ -104,3 +104,23 @@ export function resolveCloudTranscriptionModel(
   const model = saved?.trim() ?? '';
   return model === '' ? CLOUD_TRANSCRIPTION_ENGINES[kind].defaultModel : model;
 }
+
+/** The engine on this device (Nemotron): the default, and what a missing or unknown value means. */
+export const LOCAL_TRANSCRIPTION_ENGINE = 'Local';
+
+/** What can transcribe: the local engine or a cloud transcription engine. */
+export type TranscriptionEngineKind = typeof LOCAL_TRANSCRIPTION_ENGINE | CloudTranscriptionKind;
+
+/** The values of the `transcriptionEngine` setting, in the order the app offers them. */
+export const TRANSCRIPTION_ENGINE_KINDS: readonly TranscriptionEngineKind[] = [
+  LOCAL_TRANSCRIPTION_ENGINE,
+  ...CLOUD_TRANSCRIPTION_KINDS,
+];
+
+/** The saved transcription engine: an exact cloud kind, else `Local`. */
+export const resolveTranscriptionEngine = (
+  settings: Pick<AppSettings, 'transcriptionEngine'>,
+): TranscriptionEngineKind =>
+  isCloudTranscriptionKind(settings.transcriptionEngine)
+    ? settings.transcriptionEngine
+    : LOCAL_TRANSCRIPTION_ENGINE;

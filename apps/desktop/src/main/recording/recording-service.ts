@@ -91,6 +91,12 @@ export interface FilesPort {
 export interface LiveTextPort {
   /** The live transcript while recording. Returns the unsubscribe. */
   onUpdate(listener: (displayText: string, committedText: string) => void): () => void;
+  /**
+   * True when the draft of the live pass that just stopped is the transcript of the whole take (a
+   * cloud engine that transcribed every sample). The pass after Stop is then skipped, so the
+   * audio is not uploaded twice. Absent or false: the pass after Stop runs.
+   */
+  draftIsFinal?(): boolean;
 }
 
 /** What the live ask (R7) needs from the take: when it starts, ends, and what was committed. */
@@ -637,8 +643,10 @@ export class RecordingService {
         this.runs.reportStopError({ key: 'Error_StopRecording', args: [outcome.error] });
       }
       const endedAtMs = deps.nowMs();
-      const liveDraft =
-        deps.takes.lastLiveDraft ?? (visibleText.trim() === '' ? null : visibleText);
+      const takeDraft = deps.takes.lastLiveDraft;
+      const liveDraft = takeDraft ?? (visibleText.trim() === '' ? null : visibleText);
+      // Only the draft the live pass returned can be final: the text on screen is a fallback.
+      const liveDraftIsFinal = takeDraft !== null && (deps.live.draftIsFinal?.() ?? false);
       const audioPath = outcome.path ?? file;
       deps.files.repair(audioPath);
       const folder = await this.resolveFolder(folderId);
@@ -652,6 +660,7 @@ export class RecordingService {
         endedAtMs,
         title,
         liveDraft,
+        ...(liveDraftIsFinal ? { liveDraftIsFinal } : {}),
         pausedDurationMs: Math.round(outcome.pausedSeconds * 1000),
         folderId: folder,
         highlightsMs: highlights,

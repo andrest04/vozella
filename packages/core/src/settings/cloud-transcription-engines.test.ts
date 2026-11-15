@@ -9,7 +9,10 @@ import {
   cloudTranscriptionApiEngine,
   cloudTranscriptionBaseUrl,
   isCloudTranscriptionKind,
+  LOCAL_TRANSCRIPTION_ENGINE,
   resolveCloudTranscriptionModel,
+  resolveTranscriptionEngine,
+  TRANSCRIPTION_ENGINE_KINDS,
 } from './cloud-transcription-engines';
 
 describe('the cloud transcription engine table', () => {
@@ -107,5 +110,26 @@ describe('resolveCloudTranscriptionModel', () => {
     expect(resolveCloudTranscriptionModel('Groq', ' whisper-large-v3 ')).toBe('whisper-large-v3');
     // whisper-1 is deprecated: its successor must be usable without a release.
     expect(resolveCloudTranscriptionModel('OpenAi', 'whisper-next')).toBe('whisper-next');
+  });
+});
+
+describe('the transcription engine setting', () => {
+  it('offers Local first, then the cloud kinds of the table', () => {
+    expect(LOCAL_TRANSCRIPTION_ENGINE).toBe('Local');
+    expect([...TRANSCRIPTION_ENGINE_KINDS]).toEqual(['Local', ...CLOUD_TRANSCRIPTION_KINDS]);
+  });
+
+  it.each([
+    [null, 'Local'],
+    ['', 'Local'],
+    ['Local', 'Local'],
+    ['Groq', 'Groq'],
+    ['OpenAi', 'OpenAi'],
+    // An API engine that cannot transcribe, another case, or anything unknown is Local.
+    ['Anthropic', 'Local'],
+    ['groq', 'Local'],
+    ['Whisper', 'Local'],
+  ] as const)('reads %j as %s', (saved, kind) => {
+    expect(resolveTranscriptionEngine({ transcriptionEngine: saved })).toBe(kind);
   });
 });

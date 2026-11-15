@@ -83,6 +83,29 @@ describe('buildSetupSnapshot', () => {
     expect(s.summaryProviderRemoved).toBe(true);
     expect(s.canRecord).toBe(false);
   });
+  it('local engine: the engine card carries no reason, ready or not', () => {
+    expect(snap().engine).not.toHaveProperty('reason');
+    const missing = snap({ engineReady: false }).engine;
+    expect(missing).not.toHaveProperty('reason');
+    expect(missing.detail).toEqual({ key: 'RecordingSetup_EngineDetail', args: [] });
+  });
+  it('cloud engine without its key: Record is blocked and the card says which key is missing', () => {
+    const s = snap({ transcriptionEngine: 'Groq', engineReady: false });
+    expect(s.canRecord).toBe(false);
+    expect(s.engine.ready).toBe(false);
+    expect(s.engine.status.key).toBe('RecordingSetup_NeedsSetup');
+    expect(s.engine.reason).toBe('key-missing');
+    expect(s.engine.detail).toEqual({ key: 'Ui_ApiKeyMissing', args: ['Groq'] });
+    expect(snap({ transcriptionEngine: 'OpenAi', engineReady: false }).engine.detail.args).toEqual([
+      'OpenAI',
+    ]);
+  });
+  it('cloud engine with its key: ready, with no reason', () => {
+    const s = snap({ transcriptionEngine: 'Groq', engineReady: true });
+    expect(s.canRecord).toBe(true);
+    expect(s.engine.ready).toBe(true);
+    expect(s.engine).not.toHaveProperty('reason');
+  });
   it('uses the catalog header keys', () => {
     const s = snap();
     expect([s.live.headerKey, s.engine.headerKey, s.summary.headerKey]).toEqual([

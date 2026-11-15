@@ -4,6 +4,7 @@ import {
   cloudTranscriptionApiEngine,
   encodePcm16Wav,
   resolveCloudTranscriptionModel,
+  speechFailureFromHttpStatus,
   throwIfCancelled,
   type ApiKeyStore,
   type AppSettings,
@@ -169,6 +170,8 @@ export class OpenAiSpeechToTextClient implements SpeechToTextClient {
         cancel,
         displayName,
         secret: apiKey,
+        // A speech limit worded as a quota is still a rate limit to wait out.
+        classify: speechFailureFromHttpStatus,
       },
     );
     if (!isObject(answer)) {

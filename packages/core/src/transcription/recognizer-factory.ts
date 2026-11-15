@@ -1,3 +1,4 @@
+import type { CancelSignal } from '../cancel';
 import type { HardwareProfile } from '../settings/summary-models';
 import type {
   AsrBackend,
@@ -27,14 +28,31 @@ export interface CreateRecognizerOptions {
   readonly enableDiarization?: boolean;
   readonly geometry?: SortformerGeometry;
   readonly latency?: AsrLatencyProfile;
+  /**
+   * Stops the pass. The cloud engine aborts its request in flight with it; the local engine does
+   * not use it (its callers check the signal between frames, as before).
+   */
+  readonly cancel?: CancelSignal;
 }
 
-export interface CreatedRecognizer {
+/** What a pass needs from whichever engine recognizes it. */
+export interface SessionRecognizer {
   readonly recognizer: AsrRecognizer;
+  /** True when speaker labels will be produced: the recognizer was created with the speaker model. */
+  readonly diarization: boolean;
+}
+
+/**
+ * Where the live and the offline pass get their recognizer. The local factory is one; the cloud
+ * engine provider is another. A pass asks once, when it starts.
+ */
+export interface RecognizerSource {
+  create(options?: CreateRecognizerOptions): Promise<SessionRecognizer>;
+}
+
+export interface CreatedRecognizer extends SessionRecognizer {
   readonly backend: AsrBackend;
   readonly fallbackReason: string | null;
-  /** True when the recognizer was created with the speaker model. */
-  readonly diarization: boolean;
 }
 
 export interface RecognizerFactoryDeps {
@@ -46,7 +64,7 @@ export interface RecognizerFactoryDeps {
 }
 
 /** Picks CUDA or CPU and builds the recognizer (spec 3.4). */
-export class NemoSpeechRecognizerFactory {
+export class NemoSpeechRecognizerFactory implements RecognizerSource {
   constructor(private readonly deps: RecognizerFactoryDeps) {}
 
   async create(options: CreateRecognizerOptions = {}): Promise<CreatedRecognizer> {

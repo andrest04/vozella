@@ -757,6 +757,7 @@ function main(): void {
         asr,
         fakeNative,
         env: process.env,
+        apiKeys,
         hardware,
         audio,
         busy,

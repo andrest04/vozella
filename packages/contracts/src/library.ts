@@ -334,6 +334,10 @@ export const appSettingsSchema = z.object({
   openAiCompatibleBaseUrl: z.string().nullable(),
   /** The Groq chat model (BYOK); null takes the engine's default. */
   selectedGroqModelId: z.string().nullable(),
+  /** The engine that transcribes: `Local` (also null or unknown) or a cloud kind (`Groq`, `OpenAi`). */
+  transcriptionEngine: z.string().nullable(),
+  /** The model of the cloud transcription engine; null takes the provider's default. */
+  cloudTranscriptionModelId: z.string().nullable(),
 });
 export type AppSettingsDto = z.infer<typeof appSettingsSchema>;
 
