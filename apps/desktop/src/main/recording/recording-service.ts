@@ -97,6 +97,11 @@ export interface LiveTextPort {
    * audio is not uploaded twice. Absent or false: the pass after Stop runs.
    */
   draftIsFinal?(): boolean;
+  /**
+   * The live pass stopped for good while the take records (a cloud provider refused the key, the
+   * credit or the model), with the reason as a sentence. Returns the unsubscribe.
+   */
+  onFailure?(listener: (reason: string) => void): () => void;
 }
 
 /** What the live ask (R7) needs from the take: when it starts, ends, and what was committed. */
@@ -163,6 +168,8 @@ export type StartResult =
 /** How long a close waits for a start or an import in flight, like the 30 s grace of the runs. */
 const CLOSE_PREPARING_GRACE_MS = 30_000;
 const SOURCE_FALLBACK_KEY = 'RecordPage_SourceFallbackMessage';
+/** "{0} The recording continues…": the live transcript stopped, the take did not. */
+const LIVE_STOPPED_KEY = 'Ui_CloudLiveStopped';
 
 interface Take {
   meetingId: string;
@@ -195,6 +202,8 @@ export class RecordingService {
   private micLevel = 0;
   private frozenElapsedMs = 0;
   private fallbackNotice: CaptureNotice | null = null;
+  /** Why the live transcript of this take stopped while it goes on recording, or null. */
+  private liveNotice: CaptureNotice | null = null;
   private stopping: Promise<boolean> | null = null;
   private offNotices: (() => void) | null = null;
   private previewToRestore: { owner: PreviewOwner; deviceId: string | null } | null = null;
@@ -294,6 +303,9 @@ export class RecordingService {
       deps.live.onUpdate((displayText, committedText) => {
         this.onLiveUpdate(displayText, committedText);
       }),
+      deps.live.onFailure?.((reason) => {
+        this.onLiveFailure(reason);
+      }) ?? (() => undefined),
       deps.controller.onRecordingLevel((level) => {
         // B-15: no frames arrive while paused, so the bar must not freeze on the last value.
         this.micLevel = this.take?.pausedAtMs === null ? level : 0;
@@ -358,6 +370,11 @@ export class RecordingService {
       micLevel: phase === 'Recording' ? this.micLevel : 0,
       microphoneActive: take !== null && take.microphone.kind !== 'None',
       captureNotices: notices.map(typed),
+      // Only a take that records has a live transcript to speak of.
+      liveNotice:
+        this.liveNotice !== null && (phase === 'Recording' || phase === 'Stopping')
+          ? typed(this.liveNotice)
+          : null,
       meetingId: this.runs.currentMeetingId ?? take?.meetingId ?? null,
       title: take?.title ?? this.title,
       recordedAtMs: take?.recordedAtMs ?? null,
@@ -425,6 +442,14 @@ export class RecordingService {
     this.runs.setLiveTranscript(displayText);
   }
 
+  /** The take is not touched: the page says why the text stopped and that the audio is kept. */
+  private onLiveFailure(reason: string): void {
+    const phase = this.gate.phase;
+    if (phase !== 'Preparing' && phase !== 'Recording' && phase !== 'Stopping') return;
+    this.liveNotice = { severity: 'warning', key: LIVE_STOPPED_KEY, args: [reason] };
+    this.publish();
+  }
+
   // -- start ------------------------------------------------------------------------------------
 
   /** Spec 2.5, steps 1 to 14. */
@@ -455,6 +480,7 @@ export class RecordingService {
       this.notes = '';
       this.retry = null;
       this.fallbackNotice = null;
+      this.liveNotice = null;
       this.micLevel = 0;
       this.frozenElapsedMs = 0;
       this.title = request.title.trim() === '' ? deps.defaultTitle(deps.nowMs()) : request.title;

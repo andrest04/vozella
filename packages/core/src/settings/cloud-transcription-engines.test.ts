@@ -54,6 +54,21 @@ describe('the cloud transcription engine table', () => {
     expect(engine.protocol).toBe('openai-audio-transcriptions');
   });
 
+  it('links the page of each provider where a key is created', () => {
+    expect(CLOUD_TRANSCRIPTION_ENGINES.Groq.keyPageUrl).toBe('https://console.groq.com/keys');
+    expect(CLOUD_TRANSCRIPTION_ENGINES.OpenAi.keyPageUrl).toBe(
+      'https://platform.openai.com/api-keys',
+    );
+  });
+
+  it.each(CLOUD_TRANSCRIPTION_ENGINE_LIST)(
+    '$kind: the key page is a plain https page',
+    (engine) => {
+      // A host and a path, with no user, query or fragment: the link carries nothing about the user.
+      expect(engine.keyPageUrl).toMatch(/^https:\/\/[a-z0-9.-]+\/[a-z0-9/-]*$/);
+    },
+  );
+
   it('records the limits the chunking engine must respect', () => {
     expect(CLOUD_TRANSCRIPTION_MAX_FILE_BYTES).toBe(25 * 1024 * 1024);
     expect(CLOUD_TRANSCRIPTION_ENGINES.Groq.limits).toEqual({

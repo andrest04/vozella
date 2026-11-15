@@ -8,8 +8,11 @@ export interface EngineInstall {
   readonly progress: InstallProgressDto | null;
   /** The raw failure message (spec 2.2), while `phase` is `failed`. */
   readonly error: string | null;
-  /** Downloads whatever is missing. Main shares one transfer between callers. */
-  readonly start: () => Promise<InstallOutcomeDto>;
+  /**
+   * Downloads whatever is missing. Main shares one transfer between callers. `local` asks for the
+   * engine on this PC even while a cloud engine is selected (the selected one downloads nothing).
+   */
+  readonly start: (options?: { readonly local?: boolean }) => Promise<InstallOutcomeDto>;
   readonly cancel: () => Promise<void>;
 }
 
@@ -40,29 +43,35 @@ export function useEngineInstall(): EngineInstall {
     };
   }, []);
 
-  const start = useCallback(async (): Promise<InstallOutcomeDto> => {
-    generation.current += 1;
-    const mine = generation.current;
-    setPhase('running');
-    setProgress(null);
-    setError(null);
-    let outcome: InstallOutcomeDto;
-    try {
-      outcome = await window.vozella.invoke('transcription.ensureEngine', {});
-    } catch (caught) {
-      outcome = { status: 'failed', message: errorText(caught) };
-    }
-    if (alive.current && mine === generation.current) {
+  const start = useCallback(
+    async (options?: { readonly local?: boolean }): Promise<InstallOutcomeDto> => {
+      generation.current += 1;
+      const mine = generation.current;
+      setPhase('running');
       setProgress(null);
-      if (outcome.status === 'failed') {
-        setPhase('failed');
-        setError(outcome.message);
-      } else {
-        setPhase('idle');
+      setError(null);
+      let outcome: InstallOutcomeDto;
+      try {
+        outcome = await window.vozella.invoke(
+          'transcription.ensureEngine',
+          options?.local === true ? { local: true } : {},
+        );
+      } catch (caught) {
+        outcome = { status: 'failed', message: errorText(caught) };
       }
-    }
-    return outcome;
-  }, []);
+      if (alive.current && mine === generation.current) {
+        setProgress(null);
+        if (outcome.status === 'failed') {
+          setPhase('failed');
+          setError(outcome.message);
+        } else {
+          setPhase('idle');
+        }
+      }
+      return outcome;
+    },
+    [],
+  );
 
   const cancel = useCallback(async () => {
     try {

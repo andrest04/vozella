@@ -42,6 +42,60 @@ describe('EngineSetupDialog', () => {
     });
   });
 
+  it('offers the cloud as a secondary way out, which cancels the download and reports only that', async () => {
+    const api = installTranscriptionApi({
+      'transcription.ensureEngine': () => new Promise(() => undefined),
+      'transcription.cancelInstall': () => ({ cancelled: true }),
+    });
+    const onFinished = vi.fn();
+    const onUseCloud = vi.fn();
+    render(
+      <Providers>
+        <EngineSetupDialog open onFinished={onFinished} onUseCloud={onUseCloud} />
+      </Providers>,
+    );
+    expect(
+      await screen.findByText(
+        'No room for the download, or a slow computer? You can transcribe in the cloud with your own API key instead.',
+      ),
+    ).toBeVisible();
+    const cloud = screen.getByRole('button', { name: 'Use the cloud instead' });
+    // Cancel stays the one emphasized action; the alternative does not compete with it.
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveClass('bg-ink');
+    expect(cloud).not.toHaveClass('bg-ink');
+    await userEvent.click(cloud);
+    expect(onUseCloud).toHaveBeenCalledTimes(1);
+    expect(onFinished).not.toHaveBeenCalled();
+    expect(api.calls.filter((call) => call.name === 'transcription.cancelInstall')).toHaveLength(1);
+    expect(api.calls.some((call) => call.name === 'settings.update')).toBe(false);
+  });
+
+  it('keeps the cloud way out next to a failed download', async () => {
+    installTranscriptionApi({
+      'transcription.ensureEngine': () => ({ status: 'failed', message: 'disk full' }),
+    });
+    render(
+      <Providers>
+        <EngineSetupDialog open onFinished={vi.fn()} onUseCloud={vi.fn()} />
+      </Providers>,
+    );
+    expect(await screen.findByText('disk full')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Use the cloud instead' })).toBeEnabled();
+  });
+
+  it('draws no cloud way out for a caller that cannot follow it', async () => {
+    installTranscriptionApi({
+      'transcription.ensureEngine': () => new Promise(() => undefined),
+    });
+    render(
+      <Providers>
+        <EngineSetupDialog open onFinished={vi.fn()} />
+      </Providers>,
+    );
+    await screen.findByText('Preparing download...');
+    expect(screen.queryByRole('button', { name: 'Use the cloud instead' })).toBeNull();
+  });
+
   it('reports a cancel once, and a late cancelled answer cannot close a dialog opened again', async () => {
     const answers: ((value: unknown) => void)[] = [];
     installTranscriptionApi({

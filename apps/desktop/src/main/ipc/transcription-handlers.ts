@@ -26,7 +26,9 @@ export function registerTranscriptionHandlers(deps: TranscriptionHandlerDeps): v
   const { server, controller } = deps;
 
   registerRequest(server, transcriptionGetStatus, () => controller.status());
-  registerRequest(server, transcriptionEnsureEngine, () => controller.ensureEngine());
+  registerRequest(server, transcriptionEnsureEngine, ({ local }) =>
+    controller.ensureEngine(local === true ? { local: true } : {}),
+  );
   registerRequest(server, transcriptionCancelInstall, () => ({
     cancelled: controller.cancelInstall(),
   }));

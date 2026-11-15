@@ -4,6 +4,8 @@ import { ProviderGateDialogs } from '../ai-provider/ProviderGateDialogs';
 import { SetupWizardDialog } from '../ai-provider/SetupWizardDialog';
 import { useProviderGate } from '../ai-provider/use-provider-gate';
 import { EngineSetupDialog } from '../transcription/EngineSetupDialog';
+import { openTranscriptionInSettings } from '../transcription/transcription-focus';
+import { needsCloudKey } from './needs-cloud-key';
 import { SetupDialog } from './SetupDialog';
 import { refreshSetup, setNotice } from './use-recording';
 
@@ -11,6 +13,9 @@ type Pending = (value: never) => void;
 
 /** How the summary wizard ended: an engine is ready, the user left, or Settings opened for a key. */
 type WizardOutcome = 'ready' | 'left' | 'settings';
+
+/** How the engine download ended: ready, stopped by the user, or left for a cloud engine. */
+type EngineOutcome = 'ready' | 'left' | 'cloud';
 
 export interface EnsureReady {
   /** True when the take or import may begin; false when the user stopped the setup. */
@@ -26,6 +31,11 @@ export interface EnsureReady {
  * cancels ends that pass and shows the checklist again; Cancel on the checklist ends the loop.
  * An API engine still missing its key ends the loop too: the wizard opens Settings for the key,
  * and the checklist returns only on the next Record.
+ *
+ * A cloud transcription engine has no engine step: when its key is missing, "Add API key" opens
+ * Settings on the key field and the loop ends (the download dialog never opens for it). And the
+ * download dialog of the local engine can be left for the cloud: Settings then opens on the
+ * engine choice, with nothing selected for the user.
  */
 export function useEnsureReady(): EnsureReady {
   const gate = useProviderGate();
@@ -52,11 +62,20 @@ export function useEnsureReady(): EnsureReady {
   const runMissingSteps = useCallback(
     async (first: RecordingSetupDto): Promise<'again' | 'stop'> => {
       let setup = first;
+      if (needsCloudKey(setup)) {
+        // Nothing to download: the key is added in Settings, and the next Record reads it.
+        openTranscriptionInSettings('key');
+        return 'stop';
+      }
       if (!setup.engine.ready) {
-        const ready = await ask<boolean>('engine', () => {
+        const outcome = await ask<EngineOutcome>('engine', () => {
           setEngineOpen(true);
         });
-        if (!ready) return 'again';
+        if (outcome === 'cloud') {
+          openTranscriptionInSettings('choice');
+          return 'stop';
+        }
+        if (outcome === 'left') return 'again';
         setup = (await refreshSetup()) ?? setup;
       }
       if (!setup.summary.ready) {
@@ -108,7 +127,11 @@ export function useEnsureReady(): EnsureReady {
         open={engineOpen}
         onFinished={(ready) => {
           setEngineOpen(false);
-          answer('engine', ready);
+          answer('engine', (ready ? 'ready' : 'left') satisfies EngineOutcome);
+        }}
+        onUseCloud={() => {
+          setEngineOpen(false);
+          answer('engine', 'cloud' satisfies EngineOutcome);
         }}
       />
       <SetupWizardDialog

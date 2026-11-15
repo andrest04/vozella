@@ -17,6 +17,7 @@ import {
   CLOUD_TRANSIENT_BACKOFF_MS,
   CLOUD_TRANSIENT_MAX_RETRIES,
   CloudSpeechEngine,
+  isFatalSpeechFailure,
 } from './cloud-speech-engine';
 import { TranscriptionCancelledError } from './ports';
 import { FakeSpeechTimer, ScriptedSpeechToTextClient } from './test-kit';
@@ -312,6 +313,27 @@ describe('cloud speech engine: results', () => {
     // No speaker labels: the endpoint returns no speakers.
     expect(cloud.committedText).not.toContain('Speaker-');
     expect(cloud.committedText).not.toContain('[ You ]');
+  });
+});
+
+describe('isFatalSpeechFailure', () => {
+  it.each(['KeyMissing', 'KeyInvalid', 'QuotaExceeded', 'ModelNotFound'] as const)(
+    '%s ends a live pass: waiting cannot fix it',
+    (kind) => {
+      expect(isFatalSpeechFailure(failure(kind))).toBe(true);
+    },
+  );
+
+  it.each(['RateLimited', 'Network', 'TimedOut', 'EmptyOutput', 'Unknown'] as const)(
+    '%s is a gap, not the end of the pass',
+    (kind) => {
+      expect(isFatalSpeechFailure(failure(kind))).toBe(false);
+    },
+  );
+
+  it('is false for anything that is not an API failure', () => {
+    expect(isFatalSpeechFailure(new Error('boom'))).toBe(false);
+    expect(isFatalSpeechFailure(null)).toBe(false);
   });
 });
 

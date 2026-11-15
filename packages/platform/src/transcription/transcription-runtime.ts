@@ -1,6 +1,7 @@
 import {
   AsrBackendStatus,
   CloudSpeechEngineProvider,
+  isFatalSpeechFailure,
   LiveTranscriptionService,
   LocalSpeechEngineProvider,
   NemoSpeechRecognizerFactory,
@@ -78,8 +79,15 @@ export interface TranscriptionRuntimeOptions {
   readonly cloud?: CloudTranscriptionOptions;
 }
 
+/** A live pass on a cloud engine ended early: which engine, and the failure the provider gave. */
+export interface LiveTranscriptionFailure {
+  readonly engine: CloudTranscriptionKind;
+  readonly error: unknown;
+}
+
 /** Everything the transcription module builds from paths and an engine (spec 3.4 to 3.11). */
 export class TranscriptionRuntime {
+  private readonly liveFailureListeners = new Set<(failure: LiveTranscriptionFailure) => void>();
   readonly status = new AsrBackendStatus();
   readonly models: EngineModelStore;
   readonly runtimes: RuntimeStore;
@@ -139,6 +147,18 @@ export class TranscriptionRuntime {
   }
 
   /**
+   * A live pass on a cloud engine stopped uploading because of a failure waiting cannot fix (the
+   * key was refused, the account is out of credit, the model is unknown). The recording itself
+   * goes on. A failed piece that only leaves a gap is not reported here. Returns the unsubscribe.
+   */
+  onLiveFailure(listener: (failure: LiveTranscriptionFailure) => void): () => void {
+    this.liveFailureListeners.add(listener);
+    return () => {
+      this.liveFailureListeners.delete(listener);
+    };
+  }
+
+  /**
    * The engine the settings select right now: the local one, or a cloud engine with the client
    * for these settings. Readiness, the Record gate and every pass go through it.
    */
@@ -160,6 +180,15 @@ export class TranscriptionRuntime {
           cause:
             error === null ? 'buffer full' : error instanceof Error ? error.message : 'failure',
         });
+        if (!isFatalSpeechFailure(error)) return;
+        for (const listener of [...this.liveFailureListeners]) {
+          try {
+            listener({ engine: kind, error });
+          } catch (thrown) {
+            // A throwing listener must not reach the engine, which is still holding the take.
+            logger.warn('live failure listener threw', { error: String(thrown) });
+          }
+        }
       },
     });
   }

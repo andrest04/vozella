@@ -128,6 +128,56 @@ describe('TranscriptionRuntime: the selected engine', () => {
   });
 });
 
+describe('TranscriptionRuntime: a live pass that cannot go on', () => {
+  /** A live pass on Groq whose every upload fails with `failWith`, fed one piece of audio. */
+  async function failingLivePass(failWith: string) {
+    const engine = new FakeAsrEngine();
+    const settings = new InMemorySettingsStore();
+    await settings.update({ transcriptionEngine: 'Groq' });
+    const runtime = new TranscriptionRuntime({
+      transcriptionModelsDirectory: 'unused',
+      nemoSpeechDirectory: 'unused',
+      engine,
+      hardware: () => Promise.resolve({ gpuName: null }),
+      logger,
+      stores: { models: new FakeModelStore(), runtimes: new FakeRuntimeStore() },
+      settings,
+      cloud: {
+        keys: new FakeApiKeyStore({ Groq: 'k' }),
+        client: () => new FakeSpeechToTextClient({ failWith }),
+        timer: new FakeSpeechTimer(),
+      },
+    });
+    const failures: { engine: string; error: unknown }[] = [];
+    const off = runtime.onLiveFailure((failure) => failures.push(failure));
+    await runtime.live.start({ language: 'es', recordedAtMs: null, speakerDiarization: false });
+    runtime.live.pushFrame(new Float32Array(RATE).fill(0.25), RATE);
+    await runtime.live.stop();
+    return { failures, off, runtime };
+  }
+
+  it('tells its listeners when the provider refuses the key, with the engine and the failure', async () => {
+    const { failures } = await failingLivePass('KeyInvalid');
+    expect(failures).toHaveLength(1);
+    expect(failures[0]).toMatchObject({ engine: 'Groq', error: { kind: 'KeyInvalid' } });
+  });
+
+  it('says nothing for a failure that only leaves a gap', async () => {
+    const { failures } = await failingLivePass('Network');
+    expect(failures).toEqual([]);
+  });
+
+  it('stops telling a listener that unsubscribed', async () => {
+    const { failures, off, runtime } = await failingLivePass('QuotaExceeded');
+    expect(failures).toHaveLength(1);
+    off();
+    await runtime.live.start({ language: 'es', recordedAtMs: null, speakerDiarization: false });
+    runtime.live.pushFrame(new Float32Array(RATE).fill(0.25), RATE);
+    await runtime.live.stop();
+    expect(failures).toHaveLength(1);
+  });
+});
+
 describe('systemSpeechTimer', () => {
   it('waits, and stops waiting as soon as the pass is cancelled', async () => {
     const before = systemSpeechTimer.nowMs();

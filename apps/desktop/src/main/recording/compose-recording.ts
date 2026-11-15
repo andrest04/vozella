@@ -145,6 +145,7 @@ export function composeRecording(deps: ComposeRecordingDeps): RecordingService {
     live: {
       onUpdate: (listener) => deps.transcription.onLiveUpdate(listener),
       draftIsFinal: () => deps.transcription.liveDraftIsFinal,
+      onFailure: (listener) => deps.transcription.onLiveFailure(listener),
     },
     broadcast: deps.broadcast,
     logger: deps.logger,

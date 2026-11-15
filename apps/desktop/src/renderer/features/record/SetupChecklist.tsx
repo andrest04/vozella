@@ -1,5 +1,6 @@
 import type { RecordingSetupDto } from '@vozella/contracts';
 import { useT } from '../../i18n/I18nProvider';
+import { needsCloudKey } from './needs-cloud-key';
 import { SetupCards } from './SetupCards';
 
 /**
@@ -19,7 +20,12 @@ export function SetupChecklist({ setup }: { readonly setup: RecordingSetupDto })
         <h2 id="record-setup-headline" className="text-ui-lg font-semibold text-ink">
           {t('Ui_SetupHeading')}
         </h2>
-        <p className="text-ui text-ink-muted">{t('Ui_SetupNoDownloads')}</p>
+        <p className="text-ui text-ink-muted">
+          {needsCloudKey(setup)
+            ? // A cloud engine installs nothing: the line says which key is missing instead.
+              t('Ui_SetupCloudKeyHeadline', ...setup.engine.detail.args)
+            : t('Ui_SetupNoDownloads')}
+        </p>
       </div>
       <SetupCards setup={setup} />
     </section>

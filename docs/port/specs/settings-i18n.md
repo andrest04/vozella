@@ -290,6 +290,8 @@ JSON names are camelCase (Web defaults). Owner = module that edits the field.
 | `recordAppName` | string? | null | display name, informational | record page |
 | `liveTranscriptionEnabled` | bool | `true` | live Nemotron preview during recording; final transcript always re-runs on the WAV | transcription engine |
 | `speakerDiarizationEnabled` | bool | `false` | Sortformer speaker labels (Speaker 1-4); model downloaded separately | transcription engine |
+| `transcriptionEngine` | string? | null | port only: `Local`, `Groq` or `OpenAi`; null or unknown is `Local`; omitted from the file when null (transcription spec 2.9) | transcription engine |
+| `cloudTranscriptionModelId` | string? | null | port only: the speech model of the cloud engine; null is the provider default; omitted from the file when null | transcription engine |
 | `typeSafeEnabled` | bool | `true` | Jev checks action items after summary when a key is saved | TypeSafe |
 | `calendarNotificationsEnabled` | bool | `true` | one-minute-before reminder | calendar |
 | `meetingPopupEnabled` | bool | `true` | floating "Start recording" popup on Zoom/Teams/Meet | calendar |

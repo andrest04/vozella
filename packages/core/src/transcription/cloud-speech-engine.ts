@@ -88,6 +88,13 @@ const FATAL_KINDS: readonly ApiFailureKind[] = [
   'ModelNotFound',
 ];
 
+/**
+ * True for a failure that ends a live pass: the key, the account or the model is wrong, so every
+ * later request would fail the same way. The user has to act; a gap in the text is not that.
+ */
+export const isFatalSpeechFailure = (error: unknown): boolean =>
+  isApiProviderError(error) && FATAL_KINDS.includes(error.kind);
+
 /** The clock and the waits of the engine, so tests need no real time. Adapter: platform. */
 export interface CloudSpeechTimer {
   nowMs(): number;
@@ -318,7 +325,7 @@ class CloudSpeechStream implements AsrStream {
       return;
     }
     let lost = piece.samples.length;
-    if (isApiProviderError(error) && FATAL_KINDS.includes(error.kind)) {
+    if (isFatalSpeechFailure(error)) {
       // The key, the account or the model is wrong: every later request would fail the same way.
       this.stopped = true;
       lost += this.pendingSamples;

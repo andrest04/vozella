@@ -2,6 +2,7 @@ import type { RecordingStateDto } from '@vozella/contracts';
 import { formatElapsed } from '@vozella/core';
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { useT } from '../../i18n/I18nProvider';
+import type { StringKey } from '../../i18n/translate';
 import { LiveCanvas } from './LiveCanvas';
 import { DiscardDialog } from './DiscardDialog';
 import { RecordingBar } from './RecordingBar';
@@ -145,9 +146,18 @@ export function RecordingSession({
             live={!paused}
             text={liveText}
             committedLines={committedLines}
-            emptyText={emptyText}
+            // No text is coming once the live pass stopped: the empty canvas must not promise any.
+            emptyText={state.liveNotice ? t('Ui_CloudLiveStoppedTitle') : emptyText}
             highlightFeedback={feedback.value}
             statusText={statusText === '' ? null : statusText}
+            notice={
+              state.liveNotice
+                ? {
+                    title: t('Ui_CloudLiveStoppedTitle'),
+                    body: t(state.liveNotice.key as StringKey, ...state.liveNotice.args),
+                  }
+                : null
+            }
             copied={copied}
             onCopy={null}
             className="h-[clamp(16rem,calc(100vh-26rem),48rem)]"

@@ -255,6 +255,23 @@ describe('offline pass', () => {
     expect(h.transcriber.calls).toHaveLength(0);
   });
 
+  it('a cloud engine that lost its key during the take names the key, not an install', async () => {
+    const h = createPipelineHarness({
+      transcriber: { ready: false },
+      settings: { transcriptionEngine: 'OpenAi' },
+    });
+    const out = await h.pipeline.run(makeRequest(), h.host, h.cancel);
+    expect(out.kind).toBe('saved-without-transcript');
+    expect(h.host.terminal).toEqual([
+      {
+        kind: 'savedWithoutTranscript',
+        meetingId: TEST_MEETING_ID,
+        message: { key: 'Ui_CloudTranscriptionKeyMissingAudioKept', args: ['OpenAI'] },
+      },
+    ]);
+    expect(h.transcriber.calls).toHaveLength(0);
+  });
+
   it('engine not ready with a draft continues with the draft', async () => {
     const h = createPipelineHarness({ transcriber: { ready: false } });
     const out = await h.pipeline.run(makeRequest({ liveDraft: DRAFT }), h.host, h.cancel);

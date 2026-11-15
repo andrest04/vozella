@@ -170,6 +170,7 @@ function build(options: Options = {}) {
     scheduler: { every: () => () => undefined },
   });
   const liveListeners = new Set<(text: string, committed: string) => void>();
+  const liveFailureListeners = new Set<(reason: string) => void>();
   const liveAskCalls: string[] = [];
   const order: string[] = [];
   const live = {
@@ -257,6 +258,10 @@ function build(options: Options = {}) {
         liveListeners.add(listener);
         return () => liveListeners.delete(listener);
       },
+      onFailure: (listener) => {
+        liveFailureListeners.add(listener);
+        return () => liveFailureListeners.delete(listener);
+      },
       ...(options.draftIsFinal === undefined
         ? {}
         : { draftIsFinal: () => options.draftIsFinal === true }),
@@ -278,6 +283,7 @@ function build(options: Options = {}) {
     takes,
     live,
     liveListeners,
+    liveFailureListeners,
     liveAskCalls,
     order,
     store,
@@ -701,6 +707,44 @@ describe('RecordingService stop', () => {
       expect(t.transcriber.calls).toHaveLength(1);
       expect(t.store.saves.at(-1)?.transcript).toContain(TRANSCRIPT);
     }
+  });
+
+  it('cloud: a live pass the provider refuses shows a notice while the take goes on recording', async () => {
+    const t = build({ liveDraft: null });
+    const reason = 'Groq did not accept your API key. Check it in Settings.';
+    expect(t.service.getState().liveNotice).toBeNull();
+    await t.service.start(sources);
+    expect(t.service.getState().liveNotice).toBeNull();
+    for (const listener of t.liveFailureListeners) listener(reason);
+    const state = t.service.getState();
+    expect(state.liveNotice).toEqual({
+      key: 'Ui_CloudLiveStopped',
+      args: [reason],
+      severity: 'warning',
+    });
+    // The take is untouched: it still records.
+    expect(state.phase).toBe('Recording');
+    expect(state.isRecording).toBe(true);
+    const published = t.events.filter((e) => e.name === 'recording.state').at(-1)?.payload;
+    expect(published).toMatchObject({ liveNotice: { key: 'Ui_CloudLiveStopped' } });
+
+    await t.service.stop();
+    await t.service.completion;
+    expect(t.service.getState().liveNotice).toBeNull();
+  });
+
+  it('cloud: the notice of one take does not carry over to the next, and none appears while idle', async () => {
+    const t = build({ liveDraft: null });
+    for (const listener of t.liveFailureListeners) listener('late failure');
+    expect(t.service.getState().liveNotice).toBeNull();
+    await t.service.start(sources);
+    for (const listener of t.liveFailureListeners) listener('first take');
+    await t.service.stop();
+    await t.service.completion;
+    await t.service.start(sources);
+    expect(t.service.getState().liveNotice).toBeNull();
+    await t.service.stop();
+    await t.service.completion;
   });
 
   it('the text on screen is never taken as final when the live pass left no draft', async () => {

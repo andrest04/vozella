@@ -43,6 +43,7 @@ interface Options {
   models?: FakeLocalModelStore;
   relaunch?: () => void;
   onSummaryProviderSaved?: () => void;
+  onApiKeyChanged?: () => void;
   apiKeys?: FakeApiKeyStore;
   fetch?: FakeFetch;
 }
@@ -80,6 +81,7 @@ async function setup(options: Options = {}) {
     locale,
     broadcast,
     onSummaryProviderSaved: options.onSummaryProviderSaved,
+    onApiKeyChanged: options.onApiKeyChanged,
   });
   const call = async (name: string, input: unknown = {}) =>
     (await handlers.get(name)?.(event as never, input)) as {
@@ -105,6 +107,17 @@ describe('settings handlers', () => {
     const t = await setup({ onSummaryProviderSaved: saved });
     await t.call('settings.setSummaryProvider', { kind: 'Codex' });
     expect(saved).toHaveBeenCalledTimes(1);
+  });
+
+  it('tells the app after a key was saved or removed, and not after a Verify', async () => {
+    const changed = vi.fn();
+    const t = await setup({ onApiKeyChanged: changed, apiKeys: new FakeApiKeyStore() });
+    await t.call('settings.setApiKey', { kind: 'Groq', key: 'gsk-test' });
+    expect(changed).toHaveBeenCalledTimes(1);
+    await t.call('settings.verifyApiKey', { kind: 'Groq' });
+    expect(changed).toHaveBeenCalledTimes(1);
+    await t.call('settings.clearApiKey', { kind: 'Groq' });
+    expect(changed).toHaveBeenCalledTimes(2);
   });
 
   it('serves the page in a shape that satisfies the contract', async () => {

@@ -2,6 +2,11 @@ import type { CancelSignal } from '../../cancel';
 import type { MeetingRecord } from '../../library/meeting';
 import type { MeetingRepository, SettingsStore } from '../../library/ports';
 import { resolveTranscriptionLanguage } from '../../library/settings';
+import {
+  cloudTranscriptionApiEngine,
+  LOCAL_TRANSCRIPTION_ENGINE,
+  resolveTranscriptionEngine,
+} from '../../settings/cloud-transcription-engines';
 import { isCancellation } from '../../summaries/provider';
 import { TranscriptionCancelledError } from '../../transcription/ports';
 import { ensureEndedHeader } from '../../transcription/stamp-format';
@@ -301,10 +306,18 @@ export class RecordingPipeline {
           return this.withoutTranscript(state);
       }
     } else if (isBlankText(state.transcript)) {
-      host.onSavedWithoutTranscript(request.meetingId, {
-        key: 'Ui_TranscriptionEngineUnavailable',
-        args: [],
-      });
+      // A take needs a ready engine to start, so here it stopped being ready during the take: the
+      // local engine was removed, or the key of the cloud engine was. Each has its own way back.
+      const engine = resolveTranscriptionEngine(settings);
+      host.onSavedWithoutTranscript(
+        request.meetingId,
+        engine === LOCAL_TRANSCRIPTION_ENGINE
+          ? { key: 'Ui_TranscriptionEngineUnavailable', args: [] }
+          : {
+              key: 'Ui_CloudTranscriptionKeyMissingAudioKept',
+              args: [cloudTranscriptionApiEngine(engine).displayName],
+            },
+      );
       return this.withoutTranscript(state);
     }
 

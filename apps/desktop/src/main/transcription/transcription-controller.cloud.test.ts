@@ -24,7 +24,7 @@ import {
 } from '@vozella/platform';
 import { describe, expect, it, vi } from 'vitest';
 import { mainCatalogs } from '../i18n/main-catalogs';
-import { TranscriptionController } from './transcription-controller';
+import { changesTranscriptionEngine, TranscriptionController } from './transcription-controller';
 
 const logger: Logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 const t = createLookup(mainCatalogs, 'en');
@@ -221,6 +221,70 @@ describe('status with a cloud engine', () => {
   });
 });
 
+describe('the status after the engine setting or a key changed', () => {
+  const published = (events: { channel: string; payload: unknown }[]) =>
+    events
+      .filter((e) => e.channel === 'transcription.statusChanged')
+      .map((e) => e.payload as { engine: string; ready: boolean; cloudNotReadyReason: unknown });
+
+  it('is published again with the engine the setting now selects', async () => {
+    const { controller, settings, events } = setup({ engine: null, localReady: true });
+    await settings.update({ transcriptionEngine: 'OpenAi' });
+    await controller.refreshStatus();
+    expect(published(events)).toEqual([
+      expect.objectContaining({
+        engine: 'OpenAi',
+        ready: false,
+        cloudNotReadyReason: 'key-missing',
+      }),
+    ]);
+  });
+
+  it('only a patch that names the engine or its model makes the status stale', () => {
+    expect(changesTranscriptionEngine({ transcriptionEngine: 'Groq' })).toBe(true);
+    expect(changesTranscriptionEngine({ transcriptionEngine: null })).toBe(true);
+    expect(changesTranscriptionEngine({ cloudTranscriptionModelId: 'whisper-large-v3' })).toBe(
+      true,
+    );
+    expect(changesTranscriptionEngine({ uiLanguage: 'es', meetingPopupEnabled: false })).toBe(
+      false,
+    );
+    expect(changesTranscriptionEngine({})).toBe(false);
+  });
+
+  it('is published again as ready once the key is stored, and not ready once it is removed', async () => {
+    const { controller, keys, events } = setup({ key: false });
+    await keys.set('Groq', 'gsk-test');
+    await controller.refreshStatus();
+    await keys.delete('Groq');
+    await controller.refreshStatus();
+    expect(published(events).map((status) => status.ready)).toEqual([true, false]);
+  });
+});
+
+describe('a live pass the provider refuses', () => {
+  it('tells its listeners once, with the sentence of the failure', async () => {
+    const { controller, frameListeners } = setup({ client: { failWith: 'KeyInvalid' } });
+    const reasons: string[] = [];
+    const off = controller.onLiveFailure((reason) => reasons.push(reason));
+    await controller.startLive(null);
+    await record1s(frameListeners);
+    await controller.stopLive();
+    expect(reasons).toEqual(['Fake speech did not accept your API key. Check it in Settings.']);
+    off();
+  });
+
+  it('says nothing for a failure that only leaves a gap', async () => {
+    const { controller, frameListeners } = setup({ client: { failWith: 'RateLimited' } });
+    const reasons: string[] = [];
+    controller.onLiveFailure((reason) => reasons.push(reason));
+    await controller.startLive(null);
+    await record1s(frameListeners);
+    await controller.stopLive();
+    expect(reasons).toEqual([]);
+  });
+});
+
 describe('ensureEngine with a cloud engine', () => {
   it('is ready at once with the key, and downloads nothing', async () => {
     const { controller, models, runtimes, events } = setup();
@@ -228,6 +292,20 @@ describe('ensureEngine with a cloud engine', () => {
     expect(models.downloads).toEqual([]);
     expect(runtimes.downloads).toEqual([]);
     expect(events.some((e) => e.channel === 'transcription.installProgress')).toBe(false);
+  });
+
+  it('asked for the local engine, downloads it and leaves the cloud engine selected', async () => {
+    const { controller, models, runtimes, settings } = setup({ key: false });
+    expect(await controller.ensureEngine({ local: true })).toEqual({ status: 'ready' });
+    expect(models.downloads.length + runtimes.downloads.length).toBeGreaterThan(0);
+    expect(models.isModelDownloaded()).toBe(true);
+    expect((await settings.load()).transcriptionEngine).toBe('Groq');
+    // The selected engine is still the cloud one, and it still has no key.
+    expect(await controller.status()).toMatchObject({
+      engine: 'Groq',
+      ready: false,
+      modelInstalled: true,
+    });
   });
 
   it('fails with the missing-key sentence without the key, and downloads nothing', async () => {

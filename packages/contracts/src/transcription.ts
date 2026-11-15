@@ -87,10 +87,14 @@ export type InstallOutcomeDto = z.infer<typeof installOutcomeSchema>;
 
 /**
  * Downloads what the engine is missing and answers when it is ready. The Record gate and the
- * Settings button both use it. A second call while one runs shares the first.
+ * Settings button both use it. A second call while one runs shares the first. A cloud engine
+ * downloads nothing: it is ready, or it fails with the sentence that names the missing key.
+ *
+ * `local: true` asks for the engine on this device whatever the settings select, so Settings can
+ * still download it while a cloud engine transcribes.
  */
 export const transcriptionEnsureEngine = defineRequest('transcription.ensureEngine', {
-  input: empty,
+  input: z.object({ local: z.boolean().optional() }).strict(),
   output: installOutcomeSchema,
 });
 

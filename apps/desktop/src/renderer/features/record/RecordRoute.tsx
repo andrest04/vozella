@@ -1,14 +1,16 @@
-import { defaultMeetingTitle } from '@vozella/core';
-import { FileUp, Link, Mic } from 'lucide-react';
+import { defaultMeetingTitle, isCloudTranscriptionKind } from '@vozella/core';
+import { FileUp, KeyRound, Link, Mic } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
 import { Button, SectionHeader, cn } from '../../ui';
 import { SourcesPanel, type SourcesSelection } from '../audio/SourcesPanel';
+import { openTranscriptionInSettings } from '../transcription/transcription-focus';
 import { useEngineStatus } from '../transcription/use-engine-status';
 import { AnswerCard } from './AnswerCard';
 import { LiveAskDock } from './LiveAskDock';
 import { LiveCanvas } from './LiveCanvas';
 import { ProcessingBar, RetryAction } from './ProcessingBar';
+import { needsCloudKey } from './needs-cloud-key';
 import { NotepadPanel } from './notepad/NotepadPanel';
 import { RecordIdle } from './RecordIdle';
 import { buildDestinations } from './destinations';
@@ -174,8 +176,17 @@ export function RecordRoute() {
         ?.path ?? inbox
     );
   }, [store.folders, store.folderId, locale, t]);
+  const cloudEngine = engine !== null && isCloudTranscriptionKind(engine.engine);
+  // A cloud engine sends the audio in pieces, so its captions are a few seconds behind; and when
+  // its live pass covers the take, that text is the saved transcript, not only a preview.
   const emptyText =
-    engine && !engine.liveEnabled ? t('Ui_LiveSkipped') : t('RecordPage_LiveTranscriptHint.Text');
+    engine && !engine.liveEnabled
+      ? t('Ui_LiveSkipped')
+      : cloudEngine
+        ? t('Ui_LiveCloudHint')
+        : t('RecordPage_LiveTranscriptHint.Text');
+  // The transcription engine is a cloud one without its key: the step is the key, in Settings.
+  const addCloudKey = setup !== null && needsCloudKey(setup);
   const captionText = hasStatusError(messages) ? '' : statusText;
   const panels = arrangePanels(width);
   const scrollSession = flags.isSessionActive;
@@ -341,16 +352,31 @@ export function RecordRoute() {
           ) : null}
           {flags.showSetupPanel && setup ? (
             <div>
-              <Button
-                variant="primary"
-                disabled={busy !== null}
-                onClick={() => {
-                  void ensureReady();
-                }}
-                data-testid="BtnSetUpToRecord"
-              >
-                {t('RecordingSetup_SetUpToRecord.Content')}
-              </Button>
+              {addCloudKey ? (
+                // Nothing to install: one step, straight to the key field in Settings.
+                <Button
+                  variant="primary"
+                  icon={KeyRound}
+                  disabled={busy !== null}
+                  onClick={() => {
+                    openTranscriptionInSettings('key');
+                  }}
+                  data-testid="BtnAddApiKey"
+                >
+                  {t('Ui_SetupAddKey')}
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  disabled={busy !== null}
+                  onClick={() => {
+                    void ensureReady();
+                  }}
+                  data-testid="BtnSetUpToRecord"
+                >
+                  {t('RecordingSetup_SetUpToRecord.Content')}
+                </Button>
+              )}
             </div>
           ) : (
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">

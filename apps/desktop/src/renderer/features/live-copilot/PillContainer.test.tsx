@@ -34,6 +34,7 @@ const recordingState = (over: Record<string, unknown> = {}) => ({
   status: [],
   micLevel: 0,
   captureNotices: [],
+  liveNotice: null,
   meetingId: 'm1',
   title: 't',
   recordedAtMs: null,

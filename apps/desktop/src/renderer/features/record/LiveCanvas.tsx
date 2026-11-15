@@ -20,6 +20,12 @@ export interface LiveCanvasProps {
   readonly highlightFeedback: string | null;
   /** The status caption of the take; the container leaves it out when it is an error. */
   readonly statusText: string | null;
+  /**
+   * The live text stopped while the take goes on recording (a cloud engine whose provider refused
+   * the request): what happened and that the audio is kept. Calm and non-blocking: it sits above
+   * the text, is announced politely, and takes nothing away from the controls.
+   */
+  readonly notice?: { readonly title: string; readonly body: string } | null;
   /** The "Copied" bar is showing. */
   readonly copied: boolean;
   /** A text Copy button in the heading row, for the finished transcript (spec 2.6). */
@@ -154,6 +160,7 @@ export function LiveCanvas({
   emptyText,
   highlightFeedback,
   statusText,
+  notice = null,
   copied,
   onCopy,
   surfaceTestId = 'live-transcript',
@@ -216,6 +223,16 @@ export function LiveCanvas({
             </Button>
           ) : null}
         </div>
+      </div>
+
+      {/* Always in the page, so a notice that appears mid-take is announced, politely. */}
+      <div aria-live="polite" className="empty:hidden">
+        {notice ? (
+          <Notice tone="warning" testId="live-notice">
+            <p className="font-medium">{notice.title}</p>
+            <p className="max-w-prose text-ui text-ink-muted">{notice.body}</p>
+          </Notice>
+        ) : null}
       </div>
 
       <div className="relative min-h-0 flex-1">

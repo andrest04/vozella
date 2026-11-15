@@ -26,6 +26,8 @@ interface CloudTranscriptionEngineDeclaration {
   readonly modelNames: Readonly<Record<string, string>>;
   readonly defaultModel: string;
   readonly limits: CloudTranscriptionLimits;
+  /** The provider's own page where a signed-in user creates an API key. Always https. */
+  readonly keyPageUrl: string;
 }
 
 /** Both providers refuse a larger upload (HTTP 413). */
@@ -41,6 +43,10 @@ export const CLOUD_TRANSCRIPTION_MAX_FILE_BYTES = 25 * 1024 * 1024;
  * console.groq.com/docs/speech-to-text and console.groq.com/docs/rate-limits (developer plan: 20
  * requests per minute and 7,200 audio seconds per hour for both whisper models; at least 10 s
  * billed per request); platform.openai.com/docs/api-reference/audio/createTranscription.
+ *
+ * Key pages (checked 2026-11-15): console.groq.com/keys is GroqCloud's "API Keys" page, linked
+ * from console.groq.com/docs/quickstart; platform.openai.com/api-keys is the "Create an API Key"
+ * link of OpenAI's quickstart (developers.openai.com/api/docs/quickstart).
  */
 export const CLOUD_TRANSCRIPTION_ENGINES = {
   Groq: {
@@ -53,6 +59,7 @@ export const CLOUD_TRANSCRIPTION_ENGINES = {
     },
     defaultModel: 'whisper-large-v3-turbo',
     limits: { requestsPerMinute: 20, audioSecondsPerHour: 7200, minBilledSeconds: 10 },
+    keyPageUrl: 'https://console.groq.com/keys',
   },
   OpenAi: {
     kind: 'OpenAi',
@@ -65,6 +72,7 @@ export const CLOUD_TRANSCRIPTION_ENGINES = {
     modelNames: { 'whisper-1': 'Whisper' },
     defaultModel: 'whisper-1',
     limits: { requestsPerMinute: null, audioSecondsPerHour: null, minBilledSeconds: null },
+    keyPageUrl: 'https://platform.openai.com/api-keys',
   },
 } as const satisfies Partial<Record<ApiProviderKind, CloudTranscriptionEngineDeclaration>>;
 

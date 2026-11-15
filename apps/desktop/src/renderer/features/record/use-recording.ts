@@ -164,6 +164,11 @@ export function connectRecording(): () => void {
       window.vozella.on('workspace.meetingDeleted', ({ id }) => {
         if (get().state?.lastMeeting?.id === id) set({ clearedMeetingId: id });
       }),
+      // Main publishes the status when the engine, its files or its key changed: the Record gate
+      // is built from the same facts, so it is read again instead of waiting for the next visit.
+      window.vozella.on('transcription.statusChanged', () => {
+        if (isIdle()) void refreshSetup();
+      }),
     ];
     disconnect = () => {
       for (const off of offs) off();

@@ -77,6 +77,7 @@ import { composeChat } from './chat/compose-chat';
 import { composeSettings } from './settings/compose-settings';
 import { composeSummaries } from './summaries/compose-summaries';
 import { composeTranscription } from './transcription/compose-transcription';
+import { changesTranscriptionEngine } from './transcription/transcription-controller';
 import { composeUpdates } from './updates/compose-updates';
 import { createElectronUpdaterPort } from './updates/electron-updater-port';
 import { AsrWorkerHost } from './workers/asr-worker-host';
@@ -616,12 +617,18 @@ function main(): void {
         locale,
         broadcast,
         onSummaryProviderSaved: () => liveAsk.refreshWebSupport(),
+        // A cloud transcription engine is ready only with its key: the Record gate, the live
+        // switch and the Settings section follow a saved or removed key without a restart.
+        onApiKeyChanged: () => void transcriptionController.refreshStatus(),
       });
       libraryWrites = registerLibraryHandlers({
         server: ipcServer,
         runtime: library,
         workspace,
         broadcast,
+        onSettingsSaved: (patch) => {
+          if (changesTranscriptionEngine(patch)) void transcriptionController.refreshStatus();
+        },
       });
 
       // Audio capture: the recording module takes `audioController` to start and stop recordings.
