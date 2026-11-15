@@ -51,6 +51,7 @@ describe('provider ids', () => {
       'openai',
       'anthropic',
       'gemini',
+      'groq',
       'openai-compatible',
     ]);
   });

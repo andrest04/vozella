@@ -118,6 +118,7 @@ export const chatEngineSchema = z.enum([
   'openai',
   'anthropic',
   'gemini',
+  'groq',
   'openai-compatible',
 ]);
 export type ChatEngineDto = z.infer<typeof chatEngineSchema>;

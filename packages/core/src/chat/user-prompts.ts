@@ -21,6 +21,7 @@ export const CHAT_ENGINES = [
   'openai',
   'anthropic',
   'gemini',
+  'groq',
   'openai-compatible',
 ] as const;
 /** An engine a saved prompt can ask for. Null on a prompt means the engine chosen in Settings. */

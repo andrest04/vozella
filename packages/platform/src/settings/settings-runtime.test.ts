@@ -339,6 +339,36 @@ describe('SettingsRuntime API keys (BYOK)', () => {
     expect(fetcher.calls[0]?.headers.authorization).toBe('Bearer sk-test');
   });
 
+  it('Groq: the key is saved under its own kind and Verify asks the Groq endpoint with it', async () => {
+    const {
+      runtime: r,
+      keys,
+      fetcher,
+    } = keyed({
+      fetch: new FakeFetch({
+        chunks: [
+          JSON.stringify({ data: [{ id: 'openai/gpt-oss-120b' }, { id: 'whisper-large-v3' }] }),
+        ],
+      }),
+    });
+    expect(await r.apiKeys.verify('Groq')).toEqual({
+      status: 'failed',
+      errorKey: 'Ui_ApiKeyMissing',
+    });
+    expect(await r.apiKeys.set('Groq', ' gsk-test ')).toEqual({ status: 'saved', keySet: true });
+    expect(await keys.get('Groq')).toBe('gsk-test');
+    expect(await keys.has('OpenAi')).toBe(false);
+    expect(await r.apiKeys.verify('Groq')).toEqual({
+      status: 'verified',
+      models: ['openai/gpt-oss-120b'],
+    });
+    expect(fetcher.calls).toHaveLength(1);
+    expect(fetcher.calls[0]?.url).toBe('https://api.groq.com/openai/v1/models');
+    expect(fetcher.calls[0]?.headers.authorization).toBe('Bearer gsk-test');
+    const page = await r.page.load();
+    expect(page.api.Groq).toMatchObject({ keySet: true, model: 'llama-3.3-70b-versatile' });
+  });
+
   it('verify maps a refused key to its localized reason and never echoes the key', async () => {
     const { runtime: r } = keyed({
       keys: new FakeApiKeyStore({ OpenAi: 'sk-test' }),

@@ -93,3 +93,62 @@ test('OpenAI: save a key, see it saved but never shown, verify it, and pass axe'
     await launched.close();
   }
 });
+
+test('Groq: its own engine row takes a key, verifies it and suggests the Groq models', async () => {
+  const launched = await launchApp({ VOZELLA_E2E_SHOW: '1' });
+  try {
+    const page = await launched.app.firstWindow();
+    await expect(page.getByRole('navigation')).toBeVisible();
+    await launched.app.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0]?.setContentSize(1120, 1000);
+    });
+    await page.evaluate(() => {
+      window.location.hash = '#/settings';
+    });
+    await expect(page.getByRole('heading', { level: 2, name: 'Summary provider' })).toBeVisible();
+
+    const list = page.getByRole('group', { name: 'Choose where summaries are generated' });
+    const row = list.getByRole('button', { name: 'Groq', exact: true });
+    await expect(row).toHaveAccessibleDescription('Needs key');
+    await row.click();
+    await expect(page.getByText('Save an API key to use Groq.')).toBeVisible();
+    await expect(page.getByText(/are sent to Groq to get an answer/)).toBeVisible();
+    // Groq has a fixed endpoint: only the compatible engine asks for a server address.
+    await expect(page.getByLabel('Server address')).toHaveCount(0);
+
+    const key = page.getByLabel('API key', { exact: true }).and(page.locator('input'));
+    await key.fill(SECRET);
+    await page.getByRole('button', { name: 'Save key' }).click();
+    await expect(page.getByTestId('TxtApiKeyStatus')).toHaveText('Key saved.');
+    await expect(row).toHaveAccessibleDescription('Key saved');
+    expect(await page.content()).not.toContain(SECRET);
+
+    await page.getByRole('button', { name: 'Use this engine' }).click();
+    const settingsFile = path.join(launched.dataRoot, 'app', 'settings.json');
+    await expect
+      .poll(
+        () =>
+          (JSON.parse(fs.readFileSync(settingsFile, 'utf8')) as Record<string, unknown>)
+            .selectedSummaryProvider,
+      )
+      .toBe('Groq');
+    expect(fs.readFileSync(settingsFile, 'utf8')).not.toContain(SECRET);
+
+    await page.getByRole('button', { name: 'Verify' }).click();
+    await expect(page.getByTestId('TxtApiKeyStatus')).toHaveText(
+      'Verified. 2 models are listed under Model.',
+    );
+    const modelField = page.getByRole('combobox', { name: 'Model' });
+    await expect(modelField).toHaveValue('Llama 3.3 70B Versatile');
+    await modelField.click();
+    await expect(modelField).toHaveValue('llama-3.3-70b-versatile');
+    await expect(
+      page.getByTestId('ListApiModels').getByRole('option', { name: /GPT-OSS 120B/ }),
+    ).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    expect(await seriousViolations(page)).toEqual([]);
+  } finally {
+    await launched.close();
+  }
+});

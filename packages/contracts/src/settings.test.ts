@@ -52,6 +52,13 @@ describe('settings contracts', () => {
       settingsSetApiOption.input.safeParse({ kind: 'Gemini', field: 'model', value: 'g' }).success,
     ).toBe(true);
     expect(
+      settingsSetApiOption.input.safeParse({
+        kind: 'Groq',
+        field: 'model',
+        value: 'openai/gpt-oss-120b',
+      }).success,
+    ).toBe(true);
+    expect(
       settingsSetApiOption.input.safeParse({ kind: 'Codex', field: 'model', value: 'g' }).success,
     ).toBe(false);
     expect(
@@ -86,6 +93,8 @@ describe('settings contracts', () => {
     ).toBe(true);
     expect(settingsClearApiKey.input.safeParse({ kind: 'Anthropic' }).success).toBe(true);
     expect(settingsVerifyApiKey.input.safeParse({ kind: 'Gemini' }).success).toBe(true);
+    expect(settingsVerifyApiKey.input.safeParse({ kind: 'Groq' }).success).toBe(true);
+    expect(settingsSetApiKey.input.safeParse({ kind: 'Groq', key: 'gsk_test' }).success).toBe(true);
     expect(settingsVerifyApiKey.input.safeParse({ kind: 'Gemini', key: 'k' }).success).toBe(false);
     expect(
       settingsVerifyApiKey.output.safeParse({ status: 'verified', models: ['gpt-5'] }).success,
@@ -104,8 +113,16 @@ describe('settings contracts', () => {
       baseUrl: null,
     };
     const api = settingsPageSchema.shape.api;
-    const all = { OpenAi: engine, Anthropic: engine, Gemini: engine, OpenAiCompatible: engine };
+    const all = {
+      OpenAi: engine,
+      Anthropic: engine,
+      Gemini: engine,
+      Groq: engine,
+      OpenAiCompatible: engine,
+    };
     expect(api.safeParse(all).success).toBe(true);
+    // Every API engine is on the page: one without Groq is not a page.
+    expect(api.safeParse({ ...all, Groq: undefined }).success).toBe(false);
     expect(api.safeParse({ ...all, OpenAi: { ...engine, key: 'sk-secret' } }).success).toBe(false);
   });
 
@@ -118,7 +135,13 @@ describe('settings contracts', () => {
       baseUrl: null,
     };
     const api = settingsPageSchema.shape.api;
-    const all = { OpenAi: engine, Anthropic: engine, Gemini: engine, OpenAiCompatible: engine };
+    const all = {
+      OpenAi: engine,
+      Anthropic: engine,
+      Gemini: engine,
+      Groq: engine,
+      OpenAiCompatible: engine,
+    };
     const parsed = api.safeParse(all);
     expect(parsed.success).toBe(true);
     expect(parsed.data?.OpenAi.modelLabels).toEqual({ 'gpt-6-astra': 'GPT-6 Astra' });
@@ -140,6 +163,7 @@ describe('settings contracts', () => {
         { kind: 'ClaudeCode', readiness: 'ready', model: 'sonnet' },
         { kind: 'Codex', readiness: 'cli-missing', model: 'gpt-5.6' },
         { kind: 'OpenAi', readiness: 'needs-key', model: 'gpt-6-astra' },
+        { kind: 'Groq', readiness: 'needs-key', model: 'llama-3.3-70b-versatile' },
         { kind: 'OpenAiCompatible', readiness: 'needs-server', model: null },
       ]).success,
     ).toBe(true);
@@ -155,6 +179,10 @@ describe('settings contracts', () => {
     for (const reason of ['key-missing', 'base-url-missing']) {
       expect(
         summariesProviderStatus.output.safeParse({ status: 'needs-setup', kind: 'Gemini', reason })
+          .success,
+      ).toBe(true);
+      expect(
+        summariesProviderStatus.output.safeParse({ status: 'needs-setup', kind: 'Groq', reason })
           .success,
       ).toBe(true);
     }

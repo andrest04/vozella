@@ -12,7 +12,7 @@ type StringSettingKey = {
   [K in keyof AppSettings]: AppSettings[K] extends string | null ? K : never;
 }[keyof AppSettings];
 
-/** The wire format an engine speaks. Gemini and the compatible kind reuse the OpenAI one. */
+/** The wire format an engine speaks. Gemini, Groq and the compatible kind reuse the OpenAI one. */
 export type ApiProtocol = 'openai-chat' | 'anthropic-messages';
 
 /** What is still missing before an API key engine can answer. */
@@ -20,7 +20,7 @@ export type ApiSetupGap = 'base-url-missing' | 'key-missing' | 'model-missing';
 
 export type ApiProviderId = Extract<
   ProviderId,
-  'openai' | 'anthropic' | 'gemini' | 'openai-compatible'
+  'openai' | 'anthropic' | 'gemini' | 'groq' | 'openai-compatible'
 >;
 
 /**
@@ -36,7 +36,11 @@ export interface ApiEngine {
   readonly displayName: string;
   /** Catalog key of the product name in the UI. */
   readonly nameKey:
-    'Ui_ApiOpenAiName' | 'Ui_ApiAnthropicName' | 'Ui_ApiGeminiName' | 'Ui_ApiOpenAiCompatibleName';
+    | 'Ui_ApiOpenAiName'
+    | 'Ui_ApiAnthropicName'
+    | 'Ui_ApiGeminiName'
+    | 'Ui_ApiGroqName'
+    | 'Ui_ApiOpenAiCompatibleName';
   /** Null when the user supplies the endpoint (the compatible kind). */
   readonly defaultBaseUrl: string | null;
   /** The compatible kind also serves local servers (Ollama, LM Studio) that take no key. */
@@ -73,7 +77,9 @@ const fixedBaseUrl =
  * The single table of API key engines. Add or change an engine here.
  * Defaults and suggestions follow each provider's own model catalog (checked 2026-11-10):
  * developers.openai.com/api/docs/models, platform.claude.com/docs/en/about-claude/models/overview,
- * aistudio.google.com/docs/models. Verify lists the models a key can really use.
+ * aistudio.google.com/docs/models. Groq lists its production chat models only (checked 2026-11-15):
+ * console.groq.com/docs/models, with the endpoint from console.groq.com/docs/openai. Verify lists
+ * the models a key can really use.
  */
 export const API_ENGINES = {
   OpenAi: {
@@ -135,6 +141,31 @@ export const API_ENGINES = {
     resolveModel: modelResolver('selectedGeminiModelId', 'gemini-3.8-flash'),
     resolveBaseUrl: fixedBaseUrl('https://generativelanguage.googleapis.com/v1beta/openai'),
   },
+  Groq: {
+    kind: 'Groq',
+    providerId: 'groq',
+    protocol: 'openai-chat',
+    displayName: 'Groq',
+    nameKey: 'Ui_ApiGroqName',
+    defaultBaseUrl: 'https://api.groq.com/openai/v1',
+    requiresKey: true,
+    models: [
+      'llama-3.3-70b-versatile',
+      'llama-3.1-8b-instant',
+      'openai/gpt-oss-120b',
+      'openai/gpt-oss-20b',
+    ],
+    modelNames: {
+      'llama-3.3-70b-versatile': 'Llama 3.3 70B Versatile',
+      'llama-3.1-8b-instant': 'Llama 3.1 8B Instant',
+      'openai/gpt-oss-120b': 'GPT-OSS 120B',
+      'openai/gpt-oss-20b': 'GPT-OSS 20B',
+    },
+    defaultModel: 'llama-3.3-70b-versatile',
+    modelSetting: 'selectedGroqModelId',
+    resolveModel: modelResolver('selectedGroqModelId', 'llama-3.3-70b-versatile'),
+    resolveBaseUrl: fixedBaseUrl('https://api.groq.com/openai/v1'),
+  },
   OpenAiCompatible: {
     kind: 'OpenAiCompatible',
     providerId: 'openai-compatible',
@@ -158,7 +189,8 @@ export const API_ENGINE_LIST: readonly ApiEngine[] = Object.values(API_ENGINES);
 /**
  * Name fragments of the models a provider's model list returns that cannot answer a text chat:
  * embeddings, images, video, music, speech, realtime and live audio, moderation, translation and
- * specialist agents. Taken from the OpenAI and Gemini catalogs (checked 2026-11-10).
+ * specialist agents. Taken from the OpenAI and Gemini catalogs (checked 2026-11-10), plus the
+ * safety classifiers (`guard`) and the speech voices (`orpheus`) in Groq's (checked 2026-11-15).
  */
 const NON_CHAT_MODEL_FRAGMENTS = [
   'embed',
@@ -176,6 +208,8 @@ const NON_CHAT_MODEL_FRAGMENTS = [
   'realtime',
   'live',
   'moderation',
+  'guard',
+  'orpheus',
   'translate',
   'cyber',
   'rosalind',

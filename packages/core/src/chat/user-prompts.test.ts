@@ -45,6 +45,7 @@ describe('normalizePromptDraft (validation)', () => {
       'openai',
       'anthropic',
       'gemini',
+      'groq',
       'openai-compatible',
     ] as const) {
       expect(

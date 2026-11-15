@@ -260,7 +260,7 @@ describe('SummaryProviderFactory', () => {
 });
 
 describe('API key engines', () => {
-  it.each(['OpenAi', 'Anthropic', 'Gemini'] as const)(
+  it.each(['OpenAi', 'Anthropic', 'Gemini', 'Groq'] as const)(
     '%s needs a key, then is ready through the injected builder',
     async (kind) => {
       const t = setup();

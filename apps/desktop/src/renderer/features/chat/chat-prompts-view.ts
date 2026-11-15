@@ -21,6 +21,7 @@ export const ENGINE_LABEL: Readonly<Record<ChatEngineDto, StringKey>> = {
   openai: 'Ui_ApiOpenAiName',
   anthropic: 'Ui_ApiAnthropicName',
   gemini: 'Ui_ApiGeminiName',
+  groq: 'Ui_ApiGroqName',
   'openai-compatible': 'Ui_ApiOpenAiCompatibleName',
 };
 

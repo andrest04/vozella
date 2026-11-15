@@ -45,6 +45,8 @@ export interface AppSettings {
   readonly selectedGeminiModelId: string | null;
   readonly selectedOpenAiCompatibleModelId: string | null;
   readonly openAiCompatibleBaseUrl: string | null;
+  /** Port addition (BYOK): the Groq chat model. Declared last so older files keep their order. */
+  readonly selectedGroqModelId: string | null;
 }
 
 type Kind = 'string' | 'bool-true' | 'bool-false' | 'strings' | 'number';
@@ -85,6 +87,7 @@ const FIELDS: readonly (readonly [keyof AppSettings, Kind])[] = [
   ['selectedGeminiModelId', 'string'],
   ['selectedOpenAiCompatibleModelId', 'string'],
   ['openAiCompatibleBaseUrl', 'string'],
+  ['selectedGroqModelId', 'string'],
 ];
 
 /**
@@ -98,6 +101,7 @@ const OMITTED_WHEN_NULL: ReadonlySet<string> = new Set([
   'selectedGeminiModelId',
   'selectedOpenAiCompatibleModelId',
   'openAiCompatibleBaseUrl',
+  'selectedGroqModelId',
 ]);
 
 /** The raw document: every key in the file, known or not. */
@@ -206,6 +210,7 @@ export const SUMMARY_PROVIDERS = [
   'OpenAi',
   'Anthropic',
   'Gemini',
+  'Groq',
   'OpenAiCompatible',
 ] as const;
 export type SummaryProviderKind = (typeof SUMMARY_PROVIDERS)[number];
@@ -232,6 +237,7 @@ export const API_PROVIDER_KINDS = [
   'OpenAi',
   'Anthropic',
   'Gemini',
+  'Groq',
   'OpenAiCompatible',
 ] as const satisfies readonly SummaryProviderKind[];
 export type ApiProviderKind = (typeof API_PROVIDER_KINDS)[number];

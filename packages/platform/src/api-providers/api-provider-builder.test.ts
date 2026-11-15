@@ -36,6 +36,45 @@ describe('createApiProviderBuilder', () => {
     expect(fake.calls[0]?.body).toMatchObject({ model: 'gemini-x' });
   });
 
+  it('builds Groq on the OpenAI protocol with its own key, endpoint and a prefixed model id', async () => {
+    const keys = new FakeApiKeyStore({ Groq: 'gsk-key', OpenAi: 'sk-other' });
+    const fake = new FakeFetch({ chunks: okStream });
+    const build = createApiProviderBuilder({ keys, fetch: fake.fetch });
+    const made = await build(
+      API_ENGINES.Groq,
+      readSettings({ SelectedGroqModelId: 'openai/gpt-oss-120b' }),
+    );
+    expect(made).toBeInstanceOf(OpenAiChatProvider);
+    expect(made.id).toBe('groq');
+    await made.completePrompt('p', new CancelSource().signal);
+    expect(fake.calls[0]?.url).toBe('https://api.groq.com/openai/v1/chat/completions');
+    expect(fake.calls[0]?.headers.authorization).toBe('Bearer gsk-key');
+    expect(fake.calls[0]?.body).toMatchObject({ model: 'openai/gpt-oss-120b' });
+  });
+
+  it('answers a summary and a chat prompt through Groq with its default model', async () => {
+    const keys = new FakeApiKeyStore({ Groq: 'gsk-key' });
+    const fake = new FakeFetch({ chunks: okStream });
+    const build = createApiProviderBuilder({ keys, fetch: fake.fetch });
+    const made = await build(API_ENGINES.Groq, readSettings({}));
+    const cancel = new CancelSource().signal;
+    expect(await made.completePrompt('Summarize the meeting.', cancel)).toBe('ok');
+    let streamed = '';
+    for await (const chunk of made.streamPrompt('What was decided?', cancel)) streamed += chunk;
+    expect(streamed).toBe('ok');
+    expect(fake.calls.map((call) => call.url)).toEqual([
+      'https://api.groq.com/openai/v1/chat/completions',
+      'https://api.groq.com/openai/v1/chat/completions',
+    ]);
+    expect(fake.calls[1]?.body).toMatchObject({ model: 'llama-3.3-70b-versatile' });
+  });
+
+  it('fails with KeyMissing for Groq when only another engine has a key', async () => {
+    const build = createApiProviderBuilder({ keys: new FakeApiKeyStore({ OpenAi: 'sk-other' }) });
+    const error = await failure(async () => build(API_ENGINES.Groq, readSettings({})));
+    expect((error as ApiProviderError).kind).toBe('KeyMissing');
+  });
+
   it('builds the Anthropic protocol provider', async () => {
     const keys = new FakeApiKeyStore({ Anthropic: 'a-key' });
     const build = createApiProviderBuilder({ keys, fetch: new FakeFetch({}).fetch });
@@ -112,6 +151,28 @@ describe('listApiModels', () => {
       }).fetch,
     );
     expect(gemini).toEqual(['gemini-3.8-flash']);
+  });
+
+  it('lists the Groq chat models with their vendor prefix kept, without speech or safety models', async () => {
+    const fake = new FakeFetch({
+      chunks: [
+        JSON.stringify({
+          data: [
+            { id: 'openai/gpt-oss-120b' },
+            { id: 'llama-3.3-70b-versatile' },
+            { id: 'whisper-large-v3-turbo' },
+            { id: 'meta-llama/llama-prompt-guard-2-86m' },
+            { id: 'canopylabs/orpheus-v1-english' },
+            { id: 'qwen/qwen3.8-27b' },
+          ],
+        }),
+      ],
+    });
+    const ids = await listApiModels(API_ENGINES.Groq, readSettings({}), 'gsk-key', fake.fetch);
+    // Only the Gemini `models/` prefix is stripped: a vendor prefix is part of the id Groq takes.
+    expect(ids).toEqual(['llama-3.3-70b-versatile', 'openai/gpt-oss-120b', 'qwen/qwen3.8-27b']);
+    expect(fake.calls[0]?.url).toBe('https://api.groq.com/openai/v1/models');
+    expect(fake.calls[0]?.headers.authorization).toBe('Bearer gsk-key');
   });
 
   it('lists every model of an OpenAI-compatible server unfiltered', async () => {

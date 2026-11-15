@@ -38,6 +38,7 @@ const ENGINES = [
   { kind: 'OpenAi', readiness: 'needs-key', model: 'gpt-5-mini' },
   { kind: 'Anthropic', readiness: 'needs-key', model: 'claude-sonnet-5-5' },
   { kind: 'Gemini', readiness: 'needs-key', model: 'gemini-2.5-flash' },
+  { kind: 'Groq', readiness: 'needs-key', model: 'llama-3.3-70b-versatile' },
   { kind: 'OpenAiCompatible', readiness: 'needs-server', model: null },
 ] as const;
 
@@ -62,6 +63,10 @@ function pageDto(extra: Record<string, unknown> = {}): SettingsPageDto {
       OpenAi: apiEngine(),
       Anthropic: apiEngine({ model: 'claude-sonnet-5-5', modelOptions: ['claude-sonnet-5-5'] }),
       Gemini: apiEngine({ model: 'gemini-2.5-flash', modelOptions: ['gemini-2.5-flash'] }),
+      Groq: apiEngine({
+        model: 'llama-3.3-70b-versatile',
+        modelOptions: ['llama-3.3-70b-versatile'],
+      }),
       OpenAiCompatible: apiEngine({ model: '', modelOptions: [] }),
     },
     claude: {
@@ -224,7 +229,7 @@ describe('Settings page', () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Grok/ })).toBeNull();
     const rows = rowsOf(await engineList());
-    expect(rows).toHaveLength(7);
+    expect(rows).toHaveLength(8);
     for (const button of rows) {
       expect(button).not.toHaveAccessibleDescription(/In use/);
       // Nothing is in use, so nothing opens on its own.
@@ -918,6 +923,7 @@ describe('Settings page', () => {
         'OpenAI',
         'Anthropic',
         'Google Gemini',
+        'Groq',
         'OpenAI-compatible',
       ].map((name) => screen.getByRole('button', { name })),
     );
@@ -936,6 +942,7 @@ describe('Settings page', () => {
         'OpenAI',
         'Anthropic',
         'Google Gemini',
+        'Groq',
         'Compatible con OpenAI',
       ].map((name) => screen.getByRole('button', { name })),
     );
@@ -1060,7 +1067,7 @@ describe('Summary engine list', () => {
     });
     mount();
     const list = await engineList();
-    expect(rowsOf(list)).toHaveLength(7);
+    expect(rowsOf(list)).toHaveLength(8);
     expect(
       within(list).getByRole('button', { name: 'Local (on this device)' }),
     ).toHaveAccessibleDescription('Not set up');
@@ -1076,6 +1083,9 @@ describe('Summary engine list', () => {
     expect(within(list).getByRole('button', { name: 'Anthropic' })).toHaveAccessibleDescription(
       'Needs key',
     );
+    expect(within(list).getByRole('button', { name: 'Groq' })).toHaveAccessibleDescription(
+      'Needs key',
+    );
     expect(
       within(list).getByRole('button', { name: 'OpenAI-compatible' }),
     ).toHaveAccessibleDescription('Not set up');
@@ -1086,7 +1096,7 @@ describe('Summary engine list', () => {
         .map((item) => within(item).getAllByRole('button')[0]?.getAttribute('aria-controls'));
     expect(byCaption('On this PC')).toHaveLength(1);
     expect(byCaption('With a subscription')).toHaveLength(2);
-    expect(byCaption('With your API key')).toHaveLength(4);
+    expect(byCaption('With your API key')).toHaveLength(5);
   });
 
   it('says Ready for a local model or CLI that can answer', async () => {

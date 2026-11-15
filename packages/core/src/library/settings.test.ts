@@ -62,6 +62,7 @@ describe('defaults', () => {
       selectedGeminiModelId: null,
       selectedOpenAiCompatibleModelId: null,
       openAiCompatibleBaseUrl: null,
+      selectedGroqModelId: null,
     });
   });
 
@@ -282,6 +283,7 @@ describe('reading and writing', () => {
     expect(text).not.toContain('OpenAi');
     expect(text).not.toContain('Anthropic');
     expect(text).not.toContain('Gemini');
+    expect(text).not.toContain('Groq');
     expect(text.endsWith('\r\n}')).toBe(true);
   });
 
@@ -292,6 +294,7 @@ describe('reading and writing', () => {
       selectedGeminiModelId: 'gemini-2.5-pro',
       selectedOpenAiCompatibleModelId: 'llama3.1',
       openAiCompatibleBaseUrl: 'http://localhost:11434/v1',
+      selectedGroqModelId: 'openai/gpt-oss-120b',
     } as const;
     const text = serializeSettings(applySettingsPatch({}, patch));
     expect(parseSettingsJson(text).settings).toMatchObject(patch);
@@ -373,7 +376,7 @@ describe('resolveLiveQuestionsMode', () => {
   });
 
   it('defaults to rules+ai with an API key engine too', () => {
-    for (const kind of ['OpenAi', 'Anthropic', 'Gemini', 'OpenAiCompatible']) {
+    for (const kind of ['OpenAi', 'Anthropic', 'Gemini', 'Groq', 'OpenAiCompatible']) {
       expect(resolveLiveQuestionsMode({ ...base, selectedSummaryProvider: kind })).toBe('rules+ai');
     }
   });

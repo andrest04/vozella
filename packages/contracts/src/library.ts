@@ -332,6 +332,8 @@ export const appSettingsSchema = z.object({
   selectedOpenAiCompatibleModelId: z.string().nullable(),
   /** The endpoint of the OpenAI-compatible engine. Keys are never part of the settings. */
   openAiCompatibleBaseUrl: z.string().nullable(),
+  /** The Groq chat model (BYOK); null takes the engine's default. */
+  selectedGroqModelId: z.string().nullable(),
 });
 export type AppSettingsDto = z.infer<typeof appSettingsSchema>;
 

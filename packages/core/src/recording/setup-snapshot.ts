@@ -45,6 +45,7 @@ export function summaryCaption(provider: SetupFacts['provider'], modelId: string
     case 'OpenAi':
     case 'Anthropic':
     case 'Gemini':
+    case 'Groq':
     case 'OpenAiCompatible':
       return ref(API_ENGINES[provider].nameKey);
     default:

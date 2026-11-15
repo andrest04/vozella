@@ -4,7 +4,7 @@ import { formatOffsetDate, type OffsetDate } from '../library/offset-date';
 import type { SummaryEnhancementContext } from './prompt-builders';
 import { splitSummaryResponse } from './summary-splitter';
 
-/** Spec 2.1. xAI is gone (S07). Local, the two CLI engines, then the four API key engines. */
+/** Spec 2.1. xAI is gone (S07). Local, the two CLI engines, then the five API key engines. */
 export const PROVIDER_IDS = [
   'local',
   'claude-code',
@@ -12,6 +12,7 @@ export const PROVIDER_IDS = [
   'openai',
   'anthropic',
   'gemini',
+  'groq',
   'openai-compatible',
 ] as const;
 export type ProviderId = (typeof PROVIDER_IDS)[number];

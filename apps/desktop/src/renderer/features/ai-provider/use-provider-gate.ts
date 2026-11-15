@@ -34,6 +34,7 @@ export function decideSurface(request: SetupRequest): GateSurface {
     case 'OpenAi':
     case 'Anthropic':
     case 'Gemini':
+    case 'Groq':
     case 'OpenAiCompatible':
       return {
         surface: 'notice',

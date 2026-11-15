@@ -6,6 +6,7 @@ export const API_KINDS: readonly ApiProviderKindDto[] = [
   'OpenAi',
   'Anthropic',
   'Gemini',
+  'Groq',
   'OpenAiCompatible',
 ];
 
@@ -14,6 +15,7 @@ export const API_NAME_KEYS: Readonly<Record<ApiProviderKindDto, StringKey>> = {
   OpenAi: 'Ui_ApiOpenAiName',
   Anthropic: 'Ui_ApiAnthropicName',
   Gemini: 'Ui_ApiGeminiName',
+  Groq: 'Ui_ApiGroqName',
   OpenAiCompatible: 'Ui_ApiOpenAiCompatibleName',
 };
 

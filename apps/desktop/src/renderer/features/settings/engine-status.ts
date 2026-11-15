@@ -29,6 +29,7 @@ export const ENGINE_GROUPS: readonly {
       { kind: 'OpenAi', name: 'Ui_ApiOpenAiName' },
       { kind: 'Anthropic', name: 'Ui_ApiAnthropicName' },
       { kind: 'Gemini', name: 'Ui_ApiGeminiName' },
+      { kind: 'Groq', name: 'Ui_ApiGroqName' },
       { kind: 'OpenAiCompatible', name: 'Ui_ApiOpenAiCompatibleName' },
     ],
   },

@@ -20,9 +20,16 @@ export const summaryProviderSchema = z.enum([
   'OpenAi',
   'Anthropic',
   'Gemini',
+  'Groq',
   'OpenAiCompatible',
 ]);
-export const apiProviderKindSchema = z.enum(['OpenAi', 'Anthropic', 'Gemini', 'OpenAiCompatible']);
+export const apiProviderKindSchema = z.enum([
+  'OpenAi',
+  'Anthropic',
+  'Gemini',
+  'Groq',
+  'OpenAiCompatible',
+]);
 export type ApiProviderKindDto = z.infer<typeof apiProviderKindSchema>;
 export type SummaryProviderDto = z.infer<typeof summaryProviderSchema>;
 export const cliStatusSchema = z.enum(['detected', 'missing']);
@@ -75,6 +82,7 @@ export const selectableEngineKindSchema = z.enum([
   'OpenAi',
   'Anthropic',
   'Gemini',
+  'Groq',
   'OpenAiCompatible',
 ]);
 export type SelectableEngineKindDto = z.infer<typeof selectableEngineKindSchema>;
@@ -132,6 +140,7 @@ export const settingsPageSchema = z.object({
     OpenAi: apiEngineOptionsSchema,
     Anthropic: apiEngineOptionsSchema,
     Gemini: apiEngineOptionsSchema,
+    Groq: apiEngineOptionsSchema,
     OpenAiCompatible: apiEngineOptionsSchema,
   }),
   cliStatus: cliStatusSchema.nullable(),

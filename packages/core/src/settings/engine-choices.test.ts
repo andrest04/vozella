@@ -52,7 +52,7 @@ function rig(
 }
 
 describe('readEngineChoices', () => {
-  it('lists the seven engines in display order with the Settings engine as the default', async () => {
+  it('lists the eight engines in display order with the Settings engine as the default', async () => {
     const t = rig({ cli: { claude: true }, keys: ['OpenAi'] });
     await t.store.update({ selectedSummaryProvider: 'ClaudeCode' });
     const choices = await readEngineChoices(t.deps);
@@ -64,6 +64,7 @@ describe('readEngineChoices', () => {
       ['openai', 'ready'],
       ['anthropic', 'needs-key'],
       ['gemini', 'needs-key'],
+      ['groq', 'needs-key'],
       ['openai-compatible', 'needs-server'],
     ]);
     expect(t.probed.sort()).toEqual(['claude', 'codex']);

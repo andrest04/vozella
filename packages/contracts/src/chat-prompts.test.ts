@@ -22,7 +22,7 @@ const draft = { name: 'Risks', prompt: 'List the risks.', availability: 'single'
 
 describe('saved prompt contracts (Phase 5)', () => {
   it('BYOK: a saved prompt can name an API key engine, matching the core engine ids', () => {
-    for (const engine of ['openai', 'anthropic', 'gemini', 'openai-compatible']) {
+    for (const engine of ['openai', 'anthropic', 'gemini', 'groq', 'openai-compatible']) {
       expect(chatPromptDraftSchema.safeParse({ ...draft, engine }).success).toBe(true);
     }
     expect(chatPromptDraftSchema.safeParse({ ...draft, engine: 'xai' }).success).toBe(false);

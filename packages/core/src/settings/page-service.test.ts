@@ -98,6 +98,11 @@ describe('SettingsPageService.load', () => {
     expect(api.Anthropic.modelLabels['claude-opus-5-5']).toBe('Claude Opus 5.5');
     expect(api.Anthropic.modelLabels).not.toHaveProperty('claude-custom');
     expect(api.Gemini.modelLabels['gemini-3.8-flash']).toBe('Gemini 3.8 Flash');
+    expect(api.Groq).toMatchObject({
+      keySet: false,
+      model: 'llama-3.3-70b-versatile',
+      baseUrl: null,
+    });
     expect(api.OpenAiCompatible).toEqual({
       keySet: false,
       model: '',
@@ -153,6 +158,7 @@ describe('SettingsPageService.load', () => {
       { kind: 'OpenAi', readiness: 'needs-key', model: 'gpt-6-astra' },
       { kind: 'Anthropic', readiness: 'needs-key', model: 'claude-opus-5-5' },
       { kind: 'Gemini', readiness: 'needs-key', model: 'gemini-3.8-flash' },
+      { kind: 'Groq', readiness: 'needs-key', model: 'llama-3.3-70b-versatile' },
       { kind: 'OpenAiCompatible', readiness: 'needs-server', model: null },
     ]);
   });

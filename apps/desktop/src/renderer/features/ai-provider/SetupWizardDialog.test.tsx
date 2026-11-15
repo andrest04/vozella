@@ -89,6 +89,7 @@ describe('SetupWizardDialog: chooser', () => {
       'BtnEngineOpenAi',
       'BtnEngineAnthropic',
       'BtnEngineGemini',
+      'BtnEngineGroq',
       'BtnEngineOpenAiCompatible',
     ]);
     expect(within(dialog).getByRole('list', { name: 'Or use your own API key' })).toBeVisible();

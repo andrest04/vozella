@@ -72,9 +72,10 @@ describe('parseSummaryProvider (B-20, one rule)', () => {
     expect(parseSummaryProvider('Codex')).toBe('Codex');
     expect(parseSummaryProvider('Xai')).toBe('Xai');
     expect(parseSummaryProvider('Gemini')).toBe('Gemini');
+    expect(parseSummaryProvider('Groq')).toBe('Groq');
     expect(parseSummaryProvider('OpenAiCompatible')).toBe('OpenAiCompatible');
   });
-  it.each([null, undefined, '', '   ', 'local', 'CODEX', '1', '0', 'gemini', 'Mistral'])(
+  it.each([null, undefined, '', '   ', 'local', 'CODEX', '1', '0', 'gemini', 'groq', 'Mistral'])(
     'treats %j as not chosen',
     (value) => {
       expect(parseSummaryProvider(value)).toBeNull();

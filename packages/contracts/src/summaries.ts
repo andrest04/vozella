@@ -13,7 +13,13 @@ const meetingId = z.string().min(1).max(200);
 
 export const summaryCliKindSchema = z.enum(['ClaudeCode', 'Codex']);
 export type SummaryCliKindDto = z.infer<typeof summaryCliKindSchema>;
-export const summaryApiKindSchema = z.enum(['OpenAi', 'Anthropic', 'Gemini', 'OpenAiCompatible']);
+export const summaryApiKindSchema = z.enum([
+  'OpenAi',
+  'Anthropic',
+  'Gemini',
+  'Groq',
+  'OpenAiCompatible',
+]);
 export type SummaryApiKindDto = z.infer<typeof summaryApiKindSchema>;
 export const summarySetupKindSchema = z.enum([
   'Local',
@@ -35,6 +41,7 @@ export const summaryProviderIdSchema = z.enum([
   'openai',
   'anthropic',
   'gemini',
+  'groq',
   'openai-compatible',
 ]);
 

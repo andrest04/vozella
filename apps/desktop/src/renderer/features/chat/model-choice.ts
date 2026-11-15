@@ -29,6 +29,7 @@ export const SETTINGS_KIND: Readonly<Record<ChatEngineDto, EngineKind>> = {
   openai: 'OpenAi',
   anthropic: 'Anthropic',
   gemini: 'Gemini',
+  groq: 'Groq',
   'openai-compatible': 'OpenAiCompatible',
 };
 
@@ -103,6 +104,7 @@ const GROUP_OF: Readonly<Record<ChatEngineDto, PickerGroupId>> = {
   openai: 'apiKey',
   anthropic: 'apiKey',
   gemini: 'apiKey',
+  groq: 'apiKey',
   'openai-compatible': 'apiKey',
 };
 
