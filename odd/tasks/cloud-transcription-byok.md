@@ -161,4 +161,8 @@ Transcription is local only: it needs the Nemotron model plus a CPU or CUDA runt
 
 ## Next step
 
-Full checks by the parent, then merge to main and push, by the user's instruction.
+None in this feature. Still open outside it: a first run against a real Groq and OpenAI account (everything here ran against fakes).
+
+## Closure
+
+- 2026-11-15: T6 is commit `87dab33`; native assessment not run for it (RDD off). The branch was merged to `main` as `1a4e832` and pushed by the user's instruction. Parent checks on `main`: `pnpm typecheck` clean, `pnpm lint` clean, `pnpm test` all passed (contracts 83, core 2555, platform 683 with 24 skipped, desktop 2626 with 6 skipped, native 21), `pnpm build` ok, and the six affected e2e specs 45 passed with 8 skipped (screenshots). The Release workflow run for `1a4e832` finished with success.
