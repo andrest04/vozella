@@ -341,7 +341,10 @@ describe('OpenAiSpeechToTextClient: failures', () => {
     [429, '{"error":{"type":"insufficient_quota","code":"insufficient_quota"}}', 'QuotaExceeded'],
     [429, '{"error":{"code":"credit_balance_exhausted"}}', 'QuotaExceeded'],
     [413, '{"error":{"message":"Request Entity Too Large"}}', 'Unknown'],
-    [500, 'boom', 'Unknown'],
+    [400, 'boom', 'Unknown'],
+    // A failing server may answer the next try: a kind the engine sends again.
+    [500, 'boom', 'TimedOut'],
+    [503, '{"error":{"message":"Service Unavailable"}}', 'TimedOut'],
   ] as const)('maps HTTP %i %j to %s', async (status, body, kind) => {
     const { made } = client({ status, chunks: [body] });
     const error = await failure(() => made.transcribe(chunk(1), none()));
@@ -408,8 +411,10 @@ describe('OpenAiSpeechToTextClient: failures', () => {
   });
 
   it('never puts the key in the error message', async () => {
-    const { made } = client({ status: 500, chunks: [`bad key ${KEY}`] });
+    // A 400 keeps the server text as the detail, so there is a text the key could be in.
+    const { made } = client({ status: 400, chunks: [`bad key ${KEY}`] });
     const error = await failure(() => made.transcribe(chunk(1), none()));
+    expect((error as ApiProviderError).detail).toContain('bad key');
     expect((error as Error).message).not.toContain(KEY);
     expect(String((error as ApiProviderError).detail)).not.toContain(KEY);
   });

@@ -31,6 +31,30 @@ describe('FakeSpeechToTextClient', () => {
     });
   });
 
+  it('answers as a provider does: punctuation and capitals in the text, bare words beside it', async () => {
+    const client = new FakeSpeechToTextClient({
+      phrases: ['Buenos días, a todos.', '¿Empezamos?'],
+    });
+    const result = await client.transcribe(chunk(2.5), none());
+    expect(result.text).toBe('Buenos días, a todos. ¿Empezamos?');
+    expect(result.words.map((word) => word.text)).toEqual([
+      'buenos',
+      'días',
+      'a',
+      'todos',
+      'empezamos',
+    ]);
+    // The text is not the words joined: whoever rebuilds lines from the words must see that.
+    expect(result.words.map((word) => word.text).join(' ')).not.toBe(result.text);
+  });
+
+  it('the default script has punctuation the word list does not', async () => {
+    const result = await new FakeSpeechToTextClient().transcribe(chunk(4), none());
+    expect(result.text).toBe('Buenos días a todos y gracias por venir.');
+    expect(result.words.at(-1)?.text).toBe('venir');
+    expect(result.words[0]?.text).toBe('buenos');
+  });
+
   it('goes on with the script in the next chunk, with times from that chunk start', async () => {
     const client = new FakeSpeechToTextClient({ phrases: ['uno dos tres'] });
     await client.transcribe(chunk(1), none());

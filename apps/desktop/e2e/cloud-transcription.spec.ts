@@ -213,6 +213,10 @@ test('with a key and Groq chosen, a take is transcribed live and saved with that
         timeout: 60_000,
       })
       .toContain('Buenos días a todos');
+    // The saved lines carry the provider's punctuation and capitals, not its bare word list.
+    expect(meetings(launched).find((text) => text.includes('Cloud take'))).toMatch(
+      /\[\d{2}:\d{2}\.\d{2}-\d{2}:\d{2}\.\d{2}\] Buenos días a todos y gracias por venir\. Hoy revisamos el presupuesto del trimestre\./,
+    );
     await restoreMain(launched.app);
     await expect(page.getByTestId('BtnRecord')).toBeEnabled({ timeout: 60_000 });
     await expect(page.getByRole('alert')).toHaveCount(0);

@@ -1,5 +1,6 @@
 import {
   AsrBackendStatus,
+  CloudRequestPacer,
   CloudSpeechEngineProvider,
   isFatalSpeechFailure,
   LiveTranscriptionService,
@@ -77,6 +78,11 @@ export interface TranscriptionRuntimeOptions {
   readonly settings?: Pick<SettingsStore, 'load'>;
   /** The cloud transcription engines. Without it the engine is always local. */
   readonly cloud?: CloudTranscriptionOptions;
+  /**
+   * The wait of the live pass's stop deadline. Tests replace it; the app waits in real time,
+   * whatever clock the uploads use.
+   */
+  readonly liveStopWait?: CloudSpeechTimer['wait'];
 }
 
 /** A live pass on a cloud engine ended early: which engine, and the failure the provider gave. */
@@ -88,6 +94,11 @@ export interface LiveTranscriptionFailure {
 /** Everything the transcription module builds from paths and an engine (spec 3.4 to 3.11). */
 export class TranscriptionRuntime {
   private readonly liveFailureListeners = new Set<(failure: LiveTranscriptionFailure) => void>();
+  /**
+   * One pacer per provider for the life of the app: the provider counts the requests of a key,
+   * so the live pass, the pass after Stop and a re-transcription take turns from the same one.
+   */
+  private readonly pacers = new Map<CloudTranscriptionKind, CloudRequestPacer>();
   readonly status = new AsrBackendStatus();
   readonly models: EngineModelStore;
   readonly runtimes: RuntimeStore;
@@ -143,7 +154,21 @@ export class TranscriptionRuntime {
       onError: (error) => {
         options.logger.warn('live transcription error', { error: String(error) });
       },
+      // Stop never waits for a cloud engine longer than the deadline.
+      stopWait: (ms, cancel) =>
+        options.liveStopWait
+          ? options.liveStopWait(ms, cancel)
+          : systemSpeechTimer.wait(ms, cancel),
     });
+  }
+
+  private pacerOf(kind: CloudTranscriptionKind): CloudRequestPacer {
+    let pacer = this.pacers.get(kind);
+    if (pacer === undefined) {
+      pacer = new CloudRequestPacer();
+      this.pacers.set(kind, pacer);
+    }
+    return pacer;
   }
 
   /**
@@ -173,6 +198,7 @@ export class TranscriptionRuntime {
       keys: cloud.keys,
       client: () => cloud.client(kind, saved),
       timer: cloud.timer ?? systemSpeechTimer,
+      pacer: this.pacerOf(kind),
       onLost: (error, lostMs) => {
         logger.warn('live transcription lost audio', {
           engine: kind,

@@ -44,10 +44,17 @@ const sleep = (ms: number): Promise<void> =>
     setTimeout(resolve, ms);
   });
 
+/** A script token as a provider's word list gives it: lower case, no punctuation around it. */
+const bareWord = (token: string): string =>
+  token.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').toLowerCase();
+
 /**
  * A speech-to-text client that needs no key and no network. What it "hears" depends only on how
  * much audio it was given: one word of the script per half second of each piece, going on through
  * the script from one piece to the next, with times from the start of the piece.
+ *
+ * Like a real provider, the `text` keeps the punctuation and capitals of the script and the word
+ * list does not, so a caller that builds lines from the words alone shows in the tests.
  */
 export class FakeSpeechToTextClient implements SpeechToTextClient {
   readonly requests: SpeechToTextRequest[] = [];
@@ -71,17 +78,16 @@ export class FakeSpeechToTextClient implements SpeechToTextClient {
 
     const durationMs = Math.round((request.samples.length * 1000) / request.sampleRate);
     const count = this.script.length === 0 ? 0 : Math.floor(durationMs / FAKE_SPEECH_WORD_MS);
+    const tokens: string[] = [];
     const words: SpeechToTextWord[] = [];
     for (let index = 0; index < count; index += 1) {
+      const token = this.script[(this.spoken + index) % this.script.length] ?? '';
       const startMs = index * FAKE_SPEECH_WORD_MS;
-      words.push({
-        text: this.script[(this.spoken + index) % this.script.length] ?? '',
-        startMs,
-        endMs: startMs + SPOKEN_MS,
-      });
+      tokens.push(token);
+      words.push({ text: bareWord(token), startMs, endMs: startMs + SPOKEN_MS });
     }
     this.spoken += count;
-    return { text: words.map((word) => word.text).join(' '), words, durationMs };
+    return { text: tokens.join(' '), words, durationMs };
   }
 
   private async wait(cancel: CancelSignal): Promise<void> {

@@ -58,9 +58,23 @@ describe('speechFailureFromHttpStatus', () => {
     [404, 'model not found', 'ModelNotFound'],
     [413, 'Request Entity Too Large', 'Unknown'],
     [504, '', 'TimedOut'],
+    [400, 'bad request', 'Unknown'],
+    // A server that is failing right now may answer the same request a moment later: a kind the
+    // speech engine sends again, not Unknown, which it never retries.
+    [500, 'oops', 'TimedOut'],
+    [502, 'Bad Gateway', 'TimedOut'],
+    [503, '{"error":{"message":"Service Unavailable"}}', 'TimedOut'],
+    [529, '', 'TimedOut'],
   ] as const)('%i %j is %s', (status, body, kind) => {
     expect(speechFailureFromHttpStatus(status, body)).toBe(kind);
   });
+
+  it.each([500, 502, 503, 529])(
+    'leaves a %i of the chat and summary engines as it was',
+    (status) => {
+      expect(apiFailureFromHttpStatus(status, 'oops')).toBe('Unknown');
+    },
+  );
 });
 
 describe('ApiProviderError', () => {

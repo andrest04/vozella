@@ -259,3 +259,52 @@ export class FakeSpeechTimer implements CloudSpeechTimer {
     return Promise.resolve();
   };
 }
+
+/**
+ * The cloud engine's clock for tests of long waits: time moves only when the test says so, and a
+ * wait ends when the clock reaches it or its cancel fires, as the app's timer does.
+ */
+export class ManualSpeechTimer implements CloudSpeechTimer {
+  now = 0;
+  readonly waits: number[] = [];
+  private sleepers: { readonly at: number; readonly wake: () => void }[] = [];
+
+  nowMs = (): number => this.now;
+
+  wait = (waitMs: number, cancel: CancelSignal): Promise<void> => {
+    this.waits.push(waitMs);
+    if (cancel.cancelled) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      const sleeper = { at: this.now + waitMs, wake: resolve };
+      this.sleepers.push(sleeper);
+      cancel.onCancel(() => {
+        this.sleepers = this.sleepers.filter((other) => other !== sleeper);
+        resolve();
+      });
+    });
+  };
+
+  /** Moves the clock forward, waking each wait at its time and letting the woken code run. */
+  async advance(ms: number): Promise<void> {
+    const end = this.now + ms;
+    await ManualSpeechTimer.settle();
+    for (;;) {
+      const next = this.sleepers.reduce<number | null>(
+        (earliest, sleeper) => (earliest === null || sleeper.at < earliest ? sleeper.at : earliest),
+        null,
+      );
+      if (next === null || next > end) break;
+      this.now = Math.max(this.now, next);
+      const due = this.sleepers.filter((sleeper) => sleeper.at <= this.now);
+      this.sleepers = this.sleepers.filter((sleeper) => sleeper.at > this.now);
+      for (const sleeper of due) sleeper.wake();
+      await ManualSpeechTimer.settle();
+    }
+    this.now = end;
+    await ManualSpeechTimer.settle();
+  }
+
+  private static async settle(): Promise<void> {
+    for (let i = 0; i < 80; i += 1) await Promise.resolve();
+  }
+}

@@ -1,10 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
-import { CancelSource } from '../cancel';
+import { CancelSource, type CancelSignal } from '../cancel';
 import type { ApiProviderKind } from '../settings/api-engine-table';
 import { ApiProviderError } from '../summaries/api-failure';
 import { AsrBackendStatus } from './backend-status';
 import { CLOUD_LIVE_CHUNK_TARGET_MS } from './cloud-speech-engine';
-import { LIVE_QUEUE_CAPACITY, LiveTranscriptionService } from './live-service';
+import {
+  LIVE_QUEUE_CAPACITY,
+  LIVE_STOP_DEADLINE_MS,
+  LiveTranscriptionService,
+} from './live-service';
 import { MicActivityTimeline } from './mic-activity';
 import { TranscriptionService } from './offline-service';
 import { TranscriptionCancelledError } from './ports';
@@ -16,6 +20,7 @@ import {
   FakeModelStore,
   FakeRuntimeStore,
   FakeSpeechTimer,
+  ManualSpeechTimer,
   ScriptedSpeechToTextClient,
 } from './test-kit';
 
@@ -315,6 +320,45 @@ describe('live pass over a cloud engine', () => {
     await live.stop();
   });
 
+  it('a Stop with no session forgets the draft of the take before it', async () => {
+    const { provider } = cloud();
+    const live = new LiveTranscriptionService({ factory: provider });
+    await live.start({ language: 'es', recordedAtMs: null, speakerDiarization: false });
+    await feed(live, 2);
+    await live.stop();
+    expect(live.lastDraftIsComplete).toBe(true);
+    // The next take runs with live transcription off: its Stop finds no session.
+    expect(await live.stop()).toBe('');
+    expect(live.lastDraftIsComplete).toBe(false);
+  });
+
+  it('the punctuation of the provider reaches the stamped lines of a long piece', async () => {
+    const { client, provider } = cloud();
+    client.answer = (_call, request) => ({
+      text: 'Buenos días, equipo. Empezamos ya.',
+      words: [
+        { text: 'buenos', startMs: 0, endMs: 400 },
+        { text: 'días', startMs: 500, endMs: 900 },
+        { text: 'equipo', startMs: 1_000, endMs: 1_400 },
+        // More than 30 s later: the piece cannot be one line, so the lines come from the words.
+        { text: 'empezamos', startMs: 40_000, endMs: 40_400 },
+        { text: 'ya', startMs: 40_500, endMs: 40_900 },
+      ],
+      durationMs: (request.samples.length * 1000) / request.sampleRate,
+    });
+    const audio = new FakeAudioReader(seconds(45));
+    const text = await new TranscriptionService({ factory: provider, audio }).transcribe({
+      audioPath: 'C:/a.wav',
+      language: 'es',
+      recordedAtMs: null,
+      speakerDiarization: false,
+    });
+    expect(text.split('\n')).toEqual([
+      '[00:00.00-00:01.40] Buenos días, equipo.',
+      '[00:40.00-00:40.90] Empezamos ya.',
+    ]);
+  });
+
   it('the local engine never vouches for its draft: the pass after Stop still runs', async () => {
     const { models, runtimes, provider, engine } = local();
     models.model = true;
@@ -336,5 +380,167 @@ describe('live pass over a cloud engine', () => {
     await feed(live, 1);
     expect(await live.stop()).toBe('[00:00.00-00:01.00] hola');
     expect(live.lastDraftIsComplete).toBe(false);
+  });
+});
+
+/** The stop deadline as a wait the test ends by hand, as the app's timer ends it after the time. */
+function stopDeadline() {
+  const state: { requestedMs: number | null; released: boolean; elapse: () => void } = {
+    requestedMs: null,
+    released: false,
+    elapse: () => undefined,
+  };
+  const wait = (ms: number, cancel: CancelSignal): Promise<void> =>
+    new Promise<void>((resolve) => {
+      state.requestedMs = ms;
+      state.elapse = resolve;
+      cancel.onCancel(() => {
+        state.released = true;
+        resolve();
+      });
+    });
+  return { state, wait };
+}
+
+/** Starts Stop and reports the draft once it has one, without waiting for it. */
+function stopping(live: LiveTranscriptionService) {
+  const state: { draft: string | null } = { draft: null };
+  void live.stop().then((draft) => {
+    state.draft = draft;
+  });
+  return state;
+}
+
+describe('Stop with a cloud engine that is behind', () => {
+  it('waits for the uploads no longer than the deadline, then cancels them', async () => {
+    const { client, provider } = cloud();
+    const status = new AsrBackendStatus();
+    const deadline = stopDeadline();
+    const errors: unknown[] = [];
+    const live = new LiveTranscriptionService({
+      factory: provider,
+      status,
+      stopWait: deadline.wait,
+      onError: (error) => errors.push(error),
+    });
+    await live.start({ language: 'es', recordedAtMs: null, speakerDiarization: false });
+    client.hold();
+    await feed(live, 40);
+    const stop = stopping(live);
+    await settle();
+    // The upload is stalled: Stop is waiting, with the deadline running.
+    expect(stop.draft).toBeNull();
+    expect(deadline.state.requestedMs).toBe(LIVE_STOP_DEADLINE_MS);
+    expect(LIVE_STOP_DEADLINE_MS).toBe(25_000);
+
+    deadline.state.elapse();
+    await settle();
+    expect(stop.draft).toBe('');
+    expect(client.cancels[0]?.cancelled).toBe(true);
+    expect(client.requests).toHaveLength(1);
+    expect(live.lastDraftIsComplete).toBe(false);
+    // Nothing of the take was transcribed, and the status says so.
+    expect(status.lastLiveDrops).toEqual({ droppedMs: 40_000, totalMs: 40_000 });
+    expect(errors).toHaveLength(1);
+  });
+
+  it('a draft whose last pieces were cut off at the deadline is not complete', async () => {
+    const { client, provider } = cloud();
+    const status = new AsrBackendStatus();
+    const deadline = stopDeadline();
+    const live = new LiveTranscriptionService({
+      factory: provider,
+      status,
+      stopWait: deadline.wait,
+    });
+    await live.start({ language: 'es', recordedAtMs: null, speakerDiarization: false });
+    await feed(live, 16);
+    await settle();
+    client.hold();
+    await feed(live, 20);
+    const stop = stopping(live);
+    await settle();
+    deadline.state.elapse();
+    await settle();
+    // The draft has text and looks whole, but 21 s of the take never came back: the pass after
+    // Stop must run.
+    expect(stop.draft).toBe('[00:00.10-00:00.20] piece0');
+    expect(live.lastDraftIsComplete).toBe(false);
+    expect(status.lastLiveDrops).toEqual({ droppedMs: 21_000, totalMs: 36_000 });
+  });
+
+  it('stays prompt when the client never answers', async () => {
+    const { client, provider } = cloud();
+    const deadline = stopDeadline();
+    const live = new LiveTranscriptionService({ factory: provider, stopWait: deadline.wait });
+    await live.start({ language: 'es', recordedAtMs: null, speakerDiarization: false });
+    client.transcribe = () => new Promise<never>(() => undefined);
+    await feed(live, 3);
+    const stop = stopping(live);
+    await settle();
+    expect(stop.draft).toBeNull();
+    deadline.state.elapse();
+    await settle();
+    expect(stop.draft).toBe('');
+    expect(live.lastDraftIsComplete).toBe(false);
+  });
+
+  it('wins over a rate limit that asked the engine to hold its requests', async () => {
+    const client = new ScriptedSpeechToTextClient();
+    const deadline = stopDeadline();
+    // A clock that does not move: the hold lasts until something cancels it.
+    const provider = new CloudSpeechEngineProvider({
+      kind: 'Groq',
+      keys: { has: () => Promise.resolve(true) },
+      client: () => client,
+      timer: new ManualSpeechTimer(),
+    });
+    const live = new LiveTranscriptionService({ factory: provider, stopWait: deadline.wait });
+    await live.start({ language: 'es', recordedAtMs: null, speakerDiarization: false });
+    client.errors = [new ApiProviderError('Groq', 'RateLimited', null, undefined, 30 * 60_000)];
+    await feed(live, 16);
+    await settle();
+    expect(client.requests).toHaveLength(1);
+    const stop = stopping(live);
+    await settle();
+    expect(stop.draft).toBeNull();
+    deadline.state.elapse();
+    await settle();
+    expect(stop.draft).toBe('');
+    expect(client.requests).toHaveLength(1);
+    expect(live.lastDraftIsComplete).toBe(false);
+  });
+
+  it('a Stop that ends in time is not cut, and releases the deadline', async () => {
+    const { client, provider } = cloud();
+    const deadline = stopDeadline();
+    const errors: unknown[] = [];
+    const live = new LiveTranscriptionService({
+      factory: provider,
+      stopWait: deadline.wait,
+      onError: (error) => errors.push(error),
+    });
+    await live.start({ language: 'es', recordedAtMs: null, speakerDiarization: false });
+    await feed(live, 3);
+    expect(await live.stop()).toBe('[00:00.10-00:00.20] piece0');
+    expect(deadline.state.released).toBe(true);
+    expect(client.requests).toHaveLength(1);
+    expect(live.lastDraftIsComplete).toBe(true);
+    // A deadline that elapses after the Stop is over does nothing.
+    deadline.state.elapse();
+    await settle();
+    expect(errors).toEqual([]);
+  });
+
+  it('the local engine has nothing to drain: no deadline is started for it', async () => {
+    const { models, runtimes, provider } = local();
+    models.model = true;
+    runtimes.ready.add('cpu');
+    const deadline = stopDeadline();
+    const live = new LiveTranscriptionService({ factory: provider, stopWait: deadline.wait });
+    await live.start({ language: 'es', recordedAtMs: null, speakerDiarization: false });
+    await feed(live, 1);
+    await live.stop();
+    expect(deadline.state.requestedMs).toBeNull();
   });
 });

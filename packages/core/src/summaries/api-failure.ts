@@ -83,14 +83,23 @@ function errorCodes(bodyText: string): readonly unknown[] {
 }
 
 /**
- * The failure kind of a speech-to-text answer. It differs from `apiFailureFromHttpStatus` in one
- * case: a 429 is `QuotaExceeded` only when its error `code` or `type` is exactly a billing code.
+ * The failure kind of a speech-to-text answer. It differs from `apiFailureFromHttpStatus` in two
+ * cases. The first: a 429 is `QuotaExceeded` only when its error `code` or `type` is exactly a
+ * billing code.
  * Speech limits are worded as quotas (Groq: audio seconds per hour) and lift on their own, so a
  * 429 that merely mentions one stays `RateLimited` and keeps its `Retry-After`. The chat engines
  * keep the looser word match, where a missed billing failure would only cost one useless retry.
+ *
+ * The second: a 5xx the chat engines read as `Unknown` is `TimedOut` here. The
+ * server failed on its side and may answer the same piece a moment later, and the speech engine
+ * sends a piece again only for `Network` and `TimedOut`; as `Unknown`, one bad gateway would fail
+ * a whole file. `TimedOut` is the kind whose sentence says to try again, which is the advice.
  */
 export function speechFailureFromHttpStatus(status: number, bodyText: string): ApiFailureKind {
-  if (status !== 429) return apiFailureFromHttpStatus(status, bodyText);
+  if (status !== 429) {
+    const kind = apiFailureFromHttpStatus(status, bodyText);
+    return kind === 'Unknown' && status >= 500 && status <= 599 ? 'TimedOut' : kind;
+  }
   return errorCodes(bodyText).some(
     (code) => typeof code === 'string' && BILLING_EXHAUSTED_CODES.includes(code),
   )

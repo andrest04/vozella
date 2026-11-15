@@ -67,11 +67,12 @@ export class CloudSpeechEngineProvider implements SpeechEngineProvider {
   }
 
   async create(options: CreateRecognizerOptions = {}): Promise<SessionRecognizer> {
-    const { timer, onLost } = this.deps;
+    const { timer, onLost, pacer } = this.deps;
     const engine = new CloudSpeechEngine({
       client: this.deps.client(),
       timer,
       ...(onLost ? { onLost } : {}),
+      ...(pacer ? { pacer } : {}),
     });
     const recognizer = await engine.createRecognizer(
       { latency: options.latency ?? 'live' },

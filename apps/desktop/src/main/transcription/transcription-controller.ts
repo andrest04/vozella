@@ -18,6 +18,7 @@ import {
   droppedPercent,
   ensureEndedHeader,
   evaluateRetranscription,
+  isApiProviderError,
   MeetingRetranscriptionRunner,
   parseOffsetDate,
   pcm16ToFloat32,
@@ -615,8 +616,11 @@ export class TranscriptionController {
       });
     } catch (error) {
       if (error instanceof TranscriptionCancelledError || cancel.cancelled) throw error;
-      // A cloud engine fails with an API failure, which has its own sentence.
-      const detail = (this.deps.formatFailure ?? messageOf)(error);
+      // A cloud engine fails with an API failure, which has its own sentence. Anything else (the
+      // engine on this PC, the audio file) keeps its own message, as before cloud engines existed.
+      const detail = isApiProviderError(error)
+        ? (this.deps.formatFailure ?? messageOf)(error)
+        : messageOf(error);
       callbacks.onFinished(t('Error_TranscriptionFailedAudioKept', detail));
       return false;
     }

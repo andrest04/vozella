@@ -695,6 +695,17 @@ describe('RecordingService stop', () => {
     expect(t.store.saves.at(-1)?.transcript).toContain('[00:00.00-00:01.00] live');
   });
 
+  it('cloud: when stopping the capture failed, the draft is not taken as the whole take', async () => {
+    const t = build({ liveDraft: '[00:00.00-00:01.00] live', draftIsFinal: true });
+    await t.service.start(sources);
+    // The capture did not confirm it stopped, so nobody knows the live pass heard all it wrote.
+    t.host.failStop = new Error('the audio worker did not answer');
+    await t.service.stop();
+    await t.service.completion;
+    expect(t.transcriber.calls).toHaveLength(1);
+    expect(t.store.saves.at(-1)?.transcript).toContain(TRANSCRIPT);
+  });
+
   it('a live draft with gaps, or from the local engine, is replaced by the pass after Stop', async () => {
     for (const draftIsFinal of [false, undefined]) {
       const t = build({

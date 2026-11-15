@@ -1,3 +1,4 @@
+import { CancelSource, type CancelSignal } from '../cancel';
 import { StreamingTranscriptAccumulator } from './accumulator';
 import type { AsrRecognizer, AsrStream } from './asr-types';
 import { STREAMING_GEOMETRY } from './asr-types';
@@ -26,10 +27,25 @@ export interface LiveServiceDeps {
   readonly status?: AsrBackendStatus;
   /** Where errors that must not stop the recording go (native calls, a throwing listener). */
   readonly onError?: (error: unknown) => void;
+  /**
+   * The wait of the stop deadline: resolves after `ms`, or as soon as `cancel` fires. Only an
+   * engine that drains at Stop (a cloud engine) is given a deadline; without this there is none.
+   */
+  readonly stopWait?: (ms: number, cancel: CancelSignal) => Promise<void>;
 }
 
 /** Frames waiting for the engine. The capture side never waits (spec 3.10). */
 export const LIVE_QUEUE_CAPACITY = 8;
+
+/**
+ * How long Stop waits for an engine that is still transcribing what it buffered. The meeting is
+ * saved only after the live pass ends, so uploads that stalled or were rate limited while
+ * recording (up to five minutes of audio, each piece with its own retries) must not hold it.
+ * 25 seconds lets a healthy tail finish (one request, after the pacing of the one before it);
+ * past it the stream is closed, what it had not transcribed counts as lost audio, and the pass
+ * after Stop transcribes the recording instead.
+ */
+export const LIVE_STOP_DEADLINE_MS = 25_000;
 
 interface Frame {
   readonly samples: Float32Array;
@@ -152,6 +168,8 @@ export class LiveTranscriptionService {
   }
 
   private async stopNow(): Promise<string> {
+    // What the take before this one left says nothing about this Stop, session or not.
+    this.draftComplete = false;
     const session = this.session;
     if (!session) return '';
     session.closed = true;
@@ -180,13 +198,27 @@ export class LiveTranscriptionService {
    * An engine that works in pieces transcribes its last one now, and the session waits for it.
    * Returns the audio the engine lost, or null when the engine cannot say (the local one, which
    * has nothing to drain, or a drain that failed).
+   *
+   * The wait has a deadline ({@link LIVE_STOP_DEADLINE_MS}). Past it the stream is closed, which
+   * cancels its uploads; the drain then ends at once and reports what was cut off as lost.
    */
   private async drain(session: Session): Promise<number | null> {
-    if (!session.stream.drain) return null;
+    const { stream } = session;
+    if (!stream.drain) return null;
+    const ended = new CancelSource();
     try {
-      const coverage = await session.stream.drain();
+      const draining = stream.drain();
+      void this.deps.stopWait?.(LIVE_STOP_DEADLINE_MS, ended.signal).then(
+        () => {
+          if (ended.cancelled) return;
+          this.deps.onError?.(new Error('live transcription was cut off at the stop deadline'));
+          void stream.dispose().catch(() => undefined);
+        },
+        () => undefined,
+      );
+      const coverage = await draining;
       let changed = false;
-      for (const result of await session.stream.pullAvailable()) {
+      for (const result of await stream.pullAvailable()) {
         session.accumulator.apply(result);
         changed = true;
       }
@@ -195,6 +227,8 @@ export class LiveTranscriptionService {
     } catch (error) {
       this.deps.onError?.(error);
       return null;
+    } finally {
+      ended.cancel();
     }
   }
 

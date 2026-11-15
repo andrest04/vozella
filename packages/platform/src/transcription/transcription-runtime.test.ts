@@ -7,6 +7,7 @@ import {
   FakeSpeechTimer,
   InMemorySettingsStore,
   type AppSettings,
+  type CancelSignal,
   type CloudTranscriptionKind,
   type Logger,
 } from '@vozella/core';
@@ -175,6 +176,102 @@ describe('TranscriptionRuntime: a live pass that cannot go on', () => {
     runtime.live.pushFrame(new Float32Array(RATE).fill(0.25), RATE);
     await runtime.live.stop();
     expect(failures).toHaveLength(1);
+  });
+});
+
+describe('TranscriptionRuntime: cloud passes', () => {
+  function cloudRuntime(
+    options: {
+      audioSeconds?: number;
+      client?: () => FakeSpeechToTextClient;
+      liveStopWait?: (ms: number, cancel: CancelSignal) => Promise<void>;
+    } = {},
+  ) {
+    const settings = new InMemorySettingsStore();
+    const timer = new FakeSpeechTimer();
+    const runtime = new TranscriptionRuntime({
+      transcriptionModelsDirectory: 'unused',
+      nemoSpeechDirectory: 'unused',
+      engine: new FakeAsrEngine(),
+      hardware: () => Promise.resolve({ gpuName: null }),
+      logger,
+      audio: new FakeAudioReader(new Float32Array((options.audioSeconds ?? 2) * RATE).fill(0.25)),
+      stores: { models: new FakeModelStore(), runtimes: new FakeRuntimeStore() },
+      settings,
+      cloud: {
+        keys: new FakeApiKeyStore({ Groq: 'k', OpenAi: 'k' }),
+        client: options.client ?? (() => new FakeSpeechToTextClient()),
+        timer,
+      },
+      ...(options.liveStopWait ? { liveStopWait: options.liveStopWait } : {}),
+    });
+    return { runtime, settings, timer };
+  }
+
+  it('a live pass and the pass after it share the request pacing of their provider', async () => {
+    const { runtime, settings, timer } = cloudRuntime();
+    await settings.update({ transcriptionEngine: 'Groq' });
+    await runtime.live.start({ language: 'es', recordedAtMs: null, speakerDiarization: false });
+    runtime.live.pushFrame(new Float32Array(RATE).fill(0.25), RATE);
+    await runtime.live.stop();
+    expect(timer.waits).toEqual([]);
+    await offline(runtime);
+    // The offline request waited for the slot after the live one: one limit, one pacer.
+    expect(timer.waits).toEqual([3_000]);
+  });
+
+  it('each provider has its own pacing', async () => {
+    const { runtime, settings, timer } = cloudRuntime();
+    await settings.update({ transcriptionEngine: 'Groq' });
+    await offline(runtime);
+    await settings.update({ transcriptionEngine: 'OpenAi' });
+    await offline(runtime);
+    expect(timer.waits).toEqual([]);
+  });
+
+  it('Stop gives the live pass a deadline, then cuts it off and says the draft is not whole', async () => {
+    const waits: number[] = [];
+    let elapse = (): void => undefined;
+    const { runtime, settings } = cloudRuntime({
+      // An upload that takes ten minutes: far past any Stop.
+      client: () => new FakeSpeechToTextClient({ delayMs: 600_000 }),
+      liveStopWait: (ms, cancel) =>
+        new Promise<void>((resolve) => {
+          waits.push(ms);
+          elapse = resolve;
+          cancel.onCancel(resolve);
+        }),
+    });
+    await settings.update({ transcriptionEngine: 'Groq' });
+    await runtime.live.start({ language: 'es', recordedAtMs: null, speakerDiarization: false });
+    runtime.live.pushFrame(new Float32Array(RATE).fill(0.25), RATE);
+    let draft: string | null = null;
+    void runtime.live.stop().then((text) => {
+      draft = text;
+    });
+    await vi.waitFor(() => {
+      expect(waits).toEqual([25_000]);
+    });
+    expect(draft).toBeNull();
+    elapse();
+    await vi.waitFor(() => {
+      expect(draft).toBe('');
+    });
+    expect(runtime.live.lastDraftIsComplete).toBe(false);
+    expect(runtime.status.lastLiveDrops).toEqual({ droppedMs: 1_000, totalMs: 1_000 });
+  });
+
+  it('the punctuation of the provider is in the stamped lines of a long recording', async () => {
+    const { runtime, settings } = cloudRuntime({ audioSeconds: 40 });
+    await settings.update({ transcriptionEngine: 'Groq' });
+    const lines = (await offline(runtime)).split('\n');
+    // 40 s is more than one 30 s line, so the lines are rebuilt from the words.
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toMatch(
+      /^\[00:00\.00-00:29\.90\] Buenos días a todos y gracias por venir\. Hoy revisamos el presupuesto del trimestre\. Quedamos en cerrar /,
+    );
+    expect(lines[1]).toMatch(/^\[00:30\.00-00:39\.90\] /);
+    expect(lines.join(' ')).not.toMatch(/venir hoy|trimestre quedamos/);
   });
 });
 

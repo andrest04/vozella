@@ -63,6 +63,8 @@ function setup(
     localReady?: boolean;
     speakerLabels?: boolean;
     client?: FakeSpeechToTextOptions;
+    /** How the app words a failure; defaults to the sentences of core. */
+    formatFailure?: (error: unknown) => string;
   } = {},
 ) {
   const engine = new FakeAsrEngine();
@@ -122,7 +124,7 @@ function setup(
     },
     fileExists: () => true,
     onMeetingChanged: () => undefined,
-    formatFailure: (error) => formatFailure(error, t),
+    formatFailure: options.formatFailure ?? ((error) => formatFailure(error, t)),
     defer: (task) => {
       task();
     },
@@ -422,5 +424,21 @@ describe('re-transcription with a cloud engine', () => {
       ),
     );
     expect((await meetings.get('m1'))?.transcript).toBe('[00:00.00-00:01.00] old words');
+  });
+
+  it('a failure of the engine on this PC keeps its own message: only API failures are reworded', async () => {
+    const { controller, engine, meetings, events } = setup({
+      engine: null,
+      localReady: true,
+      formatFailure: () => 'a sentence written for another module',
+    });
+    engine.script = { pushError: new Error('the native engine stopped') };
+    await meetings.save(record());
+    await controller.startRetranscription('m1');
+    const result = await finished(events);
+    expect(result.outcome).toBe('Failed');
+    expect(result.message).toBe(
+      t('Error_TranscriptionFailedAudioKept', 'the native engine stopped'),
+    );
   });
 });

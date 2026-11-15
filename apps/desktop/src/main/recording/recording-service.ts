@@ -671,8 +671,11 @@ export class RecordingService {
       const endedAtMs = deps.nowMs();
       const takeDraft = deps.takes.lastLiveDraft;
       const liveDraft = takeDraft ?? (visibleText.trim() === '' ? null : visibleText);
-      // Only the draft the live pass returned can be final: the text on screen is a fallback.
-      const liveDraftIsFinal = takeDraft !== null && (deps.live.draftIsFinal?.() ?? false);
+      // Only the draft the live pass returned can be final: the text on screen is a fallback. And
+      // only after a clean stop: the capture hands the live pass every frame it writes before its
+      // stop resolves, so a stop that failed leaves the two unaccounted for.
+      const liveDraftIsFinal =
+        outcome.error === null && takeDraft !== null && (deps.live.draftIsFinal?.() ?? false);
       const audioPath = outcome.path ?? file;
       deps.files.repair(audioPath);
       const folder = await this.resolveFolder(folderId);
