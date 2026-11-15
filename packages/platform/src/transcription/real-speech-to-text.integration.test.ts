@@ -93,7 +93,7 @@ describe.skipIf(!enabled)('the real speech-to-text endpoints', () => {
 
     expect(failure).toBeInstanceOf(ApiProviderError);
     expect((failure as ApiProviderError).kind).toBe('KeyInvalid');
-    expect(String((failure as ApiProviderError).message)).not.toContain('vozella-not-a-real-key');
+    expect((failure as ApiProviderError).message).not.toContain('vozella-not-a-real-key');
   });
 
   it.each(KINDS)('%s transcribes speech with timed words', async (kind) => {
@@ -108,8 +108,8 @@ describe.skipIf(!enabled)('the real speech-to-text endpoints', () => {
     );
 
     // The facts the fakes cannot show: printed so a person can read them.
-    console.log(
-      JSON.stringify(
+    process.stdout.write(
+      `${JSON.stringify(
         {
           kind,
           model: resolveCloudTranscriptionModel(kind, null),
@@ -122,7 +122,7 @@ describe.skipIf(!enabled)('the real speech-to-text endpoints', () => {
         },
         null,
         2,
-      ),
+      )}\n`,
     );
 
     expect(result.text.trim()).not.toBe('');
