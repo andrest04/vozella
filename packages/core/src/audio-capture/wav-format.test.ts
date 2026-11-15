@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   analyzeWav,
   buildWavHeader,
+  encodePcm16Wav,
   readWavInfo,
   WavHeaderFlushCadence,
   WAV_HEADER_BYTES,
@@ -177,6 +178,37 @@ describe('buildWavHeader', () => {
       0x12, 0, 0, 0, 1, 0, 1, 0, 0x80, 0x3e, 0, 0, 0, 0x7d, 0, 0, 2, 0, 0x10, 0, 0, 0,
     ]);
     expect([...h.subarray(38, 46)]).toEqual([0x64, 0x61, 0x74, 0x61, 0, 0, 0, 0]);
+  });
+});
+
+describe('encodePcm16Wav', () => {
+  it('writes a consistent WAV at the given rate, one PCM16 sample per input sample', () => {
+    const wav = encodePcm16Wav(Float32Array.from([0, 0.5, -0.5, 0.25]), 8000);
+    expect(wav.length).toBe(WAV_HEADER_BYTES + 8);
+    expect(analyzeWav(source(wav)).status).toBe('Valid');
+    expect(readWavInfo(source(wav))).toEqual({
+      sampleRate: 8000,
+      channels: 1,
+      bitsPerSample: 16,
+      dataBytes: 8,
+      seconds: 4 / 8000,
+    });
+    const view = new DataView(wav.buffer, WAV_HEADER_BYTES);
+    expect([0, 1, 2, 3].map((i) => view.getInt16(i * 2, true))).toEqual([0, 16384, -16384, 8192]);
+    // Byte rate follows the sample rate: 8000 samples of 2 bytes.
+    expect(new DataView(wav.buffer).getUint32(28, true)).toBe(16000);
+  });
+
+  it('clamps samples outside -1..1 and writes silence for NaN', () => {
+    const wav = encodePcm16Wav(Float32Array.from([2, -2, 1, -1, Number.NaN]), 16000);
+    const view = new DataView(wav.buffer, WAV_HEADER_BYTES);
+    expect([0, 1, 2, 3, 4].map((i) => view.getInt16(i * 2, true))).toEqual([
+      32767, -32768, 32767, -32768, 0,
+    ]);
+  });
+
+  it('encodes no samples as a header alone', () => {
+    expect(encodePcm16Wav(new Float32Array(0), 16000).length).toBe(WAV_HEADER_BYTES);
   });
 });
 

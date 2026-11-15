@@ -66,3 +66,5 @@ export * from './api-providers/list-models';
 export * from './api-providers/api-provider-builder';
 export * from './fakes/fake-api-key-store';
 export * from './fakes/fake-fetch';
+export * from './transcription/openai-speech-to-text-client';
+export * from './fakes/fake-speech-to-text-client';

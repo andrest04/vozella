@@ -5,6 +5,7 @@ import {
   ApiProviderError,
   apiFailureFromHttpStatus,
   isApiProviderError,
+  retryAfterMsFromHeader,
 } from './api-failure';
 import {
   API_FAILURE_UI_KEYS,
@@ -20,7 +21,11 @@ describe('apiFailureFromHttpStatus', () => {
     [429, '{"error":{"code":"insufficient_quota"}}', 'QuotaExceeded'],
     [429, 'You exceeded your current QUOTA', 'QuotaExceeded'],
     [429, 'Rate limit reached for requests', 'RateLimited'],
+    // OpenAI billing exhaustion is a 429 too; it must never read as a rate limit to retry.
+    [429, '{"error":{"code":"credit_balance_exhausted"}}', 'QuotaExceeded'],
     [404, 'model not found', 'ModelNotFound'],
+    // No kind for "file too large": it stays Unknown and keeps the server text.
+    [413, 'Request Entity Too Large', 'Unknown'],
     [408, '', 'TimedOut'],
     [504, '', 'TimedOut'],
     [500, 'oops', 'Unknown'],
@@ -42,6 +47,31 @@ describe('ApiProviderError', () => {
     expect(unknown.detail).not.toContain('sk-abcdefghijklmnop');
     expect(unknown.detail).toContain('[redacted]');
   });
+
+  it('carries the wait the server asked for, null when it asked for none', () => {
+    expect(new ApiProviderError('Groq', 'RateLimited').retryAfterMs).toBeNull();
+    expect(new ApiProviderError('Groq', 'RateLimited', null, undefined, 7000).retryAfterMs).toBe(
+      7000,
+    );
+  });
+});
+
+describe('retryAfterMsFromHeader', () => {
+  it.each([
+    ['7', 7000],
+    [' 2 ', 2000],
+    ['0', 0],
+    ['1.5', 1500],
+  ])('reads %j seconds as %i ms', (header, ms) => {
+    expect(retryAfterMsFromHeader(header)).toBe(ms);
+  });
+
+  it.each([null, '', 'soon', '-3', 'Wed, 21 Oct 2026 07:28:00 GMT'])(
+    'ignores %j (only a count of seconds is honored)',
+    (header) => {
+      expect(retryAfterMsFromHeader(header)).toBeNull();
+    },
+  );
 });
 
 describe('formatFailure for API engines', () => {

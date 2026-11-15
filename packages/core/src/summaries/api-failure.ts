@@ -14,7 +14,23 @@ export const API_FAILURE_KINDS = [
 ] as const;
 export type ApiFailureKind = (typeof API_FAILURE_KINDS)[number];
 
-const QUOTA_WORDS = /quota|insufficient/i;
+/**
+ * Words of a 429 body that mean the account has no credit left, not that it is going too fast.
+ * OpenAI answers billing exhaustion with the codes `insufficient_quota` and
+ * `credit_balance_exhausted`; waiting does not fix either, so they are never `RateLimited`.
+ */
+const QUOTA_WORDS = /quota|insufficient|credit_balance/i;
+
+/**
+ * The wait a `Retry-After` header asks for, in milliseconds; null when the header is absent or is
+ * not a count of seconds. Groq sends seconds, and only with a 429. The HTTP-date form is ignored:
+ * no provider the app talks to sends it, and reading it would need a clock here.
+ */
+export function retryAfterMsFromHeader(value: string | null | undefined): number | null {
+  const text = value?.trim() ?? '';
+  if (!/^\d+(\.\d+)?$/.test(text)) return null;
+  return Math.ceil(Number(text) * 1000);
+}
 
 /**
  * The failure kind for a non-2xx HTTP answer. Pure: the HTTP adapters read the status and body
@@ -48,12 +64,18 @@ export class ApiProviderError extends Error {
   readonly kind: ApiFailureKind;
   readonly displayName: string;
   readonly detail: string | null;
+  /**
+   * How long the server asked the caller to wait before the next request, when it said so with a
+   * rate limit; null otherwise. A caller that retries waits at least this long.
+   */
+  readonly retryAfterMs: number | null;
 
   constructor(
     displayName: string,
     kind: ApiFailureKind,
     detail: string | null = null,
     cause?: unknown,
+    retryAfterMs: number | null = null,
   ) {
     const kept = kind === 'Unknown' ? sanitizeSnippet(detail) : null;
     super(
@@ -64,6 +86,7 @@ export class ApiProviderError extends Error {
     this.kind = kind;
     this.displayName = displayName;
     this.detail = kept;
+    this.retryAfterMs = retryAfterMs;
   }
 }
 

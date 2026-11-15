@@ -2,6 +2,7 @@ import {
   ApiProviderError,
   apiFailureFromHttpStatus,
   CancelledError,
+  retryAfterMsFromHeader,
   throwIfCancelled,
   type CancelSignal,
 } from '@vozella/core';
@@ -15,6 +16,11 @@ export interface ApiRequest {
   readonly headers: Readonly<Record<string, string>>;
   /** Sent as JSON. */
   readonly body?: unknown;
+  /**
+   * Sent as multipart/form-data instead of `body` (file uploads). `fetch` writes the content type
+   * with its boundary, so `headers` must not carry one.
+   */
+  readonly form?: FormData;
 }
 
 export interface ApiCallOptions {
@@ -35,11 +41,17 @@ export const globalFetch: typeof fetch = (input, init) => fetch(input, init);
 export const scrubSecret = (text: string, secret: string | null): string =>
   secret === null || secret === '' ? text : text.split(secret).join('[redacted]');
 
+const requestBody = (request: ApiRequest): { body?: string | FormData } => {
+  if (request.form !== undefined) return { body: request.form };
+  return request.body === undefined ? {} : { body: JSON.stringify(request.body) };
+};
+
 /**
  * Sends one request and yields its body as decoded text. Every failure leaves as data: a cancel
  * as `CancelledError`, a non-2xx answer as the kind `apiFailureFromHttpStatus` picks, no byte
  * within the timeout as `TimedOut`, anything else on the wire as `Network`. The key is never part
- * of an error. Stopping the iteration aborts the request.
+ * of an error. A rate limit carries the wait its `Retry-After` header asks for. Stopping the
+ * iteration aborts the request. A JSON body and a multipart form take the same path.
  */
 export async function* apiBody(
   request: ApiRequest,
@@ -65,15 +77,19 @@ export async function* apiBody(
     const response = await options.fetch(request.url, {
       method: request.method,
       headers: request.headers,
-      ...(request.body === undefined ? {} : { body: JSON.stringify(request.body) }),
+      ...requestBody(request),
       signal: controller.signal,
     });
     if (!response.ok) {
       const text = scrubSecret(await response.text().catch(() => ''), options.secret);
+      const kind = apiFailureFromHttpStatus(response.status, text);
       throw new ApiProviderError(
         displayName,
-        apiFailureFromHttpStatus(response.status, text),
+        kind,
         text === '' ? `HTTP ${String(response.status)}` : text,
+        undefined,
+        // Only a rate limit is worth waiting out: exhausted billing answers 429 too.
+        kind === 'RateLimited' ? retryAfterMsFromHeader(response.headers.get('retry-after')) : null,
       );
     }
     if (!response.body) return;

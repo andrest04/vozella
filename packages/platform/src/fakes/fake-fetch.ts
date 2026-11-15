@@ -5,12 +5,16 @@ export interface FakeFetchCall {
   readonly headers: Readonly<Record<string, string>>;
   /** The JSON body, parsed; null for a request without one. */
   readonly body: unknown;
+  /** The multipart form of an upload, as the adapter built it; null for any other request. */
+  readonly form: FormData | null;
 }
 
 /** How the fake answers one request. */
 export interface FakeHttpReply {
   /** Defaults to 200. */
   readonly status?: number;
+  /** Response headers, such as `retry-after`. */
+  readonly headers?: Readonly<Record<string, string>>;
   /** Body pieces sent in order, so a test can split an SSE line across two reads. */
   readonly chunks?: readonly string[];
   /** The request fails before any answer, the way `fetch` does when the host is unreachable. */
@@ -36,6 +40,7 @@ export class FakeFetch {
       method: init?.method ?? 'GET',
       headers: Object.fromEntries(new Headers(init?.headers).entries()),
       body: typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null,
+      form: init?.body instanceof FormData ? init.body : null,
     };
     this.calls.push(call);
     const reply = typeof this.reply === 'function' ? this.reply(call) : this.reply;
@@ -62,6 +67,8 @@ export class FakeFetch {
         }
       },
     });
-    return Promise.resolve(new Response(body, { status: reply.status ?? 200 }));
+    return Promise.resolve(
+      new Response(body, { status: reply.status ?? 200, headers: { ...reply.headers } }),
+    );
   };
 }

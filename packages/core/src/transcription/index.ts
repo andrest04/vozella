@@ -15,6 +15,7 @@ export * from './polish';
 export * from './ports';
 export * from './progress';
 export * from './recognizer-factory';
+export * from './speech-to-text';
 export * from './retranscription';
 export * from './stamp-format';
 export * from './test-kit';
