@@ -1,31 +1,34 @@
-import type { ApiKeyStore, ApiProviderKind } from '@vozella/core';
+import type { ApiKeyKind, ApiKeyStore } from '@vozella/core';
 
-/** Fake: API keys held in memory, for unit tests and the fake native build. Never on disk. */
+/**
+ * Fake: keys held in memory, for unit tests and the fake native build. Never on disk. Like the real
+ * store it takes every kind that holds a key: the API engines and the transcription-only providers.
+ */
 export class FakeApiKeyStore implements ApiKeyStore {
-  private readonly keys = new Map<ApiProviderKind, string>();
+  private readonly keys = new Map<ApiKeyKind, string>();
 
-  constructor(initial: Partial<Record<ApiProviderKind, string>> = {}) {
-    for (const [kind, key] of Object.entries(initial) as [ApiProviderKind, string][]) {
+  constructor(initial: Partial<Record<ApiKeyKind, string>> = {}) {
+    for (const [kind, key] of Object.entries(initial) as [ApiKeyKind, string][]) {
       this.keys.set(kind, key);
     }
   }
 
-  has(kind: ApiProviderKind): Promise<boolean> {
+  has(kind: ApiKeyKind): Promise<boolean> {
     return Promise.resolve(this.keys.has(kind));
   }
 
-  get(kind: ApiProviderKind): Promise<string | null> {
+  get(kind: ApiKeyKind): Promise<string | null> {
     return Promise.resolve(this.keys.get(kind) ?? null);
   }
 
-  set(kind: ApiProviderKind, key: string): Promise<void> {
+  set(kind: ApiKeyKind, key: string): Promise<void> {
     const trimmed = key.trim();
     if (trimmed === '') this.keys.delete(kind);
     else this.keys.set(kind, trimmed);
     return Promise.resolve();
   }
 
-  delete(kind: ApiProviderKind): Promise<void> {
+  delete(kind: ApiKeyKind): Promise<void> {
     this.keys.delete(kind);
     return Promise.resolve();
   }

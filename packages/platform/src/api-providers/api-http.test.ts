@@ -91,3 +91,37 @@ describe('the retry-after of a failed request', () => {
     expect((await failure(down.run)).retryAfterMs).toBeNull();
   });
 });
+
+describe('apiJson with a raw body', () => {
+  const audio = Uint8Array.of(82, 73, 70, 70, 0, 255);
+  const raw = { bytes: { data: audio, contentType: 'audio/wav' } };
+
+  it('sends the bytes as they are, with their content type beside the other headers', async () => {
+    const { fake, run } = call(
+      { chunks: ['{"ok":true}'] },
+      { ...raw, headers: { authorization: 'Token abc' } },
+    );
+    expect(await run()).toEqual({ ok: true });
+    expect(fake.calls[0]?.bytes).toEqual(audio);
+    expect(fake.calls[0]?.headers).toEqual({
+      authorization: 'Token abc',
+      'content-type': 'audio/wav',
+    });
+    expect(fake.calls[0]?.body).toBeNull();
+    expect(fake.calls[0]?.form).toBeNull();
+    expect(fake.calls[0]?.method).toBe('POST');
+  });
+
+  it('records no bytes for a JSON body or a form', async () => {
+    const { fake, run } = call({ chunks: ['{}'] }, { body: { a: 1 } });
+    await run();
+    expect(fake.calls[0]?.bytes).toBeNull();
+  });
+
+  it('maps a failure like the JSON path and scrubs the key', async () => {
+    const { run } = call({ status: 401, chunks: [`bad key ${KEY}`] }, raw);
+    const error = await failure(run);
+    expect(error.kind).toBe('KeyInvalid');
+    expect(error.message).not.toContain(KEY);
+  });
+});

@@ -22,6 +22,11 @@ export interface ApiRequest {
    * with its boundary, so `headers` must not carry one.
    */
   readonly form?: FormData;
+  /**
+   * Sent as it is instead of `body` (an upload that is the whole request, such as a WAV file),
+   * with `contentType` as its content type. Any content type in `headers` gives way to it.
+   */
+  readonly bytes?: { readonly data: Uint8Array<ArrayBuffer>; readonly contentType: string };
 }
 
 export interface ApiCallOptions {
@@ -47,9 +52,18 @@ export const globalFetch: typeof fetch = (input, init) => fetch(input, init);
 export const scrubSecret = (text: string, secret: string | null): string =>
   secret === null || secret === '' ? text : text.split(secret).join('[redacted]');
 
-const requestBody = (request: ApiRequest): { body?: string | FormData } => {
-  if (request.form !== undefined) return { body: request.form };
-  return request.body === undefined ? {} : { body: JSON.stringify(request.body) };
+type RequestParts = Pick<RequestInit, 'body'> & { headers: Readonly<Record<string, string>> };
+
+const requestParts = (request: ApiRequest): RequestParts => {
+  const { headers } = request;
+  if (request.form !== undefined) return { headers, body: request.form };
+  if (request.bytes !== undefined) {
+    return {
+      headers: { ...headers, 'content-type': request.bytes.contentType },
+      body: request.bytes.data,
+    };
+  }
+  return request.body === undefined ? { headers } : { headers, body: JSON.stringify(request.body) };
 };
 
 /**
@@ -57,7 +71,7 @@ const requestBody = (request: ApiRequest): { body?: string | FormData } => {
  * as `CancelledError`, a non-2xx answer as the kind `apiFailureFromHttpStatus` picks, no byte
  * within the timeout as `TimedOut`, anything else on the wire as `Network`. The key is never part
  * of an error. A rate limit carries the wait its `Retry-After` header asks for. Stopping the
- * iteration aborts the request. A JSON body and a multipart form take the same path.
+ * iteration aborts the request. A JSON body, a multipart form and raw bytes take the same path.
  */
 export async function* apiBody(
   request: ApiRequest,
@@ -82,8 +96,7 @@ export async function* apiBody(
     arm();
     const response = await options.fetch(request.url, {
       method: request.method,
-      headers: request.headers,
-      ...requestBody(request),
+      ...requestParts(request),
       signal: controller.signal,
     });
     if (!response.ok) {

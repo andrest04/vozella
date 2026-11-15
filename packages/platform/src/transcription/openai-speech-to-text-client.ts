@@ -1,15 +1,10 @@
 import {
   ApiProviderError,
   CLOUD_TRANSCRIPTION_MAX_FILE_BYTES,
-  cloudTranscriptionApiEngine,
   encodePcm16Wav,
-  resolveCloudTranscriptionModel,
   speechFailureFromHttpStatus,
   throwIfCancelled,
-  type ApiKeyStore,
-  type AppSettings,
   type CancelSignal,
-  type CloudTranscriptionKind,
   type SpeechToTextClient,
   type SpeechToTextRequest,
   type SpeechToTextResult,
@@ -192,41 +187,4 @@ export class OpenAiSpeechToTextClient implements SpeechToTextClient {
       durationMs,
     };
   }
-}
-
-export interface CloudSpeechToTextDeps {
-  readonly keys: Pick<ApiKeyStore, 'get'>;
-  readonly fetch?: typeof fetch;
-  readonly timeoutMs?: number;
-}
-
-export interface CloudSpeechToTextChoice {
-  readonly kind: CloudTranscriptionKind;
-  readonly settings: AppSettings;
-  /** The saved transcription model; null or blank uses the provider's default. */
-  readonly model?: string | null;
-}
-
-/**
- * The `SpeechToTextClient` of a cloud transcription engine: the endpoint, name and key of its API
- * engine, the chosen model, and the adapter of its protocol (one today). The key is the one saved
- * for that API kind; a missing key fails with `KeyMissing` before any request.
- */
-export function createCloudSpeechToTextClient(
-  deps: CloudSpeechToTextDeps,
-  choice: CloudSpeechToTextChoice,
-): SpeechToTextClient {
-  const engine = cloudTranscriptionApiEngine(choice.kind);
-  const baseUrl = engine.resolveBaseUrl(choice.settings);
-  if (baseUrl === null) {
-    throw new ApiProviderError(engine.displayName, 'Unknown', 'No base URL is set.');
-  }
-  return new OpenAiSpeechToTextClient({
-    displayName: engine.displayName,
-    baseUrl,
-    model: resolveCloudTranscriptionModel(choice.kind, choice.model),
-    apiKey: () => deps.keys.get(choice.kind),
-    ...(deps.fetch ? { fetch: deps.fetch } : {}),
-    ...(deps.timeoutMs === undefined ? {} : { timeoutMs: deps.timeoutMs }),
-  });
 }

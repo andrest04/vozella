@@ -10,11 +10,8 @@ import {
 import { describe, expect, it } from 'vitest';
 import { FakeApiKeyStore } from '../fakes/fake-api-key-store';
 import { FakeFetch, type FakeHttpReply } from '../fakes/fake-fetch';
-import {
-  createCloudSpeechToTextClient,
-  OpenAiSpeechToTextClient,
-  SPEECH_PROMPT_MAX_CHARS,
-} from './openai-speech-to-text-client';
+import { createCloudSpeechToTextClient } from './cloud-speech-factory';
+import { OpenAiSpeechToTextClient, SPEECH_PROMPT_MAX_CHARS } from './openai-speech-to-text-client';
 
 const KEY = 'gsk-test-secret-0123456789';
 const RATE = 16_000;
