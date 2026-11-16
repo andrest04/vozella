@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, type LaunchedApp } from './launch';
+import { launchApp, openSettingsTab, type LaunchedApp } from './launch';
 
 // Regenerates docs/port/screens/settings-i18n/*.png. Opt in with VOZELLA_SCREENSHOTS=1.
 test.skip(process.env.VOZELLA_SCREENSHOTS !== '1', 'set VOZELLA_SCREENSHOTS=1 to capture');
@@ -34,6 +34,8 @@ async function useTheme(theme: 'light' | 'dark'): Promise<void> {
   await page.evaluate(() => {
     window.location.hash = '#/settings';
   });
+  // A reload opens the page on its first tab again.
+  await openSettingsTab(page, 'summary');
   await expect(page.getByRole('heading', { level: 2, name: 'Summary provider' })).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(350);
@@ -79,6 +81,7 @@ for (const theme of ['light', 'dark'] as const) {
 
 test('the restart prompt, in Spanish', async () => {
   await useTheme('light');
+  await openSettingsTab(page, 'general');
   await page.getByRole('combobox', { name: 'App language' }).click();
   await page.getByRole('option', { name: 'Español' }).click();
   await expect(page.getByRole('dialog', { name: 'Reinicio necesario' })).toBeVisible();

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, type LaunchedApp } from './launch';
+import { launchApp, openSettingsTab, type LaunchedApp } from './launch';
 
 // The summary provider section of Settings (S20) in the real window, on the fake native build and
 // a throwaway data root. No real CLI, model or network is involved. Screenshots go to
@@ -34,6 +34,7 @@ async function start(seedSettings?: object): Promise<Session> {
   await page.evaluate(() => {
     window.location.hash = '#/settings';
   });
+  await openSettingsTab(page, 'summary');
   const file = path.join(launched.dataRoot, 'app', 'settings.json');
   return {
     launched,
@@ -58,6 +59,8 @@ async function useTheme(page: Page, theme: 'light' | 'dark'): Promise<void> {
   await page.evaluate(() => {
     window.location.hash = '#/settings';
   });
+  // A reload starts the window again, so the page is back on its first tab.
+  await openSettingsTab(page, 'summary');
   await seeProvider(page);
   await page.evaluate(() => document.fonts.ready);
 }
@@ -99,7 +102,7 @@ test('the engine rows are Local, Claude Code, Codex and the API key engines, and
   try {
     await seeProvider(s.page);
     const rows = engineRows(s.page);
-    await expect(rows).toHaveCount(7);
+    await expect(rows).toHaveCount(8);
     await expect(rows.nth(0)).toHaveAccessibleName('Local (on this device)');
     await expect(rows.nth(1)).toHaveAccessibleName('Claude Code CLI');
     await expect(rows.nth(2)).toHaveAccessibleName('Codex CLI');
@@ -139,7 +142,7 @@ test('a settings file that names Grok shows the notice, selects nothing and chan
       'Grok (xAI) is no longer available. Pick Local, Claude Code, Codex or an API key engine to summarize your meetings.';
     await expect(s.page.getByText(notice)).toBeVisible();
     const rows = engineRows(s.page);
-    await expect(rows).toHaveCount(7);
+    await expect(rows).toHaveCount(8);
     for (const row of await rows.all()) {
       await expect(row).not.toHaveAccessibleDescription(/In use/);
       await expect(row).toHaveAttribute('aria-expanded', 'false');

@@ -197,9 +197,12 @@ test('Add key opens Settings on that engine and keeps the engine in use', async 
       .click();
     await expect(dialog).toBeHidden();
 
+    // The link picks the tab of the engines before the row opens and takes the focus.
     const row = page.locator('button[data-engine="OpenAi"]');
+    await expect(page.getByTestId('SettingsTab-summary')).toHaveAttribute('aria-selected', 'true');
     await expect(row).toBeVisible();
     await expect(row).toHaveAttribute('aria-expanded', 'true');
+    await expect(row).toBeFocused();
     expect(await settingsEngine(page)).toBe(before);
   } finally {
     await close(rig);

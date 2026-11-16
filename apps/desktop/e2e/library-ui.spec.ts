@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, type LaunchedApp } from './launch';
+import { launchApp, openSettingsTab, type LaunchedApp } from './launch';
 import { writeMeeting } from './library-data';
 
 // Main flows of the Library screen and the Settings data card, in the real app with fake native
@@ -245,6 +245,7 @@ test('a meeting is deleted only after confirming, with Cancel focused', async ()
 
 test('Settings shows where data lives, follows a picked folder, and refuses MeetingLive here', async () => {
   await goTo('Settings');
+  await openSettingsTab(page, 'general');
   await expect(page.getByRole('heading', { level: 2, name: 'Data' })).toBeVisible();
   await expect(page.getByText(libraryRoot, { exact: true })).toBeVisible();
   await expect(page.getByText(path.join(launched.dataRoot, 'app'), { exact: true })).toBeVisible();
@@ -274,6 +275,7 @@ test('Settings shows where data lives, follows a picked folder, and refuses Meet
     dialog.showOpenDialog = () => Promise.resolve({ canceled: false, filePaths: [target] });
   }, forbidden);
   await goTo('Settings');
+  await openSettingsTab(page, 'general');
   await page.getByRole('button', { name: 'Choose folder' }).click();
   await expect(page.getByText(/That folder cannot be used/)).toBeVisible();
   await expect(page.getByText(picked, { exact: true })).toBeVisible();
@@ -368,6 +370,7 @@ test('no serious accessibility violations on the library, its dialogs and the da
     await expect(page.getByRole('dialog', { name: 'New folder' })).toHaveCount(0);
 
     await goTo('Settings');
+    await openSettingsTab(page, 'general');
     await expect(page.getByRole('heading', { level: 2, name: 'Data' })).toBeVisible();
     await check();
   }

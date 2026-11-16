@@ -32,7 +32,7 @@ Grouping chosen by the owner on 2026-11-15.
 
 - [x] T1 Core tab model and catalog keys: `SettingsTabId`, `tab` on every section, `SETTINGS_TABS`, tests; five `Ui_SettingsTab*` keys in both locales. Route: delegated (writer trigger, 2+ non-trivial files).
 - [x] T2 Tabbed page: `Tabs` `listClassName` prop, `SettingsRoute` renders tabs, remembered active tab, deep links select the tab, unit tests updated (RED first). Route: delegated.
-- [ ] T3 E2E: `openSettingsTab` helper, specs that expect a non-initial section switch tabs first, axe on at least two tabs. Route: delegated.
+- [x] T3 E2E: `openSettingsTab` helper, specs that expect a non-initial section switch tabs first, axe on at least two tabs. Route: delegated.
 
 ## Acceptance criteria
 
@@ -56,4 +56,6 @@ Forecast: about 350 authored changed lines. RDD: off (global), no native review.
 
 - T2 done. Evidence: `SettingsRoute.test.tsx` RED (14 new tab tests failing: no tablist) then GREEN (71 passed); settings, ui and transcription-focus suites 166 passed; desktop typecheck, eslint and prettier clean on the changed files. The tab list is sticky (`sticky top-0 z-10 bg-paper` on the list, `scroll-mt-12` on the panel content); T3 checks it in the real window. `labelKey` is typed as the catalog literal so `t()` takes it without a cast. Deep links: `useSettingsTab` peeks at the pending target and listens; the section still consumes it. Route: delegated writer.
 
-Next step: T3.
+T3 done. Evidence (run with VOZELLA_E2E_BACKGROUND=1): 17 affected specs 88 passed, 2 failed, 33 skipped (screenshot specs); the 2 failures were the engine row count in settings-provider.spec.ts, stale on main (7, now 8), then 9 passed; settings-screens.spec.ts with VOZELLA_SCREENSHOTS=1 3 passed and the tabs were checked in the captures (es light, en dark). pnpm check: typecheck and lint clean; 21 unit tests in 7 library, chat and record files timed out under load and pass alone (228 passed). impeccable detect on SettingsRoute.tsx and Tabs.tsx: no findings. Not checked by hand in the real window: keyboard walk and both deep links (covered by unit tests only).
+
+Next step: none; merged to main.

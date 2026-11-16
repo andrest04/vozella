@@ -1,6 +1,6 @@
 import axe from 'axe-core';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, type LaunchedApp, NO_GALLERY, packaged } from './launch';
+import { launchApp, openSettingsTab, type LaunchedApp, NO_GALLERY, packaged } from './launch';
 
 let launched: LaunchedApp;
 let page: Page;
@@ -28,6 +28,7 @@ test('navigation moves between Record, Library and Settings', async () => {
 
 test('the theme override reaches the page and the window chrome', async () => {
   await page.getByRole('link', { name: 'Settings' }).click();
+  await openSettingsTab(page, 'general');
   await page.getByRole('radio', { name: 'Dark' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
@@ -47,6 +48,7 @@ test('the theme override reaches the page and the window chrome', async () => {
 
 test('switching the language retranslates the shell', async () => {
   await page.getByRole('link', { name: 'Settings' }).click();
+  await openSettingsTab(page, 'general');
   await page.getByRole('combobox', { name: 'App language' }).click();
   await page.getByRole('option', { name: 'Español' }).click();
   // The choice is saved and applied at once; the dialog only offers a restart.

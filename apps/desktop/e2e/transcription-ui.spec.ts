@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, type LaunchedApp } from './launch';
+import { launchApp, openSettingsTab, type LaunchedApp } from './launch';
 
 // The transcription pages in the real window on the fake native build: the engine downloads are
 // stepped and can be made to fail, the speech engine "hears" a fixed script, and the data root is a
@@ -143,6 +143,7 @@ test('Settings: engine, live preview and speaker labels', async () => {
   const { launched, page } = await start({ VOZELLA_FAKE_ENGINE_STEP_MS: '120' });
   try {
     await go(page, 'Settings');
+    await openSettingsTab(page, 'transcription');
     const section = page.getByTestId('transcription-section');
     await expect(section).toBeVisible();
     await expect(section.getByText('Not installed').first()).toBeVisible();
