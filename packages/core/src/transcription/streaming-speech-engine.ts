@@ -31,6 +31,14 @@ export const STREAMING_MAX_BUFFERED_MS = 30_000;
  */
 export const STREAMING_OPEN_TIMEOUT_MS = 15_000;
 
+/**
+ * A session that ends cleanly after `finish` may stop this far short of the audio it was sent and
+ * still count as having answered for all of it: providers round their clock, and the last few
+ * milliseconds hold no word. A larger shortfall is audio nobody listened to, so it counts as lost
+ * and the pass after Stop runs. Deepgram confirmed every sample in the run of 2026-11-15.
+ */
+export const STREAMING_UNCONFIRMED_TOLERANCE_MS = 250;
+
 export interface StreamingSpeechEngineDeps {
   readonly provider: StreamingSpeechProvider;
   /** The wait of the open timeout, so tests need no real time. */
@@ -105,6 +113,8 @@ class StreamingSpeechStream implements AsrStream {
   private lostMs = 0;
   /** `drain` was called: the session is finished as soon as it is open. */
   private finishWanted = false;
+  /** An interim result with text was handed over and nothing has replaced it yet. */
+  private interimShown = false;
   private readonly results: AsrResult[] = [];
   private readonly ended: (() => void)[] = [];
 
@@ -244,11 +254,11 @@ class StreamingSpeechStream implements AsrStream {
       this.lostMs += this.msOf(samples.length);
       return;
     }
+    // Counted before the call: a session that ends inside `send` never confirmed this frame.
+    this.sentSamples += samples.length;
     try {
       this.session.send(samples);
-      this.sentSamples += samples.length;
     } catch (error) {
-      this.lostMs += this.msOf(samples.length);
       this.abandon(error, true);
     }
   }
@@ -285,9 +295,22 @@ class StreamingSpeechStream implements AsrStream {
     if (this.phase !== 'open' && this.phase !== 'finishing') return;
     // A final with no words is silence the provider listened to: covered, with nothing to show.
     if (isFinal) this.confirmedMs = Math.max(this.confirmedMs, result.processedMs);
-    if (result.words.length === 0) return;
     // The provider counts from the first sample it was sent; the stream from the first pushed.
     const offsetMs = Math.round(this.msOf(this.droppedSamples));
+    if (result.words.length === 0) {
+      // Nothing was said. If interim text is on screen the provider took it back (an "uh" that
+      // ended as an empty final): an empty result withdraws it, so Stop cannot save it.
+      if (!this.interimShown) return;
+      this.interimShown = false;
+      this.results.push({
+        isFinal,
+        transcript: '',
+        audioProcessedSeconds: (offsetMs + result.processedMs) / 1000,
+        words: [],
+      });
+      return;
+    }
+    this.interimShown = !isFinal;
     const text = result.text.trim();
     this.results.push({
       isFinal,
@@ -306,11 +329,33 @@ class StreamingSpeechStream implements AsrStream {
   private onClosed(error: ApiProviderError | null): void {
     if (this.phase === 'ended') return;
     if (error === null && this.phase === 'finishing') {
-      this.end();
+      this.endFinished();
       return;
     }
     // Ending without being asked to is a dropped connection, whatever the provider calls it.
     this.lose(error ?? new ApiProviderError(this.deps.provider.displayName, 'Network'));
+  }
+
+  /**
+   * The session ended cleanly after `finish`. It is taken at its word only as far as its final
+   * results reach: audio sent beyond them, past the tolerance, was never listened to and is lost.
+   */
+  private endFinished(): void {
+    const shortfall = this.msOf(this.sentSamples) - this.confirmedMs;
+    if (shortfall <= STREAMING_UNCONFIRMED_TOLERANCE_MS) {
+      this.end();
+      return;
+    }
+    this.lostMs += shortfall;
+    this.end();
+    this.deps.onLost?.(
+      new ApiProviderError(
+        this.deps.provider.displayName,
+        'Unknown',
+        'The session ended before it answered for all the audio.',
+      ),
+      shortfall,
+    );
   }
 
   /** The session is given up from this side: it is closed, and what it had not confirmed is lost. */

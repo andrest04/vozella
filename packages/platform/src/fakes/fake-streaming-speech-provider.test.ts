@@ -97,6 +97,24 @@ describe('FakeStreamingSpeechProvider behind the streaming engine', () => {
     expect(accumulator.committedText).toBe('[00:00.00-00:00.90] Hola a');
   });
 
+  it('answers for audio that ends between two words, so Stop loses nothing', async () => {
+    const { stream, accumulator, lost, push, pull } = await live();
+    // Two words and 400 ms of a third the fake never hears.
+    await push(2 * FAKE_STREAM_WORD_MS + 400);
+    expect(await drain(stream)).toEqual({ lostMs: 0 });
+    expect(lost).toEqual([]);
+    await pull();
+    expect(accumulator.committedText).toBe('[00:00.00-00:00.90] Hola a');
+  });
+
+  it('withdraws nothing and commits nothing at Stop when no phrase is open', async () => {
+    const { stream, accumulator, push, pull } = await live();
+    await push(3 * FAKE_STREAM_WORD_MS + 300);
+    expect(await drain(stream)).toEqual({ lostMs: 0 });
+    await pull();
+    expect(accumulator.committedText).toBe('[00:00.00-00:01.40] Hola a todos.');
+  });
+
   it('opens and answers only after its delay', async () => {
     const { timer, provider, accumulator, push, pull } = await live({ delayMs: 300 });
     await push(FAKE_STREAM_WORD_MS);

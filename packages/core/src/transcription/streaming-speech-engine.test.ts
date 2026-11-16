@@ -8,6 +8,7 @@ import type { StreamingSpeechResult } from './streaming-speech';
 import {
   STREAMING_MAX_BUFFERED_MS,
   STREAMING_OPEN_TIMEOUT_MS,
+  STREAMING_UNCONFIRMED_TOLERANCE_MS,
   StreamingSpeechEngine,
 } from './streaming-speech-engine';
 import { ManualSpeechTimer, ScriptedStreamingSpeechProvider } from './test-kit';
@@ -118,6 +119,7 @@ describe('StreamingSpeechEngine connection', () => {
     expect(result?.words[0]).toMatchObject({ startMs: 2100, endMs: 2400 });
     expect(result?.audioProcessedSeconds).toBe(2.4);
     const closing = drain(stream);
+    session().listener.final(silence(STREAMING_MAX_BUFFERED_MS));
     session().listener.closed(null);
     expect(await closing).toEqual({ lostMs: 2000 });
   });
@@ -227,13 +229,49 @@ describe('StreamingSpeechEngine results', () => {
     expect((await stream.pullAvailable())[0]?.transcript).toBe('Hola a todos.');
   });
 
-  it('skips interim and final results that carry no words', async () => {
+  it('emits nothing for silence while no interim text is on screen', async () => {
     const { stream, session } = await open();
     await stream.push(audio(1000), RATE);
     session().listener.opened();
     session().listener.interim(silence(300));
     session().listener.final(silence(600));
     expect(await stream.pullAvailable()).toEqual([]);
+  });
+
+  it('withdraws the interim text when its segment ends as an empty final, committing nothing', async () => {
+    const { stream, session } = await open();
+    const accumulator = new StreamingTranscriptAccumulator(null);
+    await stream.push(audio(1000), RATE);
+    session().listener.opened();
+    session().listener.interim(said('uh', 0, 300));
+    session().listener.final(silence(600));
+    // The same silence again has nothing left to withdraw.
+    session().listener.final(silence(900));
+
+    const results = await stream.pullAvailable();
+    expect(results).toEqual([
+      expect.objectContaining({ isFinal: false, transcript: 'uh' }),
+      { isFinal: true, transcript: '', audioProcessedSeconds: 0.6, words: [] },
+    ]);
+    for (const result of results) accumulator.apply(result);
+    expect(accumulator.displayText).toBe('');
+    // What Stop does with a leftover interim: there is none to save.
+    accumulator.commitRemainingInterim();
+    expect(accumulator.committedText).toBe('');
+  });
+
+  it('withdraws the interim text when the provider takes it back in a later interim', async () => {
+    const { stream, session } = await open();
+    await stream.push(audio(1000), RATE);
+    session().listener.opened();
+    session().listener.interim(said('uh', 0, 300));
+    session().listener.interim(silence(500));
+    expect((await stream.pullAvailable())[1]).toEqual({
+      isFinal: false,
+      transcript: '',
+      audioProcessedSeconds: 0.5,
+      words: [],
+    });
   });
 
   it('hands each result over once', async () => {
@@ -289,6 +327,7 @@ describe('StreamingSpeechEngine drain', () => {
     session().listener.opened();
     expect(session().sentSamples).toBe(400);
     expect(session().finished).toBe(true);
+    session().listener.final(silence(400));
     session().listener.closed(null);
     expect(await closing).toEqual({ lostMs: 0 });
   });
@@ -360,6 +399,33 @@ describe('StreamingSpeechEngine drain', () => {
     expect(lost).toHaveLength(1);
   });
 
+  it('counts the audio a session never answered for when it ends cleanly short of what it was sent', async () => {
+    const { stream, session, lost } = await open();
+    await stream.push(audio(3000), RATE);
+    session().listener.opened();
+    session().listener.final(said('hola', 0, 1000));
+    const closing = drain(stream);
+    session().listener.closed(null);
+    expect(await closing).toEqual({ lostMs: 2000 });
+    expect(lost).toHaveLength(1);
+    expect(lost[0]?.lostMs).toBe(2000);
+    expect(lost[0]?.error).toMatchObject({ kind: 'Unknown', displayName: 'Scripted' });
+  });
+
+  it.each([
+    [STREAMING_UNCONFIRMED_TOLERANCE_MS, 0],
+    [STREAMING_UNCONFIRMED_TOLERANCE_MS + 1, STREAMING_UNCONFIRMED_TOLERANCE_MS + 1],
+  ])('a clean end %i ms short of the audio sent loses %i ms', async (shortfallMs, lostMs) => {
+    const { stream, session, lost } = await open();
+    await stream.push(audio(2000), RATE);
+    session().listener.opened();
+    session().listener.final(silence(2000 - shortfallMs));
+    const closing = drain(stream);
+    session().listener.closed(null);
+    expect(await closing).toEqual({ lostMs });
+    expect(lost).toHaveLength(lostMs === 0 ? 0 : 1);
+  });
+
   it('counts audio pushed after the drain began as lost', async () => {
     const { stream, session } = await open();
     await stream.push(audio(1000), RATE);
@@ -367,6 +433,7 @@ describe('StreamingSpeechEngine drain', () => {
     const closing = drain(stream);
     await stream.push(audio(300), RATE);
     expect(session().sentSamples).toBe(1000);
+    session().listener.final(silence(1000));
     session().listener.closed(null);
     expect(await closing).toEqual({ lostMs: 300 });
   });
@@ -429,6 +496,18 @@ describe('StreamingSpeechEngine failures and cancel', () => {
     };
     await expect(stream.push(audio(200), RATE)).resolves.toBeUndefined();
     expect(lost).toHaveLength(1);
+    expect(await drain(stream)).toEqual({ lostMs: 300 });
+  });
+
+  it('counts the frame being sent as lost when the session ends inside send', async () => {
+    const { stream, session, lost } = await open();
+    await stream.push(audio(100), RATE);
+    session().listener.opened();
+    session().send = () => {
+      session().listener.closed(failure('KeyInvalid'));
+    };
+    await stream.push(audio(200), RATE);
+    expect(lost).toEqual([{ error: failure('KeyInvalid'), lostMs: 300 }]);
     expect(await drain(stream)).toEqual({ lostMs: 300 });
   });
 

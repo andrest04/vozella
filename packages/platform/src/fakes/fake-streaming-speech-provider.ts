@@ -126,7 +126,9 @@ export class FakeStreamingSpeechSession implements StreamingSpeechSession {
   finish(): void {
     if (this.done || !this.isOpen) return;
     this.isOpen = false;
-    const last = this.current.length === 0 ? null : this.result();
+    // Like a real provider, the last final answers for all the audio it was sent, words or not:
+    // the engine counts audio no final reaches as lost.
+    const last = this.receivedMs === 0 ? null : { ...this.result(), processedMs: this.receivedMs };
     this.current = [];
     this.later(() => {
       if (last !== null) this.listener.final(last);
