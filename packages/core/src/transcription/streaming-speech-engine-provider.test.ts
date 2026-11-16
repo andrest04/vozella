@@ -4,7 +4,7 @@ import { CancelSource } from '../cancel';
 import { ApiProviderError } from '../summaries/api-failure';
 import { CloudRequestPacer, CLOUD_MIN_REQUEST_INTERVAL_MS } from './cloud-speech-engine';
 import { StreamingSpeechEngineProvider } from './speech-engine-provider';
-import { STREAMING_OPEN_TIMEOUT_MS } from './streaming-speech-engine';
+import { STREAMING_OPEN_TIMEOUT_MS, STREAMING_REOPEN_DELAYS_MS } from './streaming-speech-engine';
 import {
   FakeSpeechTimer,
   ManualSpeechTimer,
@@ -135,8 +135,11 @@ describe('StreamingSpeechEngineProvider', () => {
     await streamingTimer.advance(STREAMING_OPEN_TIMEOUT_MS - 1);
     expect(lost).toEqual([]);
     await streamingTimer.advance(1);
-    expect(lost).toMatchObject([{ error: { kind: 'TimedOut' }, lostMs: 200 }]);
+    // The try is given up and its audio waits for the next one, also on the streaming timer.
+    expect(lost).toMatchObject([{ error: { kind: 'TimedOut' }, lostMs: 0 }]);
     expect(streaming.sessions[0]?.closed).toBe(true);
+    await streamingTimer.advance(STREAMING_REOPEN_DELAYS_MS[0] ?? 0);
+    expect(streaming.sessions).toHaveLength(2);
     expect(timer.waits).toEqual([]);
   });
 

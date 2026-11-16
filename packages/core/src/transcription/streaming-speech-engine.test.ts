@@ -8,6 +8,7 @@ import type { StreamingSpeechResult } from './streaming-speech';
 import {
   STREAMING_MAX_BUFFERED_MS,
   STREAMING_OPEN_TIMEOUT_MS,
+  STREAMING_REOPEN_DELAYS_MS,
   STREAMING_UNCONFIRMED_TOLERANCE_MS,
   StreamingSpeechEngine,
 } from './streaming-speech-engine';
@@ -61,8 +62,17 @@ async function open(options: { cancel?: CancelSignal; language?: string } = {}) 
     if (first === undefined) throw new Error('no session was opened');
     return first;
   };
-  return { provider, timer, lost, recognizer, stream, session };
+  /** The nth session the engine opened, counting from zero. */
+  const sessionAt = (index: number) => {
+    const found = provider.sessions[index];
+    if (found === undefined) throw new Error(`session ${index} was not opened`);
+    return found;
+  };
+  return { provider, timer, lost, recognizer, stream, session, sessionAt };
 }
+
+const FIRST_REOPEN_MS = STREAMING_REOPEN_DELAYS_MS[0] ?? 0;
+const LAST_REOPEN_MS = STREAMING_REOPEN_DELAYS_MS.at(-1) ?? 0;
 
 const drain = (stream: AsrStream) => {
   if (!stream.drain) throw new Error('the streaming stream must drain');
@@ -110,8 +120,8 @@ describe('StreamingSpeechEngine connection', () => {
     const { stream, session, lost } = await open();
     await stream.push(audio(STREAMING_MAX_BUFFERED_MS), RATE);
     await stream.push(audio(2000), RATE);
-    expect(lost).toEqual([{ error: null, lostMs: 2000 }]);
     session().listener.opened();
+    expect(lost).toEqual([{ error: null, lostMs: 2000 }]);
     expect(session().sentSamples).toBe((STREAMING_MAX_BUFFERED_MS * RATE) / 1000);
     // The provider counts from the first sample it was sent, which is 2 s into the stream.
     session().listener.final(said('hola', 100, 400));
@@ -124,17 +134,38 @@ describe('StreamingSpeechEngine connection', () => {
     expect(await closing).toEqual({ lostMs: 2000 });
   });
 
-  it('gives up on a session that does not open in time and loses what was waiting', async () => {
-    const { stream, session, lost, timer } = await open();
+  it('gives up on a session that does not open in time and opens another with the waiting audio', async () => {
+    const { provider, stream, session, sessionAt, lost, timer } = await open();
     await stream.push(audio(300), RATE);
     await timer.advance(STREAMING_OPEN_TIMEOUT_MS - 1);
     expect(lost).toEqual([]);
     await timer.advance(1);
     expect(lost).toHaveLength(1);
-    expect(lost[0]?.lostMs).toBe(300);
+    expect(lost[0]?.lostMs).toBe(0);
     expect(lost[0]?.error).toMatchObject({ kind: 'TimedOut', displayName: 'Scripted' });
     expect(session().closed).toBe(true);
-    expect(await drain(stream)).toEqual({ lostMs: 300 });
+    expect(provider.sessions).toHaveLength(1);
+
+    await timer.advance(FIRST_REOPEN_MS);
+    expect(provider.sessions).toHaveLength(2);
+    sessionAt(1).listener.opened();
+    expect(sessionAt(1).sentSamples).toBe(300);
+    const closing = drain(stream);
+    sessionAt(1).listener.final(silence(300));
+    sessionAt(1).listener.closed(null);
+    expect(await closing).toEqual({ lostMs: 0 });
+  });
+
+  it('gives up for good on a session that does not open in time once Stop is waiting', async () => {
+    const { provider, stream, lost, timer } = await open();
+    await stream.push(audio(300), RATE);
+    const closing = drain(stream);
+    await timer.advance(STREAMING_OPEN_TIMEOUT_MS);
+    expect(await closing).toEqual({ lostMs: 300 });
+    expect(lost).toHaveLength(1);
+    expect(lost[0]?.lostMs).toBe(300);
+    await timer.advance(LAST_REOPEN_MS * 3);
+    expect(provider.sessions).toHaveLength(1);
   });
 
   it('does not time out a session that opened', async () => {
@@ -151,8 +182,10 @@ describe('StreamingSpeechEngine connection', () => {
     provider.openError = new Error('boom');
     await expect(stream.push(audio(100), RATE)).resolves.toBeUndefined();
     await stream.push(audio(100), RATE);
-    expect(lost).toHaveLength(1);
+    // Reported as a failed open; the audio waits for the next try and is lost only at Stop.
+    expect(lost).toEqual([{ error: provider.openError, lostMs: 0 }]);
     expect(await drain(stream)).toEqual({ lostMs: 200 });
+    expect(lost[1]).toEqual({ error: provider.openError, lostMs: 200 });
   });
 
   it('refuses the offline profile: a streaming engine serves the live pass only', async () => {
@@ -342,11 +375,12 @@ describe('StreamingSpeechEngine drain', () => {
     session().listener.closed(failure('Network'));
     expect(lost).toEqual([{ error: failure('Network'), lostMs: 2000 }]);
 
-    // Not reconnected: what arrives afterwards is lost too, and reported once only.
+    // Stop comes before the session is open again: what waited for it is lost too.
     await stream.push(audio(500), RATE);
     expect(lost).toHaveLength(1);
     expect(session().sentSamples).toBe(3000);
     expect(await drain(stream)).toEqual({ lostMs: 2500 });
+    expect(lost[1]).toEqual({ error: failure('Network'), lostMs: 500 });
   });
 
   it('counts silence the provider listened to as confirmed', async () => {
@@ -368,14 +402,16 @@ describe('StreamingSpeechEngine drain', () => {
     expect(await drain(stream)).toEqual({ lostMs: 1000 });
   });
 
-  it('ends a pending drain when the session fails while finishing', async () => {
-    const { stream, session } = await open();
+  it('ends a pending drain when the session fails while finishing, without opening another', async () => {
+    const { provider, stream, session, timer } = await open();
     await stream.push(audio(1000), RATE);
     session().listener.opened();
     session().listener.final(said('hola', 0, 600));
     const closing = drain(stream);
     session().listener.closed(failure('Network'));
     expect(await closing).toEqual({ lostMs: 400 });
+    await timer.advance(LAST_REOPEN_MS * 3);
+    expect(provider.sessions).toHaveLength(1);
   });
 
   it('ends a pending drain at once when the stream is disposed, losing the unfinished audio', async () => {
@@ -436,6 +472,218 @@ describe('StreamingSpeechEngine drain', () => {
     session().listener.final(silence(1000));
     session().listener.closed(null);
     expect(await closing).toEqual({ lostMs: 300 });
+  });
+});
+
+describe('StreamingSpeechEngine reopening a dropped session', () => {
+  it.each(['Network', 'TimedOut', 'Unknown', 'RateLimited'] as const)(
+    'opens a new session after a %s drop and keeps the times on the clock of the stream',
+    async (kind) => {
+      const { provider, stream, session, sessionAt, lost, timer } = await open({
+        language: 'en-US',
+      });
+      await stream.push(audio(3000), RATE);
+      session().listener.opened();
+      session().listener.final(said('hola', 0, 1000));
+      session().listener.closed(failure(kind));
+      // Sent and never confirmed by a final: lost, so the pass after Stop still runs.
+      expect(lost).toEqual([{ error: failure(kind), lostMs: 2000 }]);
+
+      // Audio pushed while the session is down waits for the next one.
+      const waited = audio(500).fill(0.25);
+      await stream.push(waited, RATE);
+      await timer.advance(FIRST_REOPEN_MS - 1);
+      expect(provider.sessions).toHaveLength(1);
+      await timer.advance(1);
+      expect(provider.sessions).toHaveLength(2);
+      expect(sessionAt(1).options).toMatchObject({ language: 'en-US', sampleRate: RATE });
+      expect(sessionAt(1).sent).toEqual([]);
+      sessionAt(1).listener.opened();
+      expect(sessionAt(1).sent).toEqual([waited]);
+
+      // The new session counts from zero; the stream had already heard three seconds.
+      sessionAt(1).listener.final(said('mundo', 100, 400));
+      const results = await stream.pullAvailable();
+      expect(results.map((result) => result.transcript)).toEqual(['hola', 'mundo']);
+      expect(results[1]?.words).toEqual([
+        { startMs: 3100, endMs: 3400, speakerTag: 0, text: 'mundo' },
+      ]);
+      expect(results[1]?.audioProcessedSeconds).toBe(3.4);
+
+      const closing = drain(stream);
+      sessionAt(1).listener.final(silence(500));
+      sessionAt(1).listener.closed(null);
+      expect(await closing).toEqual({ lostMs: 2000 });
+      expect(lost).toHaveLength(1);
+    },
+  );
+
+  it('waits longer before each try that fails, and starts over once a session answers', async () => {
+    const { provider, stream, sessionAt, timer } = await open();
+    await stream.push(audio(100), RATE);
+    const reopenWaits = () => timer.waits.filter((wait) => wait !== STREAMING_OPEN_TIMEOUT_MS);
+    for (let index = 0; index <= STREAMING_REOPEN_DELAYS_MS.length; index += 1) {
+      sessionAt(index).listener.closed(failure('Network'));
+      await timer.advance(LAST_REOPEN_MS);
+    }
+    expect(reopenWaits()).toEqual([...STREAMING_REOPEN_DELAYS_MS, LAST_REOPEN_MS]);
+    expect(STREAMING_REOPEN_DELAYS_MS).toEqual([1_000, 2_000, 5_000, 10_000]);
+
+    // A session that opens and drops without one final is still a failed try.
+    const failed = provider.sessions.length - 1;
+    sessionAt(failed).listener.opened();
+    sessionAt(failed).listener.closed(failure('Network'));
+    await timer.advance(LAST_REOPEN_MS);
+    expect(reopenWaits().at(-1)).toBe(LAST_REOPEN_MS);
+
+    // One that gave a final worked: the next drop is retried quickly again.
+    const working = provider.sessions.length - 1;
+    sessionAt(working).listener.opened();
+    sessionAt(working).listener.final(silence(100));
+    sessionAt(working).listener.closed(failure('Network'));
+    expect(reopenWaits().at(-1)).toBe(FIRST_REOPEN_MS);
+  });
+
+  it('reports a long outage once, then only when it loses audio', async () => {
+    const { stream, sessionAt, lost, timer } = await open();
+    await stream.push(audio(100), RATE);
+    for (let index = 0; index < 3; index += 1) {
+      sessionAt(index).listener.closed(failure('Network'));
+      await timer.advance(LAST_REOPEN_MS);
+    }
+    expect(lost).toEqual([{ error: failure('Network'), lostMs: 0 }]);
+  });
+
+  it('keeps at most the buffer limit while it is down and shifts the times by what it dropped', async () => {
+    const { stream, session, sessionAt, lost, timer } = await open();
+    await stream.push(audio(1000), RATE);
+    session().listener.opened();
+    session().listener.final(silence(1000));
+    session().listener.closed(failure('Network'));
+    expect(lost).toEqual([{ error: failure('Network'), lostMs: 0 }]);
+
+    await stream.push(audio(STREAMING_MAX_BUFFERED_MS), RATE);
+    await stream.push(audio(1500), RATE);
+    await stream.push(audio(500), RATE);
+    // Not one report per frame: the overflow is told when the next session opens.
+    expect(lost).toHaveLength(1);
+    await timer.advance(FIRST_REOPEN_MS);
+    sessionAt(1).listener.opened();
+    expect(lost[1]).toEqual({ error: null, lostMs: 2000 });
+    expect(sessionAt(1).sentSamples).toBe((STREAMING_MAX_BUFFERED_MS * RATE) / 1000);
+
+    // Its first sample is 1 s sent to the first session plus the 2 s dropped into the stream.
+    sessionAt(1).listener.final(said('hola', 0, 400));
+    expect((await stream.pullAvailable())[0]?.words[0]).toMatchObject({
+      startMs: 3000,
+      endMs: 3400,
+    });
+    const closing = drain(stream);
+    sessionAt(1).listener.final(silence(STREAMING_MAX_BUFFERED_MS));
+    sessionAt(1).listener.closed(null);
+    expect(await closing).toEqual({ lostMs: 2000 });
+  });
+
+  it.each(['KeyMissing', 'KeyInvalid', 'QuotaExceeded', 'ModelNotFound'] as const)(
+    'does not reopen after %s: the stream ends and later audio is lost',
+    async (kind) => {
+      const { provider, stream, session, lost, timer } = await open();
+      await stream.push(audio(1000), RATE);
+      session().listener.opened();
+      session().listener.final(silence(400));
+      session().listener.closed(failure(kind));
+      expect(lost).toEqual([{ error: failure(kind), lostMs: 600 }]);
+      await stream.push(audio(300), RATE);
+      await timer.advance(LAST_REOPEN_MS * 3);
+      expect(provider.sessions).toHaveLength(1);
+      expect(lost).toHaveLength(1);
+      expect(await drain(stream)).toEqual({ lostMs: 900 });
+    },
+  );
+
+  it('ends for good when a reopened session is refused for a reason waiting cannot fix', async () => {
+    const { provider, stream, session, sessionAt, lost, timer } = await open();
+    await stream.push(audio(1000), RATE);
+    session().listener.opened();
+    session().listener.final(silence(1000));
+    session().listener.closed(failure('Network'));
+    await stream.push(audio(400), RATE);
+    await timer.advance(FIRST_REOPEN_MS);
+    sessionAt(1).listener.closed(failure('KeyInvalid'));
+    expect(lost[1]).toEqual({ error: failure('KeyInvalid'), lostMs: 400 });
+    await timer.advance(LAST_REOPEN_MS * 3);
+    expect(provider.sessions).toHaveLength(2);
+    expect(await drain(stream)).toEqual({ lostMs: 400 });
+  });
+
+  it('opens nothing after the stream is disposed while it waits to reopen', async () => {
+    const { provider, stream, session, lost, timer } = await open();
+    await stream.push(audio(1000), RATE);
+    session().listener.opened();
+    session().listener.closed(failure('Network'));
+    await stream.push(audio(200), RATE);
+    await stream.dispose();
+    await timer.advance(LAST_REOPEN_MS * 3);
+    expect(provider.sessions).toHaveLength(1);
+    expect(lost).toHaveLength(2);
+    expect(lost[1]?.error).toBeInstanceOf(TranscriptionCancelledError);
+    expect(lost[1]?.lostMs).toBe(200);
+    await stream.push(audio(200), RATE);
+    expect(provider.sessions).toHaveLength(1);
+    expect(await drain(stream)).toEqual({ lostMs: 1200 });
+  });
+
+  it('opens nothing after the pass is cancelled while it waits to reopen', async () => {
+    const cancel = new CancelSource();
+    const { provider, stream, session, timer } = await open({ cancel: cancel.signal });
+    await stream.push(audio(1000), RATE);
+    session().listener.opened();
+    session().listener.closed(failure('Network'));
+    cancel.cancel();
+    await timer.advance(LAST_REOPEN_MS * 3);
+    expect(provider.sessions).toHaveLength(1);
+    expect(await drain(stream)).toEqual({ lostMs: 1000 });
+  });
+
+  it('ends a Stop that comes while it waits to reopen at once, without opening a session', async () => {
+    const { provider, stream, session, timer } = await open();
+    await stream.push(audio(1000), RATE);
+    session().listener.opened();
+    session().listener.final(silence(1000));
+    session().listener.closed(failure('Network'));
+    // Nothing was lost and nothing waits: the draft is still the whole take.
+    expect(await drain(stream)).toEqual({ lostMs: 0 });
+    await timer.advance(LAST_REOPEN_MS * 3);
+    expect(provider.sessions).toHaveLength(1);
+  });
+
+  it('ignores what a session that was given up says afterwards', async () => {
+    const { stream, session, sessionAt, lost, timer } = await open();
+    await stream.push(audio(1000), RATE);
+    session().listener.opened();
+    session().listener.closed(failure('Network'));
+    await timer.advance(FIRST_REOPEN_MS);
+    sessionAt(1).listener.opened();
+    session().listener.final(said('tarde', 0, 400));
+    session().listener.closed(failure('KeyInvalid'));
+    expect(await stream.pullAvailable()).toEqual([]);
+    expect(lost).toHaveLength(1);
+    await stream.push(audio(100), RATE);
+    expect(sessionAt(1).sentSamples).toBe(100);
+  });
+
+  it('counts the frame being sent as lost and reopens when the session drops inside send', async () => {
+    const { provider, stream, session, lost, timer } = await open();
+    await stream.push(audio(100), RATE);
+    session().listener.opened();
+    session().listener.final(silence(100));
+    session().send = () => {
+      session().listener.closed(failure('Network'));
+    };
+    await stream.push(audio(200), RATE);
+    expect(lost).toEqual([{ error: failure('Network'), lostMs: 200 }]);
+    await timer.advance(FIRST_REOPEN_MS);
+    expect(provider.sessions).toHaveLength(2);
   });
 });
 

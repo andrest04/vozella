@@ -70,6 +70,9 @@ export interface DeepgramLiveOptions {
  * error.
  */
 export class DeepgramLiveSpeechProvider implements StreamingSpeechProvider {
+  /** What the sessions of this provider have learned, for the ones opened after them. */
+  private readonly known: KnownKey = { accepted: null };
+
   constructor(private readonly options: DeepgramLiveOptions) {}
 
   get displayName(): string {
@@ -77,8 +80,17 @@ export class DeepgramLiveSpeechProvider implements StreamingSpeechProvider {
   }
 
   open(options: StreamingSpeechOptions, listener: StreamingSpeechListener): StreamingSpeechSession {
-    return new DeepgramLiveSession(this.options, options, listener);
+    return new DeepgramLiveSession(this.options, options, listener, this.known);
   }
+}
+
+/**
+ * The key a session of the provider opened with. The streaming engine opens a new session after a
+ * drop, and while the network is down each of them fails to open: with a key the provider has
+ * already taken, that is a connection failure and the key check is not sent again.
+ */
+interface KnownKey {
+  accepted: string | null;
 }
 
 const text = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
@@ -101,6 +113,7 @@ class DeepgramLiveSession implements StreamingSpeechSession {
     private readonly options: DeepgramLiveOptions,
     private readonly stream: StreamingSpeechOptions,
     private readonly listener: StreamingSpeechListener,
+    private readonly known: KnownKey,
   ) {
     this.unlink = stream.cancel.onCancel(() => {
       this.close();
@@ -191,6 +204,7 @@ class DeepgramLiveSession implements StreamingSpeechSession {
     }
     if (this.isOpen) return;
     this.isOpen = true;
+    this.known.accepted = this.key;
     void this.keepAlive();
     this.listener.opened();
   }
@@ -275,12 +289,17 @@ class DeepgramLiveSession implements StreamingSpeechSession {
   /**
    * Why the session never opened. The socket says only that it failed (close code 1006, no HTTP
    * status), which a refused key and a dead network both look like; the key check tells them
-   * apart. An accepted key leaves a connection failure.
+   * apart. An accepted key leaves a connection failure, and so does a key an earlier session of
+   * this provider opened with, which is not asked about again.
    */
   private async explainNeverOpened(): Promise<void> {
     if (this.done || this.explaining) return;
     this.explaining = true;
     const { displayName } = this.options;
+    if (this.key !== '' && this.known.accepted === this.key) {
+      this.end(new ApiProviderError(displayName, 'Network'));
+      return;
+    }
     let failure: ApiProviderError;
     try {
       await this.options.checkKey(this.key, this.stream.cancel);

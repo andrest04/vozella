@@ -14,7 +14,7 @@
  *   `VOZELLA_REAL_STT_LANGUAGE` (default `en-US`) is the app language tag sent.
  * - The live tests run at the speed of speech, and the paused one waits twelve seconds on purpose
  *   (longer than the ten after which Deepgram closes a stream that hears nothing), so the file
- *   takes about half a minute. The key is never printed: every message shown is scrubbed of it.
+ *   takes about a minute. The dropped one closes its own socket in the middle of the take. The key is never printed: every message shown is scrubbed of it.
  */
 import { describe, expect, it } from 'vitest';
 import {
@@ -32,6 +32,7 @@ import {
   createCloudSpeechToTextClient,
   createStreamingSpeechProvider,
 } from './cloud-speech-factory';
+import { globalLiveSocket, type LiveSocket, type LiveSocketFactory } from './live-socket';
 import {
   pcmMs,
   readMonoPcm16,
@@ -51,6 +52,8 @@ const canTranscribe = realKey !== '' && wavPath !== '';
 const FRAME_MS = 100;
 /** Deepgram closes a stream that gets no audio and no KeepAlive for ten seconds. */
 const PAUSE_MS = 12_000;
+/** Where in the take the dropped test closes the socket. */
+const DROP_AT_MS = 4_000;
 
 const choice = { kind: 'Deepgram', settings: readSettings({}) } as const;
 const keysOf = (key: string) => ({ get: () => Promise.resolve(key) });
@@ -101,9 +104,9 @@ interface LiveTake {
 }
 
 /** A live pass built as the app builds it: the factory's provider behind the streaming engine. */
-async function startLiveTake(key: string): Promise<LiveTake> {
+async function startLiveTake(key: string, socket?: LiveSocketFactory): Promise<LiveTake> {
   const provider = createStreamingSpeechProvider(
-    { keys: keysOf(key), timer: systemSpeechTimer },
+    { keys: keysOf(key), timer: systemSpeechTimer, ...(socket ? { socket } : {}) },
     choice,
   );
   if (provider === null) throw new Error('Deepgram has no streaming provider.');
@@ -352,6 +355,79 @@ describe.skipIf(!realSttEnabled)('the real Deepgram endpoints', () => {
       const lastWord = afterPause.at(-1)?.words.at(-1);
       expect(lastWord?.endMs).toBeGreaterThan(audioMs / 2);
       expect(lastWord?.endMs).toBeLessThanOrEqual(audioMs + 250);
+    },
+    90_000,
+  );
+
+  it.skipIf(!canTranscribe)(
+    'a live stream whose socket drops in the middle of the take reopens and goes on in stream time',
+    async () => {
+      const pcm = readMonoPcm16(wavPath);
+      const audioMs = pcmMs(pcm);
+      expect(audioMs, 'the WAV must be at least eight seconds').toBeGreaterThanOrEqual(8_000);
+      // The app's own socket, kept so the test can close the first one behind the adapter's back.
+      const sockets: LiveSocket[] = [];
+      const take = await startLiveTake(realKey, (url, headers) => {
+        const socket = globalLiveSocket(url, headers);
+        sockets.push(socket);
+        return socket;
+      });
+
+      await take.speak(pcm, 0, DROP_AT_MS);
+      sockets[0]?.close();
+      const droppedAt = performance.now();
+      while (take.losses.length === 0 && performance.now() - droppedAt < 5_000) await sleep(20);
+      const noticedAfterMs = Math.round(performance.now() - droppedAt);
+      await take.pull();
+      const pulledBeforeDrop = take.results.length;
+      await take.speak(pcm, DROP_AT_MS, audioMs);
+      const coverage = await drain(take);
+      await take.pull();
+      await take.stream.dispose();
+
+      const afterDrop = take.results
+        .slice(pulledBeforeDrop)
+        .map((entry) => entry.result)
+        .filter((result) => result.isFinal && result.words.length > 0);
+      const words = finalsOf(take).flatMap((result) => result.words);
+      report({
+        test: 'dropped live stream',
+        dropAtMs: DROP_AT_MS,
+        noticedAfterMs,
+        socketsOpened: sockets.length,
+        lostMs: coverage.lostMs,
+        losses: take.losses.map(
+          (loss) => `${Math.round(loss.lostMs)} ms, ${describeFailure(loss.error)}`,
+        ),
+        finalsAfterDrop: afterDrop.length,
+        firstWordAfterDrop: afterDrop[0]?.words[0] ?? null,
+        lastWord: words.at(-1) ?? null,
+        committed: finalsOf(take)
+          .map((result) => result.transcript)
+          .join(' '),
+      });
+
+      // One drop, told once as a connection failure, then a second socket.
+      expect(sockets).toHaveLength(2);
+      expect(take.losses).toHaveLength(1);
+      expect(take.losses[0]?.error).toBeInstanceOf(ApiProviderError);
+      expect((take.losses[0]?.error as ApiProviderError).kind).toBe('Network');
+      // Lost: only what the first session was sent and never confirmed. The second session
+      // answered for everything it heard, so the pass after Stop runs because of the drop alone.
+      expect(take.losses[0]?.lostMs).toBeLessThanOrEqual(DROP_AT_MS);
+      expect(coverage.lostMs).toBeCloseTo(take.losses[0]?.lostMs ?? -1, 3);
+      // Captions came back, on the clock of the stream: the new session counts from zero, and
+      // its words are placed after the audio the first one was sent.
+      expect(afterDrop.length).toBeGreaterThan(0);
+      expect(afterDrop[0]?.words[0]?.startMs).toBeGreaterThanOrEqual(DROP_AT_MS);
+      let previousStart = 0;
+      for (const word of words) {
+        expect(word.startMs).toBeGreaterThanOrEqual(previousStart);
+        expect(word.endMs).toBeGreaterThanOrEqual(word.startMs);
+        expect(word.endMs).toBeLessThanOrEqual(audioMs + 250);
+        previousStart = word.startMs;
+      }
+      expect(words.at(-1)?.endMs).toBeGreaterThan(audioMs / 2);
     },
     90_000,
   );

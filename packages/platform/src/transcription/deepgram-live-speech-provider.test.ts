@@ -429,6 +429,34 @@ describe('DeepgramLiveSpeechProvider: a session that never opens', () => {
     expect(closedWith()).toMatchObject({ kind: 'Network' });
   });
 
+  it('does not ask about a key the provider already took when a later session cannot open', async () => {
+    // The key check would refuse: it must not be what decides, nor be sent at all.
+    const { provider, sockets, socket, keyChecks, closedWith } = await opened({
+      keyCheck: 'KeyInvalid',
+    });
+    socket().serverClose(1006);
+    expect(closedWith()).toMatchObject({ kind: 'Network' });
+
+    const reopened: (ApiProviderError | null)[] = [];
+    provider.open(
+      { language: 'es-US', sampleRate: RATE, cancel: new CancelSource().signal },
+      {
+        opened: () => undefined,
+        interim: () => undefined,
+        final: () => undefined,
+        closed: (error) => reopened.push(error),
+      },
+    );
+    await settle();
+    sockets.sockets[1]?.fail();
+    sockets.sockets[1]?.serverClose(1006);
+    await settle();
+    expect(sockets.sockets).toHaveLength(2);
+    expect(reopened).toHaveLength(1);
+    expect(reopened[0]).toMatchObject({ kind: 'Network', displayName: 'Deepgram' });
+    expect(keyChecks).toEqual([]);
+  });
+
   it('checks the key once when both the error and the close arrive', async () => {
     const { socket, keyChecks, heard } = await start({ keyCheck: 'KeyInvalid' });
     socket().fail();
