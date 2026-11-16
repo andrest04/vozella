@@ -11,7 +11,6 @@
  *   `VOZELLA_REAL_STT_GROQ_KEY` and/or `VOZELLA_REAL_STT_OPENAI_KEY`. A provider without a key
  *   is skipped. `VOZELLA_REAL_STT_LANGUAGE` (default `en-US`) is the app language tag sent.
  */
-import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   ApiProviderError,
@@ -20,10 +19,14 @@ import {
   resolveCloudTranscriptionModel,
 } from '@vozella/core';
 import { OpenAiSpeechToTextClient } from './openai-speech-to-text-client';
-
-const enabled = process.env.VOZELLA_REAL_STT === '1';
-const wavPath = process.env.VOZELLA_REAL_STT_WAV ?? '';
-const language = process.env.VOZELLA_REAL_STT_LANGUAGE ?? 'en-US';
+import {
+  pcmMs,
+  readMonoPcm16,
+  realSttEnabled as enabled,
+  realSttLanguage as language,
+  realSttWavPath as wavPath,
+  tone,
+} from './real-stt-test-kit';
 
 /** The kinds served by the OpenAI-compatible client; Deepgram has its own adapters and test. */
 type OpenAiCompatibleKind = 'Groq' | 'OpenAi';
@@ -33,45 +36,6 @@ const KEYS: Record<OpenAiCompatibleKind, string> = {
   OpenAi: process.env.VOZELLA_REAL_STT_OPENAI_KEY ?? '',
 };
 const KINDS = Object.keys(KEYS) as OpenAiCompatibleKind[];
-
-interface Pcm {
-  readonly samples: Float32Array;
-  readonly sampleRate: number;
-}
-
-/** Reads a mono PCM16 WAV whatever its header length, by walking the RIFF chunks. */
-function readMonoPcm16(file: string): Pcm {
-  const bytes = fs.readFileSync(file);
-  let sampleRate = 0;
-  let offset = 12;
-  while (offset + 8 <= bytes.length) {
-    const id = bytes.toString('ascii', offset, offset + 4);
-    const size = bytes.readUInt32LE(offset + 4);
-    const body = offset + 8;
-    if (id === 'fmt ') {
-      expect(bytes.readUInt16LE(body + 2), 'channels').toBe(1);
-      expect(bytes.readUInt16LE(body + 14), 'bits per sample').toBe(16);
-      sampleRate = bytes.readUInt32LE(body + 4);
-    } else if (id === 'data') {
-      const count = Math.floor(Math.min(size, bytes.length - body) / 2);
-      const samples = new Float32Array(count);
-      for (let i = 0; i < count; i += 1) samples[i] = bytes.readInt16LE(body + i * 2) / 32768;
-      return { samples, sampleRate };
-    }
-    offset = body + size + (size % 2);
-  }
-  throw new Error(`No data chunk in ${file}`);
-}
-
-/** Half a second of a quiet tone: enough to be a valid upload for the rejected-key tests. */
-function tone(): Pcm {
-  const sampleRate = 16_000;
-  const samples = new Float32Array(sampleRate / 2);
-  for (let i = 0; i < samples.length; i += 1) {
-    samples[i] = 0.1 * Math.sin((2 * Math.PI * 440 * i) / sampleRate);
-  }
-  return { samples, sampleRate };
-}
 
 function client(kind: OpenAiCompatibleKind, key: string): OpenAiSpeechToTextClient {
   const engine = cloudTranscriptionApiEngine(kind);
@@ -102,7 +66,7 @@ describe.skipIf(!enabled)('the real speech-to-text endpoints', () => {
     const key = KEYS[kind];
     if (key === '' || wavPath === '') return;
     const pcm = readMonoPcm16(wavPath);
-    const audioMs = (pcm.samples.length / pcm.sampleRate) * 1000;
+    const audioMs = pcmMs(pcm);
 
     const result = await client(kind, key).transcribe(
       { ...pcm, language },
