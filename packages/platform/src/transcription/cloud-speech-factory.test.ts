@@ -63,14 +63,27 @@ describe('createCloudSpeechToTextClient: the adapter of each protocol', () => {
     expect(call?.headers.authorization).toBe(`Token ${KEY}`);
   });
 
-  it('uses the model the caller saved for Deepgram instead of the default', async () => {
-    const fake = new FakeFetch({ chunks: [JSON.stringify(DEEPGRAM_ANSWER)] });
+  it.each(['whisper-large-v3-turbo', 'whisper-1', ' nova-2 '])(
+    'a model saved for another engine (%s) never reaches Deepgram: it is asked for its own',
+    async (model) => {
+      const fake = new FakeFetch({ chunks: [JSON.stringify(DEEPGRAM_ANSWER)] });
+      const made = createCloudSpeechToTextClient(
+        { keys: new FakeApiKeyStore({ Deepgram: KEY }), fetch: fake.fetch },
+        { kind: 'Deepgram', settings: readSettings({}), model },
+      );
+      await made.transcribe(chunk(), none());
+      expect(new URL(fake.calls[0]?.url ?? '').searchParams.get('model')).toBe('nova-3');
+    },
+  );
+
+  it('a model saved for Deepgram never reaches Groq either', async () => {
+    const fake = new FakeFetch({ chunks: [JSON.stringify({ text: 'hola', duration: 1 })] });
     const made = createCloudSpeechToTextClient(
-      { keys: new FakeApiKeyStore({ Deepgram: KEY }), fetch: fake.fetch },
-      { kind: 'Deepgram', settings: readSettings({}), model: ' nova-2 ' },
+      { keys: new FakeApiKeyStore({ Groq: 'gsk-factory' }), fetch: fake.fetch },
+      { kind: 'Groq', settings: readSettings({}), model: 'nova-3' },
     );
     await made.transcribe(chunk(), none());
-    expect(new URL(fake.calls[0]?.url ?? '').searchParams.get('model')).toBe('nova-2');
+    expect(fake.calls[0]?.form?.get('model')).toBe('whisper-large-v3-turbo');
   });
 
   it('fails as KeyMissing for Deepgram without a stored key', async () => {
@@ -88,7 +101,11 @@ describe('createCloudSpeechToTextClient: the adapter of each protocol', () => {
 });
 
 describe('createStreamingSpeechProvider', () => {
-  const streaming = (reply: FakeHttpReply = {}, key: string | null = KEY) => {
+  const streaming = (
+    reply: FakeHttpReply = {},
+    key: string | null = KEY,
+    model: string | null = null,
+  ) => {
     const sockets = new ScriptedLiveSockets();
     const fake = new FakeFetch(reply);
     const provider = createStreamingSpeechProvider(
@@ -98,7 +115,7 @@ describe('createStreamingSpeechProvider', () => {
         fetch: fake.fetch,
         socket: sockets.factory,
       },
-      { kind: 'Deepgram', settings: readSettings({}) },
+      { kind: 'Deepgram', settings: readSettings({}), model },
     );
     if (provider === null) throw new Error('Deepgram must stream');
     const closed: (ApiProviderError | null)[] = [];
@@ -137,6 +154,12 @@ describe('createStreamingSpeechProvider', () => {
     expect(socket?.headers).toEqual({ Authorization: `Token ${KEY}` });
     socket?.open();
     expect(heard).toEqual(['opened']);
+  });
+
+  it('a model saved for another engine never reaches the live session', async () => {
+    const { sockets } = streaming({}, KEY, 'whisper-large-v3-turbo');
+    await settle();
+    expect(new URL(sockets.sockets[0]?.url ?? '').searchParams.get('model')).toBe('nova-3');
   });
 
   it('fails as KeyMissing without a stored key', async () => {

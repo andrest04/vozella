@@ -39,7 +39,7 @@ import {
   type SpeechEngineProvider,
   type TranslateFn,
 } from '@vozella/core';
-import { UnavailableSpeechEngineProvider, type TranscriptionRuntime } from '@vozella/platform';
+import type { TranscriptionRuntime } from '@vozella/platform';
 
 export type Broadcast = <C extends EventChannel>(channel: C, payload: PayloadInputOf<C>) => void;
 
@@ -101,19 +101,6 @@ export interface OfflineRun {
 
 const messageOf = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
-
-/**
- * Why a cloud engine that is not ready cannot run. The only thing a cloud engine can be missing
- * is its key: nothing is installed for it. TEMPORARY (deepgram-streaming-transcription T1): an
- * engine without an adapter yet is `unavailable` whatever its key; T3 removes that branch.
- */
-const cloudNotReadyReason = (
-  engine: SpeechEngineProvider,
-  ready: boolean,
-): EngineStatusDto['cloudNotReadyReason'] => {
-  if (engine.kind === 'Local' || ready) return null;
-  return engine instanceof UnavailableSpeechEngineProvider ? 'unavailable' : 'key-missing';
-};
 
 /** The settings the engine status is built from besides the two this module saves itself. */
 const ENGINE_STATUS_SETTINGS = ['transcriptionEngine', 'cloudTranscriptionModelId'] as const;
@@ -201,7 +188,8 @@ export class TranscriptionController {
     return {
       ready,
       engine: engine.kind,
-      cloudNotReadyReason: cloudNotReadyReason(engine, ready),
+      // The only thing a cloud engine can be missing is its key: nothing is installed for it.
+      cloudNotReadyReason: engine.kind !== 'Local' && !ready ? 'key-missing' : null,
       modelInstalled: runtime.models.isModelDownloaded(),
       runtimes: { cpu: runtime.runtimes.isReady('cpu'), cuda: runtime.runtimes.isReady('cuda') },
       speakerModelInstalled: runtime.models.isDiarizationModelDownloaded(),
@@ -245,10 +233,6 @@ export class TranscriptionController {
     if (await engine.isReady()) return null;
     if (engine.kind === 'Local') return this.deps.t('Ui_RetranscriptionEngineNotInstalled');
     const name = cloudTranscriptionProvider(engine.kind).displayName;
-    // TEMPORARY (T1): an engine without an adapter yet says so, instead of asking for a key.
-    if (cloudNotReadyReason(engine, false) === 'unavailable') {
-      return this.deps.t('Ui_CloudEngineUnavailable', name);
-    }
     return this.deps.t(API_FAILURE_UI_KEYS.KeyMissing, name);
   }
 
@@ -420,8 +404,9 @@ export class TranscriptionController {
 
   /**
    * A live pass on a cloud engine stopped because the provider refused it (key, credit, model),
-   * with the reason as a sentence. The take goes on recording; the recording module shows the
-   * reason while it does. Returns the unsubscribe.
+   * with the reason as a sentence: a refused upload of an engine that works in pieces, or a
+   * refused session of one that streams. The take goes on recording; the recording module shows
+   * the reason while it does. Returns the unsubscribe.
    */
   onLiveFailure(listener: (reason: string) => void): () => void {
     this.liveFailureListeners.add(listener);
@@ -490,7 +475,8 @@ export class TranscriptionController {
   /**
    * True when the draft the last `stopLive` returned is the transcript of the whole take, so the
    * pass after Stop would only upload the same audio again. Only a cloud engine whose live pass
-   * transcribed every sample says so; with the local engine it is always false.
+   * transcribed every sample says so (every piece uploaded, or a streaming session that answered
+   * for all it was sent); with the local engine it is always false.
    */
   get liveDraftIsFinal(): boolean {
     return this.lastLiveDraftIsFinal;

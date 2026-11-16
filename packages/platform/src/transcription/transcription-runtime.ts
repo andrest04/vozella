@@ -1,21 +1,21 @@
 import {
-  ApiProviderError,
   AsrBackendStatus,
   CLOUD_TRANSCRIPTION_ENGINES,
   CloudRequestPacer,
   CloudSpeechEngineProvider,
-  cloudTranscriptionProvider,
   isFatalSpeechFailure,
   LiveTranscriptionService,
   LocalSpeechEngineProvider,
   NemoSpeechRecognizerFactory,
   resolveTranscriptionEngine,
+  StreamingSpeechEngineProvider,
   TranscriptionEngineInstaller,
   TranscriptionService,
   type ApiKeyStore,
   type AppSettings,
   type AsrEngine,
   type AudioFrameReader,
+  type CloudSpeechEngineProviderDeps,
   type CloudSpeechTimer,
   type CloudTranscriptionKind,
   type EngineModelStore,
@@ -24,10 +24,10 @@ import {
   type MicActivityReader,
   type RecognizerSource,
   type RuntimeStore,
-  type SessionRecognizer,
   type SettingsStore,
   type SpeechEngineProvider,
   type SpeechToTextClient,
+  type StreamingSpeechProvider,
 } from '@vozella/core';
 import { SidecarMicActivityReader } from './mic-activity-sidecar';
 import { NemotronModelStore, type ModelStoreOptions } from './model-store';
@@ -59,8 +59,26 @@ export interface CloudTranscriptionOptions {
   readonly keys: Pick<ApiKeyStore, 'has'>;
   /** The client of a cloud engine, built with the settings read when the pass starts. */
   readonly client: (kind: CloudTranscriptionKind, settings: AppSettings) => SpeechToTextClient;
-  /** Tests replace the clock; the app uses {@link systemSpeechTimer}. */
+  /**
+   * The streaming provider of a cloud engine whose live text is streamed, built with the settings
+   * read when the live pass starts. Asked only for an engine the table marks `streaming`; null, or
+   * leaving this out, makes that engine's live text arrive in pieces through `client`.
+   */
+  readonly streaming?: (
+    kind: CloudTranscriptionKind,
+    settings: AppSettings,
+  ) => StreamingSpeechProvider | null;
+  /**
+   * The clock of the uploads: their pacing, backoff and rate limit waits. Tests replace it with
+   * one that never sleeps; the app uses {@link systemSpeechTimer}.
+   */
   readonly timer?: CloudSpeechTimer;
+  /**
+   * The wait of a streaming session's open timeout. It must really wait, so it is not `timer`: a
+   * clock that resolves every wait at once would give a session up the moment it was asked for.
+   * Tests drive it by hand; the app uses {@link systemSpeechTimer}.
+   */
+  readonly streamingTimer?: CloudSpeechTimer;
 }
 
 export interface TranscriptionRuntimeOptions {
@@ -87,31 +105,6 @@ export interface TranscriptionRuntimeOptions {
    * whatever clock the uploads use.
    */
   readonly liveStopWait?: CloudSpeechTimer['wait'];
-}
-
-/**
- * TEMPORARY (odd/tasks/deepgram-streaming-transcription.md, T1): a cloud engine the settings can
- * select but that has no adapter yet. It is never ready, whether or not its key is stored, and a
- * pass on it fails with a plain reason instead of sending audio anywhere or falling back to another
- * engine. T3 replaces it with the real engine of the provider's protocol and removes this class,
- * the `unavailable` reason of the engine status and the `Ui_CloudEngineUnavailable` string.
- */
-export class UnavailableSpeechEngineProvider implements SpeechEngineProvider {
-  constructor(readonly kind: CloudTranscriptionKind) {}
-
-  isReady(): Promise<boolean> {
-    return Promise.resolve(false);
-  }
-
-  create(): Promise<SessionRecognizer> {
-    return Promise.reject(
-      new ApiProviderError(
-        cloudTranscriptionProvider(this.kind).displayName,
-        'Unknown',
-        'This transcription engine is not available in this version yet.',
-      ),
-    );
-  }
 }
 
 /** A live pass on a cloud engine ended early: which engine, and the failure the provider gave. */
@@ -215,6 +208,11 @@ export class TranscriptionRuntime {
   /**
    * The engine the settings select right now: the local one, or a cloud engine with the client
    * for these settings. Readiness, the Record gate and every pass go through it.
+   *
+   * How the live text of a cloud engine arrives is a column of the engine table, and it picks the
+   * provider here: `streaming` is one session per live pass with the recording uploaded for every
+   * other pass; `pieces` uploads the live audio a few seconds at a time. Both are ready with the
+   * key alone and report lost audio the same way.
    */
   async engine(): Promise<SpeechEngineProvider> {
     const { settings, cloud, logger } = this.options;
@@ -222,11 +220,7 @@ export class TranscriptionRuntime {
     const saved = await settings.load();
     const kind = resolveTranscriptionEngine(saved);
     if (kind === 'Local') return this.local;
-    // TEMPORARY (T1): only the OpenAI-compatible protocol has an adapter. See the class above.
-    if (CLOUD_TRANSCRIPTION_ENGINES[kind].protocol !== 'openai-audio-transcriptions') {
-      return new UnavailableSpeechEngineProvider(kind);
-    }
-    return new CloudSpeechEngineProvider({
+    const uploads: CloudSpeechEngineProviderDeps = {
       kind,
       keys: cloud.keys,
       client: () => cloud.client(kind, saved),
@@ -249,6 +243,16 @@ export class TranscriptionRuntime {
           }
         }
       },
-    });
+    };
+    switch (CLOUD_TRANSCRIPTION_ENGINES[kind].liveText) {
+      case 'pieces':
+        return new CloudSpeechEngineProvider(uploads);
+      case 'streaming':
+        return new StreamingSpeechEngineProvider({
+          ...uploads,
+          streaming: () => cloud.streaming?.(kind, saved) ?? null,
+          streamingTimer: cloud.streamingTimer ?? systemSpeechTimer,
+        });
+    }
   }
 }

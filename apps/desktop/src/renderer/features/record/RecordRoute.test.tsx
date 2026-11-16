@@ -748,6 +748,17 @@ describe('RecordRoute with a cloud transcription engine', () => {
     );
   });
 
+  it('says captions come as people speak with an engine that streams', async () => {
+    installApi({
+      'transcription.getStatus': () => ({ ready: true, liveEnabled: true, engine: 'Deepgram' }),
+      'recording.getState': () => ({ ...recordingState, liveText: '' }),
+    });
+    mount();
+    const empty = await screen.findByTestId('canvas-empty');
+    expect(empty).toHaveTextContent('Captions appear here as people speak.');
+    expect(empty).not.toHaveTextContent('a few seconds');
+  });
+
   it('shows why the live captions stopped while the take goes on, and says the audio is kept', async () => {
     const reason = 'Groq did not accept your API key. Check it in Settings.';
     const api = installApi({

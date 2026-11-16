@@ -163,10 +163,25 @@ describe('resolveCloudTranscriptionModel', () => {
     expect(resolveCloudTranscriptionModel('Deepgram', null)).toBe('nova-3');
   });
 
-  it('keeps a saved id, trimmed, even one the table does not list', () => {
+  it('keeps a saved id the engine lists, trimmed', () => {
     expect(resolveCloudTranscriptionModel('Groq', ' whisper-large-v3 ')).toBe('whisper-large-v3');
-    // whisper-1 is deprecated: its successor must be usable without a release.
-    expect(resolveCloudTranscriptionModel('OpenAi', 'whisper-next')).toBe('whisper-next');
+  });
+
+  it('a model saved for another engine never reaches this one: it gets its own default', () => {
+    // One setting holds the model of whichever engine was selected when it was saved.
+    expect(resolveCloudTranscriptionModel('Deepgram', 'whisper-large-v3-turbo')).toBe('nova-3');
+    expect(resolveCloudTranscriptionModel('Groq', 'nova-3')).toBe('whisper-large-v3-turbo');
+    expect(resolveCloudTranscriptionModel('OpenAi', 'whisper-large-v3')).toBe('whisper-1');
+  });
+
+  it('an id no engine lists is not sent either', () => {
+    expect(resolveCloudTranscriptionModel('OpenAi', 'whisper-next')).toBe('whisper-1');
+  });
+
+  it.each(CLOUD_TRANSCRIPTION_ENGINE_LIST)('$kind resolves each of its own models', (engine) => {
+    for (const model of engine.models) {
+      expect(resolveCloudTranscriptionModel(engine.kind, model)).toBe(model);
+    }
   });
 });
 

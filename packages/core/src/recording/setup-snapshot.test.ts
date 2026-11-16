@@ -106,6 +106,20 @@ describe('buildSetupSnapshot', () => {
     expect(s.engine.ready).toBe(true);
     expect(s.engine).not.toHaveProperty('reason');
   });
+  it('an engine that only transcribes follows its key like the others', () => {
+    // Deepgram with its key saved: ready, and nothing says a key is missing.
+    const ready = snap({ transcriptionEngine: 'Deepgram', engineReady: true });
+    expect(ready.canRecord).toBe(true);
+    expect(ready.engine.ready).toBe(true);
+    expect(ready.engine.status.key).toBe('RecordingSetup_Ready');
+    expect(ready.engine.detail).toEqual({ key: 'RecordingSetup_EngineDetail', args: [] });
+    expect(ready.engine).not.toHaveProperty('reason');
+    // Without it: the key is the step, named after the provider.
+    const missing = snap({ transcriptionEngine: 'Deepgram', engineReady: false });
+    expect(missing.canRecord).toBe(false);
+    expect(missing.engine.reason).toBe('key-missing');
+    expect(missing.engine.detail).toEqual({ key: 'Ui_ApiKeyMissing', args: ['Deepgram'] });
+  });
   it('uses the catalog header keys', () => {
     const s = snap();
     expect([s.live.headerKey, s.engine.headerKey, s.summary.headerKey]).toEqual([

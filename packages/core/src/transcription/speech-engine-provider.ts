@@ -4,13 +4,19 @@ import {
   type CloudTranscriptionKind,
   type TranscriptionEngineKind,
 } from '../settings/cloud-transcription-engines';
-import { CloudSpeechEngine, type CloudSpeechEngineDeps } from './cloud-speech-engine';
+import {
+  CloudSpeechEngine,
+  type CloudSpeechEngineDeps,
+  type CloudSpeechTimer,
+} from './cloud-speech-engine';
 import type {
   CreateRecognizerOptions,
   RecognizerSource,
   SessionRecognizer,
 } from './recognizer-factory';
 import type { SpeechToTextClient } from './speech-to-text';
+import type { StreamingSpeechProvider } from './streaming-speech';
+import { StreamingSpeechEngine } from './streaming-speech-engine';
 
 /**
  * One way to transcribe: the engine on this device or a cloud provider. The transcription module
@@ -78,6 +84,58 @@ export class CloudSpeechEngineProvider implements SpeechEngineProvider {
       { latency: options.latency ?? 'live' },
       options.cancel,
     );
+    return { recognizer, diarization: false };
+  }
+}
+
+export interface StreamingSpeechEngineProviderDeps extends CloudSpeechEngineProviderDeps {
+  /**
+   * The streaming provider of this kind, built when a live pass starts. Null when there is none
+   * to build: the live pass then arrives in pieces through `client`, like any other cloud engine.
+   */
+  readonly streaming: () => StreamingSpeechProvider | null;
+  /**
+   * The wait of a session's open timeout. Apart from `timer`, which paces the uploads: this one
+   * must really wait (a clock that resolves every wait at once would give a session up at once).
+   */
+  readonly streamingTimer: CloudSpeechTimer;
+}
+
+/**
+ * A cloud transcription engine whose live text is streamed. The profile of the pass picks the way
+ * the audio travels: a `live` pass opens one streaming session and hears the words as they are
+ * said; an `offline` pass (the pass after Stop, an imported file, a re-transcription) uploads the
+ * finished recording through the provider's `SpeechToTextClient`, with the pacing and retries of
+ * the cloud speech engine. Both report lost audio to the same `onLost`. Ready when the key is
+ * stored, like every cloud engine.
+ */
+export class StreamingSpeechEngineProvider implements SpeechEngineProvider {
+  /** The same provider as an engine that uploads: the offline profile, and the fallback. */
+  private readonly uploads: CloudSpeechEngineProvider;
+
+  constructor(private readonly deps: StreamingSpeechEngineProviderDeps) {
+    this.uploads = new CloudSpeechEngineProvider(deps);
+  }
+
+  get kind(): CloudTranscriptionKind {
+    return this.deps.kind;
+  }
+
+  isReady(): Promise<boolean> {
+    return this.uploads.isReady();
+  }
+
+  async create(options: CreateRecognizerOptions = {}): Promise<SessionRecognizer> {
+    if ((options.latency ?? 'live') !== 'live') return this.uploads.create(options);
+    const provider = this.deps.streaming();
+    if (provider === null) return this.uploads.create(options);
+    const { streamingTimer, onLost } = this.deps;
+    const engine = new StreamingSpeechEngine({
+      provider,
+      timer: streamingTimer,
+      ...(onLost ? { onLost } : {}),
+    });
+    const recognizer = await engine.createRecognizer({ latency: 'live' }, options.cancel);
     return { recognizer, diarization: false };
   }
 }

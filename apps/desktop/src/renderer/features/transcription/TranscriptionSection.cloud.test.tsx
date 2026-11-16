@@ -280,12 +280,17 @@ describe('TranscriptionSection: a cloud engine with its key', () => {
     });
   });
 
-  it('keeps a saved model the table does not list, by its id', async () => {
+  it('a saved model this engine does not list is not offered: the default is shown', async () => {
     installTranscriptionApi({ 'transcription.getStatus': () => groqReady });
-    mount(sectionProps({ keys: ['Groq'], cloudModel: 'distil-whisper-large-v3-en' }));
-    expect(await screen.findByRole('combobox', { name: 'Transcription model' })).toHaveTextContent(
-      'distil-whisper-large-v3-en',
-    );
+    // Saved while another engine was selected, or typed into the settings file.
+    mount(sectionProps({ keys: ['Groq'], cloudModel: 'nova-3' }));
+    const picker = await screen.findByRole('combobox', { name: 'Transcription model' });
+    expect(picker).toHaveTextContent('Whisper Large v3 Turbo');
+    await userEvent.click(picker);
+    expect((await screen.findAllByRole('option')).map((option) => option.textContent)).toEqual([
+      'Whisper Large v3 Turbo',
+      'Whisper Large v3',
+    ]);
   });
 
   it('says live captions arrive a few seconds late, and leaves the switch usable', async () => {
@@ -390,15 +395,16 @@ describe('TranscriptionSection: Deepgram, a provider that only transcribes', () 
     ]);
   });
 
-  it('offers Nova-3 as its one model', async () => {
+  it('names Nova-3 as its one model, with nothing to choose', async () => {
     installTranscriptionApi({ 'transcription.getStatus': () => deepgramReady });
-    mount(sectionProps({ keys: ['Deepgram'] }));
-    const picker = await screen.findByRole('combobox', { name: 'Transcription model' });
-    expect(picker).toHaveTextContent('Nova-3');
-    await userEvent.click(picker);
-    expect((await screen.findAllByRole('option')).map((option) => option.textContent)).toEqual([
-      'Nova-3',
-    ]);
+    // A model saved while Groq was the engine is not shown, and is not what Deepgram is asked for.
+    mount(sectionProps({ keys: ['Deepgram'], cloudModel: 'whisper-large-v3-turbo' }));
+    const setup = await screen.findByRole('group', { name: 'Deepgram setup' });
+    const row = within(setup).getByRole('group', { name: 'Transcription model' });
+    expect(row).toHaveTextContent('Nova-3');
+    expect(row).toHaveAccessibleDescription('The speech model Deepgram uses to transcribe.');
+    expect(within(setup).queryByRole('combobox')).toBeNull();
+    expect(within(setup).queryByText(/whisper/i)).toBeNull();
   });
 
   it('says live captions appear as you speak', async () => {
@@ -429,27 +435,19 @@ describe('TranscriptionSection: Deepgram, a provider that only transcribes', () 
     );
   });
 
-  it('while it cannot run yet, says so instead of asking for a key that is already saved', async () => {
-    installTranscriptionApi({
-      'transcription.getStatus': () => ({ ...deepgramNoKey, cloudNotReadyReason: 'unavailable' }),
-    });
-    mount(sectionProps({ keys: ['Deepgram'] }));
+  it('without its key the live switch asks for the key, and with it nothing is in the way', async () => {
+    installTranscriptionApi({ 'transcription.getStatus': () => deepgramNoKey });
+    mount();
     const live = await screen.findByRole('switch', { name: 'Live transcription during recording' });
     await waitFor(() => {
       expect(live).toHaveAttribute('aria-disabled', 'true');
     });
     expect(
       screen.getByRole('group', { name: 'Live transcription during recording' }),
-    ).toHaveAccessibleDescription(
-      'Deepgram cannot transcribe in this version yet. Choose another engine to record.',
-    );
+    ).toHaveAccessibleDescription('Add your Deepgram API key to use this.');
+    // The only notice in the setup is where the audio goes.
     const setup = screen.getByRole('group', { name: 'Deepgram setup' });
-    expect(
-      within(setup).getByText(
-        'Deepgram cannot transcribe in this version yet. Choose another engine to record.',
-      ),
-    ).toBeVisible();
-    expect(screen.queryByText('Add your Deepgram API key to use this.')).toBeNull();
+    expect(within(setup).queryByText(/cannot transcribe/)).toBeNull();
   });
 });
 

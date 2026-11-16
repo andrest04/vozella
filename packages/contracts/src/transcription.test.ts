@@ -26,11 +26,12 @@ describe('the transcription engine kinds', () => {
     }
   });
 
-  it('tells a cloud engine without its key from one that cannot run yet', () => {
-    expect(engineStatusSchema.shape.cloudNotReadyReason.unwrap().options).toEqual([
-      'key-missing',
-      'unavailable',
-    ]);
+  it('the only reason a cloud engine is not ready is its missing key', () => {
+    expect(engineStatusSchema.shape.cloudNotReadyReason.unwrap().options).toEqual(['key-missing']);
+    expect(engineStatusSchema.shape.cloudNotReadyReason.safeParse('unavailable').success).toBe(
+      false,
+    );
+    expect(engineStatusSchema.shape.cloudNotReadyReason.safeParse(null).success).toBe(true);
   });
 
   it('carries on the Settings page whether each cloud engine has its key', () => {

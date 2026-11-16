@@ -33,7 +33,7 @@ interface CloudTranscriptionEngineDeclaration {
   readonly kind: ApiProviderKind | TranscriptionProviderKind;
   readonly protocol: CloudTranscriptionProtocol;
   readonly liveText: CloudLiveText;
-  /** Suggestions for the model picker. The saved id may be any other. */
+  /** The models the app can ask this provider for. A saved id outside the list is not sent. */
   readonly models: readonly string[];
   /** The readable name of each suggested model, in the same order. */
   readonly modelNames: Readonly<Record<string, string>>;
@@ -85,9 +85,8 @@ export const CLOUD_TRANSCRIPTION_ENGINES = {
     protocol: 'openai-audio-transcriptions',
     liveText: 'pieces',
     // `whisper-1` is the only OpenAI model documented with word timestamps. OpenAI lists it as
-    // deprecated, with shutdown on 2027-02-26: before that date this row needs its successor. The
-    // saved model id is free text and a missing `words[]` falls back to segment times, so a user
-    // can move earlier than a release.
+    // deprecated, with shutdown on 2027-02-26: before that date this row needs its successor (a
+    // missing `words[]` already falls back to segment times). Only the ids listed here are sent.
     models: ['whisper-1'],
     modelNames: { 'whisper-1': 'Whisper' },
     defaultModel: 'whisper-1',
@@ -160,13 +159,18 @@ export const cloudTranscriptionBaseUrl = (
   settings: AppSettings,
 ): string | null => cloudTranscriptionProvider(kind).resolveBaseUrl(settings);
 
-/** The saved transcription model, trimmed, else the provider's default. */
+/**
+ * The model an engine is asked for: the saved one, trimmed, when this engine lists it, else the
+ * engine's default. One setting holds the model whatever engine is selected, so an id saved while
+ * another engine was in use (or one no engine lists) is never sent to this one.
+ */
 export function resolveCloudTranscriptionModel(
   kind: CloudTranscriptionKind,
   saved: string | null | undefined,
 ): string {
+  const engine: CloudTranscriptionEngineDeclaration = CLOUD_TRANSCRIPTION_ENGINES[kind];
   const model = saved?.trim() ?? '';
-  return model === '' ? CLOUD_TRANSCRIPTION_ENGINES[kind].defaultModel : model;
+  return engine.models.includes(model) ? model : engine.defaultModel;
 }
 
 /** The engine on this device (Nemotron): the default, and what a missing or unknown value means. */

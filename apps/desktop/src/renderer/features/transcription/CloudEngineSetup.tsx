@@ -93,7 +93,7 @@ function KeyGuide({
  * the one of the API engines of the summaries. For a provider that is also one of them it is the
  * same key, and the row says so; a provider that only transcribes has its own key, and the row
  * says it is used for nothing else. Models come from core's table: the list a Verify returns
- * leaves the speech models out.
+ * leaves the speech models out. A provider with one model shows its name, not a list of one.
  */
 export function CloudEngineSetup({
   kind,
@@ -102,19 +102,13 @@ export function CloudEngineSetup({
   savedModel,
   onModelChange,
   reveal = false,
-  unavailable = false,
 }: {
   /** The panel opened because the user just chose this engine: it fades in. */
   readonly reveal?: boolean;
-  /**
-   * TEMPORARY (deepgram-streaming-transcription T1): this version can select the engine but cannot
-   * run it yet. T3 removes the prop and its notice.
-   */
-  readonly unavailable?: boolean;
   readonly kind: CloudTranscriptionKind;
   readonly keySet: boolean;
   readonly keys: ApiKeyActions;
-  /** The saved model id; null is the provider's default. */
+  /** The saved model id; null, or one this engine does not list, is the provider's default. */
   readonly savedModel: string | null;
   readonly onModelChange: (model: string) => void;
 }): ReactNode {
@@ -123,10 +117,12 @@ export function CloudEngineSetup({
   const engine = CLOUD_TRANSCRIPTION_ENGINE_LIST.find((entry) => entry.kind === kind);
   if (!engine) return null;
 
+  // The model this engine is asked for: a saved id it does not list (one of another engine, for
+  // instance) resolves to its default, so what is shown is what is sent.
   const current = resolveCloudTranscriptionModel(kind, savedModel);
-  // A saved id the table does not list is kept and shown by its id.
-  const ids = engine.models.includes(current) ? engine.models : [current, ...engine.models];
-  const models = ids.map((id) => ({ value: id, label: engine.modelNames[id] ?? id }));
+  const models = engine.models.map((id) => ({ value: id, label: engine.modelNames[id] ?? id }));
+  // One model is nothing to choose: the row names it instead of offering a list of one.
+  const onlyModel = models.length === 1 ? models[0] : undefined;
 
   return (
     <div
@@ -138,7 +134,6 @@ export function CloudEngineSetup({
         reveal && 'animate-fade-in',
       )}
     >
-      {unavailable ? <Notice tone="warning">{t('Ui_CloudEngineUnavailable', name)}</Notice> : null}
       <Notice tone="info">{t('Ui_CloudAudioNotice', name)}</Notice>
       <div data-cloud-key>
         <ApiKeyField
@@ -154,17 +149,25 @@ export function CloudEngineSetup({
         />
       </div>
       <KeyGuide key={`${kind}-guide`} name={name} url={engine.keyPageUrl} keySet={keySet} />
-      <SettingRow title={t('Ui_CloudModelLabel')} description={t('Ui_CloudModelHelp', name)}>
-        <Select
-          label={t('Ui_CloudModelLabel')}
-          value={current}
-          options={models}
-          onValueChange={(next) => {
-            if (next !== current) onModelChange(next);
-          }}
-          testId="SelCloudModel"
-        />
-      </SettingRow>
+      {onlyModel ? (
+        <SettingRow title={t('Ui_CloudModelLabel')} description={t('Ui_CloudModelOnlyHelp', name)}>
+          <span data-testid="TxtCloudModel" className="text-ui-lg text-ink">
+            {onlyModel.label}
+          </span>
+        </SettingRow>
+      ) : (
+        <SettingRow title={t('Ui_CloudModelLabel')} description={t('Ui_CloudModelHelp', name)}>
+          <Select
+            label={t('Ui_CloudModelLabel')}
+            value={current}
+            options={models}
+            onValueChange={(next) => {
+              if (next !== current) onModelChange(next);
+            }}
+            testId="SelCloudModel"
+          />
+        </SettingRow>
+      )}
     </div>
   );
 }

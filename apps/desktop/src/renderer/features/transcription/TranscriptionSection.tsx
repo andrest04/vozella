@@ -101,10 +101,6 @@ export function TranscriptionSection({ page, model }: TranscriptionSectionProps)
   const cloud = isCloudTranscriptionKind(selected) ? selected : null;
   const cloudName = cloud ? t(KEY_PROVIDER_NAME_KEYS[cloud]) : '';
   const cloudKeySet = cloud !== null && page.transcriptionKeys[cloud];
-  // TEMPORARY (deepgram-streaming-transcription T1): an engine this version cannot run yet. The
-  // status of main is about the saved engine, so it only counts once the choice has settled.
-  const cloudUnavailable =
-    cloud !== null && status?.engine === cloud && status.cloudNotReadyReason === 'unavailable';
 
   // The recognizer snapshot only counts while it still matches the current settings.
   const speakerModelMissing =
@@ -253,7 +249,6 @@ export function TranscriptionSection({ page, model }: TranscriptionSectionProps)
           reveal={choseHere}
           kind={cloud}
           keySet={cloudKeySet}
-          unavailable={cloudUnavailable}
           keys={model}
           savedModel={page.settings.cloudTranscriptionModelId ?? null}
           onModelChange={(next) => {
@@ -330,7 +325,7 @@ export function TranscriptionSection({ page, model }: TranscriptionSectionProps)
         description={
           liveUnavailable
             ? cloud
-              ? t(cloudUnavailable ? 'Ui_CloudEngineUnavailable' : 'Ui_LiveNeedsKey', cloudName)
+              ? t('Ui_LiveNeedsKey', cloudName)
               : t('Ui_LiveNeedsEngine')
             : cloud
               ? t(LIVE_TEXT_KEYS[CLOUD_TRANSCRIPTION_ENGINES[cloud].liveText].live, cloudName)

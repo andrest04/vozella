@@ -33,7 +33,11 @@ export interface CloudSpeechToTextDeps {
 export interface CloudSpeechToTextChoice {
   readonly kind: CloudTranscriptionKind;
   readonly settings: AppSettings;
-  /** The saved transcription model; null or blank uses the provider's default. */
+  /**
+   * The saved transcription model. It is used only when this engine lists it: one setting holds
+   * the model of whichever engine was selected when it was saved, so anything else (null, blank, a
+   * model of another provider) is the default of this one.
+   */
   readonly model?: string | null;
 }
 

@@ -2,7 +2,7 @@ import { isApiProvider } from '../library/settings';
 import { API_ENGINES } from '../settings/api-providers';
 import { CLI_ENGINES } from '../settings/cli-providers';
 import {
-  cloudTranscriptionApiEngine,
+  cloudTranscriptionProvider,
   isCloudTranscriptionKind,
 } from '../settings/cloud-transcription-engines';
 import { findSummaryModel } from '../settings/summary-models';
@@ -65,7 +65,11 @@ export function summaryCaption(provider: SetupFacts['provider'], modelId: string
 const statusRef = (ready: boolean): TextRef =>
   ref(ready ? 'RecordingSetup_Ready' : 'RecordingSetup_NeedsSetup');
 
-/** The engine card. A cloud engine without its key says which provider needs one. */
+/**
+ * The engine card. The only thing a cloud engine can be missing is the key of its provider (an
+ * API engine, or one that only transcribes), so one that is not ready says which provider needs
+ * one; with the key stored it is ready like the engine on this PC.
+ */
 function engineCard(facts: SetupFacts, readiness: Readiness): SetupCard {
   const card: SetupCard = {
     headerKey: 'RecordingSetup_Engine.Header',
@@ -77,7 +81,7 @@ function engineCard(facts: SetupFacts, readiness: Readiness): SetupCard {
   if (readiness.engineReady || !isCloudTranscriptionKind(engine)) return card;
   return {
     ...card,
-    detail: ref('Ui_ApiKeyMissing', cloudTranscriptionApiEngine(engine).displayName),
+    detail: ref('Ui_ApiKeyMissing', cloudTranscriptionProvider(engine).displayName),
     reason: 'key-missing',
   };
 }

@@ -66,10 +66,10 @@ export const engineStatusSchema = z.object({
   /** The engine the settings select. The fields below it describe the local engine only. */
   engine: transcriptionEngineKindSchema,
   /**
-   * Why a cloud engine is not ready. Null for the local engine and for a ready cloud engine.
-   * `unavailable` is an engine this version can select but cannot run yet, key or no key.
+   * Why a cloud engine is not ready. Null for the local engine and for a ready cloud engine. The
+   * only thing a cloud engine can be missing is the key of its provider.
    */
-  cloudNotReadyReason: z.enum(['key-missing', 'unavailable']).nullable(),
+  cloudNotReadyReason: z.enum(['key-missing']).nullable(),
   modelInstalled: z.boolean(),
   runtimes: z.object({ cpu: z.boolean(), cuda: z.boolean() }),
   speakerModelInstalled: z.boolean(),

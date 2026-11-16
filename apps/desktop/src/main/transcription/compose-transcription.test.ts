@@ -14,9 +14,15 @@ import {
   type HardwareProbe,
   type TranslateFn,
 } from '@vozella/core';
-import { FakeApiKeyStore, FakeFetch, type LibraryRuntime } from '@vozella/platform';
+import {
+  FakeApiKeyStore,
+  FakeFetch,
+  ScriptedLiveSockets,
+  type LibraryRuntime,
+} from '@vozella/platform';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import { recordingIpc, requestChannelsWithPrefix, silentLogger } from '../compose-test-kit';
+import type { AudioPushEvent } from '../workers/audio-worker-host';
 import { composeTranscription, type ComposeTranscriptionDeps } from './compose-transcription';
 
 function compose(overrides: Partial<ComposeTranscriptionDeps> = {}) {
@@ -223,7 +229,7 @@ describe('composeTranscription: cloud transcription engines', () => {
       ready: false,
       cloudNotReadyReason: 'key-missing',
     });
-    // Deepgram has no adapter yet: with or without its key it cannot run (temporary, T3).
+    // An engine that only transcribes follows its key the same way.
     const deepgram = compose({
       library: await cloudLibrary({ transcriptionEngine: 'Deepgram' }),
       fakeNative: true,
@@ -231,7 +237,7 @@ describe('composeTranscription: cloud transcription engines', () => {
     expect(await deepgram.controller.status()).toMatchObject({
       engine: 'Deepgram',
       ready: false,
-      cloudNotReadyReason: 'unavailable',
+      cloudNotReadyReason: 'key-missing',
     });
     const local = compose({ library: await cloudLibrary({}), fakeNative: true });
     expect(await local.controller.status()).toMatchObject({
@@ -272,6 +278,166 @@ describe('composeTranscription: cloud transcription engines', () => {
     expect(call?.headers.authorization).toBe('Bearer gsk-stored-key');
     expect(call?.form?.get('model')).toBe('whisper-large-v3');
     expect(call?.form?.get('language')).toBe('es');
+  });
+
+  /** The capture's push events, so a test can feed the live pass recording frames. */
+  function recordingAudio() {
+    const listeners = new Set<(event: AudioPushEvent) => void>();
+    return {
+      audio: {
+        onPush: (listener: (event: AudioPushEvent) => void) => {
+          listeners.add(listener);
+          return () => listeners.delete(listener);
+        },
+      },
+      /** One second of mixed audio as the capture sends it: PCM16 at 16 kHz in 200 ms frames. */
+      async second(): Promise<void> {
+        for (let i = 0; i < 5; i += 1) {
+          const pcm = new Uint8Array(new Int16Array(3_200).fill(8_000).buffer);
+          for (const listener of listeners) listener({ type: 'recording-frame', pcm });
+          for (let turn = 0; turn < 60; turn += 1) await Promise.resolve();
+        }
+      },
+    };
+  }
+
+  it('fake native: a streaming engine hears the fake session live and the fake client after Stop', async () => {
+    const fake = new FakeFetch({ networkError: true });
+    const sockets = new ScriptedLiveSockets();
+    const { audio, second } = recordingAudio();
+    const updates: { displayText: string; committedText: string }[] = [];
+    const { controller } = compose({
+      library: await cloudLibrary({ transcriptionEngine: 'Deepgram' }),
+      apiKeys: new FakeApiKeyStore({ Deepgram: 'dg-fake' }),
+      fakeNative: true,
+      env: { VOZELLA_FAKE_ASR_PHRASES: 'uno dos tres cuatro' },
+      fetch: fake.fetch,
+      socket: sockets.factory,
+      audio,
+      broadcast: (channel, payload) => {
+        if (channel.name === 'transcription.liveUpdate') updates.push(payload as never);
+      },
+    });
+    expect(await controller.status()).toMatchObject({ engine: 'Deepgram', ready: true });
+    await controller.startLive(null);
+    await second();
+    await second();
+    // Word by word: the text on screen grows before any of it is committed.
+    expect(updates[0]?.committedText).toBe('');
+    expect(updates.length).toBeGreaterThan(1);
+    const draft = await controller.stopLive();
+    expect(draft).toMatch(/^\[00:00\.00-00:01\.90\] \S+ \S+ \S+ \S+$/);
+    expect(controller.liveDraftIsFinal).toBe(true);
+    // An imported file goes to the fake upload client. Neither opened a connection.
+    const text = await controller.transcribeFile({ audioPath: wav, recordedAtMs: null });
+    expect(text).toMatch(/^\[00:00\.00-00:01\.90\] \S+ \S+ \S+ \S+$/);
+    expect(fake.calls).toHaveLength(0);
+    expect(sockets.sockets).toHaveLength(0);
+  });
+
+  it('fake native: the session failure the environment asks for stops the live text with its reason', async () => {
+    const { audio, second } = recordingAudio();
+    const { controller } = compose({
+      library: await cloudLibrary({ transcriptionEngine: 'Deepgram' }),
+      apiKeys: new FakeApiKeyStore({ Deepgram: 'dg-fake' }),
+      fakeNative: true,
+      env: { VOZELLA_FAKE_STREAM_FAIL: 'KeyInvalid' },
+      audio,
+      translate: (key, ...args) => [key, ...args.map(String)].join('|'),
+    });
+    const reasons: string[] = [];
+    controller.onLiveFailure((reason) => reasons.push(reason));
+    await controller.startLive(null);
+    await second();
+    expect(reasons).toEqual(['Ui_ApiKeyInvalid|Fake streaming speech']);
+    expect(await controller.stopLive()).toBe('');
+    expect(controller.liveDraftIsFinal).toBe(false);
+  });
+
+  it('the app: a streaming engine opens one live session with the stored key and its own model', async () => {
+    const sockets = new ScriptedLiveSockets();
+    const fake = new FakeFetch({ networkError: true });
+    const { audio, second } = recordingAudio();
+    const { controller } = compose({
+      library: await cloudLibrary({
+        transcriptionEngine: 'Deepgram',
+        // Saved while Groq was the engine: it must not reach Deepgram.
+        cloudTranscriptionModelId: 'whisper-large-v3-turbo',
+        transcriptionLanguage: 'es',
+      }),
+      apiKeys: new FakeApiKeyStore({ Deepgram: 'dg-stored-key' }),
+      fakeNative: false,
+      fetch: fake.fetch,
+      socket: sockets.factory,
+      audio,
+    });
+    await controller.startLive(null);
+    await second();
+    expect(sockets.sockets).toHaveLength(1);
+    const socket = sockets.sockets[0];
+    const url = new URL(socket?.url ?? '');
+    expect(url.origin + url.pathname).toBe('wss://api.deepgram.com/v1/listen');
+    expect(url.searchParams.get('model')).toBe('nova-3');
+    expect(url.searchParams.get('sample_rate')).toBe('16000');
+    expect(socket?.headers).toEqual({ Authorization: 'Token dg-stored-key' });
+    // The audio that waited for the open goes out as soon as the session takes it.
+    socket?.open();
+    expect(socket?.sentAudio.length).toBeGreaterThan(0);
+    // Nothing is uploaded while the take records.
+    expect(fake.calls).toHaveLength(0);
+    const stopping = controller.stopLive();
+    await vi.waitFor(() => {
+      expect(socket?.sentTypes).toContain('CloseStream');
+    });
+    socket?.serverClose(1000);
+    await stopping;
+    expect(fake.calls).toHaveLength(0);
+  });
+
+  it('the app: a streaming engine uploads a finished recording to the prerecorded endpoint', async () => {
+    const sockets = new ScriptedLiveSockets();
+    const fake = new FakeFetch({
+      chunks: [
+        JSON.stringify({
+          metadata: { duration: 2 },
+          results: {
+            channels: [
+              {
+                alternatives: [
+                  {
+                    transcript: 'Hola a todos.',
+                    words: [
+                      { word: 'hola', start: 0.1, end: 0.4, punctuated_word: 'Hola' },
+                      { word: 'a', start: 0.5, end: 0.6, punctuated_word: 'a' },
+                      { word: 'todos', start: 0.7, end: 1.4, punctuated_word: 'todos.' },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        }),
+      ],
+    });
+    const { controller } = compose({
+      library: await cloudLibrary({
+        transcriptionEngine: 'Deepgram',
+        cloudTranscriptionModelId: 'whisper-large-v3-turbo',
+        transcriptionLanguage: 'es',
+      }),
+      apiKeys: new FakeApiKeyStore({ Deepgram: 'dg-stored-key' }),
+      fakeNative: false,
+      fetch: fake.fetch,
+      socket: sockets.factory,
+    });
+    const text = await controller.transcribeFile({ audioPath: wav, recordedAtMs: null });
+    expect(text).toBe('[00:00.10-00:01.40] Hola a todos.');
+    expect(fake.calls).toHaveLength(1);
+    const url = new URL(fake.calls[0]?.url ?? '');
+    expect(url.origin + url.pathname).toBe('https://api.deepgram.com/v1/listen');
+    expect(url.searchParams.get('model')).toBe('nova-3');
+    expect(fake.calls[0]?.headers.authorization).toBe('Token dg-stored-key');
+    expect(sockets.sockets).toHaveLength(0);
   });
 
   it('the app: an API failure is worded with its own sentence, other failures as before', async () => {
