@@ -1,5 +1,11 @@
 import { requestChannels, type RequestName } from '@vozella/contracts';
-import type { Logger } from '@vozella/core';
+import type { ApiKeyStore, Logger } from '@vozella/core';
+import {
+  FakeApiKeyStore,
+  FakeFetch,
+  TranscriptionProviderKeys,
+  type FakeHttpReply,
+} from '@vozella/platform';
 import { describe, expect, it, vi } from 'vitest';
 import type { IpcEventLike } from '../security/trusted-origin';
 import type { TranscriptionController } from '../transcription/transcription-controller';
@@ -28,7 +34,9 @@ const status = {
   installing: null,
 };
 
-function setup(trusted = true) {
+function setup(trusted = true, reply: FakeHttpReply = {}) {
+  const store: ApiKeyStore = new FakeApiKeyStore();
+  const fetch = new FakeFetch(reply);
   const handlers = new Map<string, (event: never, ...args: unknown[]) => unknown>();
   const ipc: IpcMainLike = { handle: (name, listener) => void handlers.set(name, listener) };
   const controller = {
@@ -51,17 +59,19 @@ function setup(trusted = true) {
       lastResults: [{ meetingId: 'm1', outcome: 'Failed' as const, message: 'boom' }],
     })),
     retranscription: { isRunning: false, meetingId: null, status: '' },
+    refreshStatus: vi.fn(() => Promise.resolve()),
   };
   registerTranscriptionHandlers({
     server: { ipc, logger: logger(), isTrusted: () => trusted },
     controller: controller as unknown as TranscriptionController,
+    providerKeys: new TranscriptionProviderKeys({ keys: store, fetch: fetch.fetch }),
   });
   const call = async (name: RequestName, input: unknown): Promise<unknown> => {
     const handler = handlers.get(name);
     if (!handler) throw new Error(`no handler for ${name}`);
     return handler(event as never, input);
   };
-  return { call, controller, handlers };
+  return { call, controller, handlers, store, fetch };
 }
 
 describe('transcription handlers', () => {
@@ -142,6 +152,54 @@ describe('transcription handlers', () => {
     expect(await call('retranscription.dismiss', { meetingId: '' })).toMatchObject({ ok: false });
   });
 
+  it('saves and removes the key of a transcription-only provider, and publishes the status after each', async () => {
+    const { call, controller, store } = setup();
+    const secret = 'dg-secret-key-123';
+    const saved = await call('transcription.setProviderKey', { kind: 'Deepgram', key: secret });
+    expect(saved).toEqual({ ok: true, value: { status: 'saved', keySet: true } });
+    expect(JSON.stringify(saved)).not.toContain(secret);
+    expect(await store.get('Deepgram')).toBe(secret);
+    expect(controller.refreshStatus).toHaveBeenCalledTimes(1);
+
+    const cleared = await call('transcription.clearProviderKey', { kind: 'Deepgram' });
+    expect(cleared).toEqual({ ok: true, value: { status: 'saved', keySet: false } });
+    expect(await store.has('Deepgram')).toBe(false);
+    expect(controller.refreshStatus).toHaveBeenCalledTimes(2);
+  });
+
+  it('verifies the saved key against the provider without changing anything', async () => {
+    const accepted = setup(true, { chunks: ['{"projects":[]}'] });
+    await accepted.store.set('Deepgram', 'dg-key');
+    expect(await accepted.call('transcription.verifyProviderKey', { kind: 'Deepgram' })).toEqual({
+      ok: true,
+      value: { status: 'verified' },
+    });
+    expect(accepted.fetch.calls.map((request) => request.url)).toEqual([
+      'https://api.deepgram.com/v1/projects',
+    ]);
+    expect(accepted.controller.refreshStatus).not.toHaveBeenCalled();
+
+    const refused = setup(true, { status: 401 });
+    await refused.store.set('Deepgram', 'dg-wrong');
+    expect(await refused.call('transcription.verifyProviderKey', { kind: 'Deepgram' })).toEqual({
+      ok: true,
+      value: { status: 'failed', errorKey: 'Ui_ApiKeyInvalid' },
+    });
+  });
+
+  it('takes no API engine on the provider key channels', async () => {
+    const { call, store, controller } = setup();
+    for (const kind of ['Groq', 'OpenAi', 'Local']) {
+      expect(await call('transcription.setProviderKey', { kind, key: 'k' })).toMatchObject({
+        ok: false,
+      });
+      expect(await call('transcription.clearProviderKey', { kind })).toMatchObject({ ok: false });
+      expect(await call('transcription.verifyProviderKey', { kind })).toMatchObject({ ok: false });
+    }
+    expect(await store.has('Groq')).toBe(false);
+    expect(controller.refreshStatus).not.toHaveBeenCalled();
+  });
+
   it('refuses an untrusted sender', async () => {
     const { call, controller } = setup(false);
     expect(await call('transcription.deleteEngine', {})).toMatchObject({
@@ -149,5 +207,13 @@ describe('transcription handlers', () => {
       error: { code: 'untrusted-sender' },
     });
     expect(controller.deleteEngine).not.toHaveBeenCalled();
+  });
+
+  it('an untrusted sender cannot save a key', async () => {
+    const { call, store } = setup(false);
+    expect(
+      await call('transcription.setProviderKey', { kind: 'Deepgram', key: 'dg-key' }),
+    ).toMatchObject({ ok: false, error: { code: 'untrusted-sender' } });
+    expect(await store.has('Deepgram')).toBe(false);
   });
 });

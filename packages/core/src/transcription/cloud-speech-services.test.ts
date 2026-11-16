@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CancelSource, type CancelSignal } from '../cancel';
-import type { ApiProviderKind } from '../settings/api-engine-table';
+import type { ApiKeyKind } from '../api-keys/api-key-store';
 import { ApiProviderError } from '../summaries/api-failure';
 import { AsrBackendStatus } from './backend-status';
 import { CLOUD_LIVE_CHUNK_TARGET_MS } from './cloud-speech-engine';
@@ -27,7 +27,7 @@ import {
 const RATE = 16_000;
 const seconds = (count: number): Float32Array => new Float32Array(count * RATE).fill(0.25);
 
-function cloud(keys: readonly ApiProviderKind[] = ['Groq']) {
+function cloud(keys: readonly ApiKeyKind[] = ['Groq']) {
   const client = new ScriptedSpeechToTextClient();
   const timer = new FakeSpeechTimer();
   const lost: unknown[] = [];

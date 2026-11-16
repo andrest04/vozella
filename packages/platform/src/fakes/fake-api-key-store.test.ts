@@ -12,3 +12,15 @@ describe('FakeApiKeyStore', () => {
     expect(await store.get('Anthropic')).toBeNull();
   });
 });
+
+describe('FakeApiKeyStore with a transcription-only provider', () => {
+  it('holds the key of every kind the key store takes', async () => {
+    const store = new FakeApiKeyStore({ Deepgram: 'd', Groq: 'g' });
+    expect(await store.get('Deepgram')).toBe('d');
+    await store.set('Deepgram', ' d2 ');
+    expect(await store.get('Deepgram')).toBe('d2');
+    await store.delete('Deepgram');
+    expect(await store.has('Deepgram')).toBe(false);
+    expect(await store.get('Groq')).toBe('g');
+  });
+});

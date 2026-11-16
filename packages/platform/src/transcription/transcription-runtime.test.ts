@@ -1,4 +1,5 @@
 import {
+  ApiProviderError,
   CancelSource,
   FakeAsrEngine,
   FakeAudioReader,
@@ -6,15 +7,25 @@ import {
   FakeRuntimeStore,
   FakeSpeechTimer,
   InMemorySettingsStore,
+  ManualSpeechTimer,
+  ScriptedStreamingSpeechProvider,
+  STREAMING_OPEN_TIMEOUT_MS,
+  type ApiKeyStore,
   type AppSettings,
   type CancelSignal,
   type CloudTranscriptionKind,
   type Logger,
+  type StreamingSpeechProvider,
 } from '@vozella/core';
 import { describe, expect, it, vi } from 'vitest';
 import { FakeApiKeyStore } from '../fakes/fake-api-key-store';
 import { FakeSpeechToTextClient } from '../fakes/fake-speech-to-text-client';
-import { systemSpeechTimer, TranscriptionRuntime } from './transcription-runtime';
+import { FakeStreamingSpeechProvider } from '../fakes/fake-streaming-speech-provider';
+import {
+  systemSpeechTimer,
+  TranscriptionRuntime,
+  type LiveTranscriptionFailure,
+} from './transcription-runtime';
 
 const RATE = 16_000;
 const logger: Logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
@@ -126,6 +137,212 @@ describe('TranscriptionRuntime: the selected engine', () => {
     expect(text).toBe('[00:00.00-00:00.90] uno dos');
     expect(engine.recognizers).toHaveLength(0);
     expect(runtime.live.lastDraftIsComplete).toBe(true);
+  });
+});
+
+describe('TranscriptionRuntime: an engine whose live text is streamed', () => {
+  /** Deepgram selected with its key, and a streaming provider the test chooses. */
+  async function streamingRuntime(
+    options: {
+      streaming?: StreamingSpeechProvider | null;
+      key?: boolean;
+      audioSeconds?: number;
+    } = {},
+  ) {
+    const engine = new FakeAsrEngine();
+    const settings = new InMemorySettingsStore();
+    await settings.update({ transcriptionEngine: 'Deepgram' });
+    const keys: ApiKeyStore = new FakeApiKeyStore();
+    if (options.key !== false) await keys.set('Deepgram', 'dg-test');
+    const clients: { kind: CloudTranscriptionKind; client: FakeSpeechToTextClient }[] = [];
+    const asked: CloudTranscriptionKind[] = [];
+    const streaming =
+      options.streaming === undefined
+        ? new FakeStreamingSpeechProvider({ phrases: ['uno dos tres cuatro'] })
+        : options.streaming;
+    // The uploads are paced on a clock that never sleeps. The streaming engine never takes it.
+    const timer = new FakeSpeechTimer();
+    const streamingTimer = new ManualSpeechTimer();
+    const runtime = new TranscriptionRuntime({
+      transcriptionModelsDirectory: 'unused',
+      nemoSpeechDirectory: 'unused',
+      engine,
+      hardware: () => Promise.resolve({ gpuName: null }),
+      logger,
+      audio: new FakeAudioReader(new Float32Array((options.audioSeconds ?? 2) * RATE).fill(0.25)),
+      stores: { models: new FakeModelStore(), runtimes: new FakeRuntimeStore() },
+      settings,
+      cloud: {
+        keys,
+        client: (kind) => {
+          const client = new FakeSpeechToTextClient({ phrases: ['alfa beta gamma delta'] });
+          clients.push({ kind, client });
+          return client;
+        },
+        streaming: (kind) => {
+          asked.push(kind);
+          return streaming;
+        },
+        timer,
+        streamingTimer,
+      },
+    });
+    const failures: LiveTranscriptionFailure[] = [];
+    runtime.onLiveFailure((failure) => failures.push(failure));
+    return { runtime, engine, settings, keys, clients, asked, failures, timer, streamingTimer };
+  }
+
+  const startLive = (runtime: TranscriptionRuntime) =>
+    runtime.live.start({ language: 'es', recordedAtMs: null, speakerDiarization: false });
+
+  it('is ready with its key and nothing else, like every cloud engine', async () => {
+    const { runtime, keys, asked, clients } = await streamingRuntime({ key: false });
+    const engine = await runtime.engine();
+    expect(engine.kind).toBe('Deepgram');
+    expect(await engine.isReady()).toBe(false);
+    await keys.set('Groq', 'gsk-other');
+    expect(await engine.isReady()).toBe(false);
+    await keys.set('Deepgram', 'dg-test');
+    expect(await (await runtime.engine()).isReady()).toBe(true);
+    // Asking is free: nothing is built, opened or uploaded until a pass starts.
+    expect(asked).toEqual([]);
+    expect(clients).toEqual([]);
+  });
+
+  it('a live pass is one streaming session: interim text rewrites, finals commit, nothing is uploaded', async () => {
+    const { runtime, clients, asked, engine } = await streamingRuntime();
+    const updates: { displayText: string; committedText: string }[] = [];
+    runtime.live.onTranscriptUpdated((update) => updates.push(update));
+    await startLive(runtime);
+    for (let i = 0; i < 5; i += 1) {
+      runtime.live.pushFrame(new Float32Array(RATE / 2).fill(0.25), RATE);
+    }
+    await vi.waitFor(() => {
+      expect(updates.at(-1)?.committedText).toBe('[00:00.00-00:01.90] uno dos tres cuatro');
+    });
+    // Before the phrase ended its words were on screen and not yet committed.
+    const rewriting = updates.find((update) => update.displayText.endsWith('uno dos'));
+    expect(rewriting?.committedText).toBe('');
+    const text = await runtime.live.stop();
+    expect(text).toBe('[00:00.00-00:01.90] uno dos tres cuatro\n[00:02.00-00:02.40] uno');
+    // Nothing was lost, so the draft is the transcript and the pass after Stop can be skipped.
+    expect(runtime.live.lastDraftIsComplete).toBe(true);
+    expect(runtime.status.lastLiveDrops).toEqual({ droppedMs: 0, totalMs: 2_500 });
+    expect(asked).toEqual(['Deepgram']);
+    expect(clients).toEqual([]);
+    expect(engine.recognizers).toHaveLength(0);
+  });
+
+  it('the pass after Stop and an imported file upload the recording, with no session', async () => {
+    const { runtime, clients, asked, engine } = await streamingRuntime();
+    expect(await offline(runtime)).toBe('[00:00.00-00:01.90] alfa beta gamma delta');
+    expect(clients.map((entry) => entry.kind)).toEqual(['Deepgram']);
+    expect(clients[0]?.client.requests).toHaveLength(1);
+    expect(asked).toEqual([]);
+    expect(engine.recognizers).toHaveLength(0);
+  });
+
+  it('a key the provider refuses reaches the live failure listeners, and the take keeps recording', async () => {
+    const { runtime, failures } = await streamingRuntime({
+      streaming: new FakeStreamingSpeechProvider({ failWith: 'KeyInvalid' }),
+    });
+    await startLive(runtime);
+    runtime.live.pushFrame(new Float32Array(RATE).fill(0.25), RATE);
+    await vi.waitFor(() => {
+      expect(failures).toHaveLength(1);
+    });
+    expect(failures[0]).toMatchObject({ engine: 'Deepgram', error: { kind: 'KeyInvalid' } });
+    // The session is over, the live pass is not: later audio is taken and counted as lost.
+    expect(runtime.live.isRunning).toBe(true);
+    runtime.live.pushFrame(new Float32Array(RATE).fill(0.25), RATE);
+    expect(await runtime.live.stop()).toBe('');
+    expect(failures).toHaveLength(1);
+    expect(runtime.live.lastDraftIsComplete).toBe(false);
+    expect(runtime.status.lastLiveDrops).toEqual({ droppedMs: 2_000, totalMs: 2_000 });
+  });
+
+  it('an account without credit is told the same way', async () => {
+    const { runtime, failures } = await streamingRuntime({
+      streaming: new FakeStreamingSpeechProvider({ failWith: 'QuotaExceeded' }),
+    });
+    await startLive(runtime);
+    runtime.live.pushFrame(new Float32Array(RATE).fill(0.25), RATE);
+    await runtime.live.stop();
+    expect(failures).toMatchObject([{ engine: 'Deepgram', error: { kind: 'QuotaExceeded' } }]);
+  });
+
+  it('a connection that drops mid-recording says nothing, counts the lost audio, and the pass after Stop uploads', async () => {
+    const provider = new ScriptedStreamingSpeechProvider();
+    const { runtime, failures, clients } = await streamingRuntime({ streaming: provider });
+    await startLive(runtime);
+    runtime.live.pushFrame(new Float32Array(RATE).fill(0.25), RATE);
+    await vi.waitFor(() => {
+      expect(provider.sessions).toHaveLength(1);
+    });
+    const session = provider.sessions[0];
+    if (session === undefined) throw new Error('no session was opened');
+    session.listener.opened();
+    session.listener.final({
+      text: 'uno dos',
+      words: [
+        { text: 'uno', startMs: 0, endMs: 400 },
+        { text: 'dos', startMs: 500, endMs: 900 },
+      ],
+      processedMs: 1_000,
+    });
+    // One more second reaches the provider, and then the connection is gone.
+    runtime.live.pushFrame(new Float32Array(RATE).fill(0.25), RATE);
+    await vi.waitFor(() => {
+      expect(session.sentSamples).toBe(2 * RATE);
+    });
+    session.listener.closed(new ApiProviderError('Scripted', 'Network'));
+    expect(runtime.live.isRunning).toBe(true);
+    runtime.live.pushFrame(new Float32Array(RATE).fill(0.25), RATE);
+
+    expect(await runtime.live.stop()).toBe('[00:00.00-00:00.90] uno dos');
+    // No notice: waiting may fix a network, and the pass after Stop covers the gap.
+    expect(failures).toEqual([]);
+    expect(runtime.live.lastDraftIsComplete).toBe(false);
+    expect(runtime.status.lastLiveDrops).toEqual({ droppedMs: 2_000, totalMs: 3_000 });
+    expect(clients).toEqual([]);
+    expect(await offline(runtime)).toBe('[00:00.00-00:01.90] alfa beta gamma delta');
+    expect(clients.map((entry) => entry.kind)).toEqual(['Deepgram']);
+  });
+
+  it('a session that never opens is given up on the streaming timer, whatever clock paces the uploads', async () => {
+    const provider = new ScriptedStreamingSpeechProvider();
+    const { runtime, streamingTimer, failures } = await streamingRuntime({ streaming: provider });
+    await startLive(runtime);
+    runtime.live.pushFrame(new Float32Array(RATE).fill(0.25), RATE);
+    await vi.waitFor(() => {
+      expect(provider.sessions).toHaveLength(1);
+    });
+    // The upload clock resolves every wait at once; the session is still being waited for.
+    expect(provider.sessions[0]?.closed).toBe(false);
+    await streamingTimer.advance(STREAMING_OPEN_TIMEOUT_MS);
+    expect(provider.sessions[0]?.closed).toBe(true);
+    await runtime.live.stop();
+    expect(failures).toEqual([]);
+    expect(runtime.live.lastDraftIsComplete).toBe(false);
+  });
+
+  it('with no streaming provider to build, its live text arrives in pieces through the client', async () => {
+    const { runtime, clients } = await streamingRuntime({ streaming: null });
+    await startLive(runtime);
+    runtime.live.pushFrame(new Float32Array(RATE).fill(0.25), RATE);
+    expect(await runtime.live.stop()).toBe('[00:00.00-00:00.90] alfa beta');
+    expect(clients.map((entry) => entry.kind)).toEqual(['Deepgram']);
+  });
+
+  it('an engine whose live text comes in pieces is never asked for a streaming provider', async () => {
+    const { runtime, settings, keys, asked, clients } = await streamingRuntime();
+    await keys.set('Groq', 'gsk-test');
+    await settings.update({ transcriptionEngine: 'Groq' });
+    await startLive(runtime);
+    runtime.live.pushFrame(new Float32Array(RATE).fill(0.25), RATE);
+    await runtime.live.stop();
+    expect(asked).toEqual([]);
+    expect(clients.map((entry) => entry.kind)).toEqual(['Groq']);
   });
 });
 

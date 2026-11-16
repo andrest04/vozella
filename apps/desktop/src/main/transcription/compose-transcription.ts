@@ -13,15 +13,22 @@ import {
 } from '@vozella/core';
 import {
   createCloudSpeechToTextClient,
+  createStreamingSpeechProvider,
   fakeAsrPhrasesFromEnv,
   fakeEngineOptionsFromEnv,
+  FakeFetch,
   FakeSpeechEngine,
   FakeSpeechToTextClient,
   fakeSpeechToTextOptionsFromEnv,
+  FakeStreamingSpeechProvider,
+  fakeStreamingSpeechOptionsFromEnv,
   SteppedModelStore,
   SteppedRuntimeStore,
+  systemSpeechTimer,
+  TranscriptionProviderKeys,
   TranscriptionRuntime,
   type LibraryRuntime,
+  type LiveSocketFactory,
   liveRepository,
 } from '@vozella/platform';
 import type { Broadcast } from '../ipc/library-handlers';
@@ -42,11 +49,14 @@ export interface ComposeTranscriptionDeps {
   readonly env: NodeJS.ProcessEnv;
   /**
    * The app's API key store. A cloud transcription engine uses the key saved for its provider and
-   * is ready when that key is stored.
+   * is ready when that key is stored. The keys of the providers that only transcribe are saved
+   * and removed here too, since no other module knows those providers.
    */
-  readonly apiKeys: Pick<ApiKeyStore, 'has' | 'get'>;
-  /** Tests replace it; the cloud engines use the global `fetch`. */
+  readonly apiKeys: ApiKeyStore;
+  /** Tests replace it; the cloud engines and the key check use the global `fetch`. */
   readonly fetch?: typeof fetch;
+  /** Tests replace it; the live session of a streaming engine uses the runtime's `WebSocket`. */
+  readonly socket?: LiveSocketFactory;
   readonly hardware: HardwareProbe;
   /** The audio worker's push events; recording frames feed the live pass. */
   readonly audio: { onPush(listener: (event: AudioPushEvent) => void): () => void };
@@ -87,12 +97,35 @@ export function composeTranscription(deps: ComposeTranscriptionDeps): Transcript
     settings: library.settings,
     cloud: {
       keys: deps.apiKeys,
-      // The fake native build never opens a connection: its cloud engines hear a script.
+      // The fake native build never opens a connection: its cloud engines hear a script. The
+      // saved model is one setting for every engine; the factory keeps it only for an engine
+      // that lists it, so a model saved for one provider never reaches another.
       client: (kind, settings) =>
         deps.fakeNative
           ? new FakeSpeechToTextClient(fakeSpeechToTextOptionsFromEnv(deps.env))
           : createCloudSpeechToTextClient(
               { keys: deps.apiKeys, ...(deps.fetch ? { fetch: deps.fetch } : {}) },
+              { kind, settings, model: settings.cloudTranscriptionModelId },
+            ),
+      // The live session of an engine that streams. The runtime asks only for such an engine (the
+      // engine table says which), so the fake build answers every ask with its scripted session.
+      // Both wait in real time: the fake's delay, and the adapter's KeepAlive while it is silent.
+      streaming: (kind, settings) =>
+        deps.fakeNative
+          ? new FakeStreamingSpeechProvider(
+              {
+                ...fakeStreamingSpeechOptionsFromEnv(deps.env),
+                phrases: fakeAsrPhrasesFromEnv(deps.env),
+              },
+              systemSpeechTimer,
+            )
+          : createStreamingSpeechProvider(
+              {
+                keys: deps.apiKeys,
+                timer: systemSpeechTimer,
+                ...(deps.fetch ? { fetch: deps.fetch } : {}),
+                ...(deps.socket ? { socket: deps.socket } : {}),
+              },
               { kind, settings, model: settings.cloudTranscriptionModelId },
             ),
     },
@@ -134,7 +167,19 @@ export function composeTranscription(deps: ComposeTranscriptionDeps): Transcript
     formatFailure: (error) =>
       isApiProviderError(error) ? formatFailure(error, deps.translate) : deps.formatFailure(error),
   });
-  registerTranscriptionHandlers({ server: deps.server, controller: transcriptionController });
+  registerTranscriptionHandlers({
+    server: deps.server,
+    controller: transcriptionController,
+    providerKeys: new TranscriptionProviderKeys({
+      keys: deps.apiKeys,
+      // The fake native build never opens a connection: Verify hears that the key is accepted.
+      ...(deps.fakeNative
+        ? { fetch: new FakeFetch({ chunks: ['{}'] }).fetch }
+        : deps.fetch
+          ? { fetch: deps.fetch }
+          : {}),
+    }),
+  });
   registerSessionHandlers({
     server: deps.server,
     meetings: liveRepository(() => library.meetings),

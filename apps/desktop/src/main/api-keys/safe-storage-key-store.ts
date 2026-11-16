@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises';
-import type { ApiKeyStore, ApiProviderKind } from '@vozella/core';
+import type { ApiKeyKind, ApiKeyStore } from '@vozella/core';
 import { writeFileAtomic } from '@vozella/platform';
 
 /** The async part of Electron `safeStorage` the store uses, so tests run without Electron. */
@@ -15,7 +15,7 @@ export interface SafeStorageKeyStoreDeps {
   readonly cipher: StringCipher;
 }
 
-type KeyMap = Partial<Record<ApiProviderKind, string>>;
+type KeyMap = Partial<Record<ApiKeyKind, string>>;
 
 const isKeyMap = (value: unknown): value is KeyMap =>
   typeof value === 'object' &&
@@ -37,17 +37,17 @@ export class SafeStorageKeyStore implements ApiKeyStore {
 
   constructor(private readonly deps: SafeStorageKeyStoreDeps) {}
 
-  async has(kind: ApiProviderKind): Promise<boolean> {
+  async has(kind: ApiKeyKind): Promise<boolean> {
     return (await this.get(kind)) !== null;
   }
 
-  async get(kind: ApiProviderKind): Promise<string | null> {
+  async get(kind: ApiKeyKind): Promise<string | null> {
     if (!(await this.deps.cipher.isAsyncEncryptionAvailable())) return null;
     const key = (await this.load())[kind];
     return key === undefined || key === '' ? null : key;
   }
 
-  async set(kind: ApiProviderKind, key: string): Promise<void> {
+  async set(kind: ApiKeyKind, key: string): Promise<void> {
     const trimmed = key.trim();
     if (trimmed === '') return this.delete(kind);
     if (!(await this.deps.cipher.isAsyncEncryptionAvailable())) {
@@ -56,7 +56,7 @@ export class SafeStorageKeyStore implements ApiKeyStore {
     return this.update((keys) => ({ ...keys, [kind]: trimmed }));
   }
 
-  async delete(kind: ApiProviderKind): Promise<void> {
+  async delete(kind: ApiKeyKind): Promise<void> {
     if (!(await this.deps.cipher.isAsyncEncryptionAvailable())) return;
     return this.update((keys) => {
       return Object.fromEntries(Object.entries(keys).filter(([saved]) => saved !== kind));

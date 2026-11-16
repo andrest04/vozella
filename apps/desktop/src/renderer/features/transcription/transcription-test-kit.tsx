@@ -48,6 +48,11 @@ export function sectionProps(
   return {
     page: {
       api,
+      transcriptionKeys: {
+        Groq: saved.has('Groq'),
+        OpenAi: saved.has('OpenAi'),
+        Deepgram: saved.has('Deepgram'),
+      },
       settings: { cloudTranscriptionModelId: options.cloudModel ?? null },
     } as unknown as TranscriptionSectionProps['page'],
     model: {

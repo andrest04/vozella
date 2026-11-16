@@ -146,6 +146,9 @@ export const requestChannels = {
     transcription.transcriptionDownloadSpeakerModel,
   [transcription.transcriptionDeleteSpeakerModel.name]:
     transcription.transcriptionDeleteSpeakerModel,
+  [transcription.transcriptionSetProviderKey.name]: transcription.transcriptionSetProviderKey,
+  [transcription.transcriptionClearProviderKey.name]: transcription.transcriptionClearProviderKey,
+  [transcription.transcriptionVerifyProviderKey.name]: transcription.transcriptionVerifyProviderKey,
   [transcription.retranscriptionAvailability.name]: transcription.retranscriptionAvailability,
   [transcription.retranscriptionStart.name]: transcription.retranscriptionStart,
   [transcription.retranscriptionCancel.name]: transcription.retranscriptionCancel,

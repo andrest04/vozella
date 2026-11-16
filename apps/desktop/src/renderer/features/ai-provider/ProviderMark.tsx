@@ -1,9 +1,9 @@
-import type { SummaryProviderDto } from '@vozella/contracts';
+import type { SummaryProviderDto, TranscriptionProviderKindDto } from '@vozella/contracts';
 import { Cpu, Server } from 'lucide-react';
 import { Icon } from '../../ui';
 
 // Provider marks as 24 x 24 canvas paths. OpenAI, Anthropic, Gemini and Groq come from
-// @lobehub/icons-static-svg 1.102.0 (MIT).
+// @lobehub/icons-static-svg 1.102.0 (MIT); Deepgram comes from simple-icons 16.38.0 (CC0-1.0).
 // They are third-party trademarks: shown only beside the provider's name, never as the app brand.
 const MARKS = {
   ClaudeCode: {
@@ -36,18 +36,23 @@ const MARKS = {
     rule: 'evenodd',
     d: 'M12.036 2c-3.853-.035-7 3-7.036 6.781-.035 3.782 3.055 6.872 6.908 6.907h2.42v-2.566h-2.292c-2.407.028-4.38-1.866-4.408-4.23-.029-2.362 1.901-4.298 4.308-4.326h.1c2.407 0 4.358 1.915 4.365 4.278v6.305c0 2.342-1.944 4.25-4.323 4.279a4.375 4.375 0 01-3.033-1.252l-1.851 1.818A7 7 0 0012.029 22h.092c3.803-.056 6.858-3.083 6.879-6.816v-6.5C18.907 4.963 15.817 2 12.036 2z',
   },
+  Deepgram: {
+    fill: 'currentColor',
+    rule: 'nonzero',
+    d: 'M11.203 24H1.517a.364.364 0 0 1-.258-.62l6.239-6.275a.366.366 0 0 1 .259-.108h3.52c2.723 0 5.025-2.127 5.107-4.845a5.004 5.004 0 0 0-4.999-5.148H7.613v4.646c0 .2-.164.364-.365.364H.968a.365.365 0 0 1-.363-.364V.364C.605.164.768 0 .969 0h10.416c6.684 0 12.111 5.485 12.01 12.187C23.293 18.77 17.794 24 11.202 24z',
+  },
 } as const;
 
 /**
- * A 16 px provider mark, decorative: the label next to it is the name. Codex, OpenAI, Anthropic
- * and Groq follow the text color; Claude and Gemini keep their brand color, and forced colors turn every
+ * A 16 px provider mark, decorative: the label next to it is the name. Codex, OpenAI, Anthropic,
+ * Groq and Deepgram follow the text color; Claude and Gemini keep their brand color, and forced colors turn every
  * mark into text color. OpenAI-compatible is any server, so it gets a generic server icon.
  */
 export function ProviderMark({
   kind,
   size = 16,
 }: {
-  kind: Exclude<SummaryProviderDto, 'Xai'>;
+  kind: Exclude<SummaryProviderDto, 'Xai'> | TranscriptionProviderKindDto;
   size?: number;
 }) {
   if (kind === 'Local') return <Icon icon={Cpu} />;

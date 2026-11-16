@@ -7,6 +7,8 @@ export interface FakeFetchCall {
   readonly body: unknown;
   /** The multipart form of an upload, as the adapter built it; null for any other request. */
   readonly form: FormData | null;
+  /** The bytes of a raw upload, copied; null for any other request. */
+  readonly bytes: Uint8Array | null;
 }
 
 /** How the fake answers one request. */
@@ -41,6 +43,7 @@ export class FakeFetch {
       headers: Object.fromEntries(new Headers(init?.headers).entries()),
       body: typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null,
       form: init?.body instanceof FormData ? init.body : null,
+      bytes: init?.body instanceof Uint8Array ? Uint8Array.from(init.body) : null,
     };
     this.calls.push(call);
     const reply = typeof this.reply === 'function' ? this.reply(call) : this.reply;

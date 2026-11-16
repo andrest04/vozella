@@ -14,7 +14,7 @@ import {
   API_FAILURE_UI_KEYS,
   applyHighlights,
   CancelSource,
-  cloudTranscriptionApiEngine,
+  cloudTranscriptionProvider,
   droppedPercent,
   ensureEndedHeader,
   evaluateRetranscription,
@@ -232,10 +232,8 @@ export class TranscriptionController {
   private async notReadyMessage(engine: SpeechEngineProvider): Promise<string | null> {
     if (await engine.isReady()) return null;
     if (engine.kind === 'Local') return this.deps.t('Ui_RetranscriptionEngineNotInstalled');
-    return this.deps.t(
-      API_FAILURE_UI_KEYS.KeyMissing,
-      cloudTranscriptionApiEngine(engine.kind).displayName,
-    );
+    const name = cloudTranscriptionProvider(engine.kind).displayName;
+    return this.deps.t(API_FAILURE_UI_KEYS.KeyMissing, name);
   }
 
   /**
@@ -406,8 +404,9 @@ export class TranscriptionController {
 
   /**
    * A live pass on a cloud engine stopped because the provider refused it (key, credit, model),
-   * with the reason as a sentence. The take goes on recording; the recording module shows the
-   * reason while it does. Returns the unsubscribe.
+   * with the reason as a sentence: a refused upload of an engine that works in pieces, or a
+   * refused session of one that streams. The take goes on recording; the recording module shows
+   * the reason while it does. Returns the unsubscribe.
    */
   onLiveFailure(listener: (reason: string) => void): () => void {
     this.liveFailureListeners.add(listener);
@@ -476,7 +475,8 @@ export class TranscriptionController {
   /**
    * True when the draft the last `stopLive` returned is the transcript of the whole take, so the
    * pass after Stop would only upload the same audio again. Only a cloud engine whose live pass
-   * transcribed every sample says so; with the local engine it is always false.
+   * transcribed every sample says so (every piece uploaded, or a streaming session that answered
+   * for all it was sent); with the local engine it is always false.
    */
   get liveDraftIsFinal(): boolean {
     return this.lastLiveDraftIsFinal;

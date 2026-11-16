@@ -9,8 +9,15 @@ import {
   summaryProviderIdSchema,
   summaryProviderSchema,
   summarySetupKindSchema,
+  transcriptionProviderKindSchema,
 } from '@vozella/contracts';
-import { API_ENGINES, API_ENGINE_LIST, readSettings } from '@vozella/core';
+import {
+  API_ENGINES,
+  API_ENGINE_LIST,
+  CLOUD_TRANSCRIPTION_KINDS,
+  readSettings,
+  TRANSCRIPTION_PROVIDER_LIST,
+} from '@vozella/core';
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import uiEn from '../../i18n/locales/ui.en.json';
@@ -18,7 +25,7 @@ import uiEs from '../../i18n/locales/ui.es.json';
 import { ENGINE_LABEL } from '../chat/chat-prompts-view';
 import { SETTINGS_KIND } from '../chat/model-choice';
 import { ENGINE_GROUPS } from '../settings/engine-status';
-import { API_KINDS, API_NAME_KEYS, isApiKind } from './api-engines';
+import { API_KINDS, API_NAME_KEYS, isApiKind, KEY_PROVIDER_NAME_KEYS } from './api-engines';
 import { ProviderMark } from './ProviderMark';
 
 /**
@@ -36,6 +43,12 @@ import { ProviderMark } from './ProviderMark';
  *
  * Tests that pin the order the user sees (the Settings list, the setup wizard, the wizard e2e)
  * name each engine on purpose and change with the product, not with the code.
+ *
+ * A provider that only transcribes (Deepgram) is not an API key engine. Its one declaration is its
+ * row in core's `TRANSCRIPTION_PROVIDERS` (packages/core/src/settings/transcription-provider-table.ts),
+ * plus its row in `CLOUD_TRANSCRIPTION_ENGINES`. The last `describe` blocks list what it needs by
+ * hand (its kind in contracts, its name in both locales, its mark) and prove it is in no summary,
+ * chat or setup wizard list.
  */
 
 afterEach(cleanup);
@@ -140,4 +153,73 @@ describe('renderer tables derived from the core table', () => {
     expect(Object.keys(SETTINGS_KIND).sort()).toEqual([...chatEngineSchema.options].sort());
     expect(Object.keys(ENGINE_LABEL).sort()).toEqual([...chatEngineSchema.options].sort());
   });
+});
+
+describe('a transcription-only provider: its manual edit points', () => {
+  const english: Readonly<Record<string, string>> = uiEn;
+  const spanish: Readonly<Record<string, string>> = uiEs;
+
+  it('contracts restates the kinds of the core table, in its order', () => {
+    expect(transcriptionProviderKindSchema.options).toEqual(
+      TRANSCRIPTION_PROVIDER_LIST.map((provider) => provider.kind),
+    );
+  });
+
+  it('every one can be chosen to transcribe', () => {
+    for (const provider of TRANSCRIPTION_PROVIDER_LIST) {
+      expect(CLOUD_TRANSCRIPTION_KINDS as readonly string[]).toContain(provider.kind);
+    }
+  });
+
+  it.each(TRANSCRIPTION_PROVIDER_LIST)(
+    '$kind: $nameKey has text in English and Spanish, and the key row finds it',
+    (provider) => {
+      expect(english[provider.nameKey] ?? '').not.toBe('');
+      expect(spanish[provider.nameKey] ?? '').not.toBe('');
+      expect(KEY_PROVIDER_NAME_KEYS[provider.kind]).toBe(provider.nameKey);
+    },
+  );
+
+  it.each(TRANSCRIPTION_PROVIDER_LIST)('$kind draws a mark', (provider) => {
+    const { container } = render(<ProviderMark kind={provider.kind} />);
+    expect(container.querySelector('svg')).not.toBeNull();
+  });
+});
+
+describe('a transcription-only provider is never a summary, chat or setup engine', () => {
+  const lower = (values: readonly string[]): string[] => values.map((value) => value.toLowerCase());
+
+  it.each(TRANSCRIPTION_PROVIDER_LIST)('$kind is in no schema that lists engines', (provider) => {
+    const name = provider.kind.toLowerCase();
+    for (const schema of [
+      apiProviderKindSchema,
+      summaryApiKindSchema,
+      summaryProviderSchema,
+      selectableEngineKindSchema,
+      summarySetupKindSchema,
+      summaryProviderIdSchema,
+      chatEngineSchema,
+    ]) {
+      expect(lower(schema.options)).not.toContain(name);
+    }
+    expect(lower(Object.keys(settingsPageSchema.shape.api.shape))).not.toContain(name);
+  });
+
+  it.each(TRANSCRIPTION_PROVIDER_LIST)(
+    '$kind is in no list the app offers engines from: Settings, the chat picker, the wizard',
+    (provider) => {
+      const name = provider.kind.toLowerCase();
+      // `API_KINDS` is the list the setup wizard and the engine chooser draw.
+      expect(lower(API_KINDS)).not.toContain(name);
+      expect(isApiKind(provider.kind)).toBe(false);
+      expect(lower(Object.keys(API_NAME_KEYS))).not.toContain(name);
+      expect(
+        lower(ENGINE_GROUPS.flatMap((group) => group.engines.map((e) => e.kind))),
+      ).not.toContain(name);
+      expect(lower(Object.keys(SETTINGS_KIND))).not.toContain(name);
+      expect(lower(Object.values(SETTINGS_KIND))).not.toContain(name);
+      expect(lower(Object.keys(ENGINE_LABEL))).not.toContain(name);
+      expect(Object.values(ENGINE_LABEL) as string[]).not.toContain(provider.nameKey);
+    },
+  );
 });

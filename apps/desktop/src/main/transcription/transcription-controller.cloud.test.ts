@@ -1,5 +1,7 @@
 import { engineStatusSchema, transcriptionEngineKindSchema } from '@vozella/contracts';
 import {
+  ApiProviderError,
+  CLOUD_TRANSCRIPTION_ENGINES,
   createLookup,
   FakeAsrEngine,
   FakeAudioReader,
@@ -9,16 +11,20 @@ import {
   formatFailure,
   InMemoryMeetingRepository,
   InMemorySettingsStore,
+  ManualSpeechTimer,
   MeetingBusyRegistry,
+  ScriptedStreamingSpeechProvider,
   TRANSCRIPTION_ENGINE_KINDS,
   type CloudTranscriptionKind,
   type Logger,
   type MeetingRecord,
   type RetranscriptionResult,
+  type StreamingSpeechProvider,
 } from '@vozella/core';
 import {
   FakeApiKeyStore,
   FakeSpeechToTextClient,
+  FakeStreamingSpeechProvider,
   TranscriptionRuntime,
   type FakeSpeechToTextOptions,
 } from '@vozella/platform';
@@ -63,6 +69,8 @@ function setup(
     localReady?: boolean;
     speakerLabels?: boolean;
     client?: FakeSpeechToTextOptions;
+    /** The streaming provider of an engine that streams; defaults to the zero-delay fake. */
+    streaming?: StreamingSpeechProvider;
     /** How the app words a failure; defaults to the sentences of core. */
     formatFailure?: (error: unknown) => string;
   } = {},
@@ -94,15 +102,25 @@ function setup(
     settings,
     cloud: {
       keys,
-      client: () => {
+      client: (engineKind) => {
         const client = new FakeSpeechToTextClient({
-          phrases: ['uno dos tres cuatro'],
+          // An engine that streams uploads a recording with another script than its live session
+          // hears, so a test can tell which of the two transcribed.
+          phrases: [
+            CLOUD_TRANSCRIPTION_ENGINES[engineKind].liveText === 'streaming'
+              ? 'alfa beta gamma delta'
+              : 'uno dos tres cuatro',
+          ],
           ...options.client,
         });
         clients.push(client);
         return client;
       },
+      streaming: () =>
+        options.streaming ?? new FakeStreamingSpeechProvider({ phrases: ['uno dos tres cuatro'] }),
       timer: new FakeSpeechTimer(),
+      // A session waits on a clock that really waits; no test here lets it run out.
+      streamingTimer: new ManualSpeechTimer(),
     },
   });
   const meetings = new InMemoryMeetingRepository();
@@ -220,6 +238,114 @@ describe('status with a cloud engine', () => {
     await controller.startLive(null);
     await controller.stopLive();
     expect((await settings.load()).speakerDiarizationEnabled).toBe(true);
+  });
+});
+
+describe('an engine whose live text is streamed (Deepgram)', () => {
+  it('follows its key like every cloud engine: ready with it, key-missing without', async () => {
+    const withKey = await setup({ engine: 'Deepgram' }).controller.status();
+    expect(engineStatusSchema.parse(withKey)).toEqual(withKey);
+    expect(withKey).toMatchObject({ engine: 'Deepgram', ready: true, cloudNotReadyReason: null });
+    const noKey = setup({ engine: 'Deepgram', key: false });
+    expect(await noKey.controller.status()).toMatchObject({
+      engine: 'Deepgram',
+      ready: false,
+      cloudNotReadyReason: 'key-missing',
+    });
+    expect(await noKey.controller.ensureEngine()).toEqual({
+      status: 'failed',
+      message: 'Deepgram needs your API key. Add it in Settings.',
+    });
+    expect(noKey.models.downloads).toEqual([]);
+    expect(noKey.clients).toEqual([]);
+  });
+
+  it('a clean live pass streams word by word, uploads nothing, and vouches for the draft', async () => {
+    const { controller, clients, engine, frameListeners, events } = setup({ engine: 'Deepgram' });
+    expect(await controller.startLive(null)).toEqual({ active: true });
+    await record1s(frameListeners);
+    await record1s(frameListeners);
+    const draft = await controller.stopLive();
+    expect(draft).toBe('[00:00.00-00:01.90] uno dos tres cuatro');
+    const updates = events
+      .filter((e) => e.channel === 'transcription.liveUpdate')
+      .map((e) => e.payload as { displayText: string; committedText: string });
+    // The words were on screen before the phrase was committed.
+    expect(updates[0]).toEqual({ displayText: '[00:00.00-00:00.40] uno', committedText: '' });
+    expect(updates.at(-1)?.committedText).toBe(draft);
+    // Nothing was lost: the pass after Stop would only send the same audio again.
+    expect(controller.liveDraftIsFinal).toBe(true);
+    expect(clients).toEqual([]);
+    expect(engine.recognizers).toHaveLength(0);
+  });
+
+  it.each([
+    ['KeyInvalid', 'Fake streaming speech did not accept your API key. Check it in Settings.'],
+    [
+      'QuotaExceeded',
+      'Your Fake streaming speech account is out of credit or quota. Check your plan with Fake streaming speech.',
+    ],
+  ])('a session refused as %s tells the recording why, once', async (failWith, sentence) => {
+    const { controller, frameListeners } = setup({
+      engine: 'Deepgram',
+      streaming: new FakeStreamingSpeechProvider({ failWith }),
+    });
+    const reasons: string[] = [];
+    controller.onLiveFailure((reason) => reasons.push(reason));
+    await controller.startLive(null);
+    await record1s(frameListeners);
+    expect(reasons).toEqual([sentence]);
+    // The take goes on, and what is recorded after it is not a second notice.
+    await record1s(frameListeners);
+    expect(await controller.stopLive()).toBe('');
+    expect(reasons).toEqual([sentence]);
+    expect(controller.liveDraftIsFinal).toBe(false);
+  });
+
+  it('a connection that drops mid-recording: no notice, a draft that is not final, and the pass after Stop uploads', async () => {
+    const provider = new ScriptedStreamingSpeechProvider();
+    const { controller, frameListeners, clients } = setup({
+      engine: 'Deepgram',
+      streaming: provider,
+    });
+    const reasons: string[] = [];
+    controller.onLiveFailure((reason) => reasons.push(reason));
+    await controller.startLive(null);
+    await record1s(frameListeners);
+    const session = provider.sessions[0];
+    if (session === undefined) throw new Error('no session was opened');
+    session.listener.opened();
+    session.listener.final({
+      text: 'uno dos',
+      words: [
+        { text: 'uno', startMs: 0, endMs: 400 },
+        { text: 'dos', startMs: 500, endMs: 900 },
+      ],
+      processedMs: 1_000,
+    });
+    await record1s(frameListeners);
+    session.listener.closed(new ApiProviderError('Scripted', 'Network'));
+    // The recording is still running and still feeding the live pass.
+    await record1s(frameListeners);
+    expect(await controller.stopLive()).toBe('[00:00.00-00:00.90] uno dos');
+    expect(reasons).toEqual([]);
+    expect(controller.liveDraftIsFinal).toBe(false);
+    expect((await controller.status()).liveDroppedPercent).toBeGreaterThan(0);
+    // The pass after Stop is the prerecorded upload of the whole recording.
+    expect(clients).toEqual([]);
+    const text = await controller.transcribeFile({ audioPath: 'C:/a.wav', recordedAtMs: null });
+    expect(text).toBe('[00:00.00-00:01.90] alfa beta gamma delta');
+    expect(clients).toHaveLength(1);
+    expect(clients[0]?.requests).toHaveLength(1);
+  });
+
+  it('a re-transcription uploads the recording and replaces the transcript', async () => {
+    const { controller, meetings, events, clients } = setup({ engine: 'Deepgram' });
+    await meetings.save(record());
+    await controller.startRetranscription('m1');
+    expect((await finished(events)).outcome).not.toBe('Failed');
+    expect((await meetings.get('m1'))?.transcript).toContain('alfa beta gamma delta');
+    expect(clients).toHaveLength(1);
   });
 });
 

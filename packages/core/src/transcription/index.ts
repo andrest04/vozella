@@ -18,6 +18,8 @@ export * from './progress';
 export * from './recognizer-factory';
 export * from './speech-to-text';
 export * from './speech-engine-provider';
+export * from './streaming-speech';
+export * from './streaming-speech-engine';
 export * from './retranscription';
 export * from './stamp-format';
 export * from './test-kit';

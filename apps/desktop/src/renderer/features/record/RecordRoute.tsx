@@ -1,7 +1,13 @@
-import { defaultMeetingTitle, isCloudTranscriptionKind } from '@vozella/core';
+import {
+  CLOUD_TRANSCRIPTION_ENGINES,
+  defaultMeetingTitle,
+  isCloudTranscriptionKind,
+  type CloudLiveText,
+} from '@vozella/core';
 import { FileUp, KeyRound, Link, Mic } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
+import type { StringKey } from '../../i18n/translate';
 import { Button, SectionHeader, cn } from '../../ui';
 import { SourcesPanel, type SourcesSelection } from '../audio/SourcesPanel';
 import { openTranscriptionInSettings } from '../transcription/transcription-focus';
@@ -42,6 +48,12 @@ import {
 } from './use-recording';
 import { useLiveAskStore } from './use-live-ask';
 import { useTakeNotesRequest } from './use-take-notes';
+
+/** What the empty live canvas says with a cloud engine, by how its live text arrives. */
+const LIVE_HINT_KEYS: Readonly<Record<CloudLiveText, StringKey>> = {
+  pieces: 'Ui_LiveCloudHint',
+  streaming: 'Ui_LiveStreamingHint',
+};
 
 const NO_SELECTION: SourcesSelection = {
   microphone: null,
@@ -176,14 +188,16 @@ export function RecordRoute() {
         ?.path ?? inbox
     );
   }, [store.folders, store.folderId, locale, t]);
-  const cloudEngine = engine !== null && isCloudTranscriptionKind(engine.engine);
-  // A cloud engine sends the audio in pieces, so its captions are a few seconds behind; and when
-  // its live pass covers the take, that text is the saved transcript, not only a preview.
+  const cloudEngine =
+    engine !== null && isCloudTranscriptionKind(engine.engine) ? engine.engine : null;
+  // How the captions of a cloud engine arrive is a column of the engine table: in pieces they are
+  // a few seconds behind, streamed they follow the speech. Either way, when its live pass covers
+  // the take, that text is the saved transcript, not only a preview.
   const emptyText =
     engine && !engine.liveEnabled
       ? t('Ui_LiveSkipped')
       : cloudEngine
-        ? t('Ui_LiveCloudHint')
+        ? t(LIVE_HINT_KEYS[CLOUD_TRANSCRIPTION_ENGINES[cloudEngine].liveText])
         : t('RecordPage_LiveTranscriptHint.Text');
   // The transcription engine is a cloud one without its key: the step is the key, in Settings.
   const addCloudKey = setup !== null && needsCloudKey(setup);

@@ -17,3 +17,10 @@ const API_PROVIDERS = [
 
 export const API_PROVIDER_KINDS = API_PROVIDERS.map((provider) => provider.kind);
 export const API_PROVIDER_IDS = API_PROVIDERS.map((provider) => provider.id);
+
+/**
+ * The providers that only transcribe, with the user's own key. They are not API engines: no
+ * summary, chat or setup schema lists them. It restates the kinds of core's
+ * `TRANSCRIPTION_PROVIDERS` table, and the same test compares the two.
+ */
+export const TRANSCRIPTION_PROVIDER_KINDS = ['Deepgram'] as const;

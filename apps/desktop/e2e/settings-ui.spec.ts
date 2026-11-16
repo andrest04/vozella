@@ -123,12 +123,13 @@ test('Claude Code shows the PATH check and saves model and effort one field at a
 test('Grok is not offered as a provider', async () => {
   await expect(page.getByRole('button', { name: 'Local (on this device)' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Grok/ })).toHaveCount(0);
-  // Only the row disclosures: an open row's pickers are buttons with aria-expanded too.
-  await expect(
-    page
-      .getByRole('group', { name: 'Choose where summaries are generated' })
-      .locator('li > button[aria-expanded]'),
-  ).toHaveCount(7);
+  // Only the row disclosures: an open row's pickers are buttons with aria-expanded too. Local, the
+  // two CLIs and the five API engines; a provider that only transcribes (Deepgram) is not one.
+  const rows = page
+    .getByRole('group', { name: 'Choose where summaries are generated' })
+    .locator('li > button[aria-expanded]');
+  await expect(rows).toHaveCount(8);
+  await expect(rows.filter({ hasText: /Deepgram/ })).toHaveCount(0);
 });
 
 test('meeting language and summary language are saved on their own', async () => {

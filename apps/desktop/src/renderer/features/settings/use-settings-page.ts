@@ -1,10 +1,12 @@
 import type {
+  ApiKeyKindDto,
   ApiProviderKindDto,
   CommitOutcomeDto,
   FeedbackDto,
   ModelEventDto,
   SettingsPageDto,
 } from '@vozella/contracts';
+import { isTranscriptionProviderKind } from '@vozella/core';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import type { ApiKeyAnswer } from '../ai-provider/ApiKeyField';
@@ -44,11 +46,18 @@ export interface SettingsPageModel {
     field: 'model' | 'baseUrl',
     value: string,
   ) => Promise<CommitOutcomeDto | null>;
-  /** Sends the key to main once; the page only ever learns whether one is set. */
-  readonly setApiKey: (kind: ApiProviderKindDto, key: string) => Promise<ApiKeyAnswer>;
-  readonly clearApiKey: (kind: ApiProviderKindDto) => Promise<ApiKeyAnswer>;
-  /** Lists the models the saved key can use. Changes nothing. */
-  readonly verifyApiKey: (kind: ApiProviderKindDto) => Promise<ApiKeyAnswer>;
+  /**
+   * Sends the key to main once; the page only ever learns whether one is set. The key of an API
+   * engine travels on the settings channels, the key of a provider that only transcribes on the
+   * transcription ones.
+   */
+  readonly setApiKey: (kind: ApiKeyKindDto, key: string) => Promise<ApiKeyAnswer>;
+  readonly clearApiKey: (kind: ApiKeyKindDto) => Promise<ApiKeyAnswer>;
+  /**
+   * Asks the provider about the saved key. An API engine lists the models the key can use; a
+   * provider that only transcribes lists none. Changes nothing.
+   */
+  readonly verifyApiKey: (kind: ApiKeyKindDto) => Promise<ApiKeyAnswer>;
   /** Looks for one CLI program again; its row in the engine list takes the answer. */
   readonly checkCliAgain: (kind: CliEngineKind) => Promise<void>;
   readonly downloadModel: (fileName: string) => Promise<void>;
@@ -257,20 +266,39 @@ export function useSettingsPage(): SettingsPageModel {
   );
 
   const setApiKey = useCallback(
-    (kind: ApiProviderKindDto, key: string) =>
-      keyCommand(() => window.vozella.invoke('settings.setApiKey', { kind, key }), true),
+    (kind: ApiKeyKindDto, key: string) =>
+      keyCommand(
+        () =>
+          isTranscriptionProviderKind(kind)
+            ? window.vozella.invoke('transcription.setProviderKey', { kind, key })
+            : window.vozella.invoke('settings.setApiKey', { kind, key }),
+        true,
+      ),
     [keyCommand],
   );
 
   const clearApiKey = useCallback(
-    (kind: ApiProviderKindDto) =>
-      keyCommand(() => window.vozella.invoke('settings.clearApiKey', { kind }), true),
+    (kind: ApiKeyKindDto) =>
+      keyCommand(
+        () =>
+          isTranscriptionProviderKind(kind)
+            ? window.vozella.invoke('transcription.clearProviderKey', { kind })
+            : window.vozella.invoke('settings.clearApiKey', { kind }),
+        true,
+      ),
     [keyCommand],
   );
 
   const verifyApiKey = useCallback(
-    (kind: ApiProviderKindDto) =>
-      keyCommand(() => window.vozella.invoke('settings.verifyApiKey', { kind }), false),
+    (kind: ApiKeyKindDto) =>
+      keyCommand(async (): Promise<ApiKeyAnswer> => {
+        if (!isTranscriptionProviderKind(kind)) {
+          return window.vozella.invoke('settings.verifyApiKey', { kind });
+        }
+        const answer = await window.vozella.invoke('transcription.verifyProviderKey', { kind });
+        // A provider that only transcribes has no model list to show.
+        return answer.status === 'verified' ? { status: 'verified', models: [] } : answer;
+      }, false),
     [keyCommand],
   );
 

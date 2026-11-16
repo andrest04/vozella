@@ -12,6 +12,12 @@ import type { CancelSignal } from '../cancel';
 import type { CloudSpeechTimer } from './cloud-speech-engine';
 import type { PinnedFile } from './engine-catalog';
 import type { SpeechToTextClient, SpeechToTextRequest, SpeechToTextResult } from './speech-to-text';
+import type {
+  StreamingSpeechListener,
+  StreamingSpeechOptions,
+  StreamingSpeechProvider,
+  StreamingSpeechSession,
+} from './streaming-speech';
 
 /** Doubles for the engine and its stores. Used by the tests of core, platform and the desktop app. */
 
@@ -306,5 +312,51 @@ export class ManualSpeechTimer implements CloudSpeechTimer {
 
   private static async settle(): Promise<void> {
     for (let i = 0; i < 80; i += 1) await Promise.resolve();
+  }
+}
+
+/** One session of the scripted streaming provider: what it was sent, and its listener to drive. */
+export class ScriptedStreamingSpeechSession implements StreamingSpeechSession {
+  readonly sent: Float32Array[] = [];
+  finished = false;
+  closed = false;
+
+  constructor(
+    readonly options: StreamingSpeechOptions,
+    readonly listener: StreamingSpeechListener,
+  ) {}
+
+  get sentSamples(): number {
+    return this.sent.reduce((total, samples) => total + samples.length, 0);
+  }
+
+  send(samples: Float32Array): void {
+    this.sent.push(samples);
+  }
+
+  finish(): void {
+    this.finished = true;
+  }
+
+  close(): void {
+    this.closed = true;
+  }
+}
+
+/**
+ * A streaming provider that does nothing on its own: the test opens each session, gives its
+ * results and closes it through `sessions[n].listener`, so every order of events can be written.
+ */
+export class ScriptedStreamingSpeechProvider implements StreamingSpeechProvider {
+  readonly displayName = 'Scripted';
+  readonly sessions: ScriptedStreamingSpeechSession[] = [];
+  /** When set, `open` throws it (a provider that breaks its contract). */
+  openError: Error | null = null;
+
+  open(options: StreamingSpeechOptions, listener: StreamingSpeechListener): StreamingSpeechSession {
+    if (this.openError !== null) throw this.openError;
+    const session = new ScriptedStreamingSpeechSession(options, listener);
+    this.sessions.push(session);
+    return session;
   }
 }
