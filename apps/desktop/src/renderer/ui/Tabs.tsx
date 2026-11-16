@@ -19,12 +19,22 @@ export interface TabsProps {
   /** Accessible name of the tab list. */
   readonly label: string;
   readonly className?: string;
+  /** Extra classes for the tab list, for a page that places it (a sticky list, for one). */
+  readonly listClassName?: string;
   /** Automation id of the tab list. */
   readonly listTestId?: string;
 }
 
 /** Arrow keys move between tabs and select them; the panel is a tab stop of its own. */
-export function Tabs({ tabs, value, onValueChange, label, className, listTestId }: TabsProps) {
+export function Tabs({
+  tabs,
+  value,
+  onValueChange,
+  label,
+  className,
+  listClassName,
+  listTestId,
+}: TabsProps) {
   return (
     <BaseTabs.Root
       value={value}
@@ -37,7 +47,7 @@ export function Tabs({ tabs, value, onValueChange, label, className, listTestId 
         activateOnFocus
         aria-label={label}
         data-testid={listTestId}
-        className="relative flex gap-5 border-b border-hairline"
+        className={cn('relative flex gap-5 border-b border-hairline', listClassName)}
       >
         {tabs.map((tab) => (
           <BaseTabs.Tab

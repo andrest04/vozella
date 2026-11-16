@@ -21,8 +21,8 @@ export type SettingsTabId = 'recording' | 'transcription' | 'summary' | 'general
 
 export interface SettingsTab {
   readonly id: SettingsTabId;
-  /** Catalog key of the tab's label. */
-  readonly labelKey: string;
+  /** Catalog key of the tab's label, in `locales/ui.{en,es}.json`. */
+  readonly labelKey: `Ui_SettingsTab${Capitalize<SettingsTabId>}`;
 }
 
 /** The tabs, left to right, in the same lifecycle order as the sections they hold. */
