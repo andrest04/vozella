@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import axe from 'axe-core';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, type LaunchedApp } from './launch';
+import { launchApp, openSettingsTab, type LaunchedApp } from './launch';
 
 // The Settings page in the real window, on the fake native build and a throwaway data root.
 // Nothing here talks to a real CLI or the network.
@@ -30,6 +30,9 @@ test.beforeAll(async () => {
   page = await launched.app.firstWindow();
   await expect(page.getByRole('navigation')).toBeVisible();
   await page.getByRole('link', { name: 'Settings' }).click();
+  // The page opens on Recording. The tests share one window, which keeps the tab it was left on,
+  // so each test that needs another tab opens it.
+  await openSettingsTab(page, 'summary');
   await expect(page.getByRole('heading', { level: 2, name: 'Summary provider' })).toBeVisible();
 });
 
@@ -41,10 +44,15 @@ test('opening the page writes nothing and shows the saved choices', async () => 
   await expect(
     page.getByRole('button', { name: 'Local (on this device)' }),
   ).toHaveAccessibleDescription(/In use/);
+  await openSettingsTab(page, 'transcription');
   await expect(page.getByRole('combobox', { name: 'Transcription language' })).toContainText(
     'Spanish',
   );
+  // Moving between tabs writes nothing either.
+  await openSettingsTab(page, 'general');
+  await openSettingsTab(page, 'recording');
   expect(fs.existsSync(path.join(launched.dataRoot, 'app', 'settings.json'))).toBe(false);
+  await openSettingsTab(page, 'summary');
 });
 
 test('a local model downloads, becomes active and is removed', async () => {
@@ -133,6 +141,7 @@ test('Grok is not offered as a provider', async () => {
 });
 
 test('meeting language and summary language are saved on their own', async () => {
+  await openSettingsTab(page, 'transcription');
   await choose('Transcription language', 'Portuguese');
   await choose('Summary language', 'English');
   await expect
@@ -145,6 +154,7 @@ test('meeting language and summary language are saved on their own', async () =>
 });
 
 test('the app language switches at once, saves, and offers a restart that Later declines', async () => {
+  await openSettingsTab(page, 'general');
   await choose('App language', 'Español');
   // The screens switch before the prompt opens, so the prompt is already in the new language.
   const dialog = page.getByRole('dialog', { name: 'Reinicio necesario' });
@@ -154,7 +164,9 @@ test('the app language switches at once, saves, and offers a restart that Later 
   await expect(dialog).toBeHidden();
 
   await expect(page.locator('html')).toHaveAttribute('lang', 'es');
-  await expect(page.getByRole('heading', { level: 2, name: 'Proveedor de resumen' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Apariencia' })).toBeVisible();
+  await expect(page.getByRole('tablist', { name: 'Secciones de configuración' })).toBeVisible();
+  await expect(page.getByTestId('SettingsTab-summary')).toHaveText('Resumen e IA');
   await expect(page.getByRole('combobox', { name: 'Idioma de la aplicación' })).toContainText(
     'Español',
   );
@@ -172,27 +184,39 @@ for (const theme of ['light', 'dark'] as const) {
       window.localStorage.setItem('vozella.theme', value);
     }, theme);
     await page.reload();
+    // The reload opens the page on its first tab again. The two tabs with the most on them are
+    // checked here, with an engine row open; settings-tabs.spec.ts runs axe over all four.
+    const seriousViolations = async (): Promise<unknown[]> => {
+      // Axe reads computed colors, so it must see the settled page. A button that turns enabled
+      // when the transcription status arrives fades from the disabled 50% opacity, and in this
+      // hidden test window that fade can sit at its first frame for seconds; finish every finite
+      // transition first.
+      await page.evaluate(() => {
+        for (const animation of document.getAnimations()) {
+          if (animation.effect?.getComputedTiming().endTime !== Infinity) animation.finish();
+        }
+      });
+      await page.evaluate(axe.source);
+      return page.evaluate(async () => {
+        const axe = (
+          window as unknown as {
+            axe: { run: () => Promise<{ violations: { id: string; impact: string | null }[] }> };
+          }
+        ).axe;
+        const result = await axe.run();
+        return result.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
+      });
+    };
+
+    await openSettingsTab(page, 'summary');
     await expect(page.getByRole('heading', { level: 2, name: 'Summary provider' })).toBeVisible();
     await page.getByRole('button', { name: 'Local (on this device)' }).click();
     await expect(page.getByRole('button', { name: 'Change model' })).toBeVisible();
-    // Axe reads computed colors, so it must see the settled page. A button that turns enabled when
-    // the transcription status arrives fades from the disabled 50% opacity, and in this hidden test
-    // window that fade can sit at its first frame for seconds; finish every finite transition first.
-    await page.evaluate(() => {
-      for (const animation of document.getAnimations()) {
-        if (animation.effect?.getComputedTiming().endTime !== Infinity) animation.finish();
-      }
-    });
-    await page.evaluate(axe.source);
-    const violations = await page.evaluate(async () => {
-      const axe = (
-        window as unknown as {
-          axe: { run: () => Promise<{ violations: { id: string; impact: string | null }[] }> };
-        }
-      ).axe;
-      const result = await axe.run();
-      return result.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
-    });
-    expect(violations).toEqual([]);
+    expect(await seriousViolations(), 'Summaries & AI').toEqual([]);
+
+    await openSettingsTab(page, 'transcription');
+    await expect(page.getByRole('heading', { level: 2, name: 'Transcription' })).toBeVisible();
+    await expect(page.getByRole('radio', { checked: true }).first()).toBeVisible();
+    expect(await seriousViolations(), 'Transcription').toEqual([]);
   });
 }

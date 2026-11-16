@@ -6,6 +6,7 @@ import { expect, test, type Page } from '@playwright/test';
 import {
   installEngine,
   launchApp,
+  openSettingsTab,
   readyEnv,
   seedReadySettings,
   type LaunchedApp,
@@ -153,6 +154,7 @@ test('the rail has Record, Library and Settings with their automation ids (items
 
 test('the Settings label follows the app language, not the OS (item 21)', async () => {
   await page.getByRole('link', { name: 'Settings' }).click();
+  await openSettingsTab(page, 'general');
   await page.getByRole('combobox', { name: 'App language' }).click();
   await page.getByRole('option', { name: 'Español' }).click();
   await page.getByRole('button', { name: 'Más tarde' }).click();

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp } from './launch';
+import { launchApp, openSettingsTab } from './launch';
 
 // Regenerates docs/port/screens/transcription/*.png. Opt in with VOZELLA_SCREENSHOTS=1.
 test.skip(process.env.VOZELLA_SCREENSHOTS !== '1', 'set VOZELLA_SCREENSHOTS=1 to capture');
@@ -83,6 +83,7 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(page.getByTestId('recording-status')).toBeHidden();
 
       await open(page, '#/settings', theme);
+      await openSettingsTab(page, 'transcription');
       await expect(page.getByTestId('transcription-section')).toBeVisible();
       await expect(page.getByTestId('live-drops-caption')).toBeVisible();
       await page.getByTestId('transcription-section').scrollIntoViewIfNeeded();
@@ -114,6 +115,7 @@ for (const theme of ['light', 'dark'] as const) {
     const { launched, page } = await launchShown({ VOZELLA_FAKE_ENGINE_STEP_MS: '1500' });
     try {
       await open(page, '#/settings', theme);
+      await openSettingsTab(page, 'transcription');
       const section = page.getByTestId('transcription-section');
       await expect(section).toBeVisible();
       await section

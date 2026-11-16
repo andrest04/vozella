@@ -1,7 +1,12 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test';
+import {
+  _electron as electron,
+  expect,
+  type ElectronApplication,
+  type Page,
+} from '@playwright/test';
 
 export interface LaunchedApp {
   readonly app: ElectronApplication;
@@ -144,4 +149,21 @@ export async function packagedShot(
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(dir, name) });
+}
+
+/** The tabs of the Settings page, by the id in their automation id (`SettingsTab-<id>`). */
+export type SettingsTab = 'recording' | 'transcription' | 'summary' | 'general';
+
+/**
+ * Shows one tab of the Settings page, which must be on screen. The page opens on Recording and,
+ * within one window, on the tab it was left on, so a spec that needs a section names its tab.
+ */
+export async function openSettingsTab(page: Page, id: SettingsTab): Promise<void> {
+  const tab = page.getByTestId(`SettingsTab-${id}`);
+  await tab.click();
+  await expect(tab).toHaveAttribute('aria-selected', 'true');
+  // The panel that was on screen leaves on the next frame, and a hidden test window can take
+  // seconds to draw one; wait until only the chosen panel is left.
+  await expect(page.getByRole('tabpanel')).toHaveCount(1, { timeout: 30_000 });
+  await expect(page.getByRole('tabpanel')).toBeVisible();
 }

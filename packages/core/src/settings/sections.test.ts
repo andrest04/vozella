@@ -1,5 +1,43 @@
 import { describe, expect, it } from 'vitest';
-import { SETTINGS_MESSAGE_KEYS, SETTINGS_SECTIONS } from './sections';
+import { SETTINGS_MESSAGE_KEYS, SETTINGS_SECTIONS, SETTINGS_TABS } from './sections';
+
+describe('settings tabs', () => {
+  it('are Recording, Transcription, Summaries and General, in that order', () => {
+    expect(SETTINGS_TABS.map((tab) => [tab.id, tab.labelKey])).toEqual([
+      ['recording', 'Ui_SettingsTabRecording'],
+      ['transcription', 'Ui_SettingsTabTranscription'],
+      ['summary', 'Ui_SettingsTabSummary'],
+      ['general', 'Ui_SettingsTabGeneral'],
+    ]);
+  });
+
+  it('group every section, without reordering the lifecycle', () => {
+    const tabIds = SETTINGS_TABS.map((tab) => tab.id);
+    expect(SETTINGS_SECTIONS.every((section) => tabIds.includes(section.tab))).toBe(true);
+    const grouped = SETTINGS_TABS.flatMap((tab) =>
+      SETTINGS_SECTIONS.filter((section) => section.tab === tab.id),
+    );
+    expect(grouped).toEqual(SETTINGS_SECTIONS);
+  });
+
+  it('hold the sections the owner chose for each', () => {
+    const idsOf = (tab: string) =>
+      SETTINGS_SECTIONS.filter((section) => section.tab === tab).map((section) => section.id);
+    expect(idsOf('recording')).toEqual(['microphone', 'recording', 'callDetection']);
+    expect(idsOf('transcription')).toEqual(['meetingLanguage', 'transcription']);
+    expect(idsOf('summary')).toEqual(['summaryProvider']);
+    expect(idsOf('general')).toEqual(['appearance', 'language', 'data', 'about']);
+  });
+
+  it('never leave a tab empty: each has a built section', () => {
+    for (const tab of SETTINGS_TABS) {
+      const built = SETTINGS_SECTIONS.filter(
+        (section) => section.tab === tab.id && section.status === 'built',
+      );
+      expect(built.length, tab.id).toBeGreaterThan(0);
+    }
+  });
+});
 
 describe('settings sections', () => {
   it('follow the meeting lifecycle: capture, then transcript and summary, then the app itself', () => {

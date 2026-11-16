@@ -56,7 +56,12 @@ for (const theme of ['light', 'dark'] as const) {
     await page.evaluate(() => {
       window.location.hash = '#/settings';
     });
-    await expect(page.getByRole('radio', { name: /dark|oscuro/i })).toBeVisible();
+    // Settings opens on its first tab, Recording.
+    await expect(page.getByTestId('SettingsTab-recording')).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await expect(page.getByTestId('microphone-section')).toBeVisible();
     await page.waitForTimeout(350);
     await page.screenshot({ path: path.join(outDir, `shell-settings-${theme}.png`) });
 

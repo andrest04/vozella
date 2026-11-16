@@ -18,6 +18,11 @@ export function openTranscriptionInSettings(target: TranscriptionFocus): void {
     .catch(() => undefined);
 }
 
+/** The target a link asked for, without using the request up. */
+export function pendingTranscriptionFocus(): TranscriptionFocus | null {
+  return pending;
+}
+
 /** The target a link asked for, once. */
 export function takeTranscriptionFocus(): TranscriptionFocus | null {
   const target = pending;

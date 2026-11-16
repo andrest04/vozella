@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, type LaunchedApp } from './launch';
+import { launchApp, openSettingsTab, type LaunchedApp } from './launch';
 import { writeMeeting } from './library-data';
 
 // Page widths on a wide window: Settings, Record and the meeting page fill the content area up
@@ -117,6 +117,7 @@ async function expectNoHorizontalScroll(): Promise<void> {
 test('on a 1920 px window Settings and Record fill the page column up to 1152 px', async () => {
   await resize(1920, 1080);
   await go('#/settings');
+  await openSettingsTab(page, 'general');
   await expect(page.getByRole('radio', { name: /dark|oscuro/i })).toBeVisible();
   await expectWideColumn();
   await expectNoHorizontalScroll();

@@ -7,7 +7,14 @@ import { ThemeProvider } from '../../app/theme';
 import { Providers } from '../../app/test-providers';
 import { SettingsRoute } from './SettingsRoute';
 import { resetSettingsPageCache } from './use-settings-page';
-import { openEngineInSettings } from './engine-focus';
+import { openEngineInSettings, takeEngineFocus } from './engine-focus';
+import { rememberSettingsTab, resetSettingsTab } from './settings-tab';
+import {
+  openTranscriptionInSettings,
+  takeTranscriptionFocus,
+} from '../transcription/transcription-focus';
+import { baseStatus } from '../transcription/transcription-test-kit';
+import type { SettingsTabId } from '@vozella/core';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -166,7 +173,8 @@ function install(handlers: Record<string, Handler>) {
   return calls;
 }
 
-const mount = (locale: 'en' | 'es' = 'en') =>
+/** Opens the page the way the shell does: on the tab the window last showed. */
+const visit = (locale: 'en' | 'es' = 'en') =>
   render(
     <ThemeProvider>
       <Providers locale={locale}>
@@ -175,8 +183,18 @@ const mount = (locale: 'en' | 'es' = 'en') =>
     </ThemeProvider>,
   );
 
+/**
+ * Opens the page on `tab`. Most of this file is about the summary engines, so that tab is the
+ * default here; the page's own default is covered under "Settings tabs".
+ */
+const mount = (locale: 'en' | 'es' = 'en', tab: SettingsTabId = 'summary') => {
+  rememberSettingsTab(tab);
+  return visit(locale);
+};
+
 beforeEach(() => {
   resetSettingsPageCache();
+  resetSettingsTab();
   window.matchMedia = ((query: string) => ({
     matches: false,
     media: query,
@@ -598,7 +616,7 @@ describe('Settings page', () => {
       'settings.getPage': () => pageDto(),
       'settings.setUiLanguage': () => ({ status: 'saved', settings: {}, feedback: null }),
     });
-    mount();
+    mount('en', 'general');
     const user = userEvent.setup();
     await user.click(await screen.findByRole('combobox', { name: 'App language' }));
     await user.click(await screen.findByRole('option', { name: 'Español' }));
@@ -619,7 +637,7 @@ describe('Settings page', () => {
       'settings.setUiLanguage': () => ({ status: 'saved', settings: {}, feedback: null }),
       'app.restart': () => ({ status: 'failed', message: 'blocked' }),
     });
-    mount();
+    mount('en', 'general');
     const user = userEvent.setup();
     await user.click(await screen.findByRole('combobox', { name: 'App language' }));
     await user.click(await screen.findByRole('option', { name: 'Español' }));
@@ -645,28 +663,6 @@ describe('Settings page', () => {
     });
     await inUse('Local (on this device)');
     expect(screen.queryByLabelText('Loading settings')).toBeNull();
-  });
-
-  it('draws the blocks in meeting lifecycle order under the page title (8.1, 8.2)', async () => {
-    install({ 'settings.getPage': () => pageDto() });
-    mount();
-    await row('Local (on this device)');
-    expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument();
-    const wanted = [
-      'Microphone',
-      'Meeting language',
-      'Transcription',
-      'Summary provider',
-      'Appearance',
-      'Language',
-      'Data',
-      'About',
-    ];
-    const seen = screen
-      .getAllByRole('heading')
-      .map((heading) => heading.textContent)
-      .filter((text) => wanted.includes(text));
-    expect(seen).toEqual(wanted);
   });
 
   it('leaving before the first answer applies nothing and starts nothing (8.7)', async () => {
@@ -806,7 +802,7 @@ describe('Settings page', () => {
       'settings.setUiLanguage': () => ({ status: 'saved', settings: {}, feedback: null }),
       'app.restart': () => ({ status: 'refused' }),
     });
-    mount();
+    mount('en', 'general');
     const user = userEvent.setup();
     await user.click(await screen.findByRole('combobox', { name: 'App language' }));
     await user.click(await screen.findByRole('option', { name: 'Español' }));
@@ -826,7 +822,7 @@ describe('Settings page', () => {
         throw new Error('ipc down');
       },
     });
-    mount();
+    mount('en', 'general');
     const user = userEvent.setup();
     await user.click(await screen.findByRole('combobox', { name: 'App language' }));
     await user.click(await screen.findByRole('option', { name: 'Español' }));
@@ -836,8 +832,8 @@ describe('Settings page', () => {
 
   it('stops watching the engine when the page is left (8.12)', async () => {
     install({ 'settings.getPage': () => pageDto() });
-    const view = mount();
-    await row('Local (on this device)');
+    const view = mount('en', 'transcription');
+    await screen.findByRole('heading', { name: 'Transcription' });
     expect(listeners.has('transcription.statusChanged')).toBe(true);
     view.unmount();
     expect(listeners.has('transcription.statusChanged')).toBe(false);
@@ -1343,6 +1339,196 @@ describe('Settings page (saved bar)', () => {
     expect(await screen.findByText('Saved. Using opus.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Close' }));
     expect(screen.queryByText('Saved. Using opus.')).toBeNull();
+  });
+});
+
+describe('Settings tabs', () => {
+  const scrolled = vi.fn();
+  beforeEach(() => {
+    // jsdom has no layout, so it has no scrollIntoView.
+    scrolled.mockClear();
+    Element.prototype.scrollIntoView = scrolled;
+  });
+  afterEach(() => {
+    // A link nobody followed must not open the next test on its tab.
+    takeEngineFocus();
+    takeTranscriptionFocus();
+  });
+
+  const tabList = () => screen.findByRole('tablist', { name: 'Settings sections' });
+  const selectedTab = () => screen.getByRole('tab', { selected: true }).textContent;
+  /** The section headings on screen, top to bottom. */
+  const sections = () =>
+    screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent);
+  const handlers = {
+    'settings.getPage': () => pageDto(),
+    'transcription.getStatus': () => baseStatus,
+    'workspace.dispatch': () => ({}),
+  };
+
+  it('groups the page into four tabs under the title and opens on Recording (8.1, 8.2)', async () => {
+    install(handlers);
+    visit();
+    const list = await tabList();
+    expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument();
+    const tabs = within(list).getAllByRole('tab');
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      'Recording',
+      'Transcription',
+      'Summaries & AI',
+      'General',
+    ]);
+    expect(tabs.map((tab) => tab.getAttribute('data-testid'))).toEqual([
+      'SettingsTab-recording',
+      'SettingsTab-transcription',
+      'SettingsTab-summary',
+      'SettingsTab-general',
+    ]);
+    expect(selectedTab()).toBe('Recording');
+    expect(sections()).toEqual(['Microphone', 'Call detection']);
+  });
+
+  it.each([
+    ['Transcription', ['Meeting language', 'Transcription']],
+    ['Summaries & AI', ['Summary provider']],
+    ['General', ['Appearance', 'Language', 'Data', 'About']],
+    ['Recording', ['Microphone', 'Call detection']],
+  ])('the %s tab shows only its sections, in lifecycle order', async (name, wanted) => {
+    install(handlers);
+    mount('en', name === 'Recording' ? 'general' : 'recording');
+    await tabList();
+    await userEvent.click(screen.getByRole('tab', { name }));
+    expect(selectedTab()).toBe(name);
+    expect(sections()).toEqual(wanted);
+    expect(screen.getAllByRole('tabpanel')).toHaveLength(1);
+  });
+
+  it('names the tabs in Spanish', async () => {
+    install(handlers);
+    visit('es');
+    const list = await screen.findByRole('tablist', { name: 'Secciones de configuración' });
+    expect(
+      within(list)
+        .getAllByRole('tab')
+        .map((tab) => tab.textContent),
+    ).toEqual(['Grabación', 'Transcripción', 'Resumen e IA', 'General']);
+  });
+
+  it('moves between tabs with the arrow keys', async () => {
+    install(handlers);
+    visit();
+    await tabList();
+    screen.getByRole('tab', { name: 'Recording' }).focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(selectedTab()).toBe('Transcription');
+    expect(sections()).toEqual(['Meeting language', 'Transcription']);
+  });
+
+  it('a revisit opens the tab the page was left on', async () => {
+    install(handlers);
+    const first = visit();
+    await tabList();
+    await userEvent.click(screen.getByRole('tab', { name: 'General' }));
+    first.unmount();
+    visit();
+    expect(selectedTab()).toBe('General');
+    expect(sections()).toEqual(['Appearance', 'Language', 'Data', 'About']);
+  });
+
+  it('keeps Appearance reachable, without tabs, while the page loads', () => {
+    install({ 'settings.getPage': () => new Promise(() => undefined) });
+    visit();
+    expect(screen.getByLabelText('Loading settings')).toBeInTheDocument();
+    expect(screen.queryByRole('tablist')).toBeNull();
+    expect(sections()).toEqual(['Appearance']);
+    expect(screen.getByRole('radiogroup', { name: 'Theme' })).toBeInTheDocument();
+  });
+
+  it('keeps Appearance reachable, without tabs, when the page cannot load', async () => {
+    install({
+      'settings.getPage': () => {
+        throw new Error('disk unreadable');
+      },
+    });
+    visit();
+    await screen.findByText('The settings could not be loaded. disk unreadable');
+    expect(screen.queryByRole('tablist')).toBeNull();
+    expect(sections()).toEqual(['Appearance']);
+  });
+
+  it('keeps the recovered-settings notice above the tabs, on every tab', async () => {
+    install({
+      ...handlers,
+      'settings.getPage': () => pageDto({ notices: [{ id: 'n1', keptAs: 'C:\\kept.json' }] }),
+    });
+    visit();
+    const list = await tabList();
+    const notice = screen.getByText(/The damaged file was kept at C:\\kept.json/);
+    expect(notice.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await userEvent.click(screen.getByRole('tab', { name: 'General' }));
+    expect(screen.getByText(/The damaged file was kept at/)).toBeInTheDocument();
+  });
+
+  it('a link to an engine opens the Summaries tab and still focuses its row', async () => {
+    install(handlers);
+    openEngineInSettings('Codex');
+    visit();
+    const codex = await openRow('Codex CLI');
+    expect(selectedTab()).toBe('Summaries & AI');
+    await waitFor(() => {
+      expect(codex).toHaveFocus();
+    });
+    expect(scrolled).toHaveBeenCalled();
+  });
+
+  it('a link to an engine switches tabs when Settings is already on another one', async () => {
+    install(handlers);
+    visit();
+    await tabList();
+    expect(selectedTab()).toBe('Recording');
+    act(() => {
+      openEngineInSettings('Anthropic');
+    });
+    const anthropic = await openRow('Anthropic');
+    expect(selectedTab()).toBe('Summaries & AI');
+    await waitFor(() => {
+      expect(anthropic).toHaveFocus();
+    });
+    expect(takeEngineFocus()).toBeNull();
+  });
+
+  it('a link to the transcription choice opens the Transcription tab and still focuses it', async () => {
+    install(handlers);
+    openTranscriptionInSettings('choice');
+    visit();
+    await tabList();
+    expect(selectedTab()).toBe('Transcription');
+    await waitFor(() => {
+      expect(screen.getByRole('radio', { name: /^On this PC/ })).toHaveFocus();
+    });
+    expect(takeTranscriptionFocus()).toBeNull();
+  });
+
+  it('a link to transcription switches tabs when Settings is already on another one', async () => {
+    install(handlers);
+    mount('en', 'general');
+    await tabList();
+    act(() => {
+      openTranscriptionInSettings('choice');
+    });
+    expect(selectedTab()).toBe('Transcription');
+    await waitFor(() => {
+      expect(screen.getByRole('radio', { name: /^On this PC/ })).toHaveFocus();
+    });
+  });
+
+  it('a followed link does not pin the tab: the user can leave it', async () => {
+    install(handlers);
+    openEngineInSettings('Codex');
+    visit();
+    await openRow('Codex CLI');
+    await userEvent.click(screen.getByRole('tab', { name: 'Recording' }));
+    expect(sections()).toEqual(['Microphone', 'Call detection']);
   });
 });
 

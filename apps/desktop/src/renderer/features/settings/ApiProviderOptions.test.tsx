@@ -7,6 +7,7 @@ import { ThemeProvider } from '../../app/theme';
 import { Providers } from '../../app/test-providers';
 import { SettingsRoute } from './SettingsRoute';
 import { resetSettingsPageCache } from './use-settings-page';
+import { rememberSettingsTab } from './settings-tab';
 
 const SECRET = 'sk-test-SECRET-123';
 
@@ -87,6 +88,8 @@ const keyField = () => screen.getByLabelText('API key', { selector: 'input' });
 
 beforeEach(() => {
   resetSettingsPageCache();
+  // The engines live under the Summaries tab.
+  rememberSettingsTab('summary');
   window.matchMedia = ((query: string) => ({
     matches: false,
     media: query,

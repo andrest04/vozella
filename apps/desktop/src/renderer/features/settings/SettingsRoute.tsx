@@ -1,8 +1,17 @@
-import { SETTINGS_SECTIONS, type SettingsSectionId } from '@vozella/core';
+import { SETTINGS_SECTIONS, SETTINGS_TABS, type SettingsSectionId } from '@vozella/core';
 import { Fragment, useRef, type ReactNode } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import { useTheme, isThemePreference } from '../../app/theme';
-import { Button, Notice, RadioGroup, SectionHeader, SettingRow, SkeletonText } from '../../ui';
+import {
+  Button,
+  Notice,
+  RadioGroup,
+  SectionHeader,
+  SettingRow,
+  SkeletonText,
+  Tabs,
+  type TabItem,
+} from '../../ui';
 import { MicrophoneSection } from '../audio/MicrophoneSection';
 import { AboutSection } from './AboutSection';
 import { CallDetectionSection } from './CallDetectionSection';
@@ -13,6 +22,7 @@ import { MeetingLanguageSection } from './MeetingLanguageSection';
 import { ProviderSection } from './ProviderSection';
 import { TranscriptionSection } from '../transcription/TranscriptionSection';
 import { useSettingsPage } from './use-settings-page';
+import { useSettingsTab } from './settings-tab';
 
 function AppearanceSection() {
   const t = useT();
@@ -40,14 +50,16 @@ function AppearanceSection() {
 }
 
 /**
- * The Settings page. The blocks follow `SETTINGS_SECTIONS`, in meeting lifecycle order; a block
- * whose module has not landed is not drawn, and nothing stands in for it. Appearance needs no page
- * answer, so it stays reachable while the page loads or fails.
+ * The Settings page. The blocks follow `SETTINGS_SECTIONS`, in meeting lifecycle order, grouped
+ * into the tabs of `SETTINGS_TABS` so one short group is on screen at a time; a block whose module
+ * has not landed is not drawn, and nothing stands in for it. Appearance needs no page answer, so
+ * it stays reachable, without tabs, while the page loads or fails.
  */
 export function SettingsRoute() {
   const t = useT();
   const model = useSettingsPage();
   const { page } = model;
+  const [tab, setTab] = useSettingsTab();
   // The fade belongs to the first reveal; a revisit paints the kept snapshot silently (spec 8.5).
   const revealed = useRef(model.page === null).current;
   const appearanceBuilt = SETTINGS_SECTIONS.some(
@@ -94,6 +106,23 @@ export function SettingsRoute() {
         return null;
     }
   };
+
+  // Only the selected panel is mounted, so a hidden tab reads nothing and keeps no state.
+  const tabs: readonly TabItem[] = SETTINGS_TABS.map((item) => ({
+    value: item.id,
+    label: t(item.labelKey),
+    testId: `SettingsTab-${item.id}`,
+    content: (
+      // The scroll margin keeps a control that takes focus clear of the sticky tab list.
+      <div className="flex flex-col gap-8 [&_*]:scroll-mt-12">
+        {SETTINGS_SECTIONS.filter(
+          (section) => section.tab === item.id && section.status === 'built',
+        ).map((section) => (
+          <Fragment key={section.id}>{renderBlock(section.id)}</Fragment>
+        ))}
+      </div>
+    ),
+  }));
 
   return (
     <section className="flex flex-col gap-8" aria-busy={model.loading}>
@@ -143,11 +172,18 @@ export function SettingsRoute() {
               {t('Ui_SettingsRecovered', notice.keptAs)}
             </Notice>
           ))}
-          {SETTINGS_SECTIONS.map((section) =>
-            section.status === 'built' ? (
-              <Fragment key={section.id}>{renderBlock(section.id)}</Fragment>
-            ) : null,
-          )}
+          <Tabs
+            tabs={tabs}
+            value={tab}
+            onValueChange={(next) => {
+              const chosen = SETTINGS_TABS.find((item) => item.id === next);
+              if (chosen) setTab(chosen.id);
+            }}
+            label={t('Ui_SettingsTabsLabel')}
+            listTestId="SettingsTabs"
+            // The list stays in reach while a long tab scrolls under it.
+            listClassName="sticky top-0 z-10 bg-paper"
+          />
         </div>
       ) : null}
     </section>

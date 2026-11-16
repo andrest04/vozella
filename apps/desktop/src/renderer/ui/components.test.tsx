@@ -110,6 +110,25 @@ describe('Tabs', () => {
     expect(screen.getByRole('tab', { name: 'Summary' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByText('Second panel')).toBeVisible();
   });
+
+  it('adds the page classes to the tab list and keeps its own', () => {
+    const tabs = [{ value: 'a', label: 'Transcript', content: <p>First panel</p> }];
+    const view = render(
+      <Tabs label="Views" value="a" onValueChange={() => undefined} tabs={tabs} />,
+    );
+    const plain = screen.getByRole('tablist').className;
+    view.unmount();
+    render(
+      <Tabs
+        label="Views"
+        value="a"
+        onValueChange={() => undefined}
+        tabs={tabs}
+        listClassName="sticky top-0"
+      />,
+    );
+    expect(screen.getByRole('tablist').className).toBe(`${plain} sticky top-0`);
+  });
 });
 
 describe('Menu', () => {

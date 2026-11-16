@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp } from './launch';
+import { launchApp, openSettingsTab } from './launch';
 
 // The API key engines (BYOK) in Settings, in the real window on the fake native build: the key
 // store is in memory and Verify answers from a fixed model list, so no request leaves the PC.
@@ -35,6 +35,7 @@ test('OpenAI: save a key, see it saved but never shown, verify it, and pass axe'
     await page.evaluate(() => {
       window.location.hash = '#/settings';
     });
+    await openSettingsTab(page, 'summary');
     await expect(page.getByRole('heading', { level: 2, name: 'Summary provider' })).toBeVisible();
 
     const list = page.getByRole('group', { name: 'Choose where summaries are generated' });
@@ -105,6 +106,7 @@ test('Groq: its own engine row takes a key, verifies it and suggests the Groq mo
     await page.evaluate(() => {
       window.location.hash = '#/settings';
     });
+    await openSettingsTab(page, 'summary');
     await expect(page.getByRole('heading', { level: 2, name: 'Summary provider' })).toBeVisible();
 
     const list = page.getByRole('group', { name: 'Choose where summaries are generated' });

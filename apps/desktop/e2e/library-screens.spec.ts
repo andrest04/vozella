@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, type LaunchedApp } from './launch';
+import { launchApp, openSettingsTab, type LaunchedApp } from './launch';
 import { writeMeeting } from './library-data';
 
 // Regenerates docs/port/screens/library-storage/*.png, the pictures T4.1 is judged from. Opt in with
@@ -370,6 +370,7 @@ test.describe('seeded library', () => {
       await page.evaluate(() => {
         window.location.hash = '#/settings';
       });
+      await openSettingsTab(page, 'general');
       await expect(page.getByRole('heading', { level: 2, name: 'Data' })).toBeVisible();
       await page.getByText('Data', { exact: true }).scrollIntoViewIfNeeded();
       await shot(page, `settings-data-${theme}`);
