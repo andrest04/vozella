@@ -1,4 +1,3 @@
-import type { FolderRecord } from '../library/folder';
 import type { MeetingRecord } from '../library/meeting';
 import { parseOffsetDate } from '../library/offset-date';
 import { isRemoteEngine } from '../settings/api-providers';
@@ -16,7 +15,7 @@ export const MEETING_CAP = 12;
 
 /**
  * How much meeting text one send may carry, chosen by engine (T2). `meetingChars` caps the whole
- * Meeting scope block; `summaryChars` caps each summary in Folder and All meetings.
+ * Meeting scope block; `summaryChars` caps each summary in Project and All meetings.
  */
 export interface ContextBudget {
   /** Live tail when no rolling digest exists yet. */
@@ -55,11 +54,39 @@ export const CLI_CONTEXT_BUDGET: ContextBudget = {
 export const contextBudgetFor = (providerId: ProviderId | undefined): ContextBudget =>
   isRemoteEngine(providerId) ? CLI_CONTEXT_BUDGET : LOCAL_CONTEXT_BUDGET;
 
+/** Smallest share of a local budget that is kept for the text itself once a project block is in. */
+const LOCAL_TEXT_FLOOR_CHARS = 1500;
+/** The blank line that separates the project block from what follows it. */
+const BLOCK_SEPARATOR_CHARS = 2;
+
+/**
+ * The local model has a fixed window, so a project block must not make the prompt longer: its size
+ * (and the separator) is taken from the budget for the meeting and the live tail, down to a floor.
+ * Remote engines have room and are not carved. The summary caps stay: they apply per meeting.
+ */
+export function carveProjectBlock(budget: ContextBudget, blockChars: number): ContextBudget {
+  const cost = blockChars + BLOCK_SEPARATOR_CHARS;
+  const carve = (chars: number): number =>
+    Math.max(chars - cost, Math.min(chars, LOCAL_TEXT_FLOOR_CHARS));
+  return {
+    ...budget,
+    liveChars: carve(budget.liveChars),
+    liveTailWithDigestChars: carve(budget.liveTailWithDigestChars),
+    meetingChars: carve(budget.meetingChars),
+  };
+}
+
 export interface PackOptions {
   /** Defaults to the local budget. */
   readonly budget?: ContextBudget;
   /** What the user asked: ranks transcript windows when the transcript does not fit. */
   readonly query?: string;
+  /**
+   * The project block (name, instructions, files) already packed by `packProjectContext`. Project
+   * scope puts it before the meetings, Meeting scope before the meeting; Live carries its own on
+   * the snapshot and All meetings never has one.
+   */
+  readonly projectBlock?: string | null;
 }
 
 /**
@@ -104,7 +131,11 @@ export type ContextMeeting = Pick<
    */
   readonly relevanceRank?: number;
 };
-export type ContextFolder = Pick<FolderRecord, 'id' | 'name' | 'note'>;
+/** The project a Project scope names. Its instructions and files come from `packProjectContext`. */
+export interface ContextProject {
+  readonly id: string;
+  readonly name: string;
+}
 
 /** String lookup injected by the caller so core stays pure (CoreStrings keys). */
 export type ChatStringLookup = (key: string) => string;
@@ -116,7 +147,7 @@ const LINE_BREAK = /\r\n|[\r\n\u0085\u2028\u2029]/g;
 const isBlank = (value: string | null | undefined): value is null | undefined =>
   value === null || value === undefined || value.trim() === '';
 
-/** Guid equality as C# sees it: case, hyphens and braces do not matter. */
+/** Guid equality: case, hyphens and braces do not matter. */
 const guidKey = (id: string): string => id.replace(/[-{}]/g, '').toLowerCase();
 
 /** Id as 32 lowercase hex digits, no hyphens (the citation form). */
@@ -183,30 +214,30 @@ function packMany(
   kind: 'Project' | 'AllMeetings',
   projectId: string | null,
   meetings: readonly ContextMeeting[],
-  folders: readonly ContextFolder[],
+  projects: readonly ContextProject[],
   t: ChatStringLookup,
   summaryMax: number,
+  projectBlock: string | null | undefined,
 ): string {
   let out = '';
   if (kind === 'Project') {
     if (projectId === null) return t('ChatFolderNotSelected');
     const key = guidKey(projectId);
-    const found = folders.find((f) => guidKey(f.id) === key);
-    if (!found) out += `${t('ChatFolderNotFound')}${NL}`;
-    else {
-      out += `Folder: ${singleLine(found.name)}${NL}`;
-      out += `Note: ${isBlank(found.note) ? NONE : neutralizeStructure(found.note)}${NL}`;
-    }
+    const found = projects.find((p) => guidKey(p.id) === key);
+    // The block already opens with "Project: name", so it replaces that line.
+    if (!isBlank(projectBlock)) out += `${projectBlock}${NL}${NL}`;
+    else if (!found) out += `${t('ChatFolderNotFound')}${NL}`;
+    else out += `Project: ${singleLine(found.name)}${NL}`;
   } else {
     out += `All meetings:${NL}`;
   }
 
-  const folderKey = projectId === null ? null : guidKey(projectId);
+  const projectKey = projectId === null ? null : guidKey(projectId);
   const matching =
     kind === 'AllMeetings'
       ? [...meetings]
       : meetings.filter(
-          (m) => folderKey !== null && m.projectId !== null && guidKey(m.projectId) === folderKey,
+          (m) => projectKey !== null && m.projectId !== null && guidKey(m.projectId) === projectKey,
         );
   matching.sort((a, b) => {
     const diff = recordedMs(b.recordedAt) - recordedMs(a.recordedAt);
@@ -315,7 +346,7 @@ export function packLiveSession(
  * The only meeting text the model sees (spec 3.3). Pure: `liveTranscript` is an argument so the
  * caller snapshots it when the send starts (B5), and `t` supplies the CoreStrings messages.
  * `options.budget` sizes the text for the engine (T2); `options.query` ranks transcript excerpts.
- * Throws TypeError for null meetings or folders and RangeError for an unknown scope.
+ * Throws TypeError for null meetings or projects and RangeError for an unknown scope.
  */
 export function packContext(
   kind: ChatScopeKind,
@@ -323,13 +354,13 @@ export function packContext(
   meetingId: string | null,
   liveTranscript: string | LiveContextSnapshot | null | undefined,
   meetings: readonly ContextMeeting[] | null,
-  folders: readonly ContextFolder[] | null,
+  projects: readonly ContextProject[] | null,
   t: ChatStringLookup,
   options: PackOptions = {},
 ): string {
   const budget = options.budget ?? LOCAL_CONTEXT_BUDGET;
   if (meetings === null) throw new TypeError('meetings is required');
-  if (folders === null) throw new TypeError('folders is required');
+  if (projects === null) throw new TypeError('projects is required');
   switch (kind) {
     case 'Live':
       return packLive(
@@ -343,11 +374,21 @@ export function packContext(
       const key = meetingId === null ? null : guidKey(meetingId);
       const found = key === null ? undefined : meetings.find((m) => guidKey(m.id) === key);
       if (!found) return t('ChatMeetingNotFound');
-      return packMeeting(found, budget, options.query ?? '', t);
+      const block = isBlank(options.projectBlock) ? null : options.projectBlock;
+      const body = packMeeting(found, budget, options.query ?? '', t);
+      return block === null ? body : `${block}${NL}${NL}${body}`;
     }
     case 'Project':
     case 'AllMeetings':
-      return packMany(kind, projectId, meetings, folders, t, budget.summaryChars);
+      return packMany(
+        kind,
+        projectId,
+        meetings,
+        projects,
+        t,
+        budget.summaryChars,
+        kind === 'Project' ? options.projectBlock : null,
+      );
     default:
       throw new RangeError(`Unknown chat scope: ${String(kind)}`);
   }

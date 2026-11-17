@@ -3,7 +3,7 @@ import { compactMeetingId } from './context-packer';
 /** Citation prefix (spec 3.4, 4.2). The host is fake on purpose: the renderer intercepts these links. */
 export const MEETING_LINK_PREFIX = 'https://meetinglive.local/meeting/';
 
-/** `prefix` plus the id as 32 lowercase hex digits (.NET `Guid.ToString("N")`). */
+/** `prefix` plus the id as 32 lowercase hex digits. */
 export const meetingLink = (id: string): string => MEETING_LINK_PREFIX + compactMeetingId(id);
 
 const HEX32 = /^[0-9a-f]{32}$/i;

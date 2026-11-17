@@ -99,7 +99,7 @@ describe('ChatScopeResolverTests', () => {
     expect(resolveScopeFromWorkspace(ws.state).kind).toBe('Live');
   });
 
-  it('raises scopeChanged for tag, folder, meeting and capture changes, not for live text', () => {
+  it('raises scopeChanged for tag, project, meeting and capture changes, not for live text', () => {
     const ws = new Workspace();
     let count = 0;
     ws.on('scopeChanged', () => (count += 1));

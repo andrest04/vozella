@@ -23,7 +23,7 @@ export const newestFirst = (a: MeetingListItem, b: MeetingListItem): number => {
 };
 
 export interface RankInput {
-  /** The candidate meetings (already scoped to a folder, or all). */
+  /** The candidate meetings (already scoped to a project, or all). */
   readonly items: readonly MeetingListItem[];
   readonly question: string;
   /** The library's search source; read lazily, only for the candidates. */

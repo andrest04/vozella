@@ -100,7 +100,7 @@ describe('scopeRecipes (merge with built-ins)', () => {
     expect(list[2]?.owner).toBeUndefined();
   });
 
-  it('a folder or all meetings take the multiple-meeting prompts; Live takes the single ones', () => {
+  it('a project or all meetings take the multiple-meeting prompts; Live takes the single ones', () => {
     expect(scopeRecipes('Project', names, mine)[0]?.id).toBe('p2');
     expect(scopeRecipes('AllMeetings', names, mine).filter((r) => r.owner === 'user')).toHaveLength(
       1,
