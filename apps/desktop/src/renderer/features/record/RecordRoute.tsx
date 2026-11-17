@@ -4,11 +4,13 @@ import {
   isCloudTranscriptionKind,
   type CloudLiveText,
 } from '@vozella/core';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import { FileUp, KeyRound, Link, Mic } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
 import type { StringKey } from '../../i18n/translate';
-import { Button, SectionHeader, cn } from '../../ui';
+import { Button, SectionHeader, cn, useToast } from '../../ui';
+import { useConnectedProjectDirectory } from '../meeting-list/project-directory';
 import { SourcesPanel, type SourcesSelection } from '../audio/SourcesPanel';
 import { openTranscriptionInSettings } from '../transcription/transcription-focus';
 import { useEngineStatus } from '../transcription/use-engine-status';
@@ -19,7 +21,7 @@ import { ProcessingBar, RetryAction } from './ProcessingBar';
 import { needsCloudKey } from './needs-cloud-key';
 import { NotepadPanel } from './notepad/NotepadPanel';
 import { RecordIdle } from './RecordIdle';
-import { buildDestinations } from './destinations';
+import { buildDestinations, retainDestination } from './destinations';
 import {
   arrangePanels,
   deriveRecordLayout,
@@ -41,7 +43,8 @@ import {
   importFromYouTube,
   importRecording,
   retryProcessing,
-  setFolderId,
+  setNotice,
+  setProjectId,
   setTitle,
   startRecording,
   useRecordingStore,
@@ -102,6 +105,8 @@ export function RecordRoute() {
   const [youTubeOpen, setYouTubeOpen] = useState(false);
   const { status: engine } = useEngineStatus();
   const { ensureReady, dialogs } = useEnsureReady();
+  const directory = useConnectedProjectDirectory();
+  const toast = useToast();
   const answer = useLiveAskStore((s) => s.answer);
   const width = useWindowWidth();
 
@@ -171,6 +176,23 @@ export function RecordRoute() {
     void record();
   });
 
+  // The chosen project is kept while it exists and falls back to No project once it is gone.
+  useEffect(() => {
+    if (directory.status !== 'ready' || directory.storage.status !== 'ready') return;
+    const kept = retainDestination(
+      store.projectId,
+      buildDestinations(directory.projects, '', locale),
+    );
+    if (kept !== store.projectId && !isRecording) setProjectId(kept);
+  }, [
+    directory.status,
+    directory.storage.status,
+    directory.projects,
+    store.projectId,
+    isRecording,
+    locale,
+  ]);
+
   // The status the page shows: main's list while a take or a run exists, else the idle line.
   const messages: readonly StatusMessage[] = useMemo(() => {
     const fromMain = state?.status ?? [];
@@ -182,12 +204,84 @@ export function RecordRoute() {
   const statusText = useStatusText(messages);
   const canvasCopy = useCanvasCopy(store.liveText);
   const destination = useMemo(() => {
-    const inbox = t('Library_Inbox');
+    const noProject = t('Ui_ProjectNone');
     return (
-      buildDestinations(store.folders, inbox, locale).find((d) => d.projectId === store.projectId)
-        ?.path ?? inbox
+      buildDestinations(directory.projects, noProject, locale).find(
+        (d) => d.projectId === store.projectId,
+      )?.label ?? noProject
     );
-  }, [store.folders, store.projectId, locale, t]);
+  }, [directory.projects, store.projectId, locale, t]);
+
+  // Start meeting in this project arrives as /record?project=<id>&start=1. The parameters are read
+  // once and the address is replaced before anything async runs, so a refresh never starts again.
+  const search = useSearch({ strict: false });
+  const navigate = useNavigate();
+  const consumed = useRef(false);
+  const [launch, setLaunch] = useState<{ project: string | null; start: boolean } | null>(null);
+  useEffect(() => {
+    const asked = search.project !== undefined || search.start !== undefined;
+    if (!asked) {
+      consumed.current = false;
+      return;
+    }
+    if (consumed.current) return;
+    consumed.current = true;
+    void navigate({ to: '/record', search: {}, replace: true });
+    setLaunch({ project: search.project ?? null, start: search.start === 1 });
+  }, [search.project, search.start, navigate]);
+
+  const sourcesReady = selection.microphone !== null;
+  useEffect(() => {
+    if (launch === null || state === null || directory.status === 'loading') return;
+    // Another take is under way: it keeps its destination and no second one begins.
+    if (active) {
+      setLaunch(null);
+      toast.show({
+        title: t('Ui_RecordAlreadyRecording'),
+        description: t('Ui_RecordSavingTo', destination),
+      });
+      return;
+    }
+    const known =
+      directory.storage.status === 'ready' &&
+      launch.project !== null &&
+      directory.projects.some((project) => project.id === launch.project);
+    if (launch.project !== null && !known) {
+      setLaunch(null);
+      setProjectId(null);
+      setNotice({
+        key:
+          directory.storage.status === 'ready'
+            ? 'Ui_RecordProjectGone'
+            : 'Ui_ProjectsUnavailableNow',
+        args: [],
+        severity: 'info',
+      });
+      return;
+    }
+    setProjectId(launch.project);
+    if (!launch.start) {
+      setLaunch(null);
+      return;
+    }
+    // The take starts once the sources have loaded, so it records from the default microphone.
+    if (!sourcesReady || !idle) return;
+    setLaunch(null);
+    void record();
+  }, [
+    launch,
+    state,
+    active,
+    idle,
+    sourcesReady,
+    directory.status,
+    directory.storage.status,
+    directory.projects,
+    destination,
+    record,
+    toast,
+    t,
+  ]);
   const cloudEngine =
     engine !== null && isCloudTranscriptionKind(engine.engine) ? engine.engine : null;
   // How the captions of a cloud engine arrive is a column of the engine table: in pieces they are
@@ -233,9 +327,9 @@ export function RecordRoute() {
         title={title}
         onTitleChange={setTitle}
         titleDisabled={isRecording || busy === 'starting'}
-        folders={store.folders}
+        projects={directory.projects}
         projectId={store.projectId}
-        onFolderChange={setFolderId}
+        onProjectChange={setProjectId}
         destinationDisabled={isRecording || busy === 'starting'}
       >
         <SourcesPanel

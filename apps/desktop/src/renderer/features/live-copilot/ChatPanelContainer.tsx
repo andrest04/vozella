@@ -68,7 +68,7 @@ export function ChatPanelContainer({
     event.preventDefault();
     const target = classifyPillLink(href);
     if (target === null) return;
-    // A refused or failed launch is ignored, as in the WinUI window.
+    // A refused or failed launch is ignored.
     void window.vozella.invoke('chat.openExternal', { url: target }).catch(() => undefined);
   }, []);
 

@@ -45,7 +45,7 @@ describe('format', () => {
     expect(format('{0} and {1}', ['a'])).toBe('a and {1}');
   });
 
-  it('handles the .NET number patterns used in the source strings', () => {
+  it('handles the number patterns used in the source strings', () => {
     expect(format('{0:0.#} s', [1.26])).toBe('1.3 s');
     expect(format('{0:0}', [1.6])).toBe('2');
   });

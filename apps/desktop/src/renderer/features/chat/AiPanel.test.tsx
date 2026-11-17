@@ -180,7 +180,8 @@ describe('AiPanel scope chip (items 6 to 11)', () => {
     });
     expect(screen.getByTestId('BarMeetingChat')).toBeTruthy();
     expect(screen.getByTestId('BtnMeetingChatNew')).toBeTruthy();
-    expect(screen.queryByTestId('BtnMeetingChatHistory')).toBeNull();
+    // The History control sits beside New chat; its list is read only when it opens.
+    expect(screen.getByTestId('BtnMeetingChatHistory')).toBeTruthy();
   });
 
   it('shows Live while capture is active, in Spanish too', async () => {
@@ -256,17 +257,19 @@ describe('AiPanel scope chip (items 6 to 11)', () => {
     });
   });
 
-  it('shows the folder name on the library, and Carpeta without a name in Spanish', async () => {
+  it('shows the project name on its page, and Proyecto without a name in Spanish', async () => {
+    // The resolver of this branch still reads the project from the History tag; the lane that moves
+    // it to the Projects tag changes the tag here.
     install({ currentShellTag: 'History', selectedProjectId: FOLDER });
     mount();
     await waitFor(() => {
-      expect(chip().textContent).toBe('Folder: Calculo');
+      expect(chip().textContent).toBe('Project: Calculo');
     });
     cleanup();
     install({ currentShellTag: 'History', selectedProjectId: 'missing' });
     mount('es');
     await waitFor(() => {
-      expect(chip().textContent).toBe('Carpeta');
+      expect(chip().textContent).toBe('Proyecto');
     });
   });
 

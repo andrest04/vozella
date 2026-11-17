@@ -2,14 +2,14 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { formatMeetingDate } from './format';
+import { formatMeetingDate } from '../meeting-list/format';
 import { Providers } from '../../app/test-providers';
 import {
   LibraryScreen,
   stubLayout,
-  folderRecord,
   installFakeApi,
   meetingRecord,
+  projectListItem,
 } from './library-test-kit';
 
 beforeAll(() => {
@@ -57,11 +57,8 @@ async function mount(
   return { api, user, unmount };
 }
 
-const seed = ({ meetings, folders }: Api): void => {
-  folders.folders = [
-    folderRecord(UNI, 'Universidad', null, { note: 'Fall term', colorKey: 'teal' }),
-    folderRecord(CALC, 'Calculo', UNI),
-  ];
+const seed = ({ meetings, projects }: Api): void => {
+  projects.list = [projectListItem(UNI, 'Universidad'), projectListItem(CALC, 'Calculo')];
   meetings.records.set('a', meetingRecord('a', 'Standup', '2026-09-01T09:00:00.0000000+00:00'));
   meetings.records.set(
     'c',
@@ -96,26 +93,10 @@ describe('loading', () => {
     expect(await screen.findByText('Standup')).toBeInTheDocument();
     expect(screen.queryByRole('status', { name: 'Loading' })).not.toBeInTheDocument();
   });
-
-  it('item 96: the skeleton clears even when the stored selection cannot be read', async () => {
-    await mount((a) => {
-      seed(a);
-      const real = a.workspace.state;
-      let failed = false;
-      Object.defineProperty(a.workspace, 'state', {
-        get: () => {
-          if (failed) return real;
-          failed = true;
-          throw new Error('no state');
-        },
-      });
-    });
-    expect(await screen.findByText('Standup')).toBeInTheDocument();
-  });
 });
 
 describe('the meeting row', () => {
-  it('item 114: right click and the more button both open Open summary, Move, Delete in that order', async () => {
+  it('item 114: right click and the more button both open Open summary, Move to project, Delete in that order', async () => {
     const { user } = await mount(seed);
     const names = (): (string | null)[] =>
       screen.getAllByRole('menuitem').map((item) => item.textContent);
@@ -123,15 +104,15 @@ describe('the meeting row', () => {
       keys: '[MouseRight]',
       target: rowOf(/Standup/),
     });
-    await screen.findByRole('menuitem', { name: 'Move' });
-    expect(names()).toEqual(['Open summary', 'Move', 'Delete']);
+    await screen.findByRole('menuitem', { name: 'Move to project' });
+    expect(names()).toEqual(['Open summary', 'Move to project', 'Delete']);
     await user.keyboard('{Escape}');
     await waitFor(() => {
       expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
     });
     await user.click(within(rowOf(/Standup/)).getByRole('button', { name: 'More actions' }));
-    await screen.findByRole('menuitem', { name: 'Move' });
-    expect(names()).toEqual(['Open summary', 'Move', 'Delete']);
+    await screen.findByRole('menuitem', { name: 'Move to project' });
+    expect(names()).toEqual(['Open summary', 'Move to project', 'Delete']);
   });
 
   it('item 111: the row shows the local time, with the short date and time on hover', async () => {

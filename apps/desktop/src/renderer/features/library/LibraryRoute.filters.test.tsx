@@ -2,14 +2,14 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { connectLibrary, useLibraryStore } from './library-store';
+import { connectMeetingList, useMeetingListStore } from '../meeting-list/meeting-list-store';
 import { LibraryRoute } from './LibraryRoute';
 import { Providers } from '../../app/test-providers';
 import {
   LibraryScreen,
-  folderRecord,
   installFakeApi,
   meetingRecord,
+  projectListItem,
   stubLayout,
 } from './library-test-kit';
 
@@ -52,9 +52,9 @@ beforeAll(() => {
 
 type Api = ReturnType<typeof installFakeApi>;
 
-/** Five meetings: two recent with a summary or a transcript, three older, one in a folder. */
-const seed = ({ meetings, folders }: Api): void => {
-  folders.folders = [folderRecord(FOLDER, 'Clients')];
+/** Five meetings: two recent with a summary or a transcript, three older, one in a project. */
+const seed = ({ meetings, projects }: Api): void => {
+  projects.list = [projectListItem(FOLDER, 'Clients')];
   const add = (id: string, title: string, days: number, extra = {}): void => {
     meetings.records.set(id, meetingRecord(id, title, daysAgo(days), extra));
   };
@@ -62,7 +62,7 @@ const seed = ({ meetings, folders }: Api): void => {
   add('recent-transcript', 'Recent with transcript', 2, { transcript: 'Talked about pelicans' });
   add('older-summary', 'Older with summary', 20, { summary: 'Pelicans again' });
   add('old-bare', 'Old and bare', 60);
-  add('folder-recent', 'Folder recent', 3, { projectId: FOLDER, summary: 'In a folder' });
+  add('folder-recent', 'Folder recent', 3, { projectId: FOLDER, summary: 'In a project' });
 };
 
 async function mount() {
@@ -199,7 +199,7 @@ describe('the filtered list', () => {
     await waitFor(() => {
       expect(titles()).not.toContain('old-bare');
     });
-    expect(titles()).toContain(useLibraryStore.getState().cursorId);
+    expect(titles()).toContain(useMeetingListStore.getState().cursorId);
 
     await user.click(screen.getByRole('row', { name: /Recent with transcript/ }));
     await user.keyboard('{Control>}a{/Control}');
@@ -280,13 +280,13 @@ describe('no match', () => {
 
 describe('how long they last', () => {
   afterEach(() => {
-    useLibraryStore.setState({ filters: { date: { kind: 'any' }, status: 'any' } });
+    useMeetingListStore.setState({ filters: { date: { kind: 'any' }, status: 'any' } });
   });
 
   it('survive leaving the route and coming back, and end when the library disconnects', async () => {
     const api = installFakeApi();
     seed(api);
-    const off = connectLibrary();
+    const off = connectMeetingList();
     const user = userEvent.setup();
     const route = render(
       <Providers>
@@ -297,7 +297,7 @@ describe('how long they last', () => {
     await choose(user, 'Without transcript');
     route.unmount();
 
-    render(
+    const back = render(
       <Providers>
         <LibraryRoute />
       </Providers>,
@@ -306,8 +306,11 @@ describe('how long they last', () => {
     expect(filterButton()).toHaveAccessibleName('Filters active: 1');
     expect(titles()).not.toContain('recent-transcript');
 
+    // The list holds its own connection while it shows, so the library disconnects only when the
+    // shell and the list are both gone.
+    back.unmount();
     off();
-    expect(useLibraryStore.getState().filters.status).toBe('any');
+    expect(useMeetingListStore.getState().filters.status).toBe('any');
   });
 
   it('nothing about them is written anywhere', async () => {

@@ -12,7 +12,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 import { Providers } from '../../app/test-providers';
 import { NavRail } from './NavRail';
-import { NAV, railRouteOf, routeOfTag, tagOfPath } from './navigation';
+import { NAV, projectIdOfPath, railRouteOf, routeOfTag, tagOfPath } from './navigation';
 
 afterEach(cleanup);
 
@@ -30,6 +30,8 @@ async function mount(initial: string, locale: 'en' | 'es' = 'en') {
   const router = createRouter({
     routeTree: root.addChildren([
       page('/record'),
+      page('/projects'),
+      page('/projects/$id'),
       page('/library'),
       page('/session'),
       page('/settings'),
@@ -50,10 +52,11 @@ const current = () =>
     .map((link) => link.id);
 
 describe('navigation shell (items 20 to 28)', () => {
-  it('lists Record, Library and Settings with the automation ids', async () => {
+  it('lists Record, Projects, Library and Settings with the automation ids', async () => {
     await mount('/record');
     expect(screen.getAllByRole('link').map((link) => [link.textContent, link.id])).toEqual([
       ['Record', 'NavItemRecording'],
+      ['Projects', 'NavItemProjects'],
       ['Library', 'NavItemHistory'],
       ['Settings', 'NavItemSettings'],
     ]);
@@ -61,30 +64,11 @@ describe('navigation shell (items 20 to 28)', () => {
     expect(current()).toEqual(['NavItemRecording']);
   });
 
-  it('keeps the DOM order Record, Library, slot, Settings', async () => {
-    const root = createRootRoute({
-      component: () => (
-        <Providers>
-          <NavRail librarySlot={<p>the slot</p>} />
-        </Providers>
-      ),
-    });
-    const router = createRouter({
-      routeTree: root,
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-    });
-    await act(async () => {
-      render(<RouterProvider router={router} />);
-      await router.load();
-    });
-    const nav = screen.getByRole('navigation');
-    expect(nav.textContent).toBe('RecordLibrarythe slotSettings');
-  });
-
   it('labels follow the app language, Settings included (item 21)', async () => {
     await mount('/record', 'es');
     expect(screen.getAllByRole('link').map((link) => link.textContent)).toEqual([
       'Grabar',
+      'Proyectos',
       'Biblioteca',
       'Configuración',
     ]);
@@ -104,6 +88,14 @@ describe('navigation shell (items 20 to 28)', () => {
     expect(router.state.location.pathname).toBe('/library');
     expect(router.history.length).toBe(before);
   });
+
+  it.each(['/projects', '/projects/00000000-0000-4000-8000-000000000001', '/projects/none'])(
+    'keeps Projects selected on %s',
+    async (path) => {
+      await mount(path);
+      expect(current()).toEqual(['NavItemProjects']);
+    },
+  );
 
   it('the rail stays on Library while a session shows, and Library returns to the list (items 26, 27)', async () => {
     const router = await mount('/session');
@@ -132,6 +124,24 @@ describe('navigation helpers', () => {
     expect(routeOfTag('Session')).toBe('/session');
     expect(tagOfPath('/library')).toBe('History');
     expect(tagOfPath('/gallery')).toBeNull();
+  });
+  it('tags every /projects route Projects, by prefix', () => {
+    expect(routeOfTag('Projects')).toBe('/projects');
+    expect(tagOfPath('/projects')).toBe('Projects');
+    expect(tagOfPath('/projects/none')).toBe('Projects');
+    expect(tagOfPath('/projects/00000000-0000-4000-8000-000000000001')).toBe('Projects');
+    expect(tagOfPath('/projectsx')).toBeNull();
+    expect(railRouteOf('/projects/none')).toBe('/projects');
+    expect(railRouteOf('/projectsx')).toBeNull();
+  });
+  it('reads the project id from the path', () => {
+    expect(projectIdOfPath('/projects/00000000-0000-4000-8000-000000000001')).toBe(
+      '00000000-0000-4000-8000-000000000001',
+    );
+    expect(projectIdOfPath('/projects/none')).toBeNull();
+    expect(projectIdOfPath('/projects')).toBeNull();
+    expect(projectIdOfPath('/library')).toBeNull();
+    expect(projectIdOfPath('/projects/a/b')).toBeNull();
   });
   it('Session is not on the rail', () => {
     expect(NAV.map((entry) => entry.to)).not.toContain('/session');

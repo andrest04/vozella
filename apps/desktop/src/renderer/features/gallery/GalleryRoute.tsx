@@ -1,14 +1,4 @@
-import {
-  Copy,
-  FolderClosed,
-  FolderOpen,
-  Mic,
-  Pencil,
-  Plus,
-  Search,
-  Settings,
-  Trash2,
-} from 'lucide-react';
+import { Copy, Mic, Pencil, Plus, Search, Settings, Trash2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { isThemePreference, useTheme } from '../../app/theme';
 import { SetupWizardDialog } from '../ai-provider/SetupWizardDialog';
@@ -16,6 +6,7 @@ import type { WizardMode } from '../ai-provider/wizard-state';
 import {
   Badge,
   Button,
+  Disclosure,
   Checkbox,
   ContextMenu,
   Dialog,
@@ -37,10 +28,8 @@ import {
   Tabs,
   Textarea,
   Tooltip,
-  Tree,
   useToast,
   type MenuEntry,
-  type TreeNode,
 } from '../../ui';
 
 // Developer tool, English only on purpose: it documents the kit, it is not product copy.
@@ -51,29 +40,6 @@ const OPTIONS = [
   { value: 'pt', label: 'Portuguese' },
   { value: 'fr', label: 'French' },
   { value: 'de', label: 'German' },
-];
-
-const FOLDERS: TreeNode[] = [
-  {
-    id: 'inbox',
-    label: 'Inbox',
-    icon: FolderClosed,
-  },
-  {
-    id: 'clients',
-    label: 'Clients',
-    icon: FolderOpen,
-    children: [
-      { id: 'clients-a', label: 'Acme rollout', icon: FolderClosed },
-      {
-        id: 'clients-b',
-        label: 'Northwind',
-        icon: FolderClosed,
-        children: [{ id: 'clients-b1', label: 'Quarterly review', icon: FolderClosed }],
-      },
-    ],
-  },
-  { id: 'team', label: 'Team', icon: FolderClosed },
 ];
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -111,7 +77,6 @@ export function GalleryRoute() {
   const [language, setLanguage] = useState<string | null>('es');
   const [radio, setRadio] = useState('mic');
   const [tab, setTab] = useState('transcript');
-  const [folder, setFolder] = useState<string | null>('clients-a');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [progress, setProgress] = useState(64);
   const [wizard, setWizard] = useState<WizardMode | null>(null);
@@ -153,7 +118,7 @@ export function GalleryRoute() {
           </Button>
           <Button variant="secondary">Cancel</Button>
           <Button variant="quiet" icon={Plus}>
-            New folder
+            New project
           </Button>
           <Button variant="primary" disabled>
             Disabled
@@ -174,8 +139,8 @@ export function GalleryRoute() {
           <Field label="Title" description="Shown at the top of the note.">
             <Input placeholder="Weekly sync" />
           </Field>
-          <Field label="Folder" error="Choose a folder that exists.">
-            <Input defaultValue="Clients/Acme" />
+          <Field label="Project" error="A project with this name already exists.">
+            <Input defaultValue="Acme rollout" />
           </Field>
           <Field label="Notes" className="col-span-2">
             <Textarea rows={3} placeholder="Optional. Write in your own words." />
@@ -333,16 +298,17 @@ export function GalleryRoute() {
         </div>
       </Section>
 
-      <Section title="Tree and splitter">
+      <Section title="Disclosure and splitter">
         <div className="grid grid-cols-2 gap-8">
           <div className="max-w-xs">
-            <Tree
-              label="Library folders"
-              nodes={FOLDERS}
-              selectedId={folder}
-              onSelect={setFolder}
-              defaultExpandedIds={['clients']}
-            />
+            <Disclosure title="Instructions" defaultOpen>
+              <p className="text-ui text-ink-muted">
+                Sections fold with the native details element.
+              </p>
+            </Disclosure>
+            <Disclosure title="Context files">
+              <p className="text-ui text-ink-muted">Closed until asked.</p>
+            </Disclosure>
           </div>
           <div className="h-40 overflow-hidden rounded-control border border-hairline">
             <Splitter

@@ -1,5 +1,5 @@
 import { canRename, copyCommand, createCopyFeedback, type SessionTab } from '@vozella/core';
-import { FileText, Sparkles } from 'lucide-react';
+import { ArrowRightLeft, FileText, Sparkles } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import { Button, Icon, Notice, Skeleton, SkeletonText, Tabs, cn } from '../../ui';
@@ -9,7 +9,8 @@ import { useProviderGate } from '../ai-provider/use-provider-gate';
 import { RetranscribeButton, RetranscribeStatus } from '../transcription/RetranscribeControl';
 import { useRetranscription } from '../transcription/use-retranscription';
 import { CopyNotice } from './CopyNotice';
-import { RenameDialog } from '../library/RenameDialog';
+import { MoveToProjectPopover } from '../meeting-list/MoveToProjectPopover';
+import { RenameDialog } from '../meeting-list/RenameDialog';
 import { BackLink, SessionHeader } from './SessionHeader';
 import { TranscriptTab, type CopySource } from './TranscriptTab';
 import { useSession } from './use-session';
@@ -85,6 +86,8 @@ export function SessionRoute() {
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameProblem, setRenameProblem] = useState<string | null>(null);
   const [renameBusy, setRenameBusy] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [moveProblem, setMoveProblem] = useState<string | null>(null);
   const { meeting } = session;
   const { show: showCopied, dismiss: dismissCopy } = copy;
   const meetingId = meeting?.id ?? null;
@@ -105,6 +108,8 @@ export function SessionRoute() {
     setCopyEmpty(false);
     setRevealFailed(false);
     setRenameOpen(false);
+    setMoveOpen(false);
+    setMoveProblem(null);
     dismissCopy();
   }, [meetingId, dismissCopy]);
 
@@ -145,6 +150,35 @@ export function SessionRoute() {
         setRevealFailed(true);
       });
   }, [meetingId]);
+
+  const onMove = useCallback(
+    (projectId: string | null) => {
+      if (meetingId === null) return;
+      setMoveProblem(null);
+      void (async () => {
+        try {
+          const result = await window.vozella.invoke('library.moveMeeting', {
+            meetingId,
+            projectId,
+          });
+          if (!result.ok) {
+            setMoveProblem(
+              result.reason === 'busy'
+                ? t('HistoryDelete_Busy')
+                : result.reason.startsWith('storage-')
+                  ? t('Ui_ProjectsUnavailableNow')
+                  : t('Ui_LibraryMoveFailed', result.message ?? result.reason),
+            );
+            return;
+          }
+          refresh();
+        } catch (error) {
+          setMoveProblem(t('Ui_LibraryMoveFailed', error instanceof Error ? error.message : ''));
+        }
+      })();
+    },
+    [meetingId, refresh, t],
+  );
 
   const closeRename = useCallback(() => {
     setRenameOpen(false);
@@ -274,6 +308,24 @@ export function SessionRoute() {
                 meetingId: retranscription.running ? meeting.id : null,
               })
             }
+            moveControl={
+              <MoveToProjectPopover
+                open={moveOpen}
+                onOpenChange={setMoveOpen}
+                from={[meeting.projectId]}
+                onMove={onMove}
+                trigger={
+                  <Button
+                    data-testid="BtnSessionMove"
+                    size="sm"
+                    variant="quiet"
+                    icon={ArrowRightLeft}
+                  >
+                    {t('Ui_MoveToProject')}
+                  </Button>
+                }
+              />
+            }
             extraActions={
               <RetranscribeButton
                 model={retranscription}
@@ -305,6 +357,17 @@ export function SessionRoute() {
               dismissLabel={t('Ui_Close')}
             >
               {copyProblem}
+            </Notice>
+          ) : null}
+          {moveProblem !== null ? (
+            <Notice
+              tone="warning"
+              onDismiss={() => {
+                setMoveProblem(null);
+              }}
+              dismissLabel={t('Ui_Close')}
+            >
+              {moveProblem}
             </Notice>
           ) : null}
           {revealFailed ? (

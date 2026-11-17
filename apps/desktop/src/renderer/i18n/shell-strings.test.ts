@@ -50,7 +50,7 @@ describe('shell strings (items 107 and 136)', () => {
   it.each(table.map((row) => [row.key, row] as const))(
     '%s exists in English and Spanish with the spec text',
     (key, row) => {
-      // The migration text carries the failure after the spec sentence (bug 7, the {0} the WinUI
+      // The migration text carries the failure after the spec sentence (bug 7, the {0} the
       // strings never had), so the spec text is the start of the value, not all of it.
       expect(catalogEn[key], `${key} (en)`).toMatch(new RegExp(`^${escape(row.english)}`));
       expect(catalogEs[key], `${key} (es)`).toMatch(new RegExp(`^${escape(row.spanish)}`));

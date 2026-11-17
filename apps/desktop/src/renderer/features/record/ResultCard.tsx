@@ -5,7 +5,7 @@ import { Button, Icon } from '../../ui';
 
 /**
  * The card after a take is saved (spec 2.13): a check, the title and Open. A quiet ink edge marks
- * it; the accent colour of the WinUI card is not used because only live recording is red.
+ * it; an accent colour is not used because only live recording is red.
  */
 export function ResultCard({
   title,

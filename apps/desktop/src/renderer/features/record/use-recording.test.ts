@@ -7,7 +7,7 @@ import {
   importFromYouTube,
   importRecording,
   resetRecordingStore,
-  setFolderId,
+  setProjectId,
   setTitle,
   startRecording,
   useRecordingStore,
@@ -130,7 +130,7 @@ describe('the recording store', () => {
 
   it('sends the destination with an import and says nothing when the picker is cancelled', async () => {
     const api = install({ 'audio.import.pickFile': () => null });
-    setFolderId('f1');
+    setProjectId('f1');
     expect(await importRecording('t')).toBe(false);
     expect(api.calls).toEqual(['audio.import.pickFile']);
     expect(useRecordingStore.getState().notice).toBeNull();
@@ -144,7 +144,7 @@ describe('the recording store', () => {
         return { started: true, meetingId: 'm' };
       },
     });
-    setFolderId('f1');
+    setProjectId('f1');
     expect(await importFromYouTube('t', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')).toBe(true);
     expect(api.calls).toEqual(['recording.importUrl']);
     expect(inputs[0]).toEqual({
@@ -192,7 +192,6 @@ describe('the recording store', () => {
     const api = install({
       'recording.getState': () => ({ ...idle, liveText: '' }),
       'recording.getSetup': () => ({}),
-      'library.load': () => ({ ok: true, folders: [], meetings: [], skipped: [] }),
     });
     const first = connectRecording();
     const second = connectRecording();
