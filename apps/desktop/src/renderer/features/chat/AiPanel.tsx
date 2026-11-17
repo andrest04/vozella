@@ -9,11 +9,13 @@ import {
   type RefObject,
 } from 'react';
 import type { ChatScopeDecision } from '@vozella/core';
+import { takeChatRequest, useChatRequests } from '../../app/chat-requests';
 import { readStored, writeStored } from '../../app/preference-storage';
 import { useT } from '../../i18n/I18nProvider';
 import { Icon, IconButton, Splitter, SplitterHandle, cn } from '../../ui';
 import { clampSize } from '../../ui/splitter-logic';
 import { AiLauncher } from './AiLauncher';
+import { ChatHistory } from './ChatHistory';
 import { LiveBadge } from './LiveBadge';
 import {
   PANEL_DEFAULT_WIDTH,
@@ -29,7 +31,7 @@ import {
 } from './ai-panel-layout';
 import { SCOPE_ICON, scopeLabel } from './chat-scope-label';
 import { useLocalSendActive } from './chat-local-send';
-import { useChatScope } from './use-chat-scope';
+import { useChatScope, type ThreadReadOnly } from './use-chat-scope';
 import { useRecordingPaused } from './use-recording-paused';
 import { LiveQuestionSlot } from '../record/LiveQuestionSlot';
 import { useLiveQuestionsStore } from '../record/use-live-questions';
@@ -39,11 +41,19 @@ const PANEL_ID = 'BarMeetingChat';
 
 type FocusAfter = 'composer' | 'launcher' | null;
 
+/** What the body needs to know about a reopened thread. */
+export interface PanelThreadState {
+  /** Set when the thread cannot be continued: the meeting is gone or the live take ended. */
+  readonly readOnly: ThreadReadOnly;
+  /** Starts a new chat in the project the thread belongs to. */
+  readonly onStartNewChat: () => void;
+}
+
 export interface AiPanelAreaProps {
   /** The page column. It stays mounted whether the panel is closed, docked or floating. */
   readonly children: ReactNode;
   /** The chat itself (messages, composer), for the scope the panel resolved. */
-  readonly body: (scope: ChatScopeDecision) => ReactNode;
+  readonly body: (scope: ChatScopeDecision, thread: PanelThreadState) => ReactNode;
 }
 
 /** Width of the element, followed with a ResizeObserver; null until the first measurement. */
@@ -72,7 +82,8 @@ function useObservedWidth(ref: RefObject<HTMLElement | null>): number | null {
  */
 export function AiPanelArea({ children, body }: AiPanelAreaProps) {
   const t = useT();
-  const { decision, name, canStartNewChat } = useChatScope();
+  const { decision, name, owner, canStartNewChat, pinned, pin, unpin } = useChatScope();
+  const [historyNotice, setHistoryNotice] = useState<string | null>(null);
   const [open, setOpenState] = useState(() => parseStoredOpen(readStored(PANEL_OPEN_KEY)));
   const [width, setWidth] = useState(() => parseStoredWidth(readStored(PANEL_WIDTH_KEY)));
   // A new chat remounts the body, which drops its draft and error with the old messages.
@@ -164,6 +175,9 @@ export function AiPanelArea({ children, body }: AiPanelAreaProps) {
   }, [docked]);
 
   const startNewChat = (): void => {
+    // A new chat belongs to the page again, so a reopened thread stops pinning the scope.
+    unpin();
+    setHistoryNotice(null);
     void window.vozella
       .invoke('chat.newChat', {})
       .then((result) => {
@@ -171,6 +185,55 @@ export function AiPanelArea({ children, body }: AiPanelAreaProps) {
       })
       .catch(() => undefined);
   };
+
+  /** Reopens a saved chat: its scope is pinned, and the body reads the conversation main loaded. */
+  const openThread = useCallback(
+    async (projectId: string | null, threadId: string): Promise<void> => {
+      setHistoryNotice(null);
+      try {
+        const result = await window.vozella.invoke('chat.threads.open', {
+          projectId,
+          id: threadId,
+        });
+        if (!result.ok) {
+          setHistoryNotice(
+            result.reason === 'busy' ? t('Ui_ChatHistoryBusy') : t('Ui_ChatHistoryUnreadable'),
+          );
+          return;
+        }
+        const { scope, scopeStatus } = result.thread;
+        pin({
+          decision: {
+            isVisible: true,
+            kind: scope.kind,
+            projectId: scope.projectId,
+            meetingId: scope.meetingId,
+          },
+          readOnly: scopeStatus === 'ok' ? null : scopeStatus,
+        });
+        setEpoch((value) => value + 1);
+        setOpen(true, 'composer');
+      } catch {
+        setHistoryNotice(t('Ui_ChatHistoryUnreadable'));
+      }
+    },
+    [pin, setOpen, t],
+  );
+
+  // Another page asks for a chat: a saved thread to reopen, or a new chat in the project.
+  const request = useChatRequests((state) => state.request);
+  useEffect(() => {
+    if (request === null || !visible) return;
+    const taken = takeChatRequest();
+    if (taken === null) return;
+    if (taken.kind === 'open-thread') {
+      void openThread(taken.projectId, taken.threadId);
+    } else {
+      setOpen(true, 'composer');
+      if (canStartNewChat) startNewChat();
+    }
+    // The request is the trigger; the rest is read when it is taken.
+  }, [request, visible]);
 
   const label = scopeLabel(t, decision, name);
   const overlayMax = overlayMaxWidth(available);
@@ -240,6 +303,15 @@ export function AiPanelArea({ children, body }: AiPanelAreaProps) {
             </span>
           </>
         )}
+        <ChatHistory
+          owner={owner}
+          canStartNewChat={canStartNewChat}
+          disabled={localSending}
+          onOpen={(threadId) => {
+            void openThread(owner, threadId);
+          }}
+          onNewChat={startNewChat}
+        />
         <IconButton
           id="BtnMeetingChatNew"
           data-testid="BtnMeetingChatNew"
@@ -264,7 +336,14 @@ export function AiPanelArea({ children, body }: AiPanelAreaProps) {
         {decision.kind === 'Live' ? (
           <LiveQuestionSlot show={showing && !dockShowsQuestion} className="mb-3" />
         ) : null}
-        <Fragment key={epoch}>{body(decision)}</Fragment>
+        {historyNotice ? (
+          <p role="status" data-testid="TxtChatHistoryNotice" className="mb-2 text-ui text-ink">
+            {historyNotice}
+          </p>
+        ) : null}
+        <Fragment key={epoch}>
+          {body(decision, { readOnly: pinned?.readOnly ?? null, onStartNewChat: startNewChat })}
+        </Fragment>
       </div>
     </aside>
   );

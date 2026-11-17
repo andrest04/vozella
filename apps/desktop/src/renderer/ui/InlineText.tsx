@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { CircleAlert } from 'lucide-react';
-import { Icon, Input, Textarea, cn } from '../../ui';
+import { cn } from './cn';
+import { Icon } from './Icon';
+import { Input, Textarea } from './Input';
 
 export type InlineSave = { readonly ok: true } | { readonly ok: false; readonly error: string };
 

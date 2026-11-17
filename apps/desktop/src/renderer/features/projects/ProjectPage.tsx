@@ -10,15 +10,16 @@ import {
   Disclosure,
   Icon,
   IconButton,
+  InlineText,
   Menu,
   Notice,
   Skeleton,
   useMediaQuery,
+  type InlineSave,
   type MenuEntry,
 } from '../../ui';
 import { refreshProjectDirectory, useProjectDirectory } from '../meeting-list/project-directory';
 import { projectScope } from '../meeting-list/scope';
-import { InlineText, type InlineSave } from './InlineText';
 import { InstructionsPanel } from './InstructionsPanel';
 import { ProjectFilesPanel } from './ProjectFilesPanel';
 import { ProjectTabs } from './ProjectTabs';

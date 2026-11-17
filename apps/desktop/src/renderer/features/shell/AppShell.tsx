@@ -76,7 +76,7 @@ export function AppShell() {
           <Sidebar />
         </div>
         {/* The AI panel docks to the right of the content column, or floats over it. */}
-        <AiPanelArea body={(scope) => <ChatBody scope={scope} />}>
+        <AiPanelArea body={(scope, thread) => <ChatBody scope={scope} thread={thread} />}>
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             {/* Empty chrome: drags the window and sits behind the caption buttons. */}
             <div className="app-drag h-10 shrink-0" />

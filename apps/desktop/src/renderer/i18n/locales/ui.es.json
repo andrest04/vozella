@@ -617,5 +617,13 @@
   "Ui_ProjectNoneSubtitle": "Reuniones que no están en un proyecto",
   "Ui_RecordSavingTo": "Guardando en {0}",
   "Ui_RecordAlreadyRecording": "Ya hay una reunión grabando",
-  "Ui_RecordProjectGone": "Ese proyecto ya no existe. Elige dónde guardar esta reunión."
+  "Ui_RecordProjectGone": "Ese proyecto ya no existe. Elige dónde guardar esta reunión.",
+  "Ui_ChatHistory": "Historial de chats",
+  "Ui_ChatHistoryFailed": "No se pudieron cargar los chats.",
+  "Ui_ChatHistoryBusy": "Espera a que termine la respuesta antes de abrir otro chat.",
+  "Ui_ChatHistoryUnreadable": "No se pudo abrir ese chat.",
+  "Ui_ChatNotSaved": "Este chat no se está guardando.",
+  "Ui_ChatReadOnlyMeeting": "La reunión de este chat se eliminó.",
+  "Ui_ChatReadOnlyLive": "La reunión en vivo de este chat terminó.",
+  "Ui_ChatReadOnlyNew": "Iniciar un chat nuevo"
 }

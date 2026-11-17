@@ -617,5 +617,13 @@
   "Ui_ProjectNoneSubtitle": "Meetings that are not in a project",
   "Ui_RecordSavingTo": "Saving to {0}",
   "Ui_RecordAlreadyRecording": "A meeting is already recording",
-  "Ui_RecordProjectGone": "That project no longer exists. Choose where to save this meeting."
+  "Ui_RecordProjectGone": "That project no longer exists. Choose where to save this meeting.",
+  "Ui_ChatHistory": "Chat history",
+  "Ui_ChatHistoryFailed": "The chats could not be loaded.",
+  "Ui_ChatHistoryBusy": "Wait for the answer to finish before opening another chat.",
+  "Ui_ChatHistoryUnreadable": "That chat could not be opened.",
+  "Ui_ChatNotSaved": "This chat is not being saved.",
+  "Ui_ChatReadOnlyMeeting": "The meeting for this chat was deleted.",
+  "Ui_ChatReadOnlyLive": "The live meeting for this chat has ended.",
+  "Ui_ChatReadOnlyNew": "Start a new chat"
 }

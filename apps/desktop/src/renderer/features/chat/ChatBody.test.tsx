@@ -878,3 +878,68 @@ describe('apply to summary (T4)', () => {
     );
   });
 });
+
+describe('a reopened thread and an unsaved chat', () => {
+  const mountThread = (readOnly: 'meeting-missing' | 'live-ended' | null, onStart = vi.fn()) =>
+    render(
+      <Providers>
+        <DialogHost>
+          <ChatBody scope={MEETING} thread={{ readOnly, onStartNewChat: onStart }} />
+        </DialogHost>
+      </Providers>,
+    );
+
+  it('says why a thread whose meeting was deleted is read only, and disables the composer', async () => {
+    install({
+      state: stateOf({
+        messages: [msg('u1', 'user', 'Earlier question'), msg('a1', 'assistant', 'Earlier answer')],
+        hasMessages: true,
+      }),
+    });
+    mountThread('meeting-missing');
+    expect(await screen.findByText('Earlier answer')).toBeInTheDocument();
+    expect(screen.getByText('The meeting for this chat was deleted.')).toBeInTheDocument();
+    expect(box()).toBeDisabled();
+    expect(sendButton()).toBeDisabled();
+    expect(screen.queryByTestId('StarterList')).not.toBeInTheDocument();
+  });
+
+  it('says a live take ended, and the one action starts a new chat', async () => {
+    install({ state: stateOf({ messages: [msg('u1', 'user', 'Q')], hasMessages: true }) });
+    const onStart = vi.fn();
+    mountThread('live-ended', onStart);
+    expect(
+      await screen.findByText('The live meeting for this chat has ended.'),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Start a new chat' }));
+    expect(onStart).toHaveBeenCalledOnce();
+  });
+
+  it('leaves the composer working when the thread can be continued', async () => {
+    install({ state: stateOf() });
+    mountThread(null);
+    await waitFor(() => {
+      expect(box()).toBeEnabled();
+    });
+    expect(screen.queryByTestId('BoxChatReadOnly')).not.toBeInTheDocument();
+  });
+
+  it('says this chat is not being saved when main reports the history could not be kept', async () => {
+    const api = install({ state: stateOf({ historySaved: true }) });
+    mount();
+    await waitFor(() => {
+      expect(box()).toBeEnabled();
+    });
+    expect(screen.queryByTestId('TxtChatNotSaved')).not.toBeInTheDocument();
+    act(() => {
+      api.emit('chat.stateChanged', { state: stateOf({ historySaved: false }) });
+    });
+    expect(await screen.findByText('This chat is not being saved.')).toBeInTheDocument();
+    act(() => {
+      api.emit('chat.stateChanged', { state: stateOf({ historySaved: true }) });
+    });
+    await waitFor(() => {
+      expect(screen.queryByTestId('TxtChatNotSaved')).not.toBeInTheDocument();
+    });
+  });
+});

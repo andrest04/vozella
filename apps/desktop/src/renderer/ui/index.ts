@@ -8,6 +8,7 @@ export { Disclosure, type DisclosureProps } from './Disclosure';
 export { Dialog, type DialogProps } from './Dialog';
 export { Field, type FieldProps } from './Field';
 export { Icon, type IconProps } from './Icon';
+export { InlineText, type InlineSave, type InlineTextProps } from './InlineText';
 export { Input, Textarea } from './Input';
 export { Kbd } from './Kbd';
 export { ShortcutHint, type ShortcutHintProps } from './ShortcutHint';

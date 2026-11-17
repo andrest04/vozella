@@ -6,7 +6,8 @@ import type { StringKey } from '../../i18n/translate';
 import { ProviderGateDialogs } from '../ai-provider/ProviderGateDialogs';
 import { ProviderUnavailableNotice } from '../ai-provider/ProviderUnavailableNotice';
 import { useProviderGate } from '../ai-provider/use-provider-gate';
-import { Icon, Notice } from '../../ui';
+import { Button, Icon, Notice } from '../../ui';
+import type { PanelThreadState } from './AiPanel';
 import { ApplySummaryNotice } from './ApplySummaryNotice';
 import { AttachmentChips } from './AttachmentChips';
 import { dragHasFiles, sendableAttachmentIds } from './chat-attachments-view';
@@ -32,7 +33,15 @@ import { openEngineInSettings } from '../settings/engine-focus';
  * The AI panel's chat: transcript, suggested questions, the error line and the composer pinned to
  * the bottom. It owns no scope logic; the panel passes the scope it resolved.
  */
-export function ChatBody({ scope }: { readonly scope: ChatScopeDecision }) {
+export function ChatBody({
+  scope,
+  thread,
+}: {
+  readonly scope: ChatScopeDecision;
+  /** A reopened thread: read only when its meeting is gone or its live take ended. */
+  readonly thread?: PanelThreadState;
+}) {
+  const readOnly = thread?.readOnly ?? null;
   const t = useT();
   const gate = useProviderGate();
   const files = useChatAttachments();
@@ -109,6 +118,23 @@ export function ChatBody({ scope }: { readonly scope: ChatScopeDecision }) {
         // An empty chat keeps the suggestions and the composer at the bottom of the panel.
         <div className="min-h-0 flex-1" />
       )}
+      {chat.historySaved ? null : (
+        <p role="status" data-testid="TxtChatNotSaved" className="text-ui text-ink-muted">
+          {t('Ui_ChatNotSaved')}
+        </p>
+      )}
+      {readOnly === null ? null : (
+        <div data-testid="BoxChatReadOnly" className="flex flex-col items-start gap-2">
+          <p role="status" className="text-ui text-ink">
+            {readOnly === 'meeting-missing'
+              ? t('Ui_ChatReadOnlyMeeting')
+              : t('Ui_ChatReadOnlyLive')}
+          </p>
+          <Button size="sm" onClick={thread?.onStartNewChat}>
+            {t('Ui_ChatReadOnlyNew')}
+          </Button>
+        </div>
+      )}
       {chat.showScopeMismatch ? (
         <p
           role="status"
@@ -146,7 +172,7 @@ export function ChatBody({ scope }: { readonly scope: ChatScopeDecision }) {
           </Notice>
         </div>
       ) : null}
-      {!chat.isSending && rows.length === 0 ? (
+      {!chat.isSending && rows.length === 0 && readOnly === null ? (
         <StarterList
           // No starters while a meeting scope is read (context null), so the heading never flips.
           heading={context ? t(starterHeadingKey(scope.kind, context)) : ''}
@@ -179,6 +205,7 @@ export function ChatBody({ scope }: { readonly scope: ChatScopeDecision }) {
         }}
         onStop={chat.stop}
         isSending={chat.isSending}
+        disabled={readOnly !== null}
         recipes={library.recipes}
         promptActions={library.actions}
         onRecipePicked={library.arm}
