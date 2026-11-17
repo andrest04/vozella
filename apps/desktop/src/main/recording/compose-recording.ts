@@ -21,18 +21,13 @@ import {
   type Workspace,
   type CatalogLocale,
 } from '@vozella/core';
-import {
-  directoryFor,
-  liveRepository,
-  repairWavFile,
-  samePath,
-  type LibraryRuntime,
-} from '@vozella/platform';
+import { liveRepository, repairWavFile, samePath, type LibraryRuntime } from '@vozella/platform';
 import type { Broadcast } from '../ipc/library-handlers';
 import type { AudioController } from '../audio/audio-controller';
 import type { RecordingTakes } from '../audio/recording-take';
 import type { TranscriptionController } from '../transcription/transcription-controller';
 import { previousAudioKeeper } from './previous-audio';
+import { createProjectPlacement } from './project-placement';
 import { RecordingService, type LiveAskHooks } from './recording-service';
 import type { YouTubeAudioPort } from './youtube-import';
 
@@ -108,10 +103,13 @@ export function composeRecording(deps: ComposeRecordingDeps): RecordingService {
     takes: deps.takes,
     controller: deps.controller,
     library: {
-      audioDirectory: async (projectId) =>
-        directoryFor(library.libraryRoot, await library.folders.getAll(), projectId),
-      folderExists: async (projectId) =>
-        (await library.folders.getAll()).some((folder) => folder.id === projectId),
+      ...createProjectPlacement(
+        {
+          get: (id) => library.projects.get(id),
+          directoryOf: (id) => library.projects.directoryOf(id),
+        },
+        () => library.libraryRoot,
+      ),
       ownsMarkdown: async (meetingId, markdownPath) =>
         (await library.meetings.locate(meetingId)).some((entry) =>
           samePath(entry.path, markdownPath),

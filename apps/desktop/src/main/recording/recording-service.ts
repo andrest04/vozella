@@ -76,9 +76,13 @@ export interface ControllerPort {
 }
 
 export interface LibraryPort {
-  /** The directory of a destination folder; the Inbox for null and for an unknown folder. */
+  /** The directory of a destination project; the Inbox for null and for a project that cannot take it. */
   audioDirectory(projectId: string | null): Promise<string>;
-  folderExists(projectId: string): Promise<boolean>;
+  /**
+   * The project a take may be filed in, or null for no project: an unknown, unreadable or
+   * not-yet-placeable project gives null. Never rejects for a missing project.
+   */
+  resolveProject(projectId: string | null): Promise<string | null>;
   /** True when the Markdown at this path holds this meeting id. */
   ownsMarkdown(meetingId: string, markdownPath: string): Promise<boolean>;
 }
@@ -289,10 +293,10 @@ export class RecordingService {
         process: async (request, projectId) => {
           this.take = null;
           this.frozenElapsedMs = 0;
-          const folder = await this.resolveFolder(projectId);
+          const resolved = await this.resolveProject(projectId);
           this.gate.markProcessing();
           const run = this.runs.startRun({ meetingId: request.meetingId });
-          void this.runPipeline(run, { ...request, projectId: folder });
+          void this.runPipeline(run, { ...request, projectId: resolved });
         },
       },
       setup: deps.setup,
@@ -496,7 +500,9 @@ export class RecordingService {
       this.frozenElapsedMs = 0;
       this.title = request.title.trim() === '' ? deps.defaultTitle(deps.nowMs()) : request.title;
       const title = this.title;
-      const directory = await deps.library.audioDirectory(request.projectId);
+      // The take is filed in a project that exists now; the live ask reads the same id.
+      const projectId = await this.resolveProject(request.projectId);
+      const directory = await deps.library.audioDirectory(projectId);
       if (settings.liveTranscriptionEnabled) {
         this.runs.setTakeStatus({ key: 'Status_LoadingModel', args: [] });
       }
@@ -526,7 +532,7 @@ export class RecordingService {
       this.take = {
         meetingId,
         title,
-        projectId: request.projectId,
+        projectId,
         microphone,
         appName,
         audioPath: outcome.path,
@@ -691,7 +697,7 @@ export class RecordingService {
         outcome.error === null && takeDraft !== null && (deps.live.draftIsFinal?.() ?? false);
       const audioPath = outcome.path ?? file;
       deps.files.repair(audioPath);
-      const folder = await this.resolveFolder(projectId);
+      const resolved = await this.resolveProject(projectId);
 
       this.gate.markProcessing();
       const run = this.runs.startRun({ meetingId: take.meetingId });
@@ -704,7 +710,7 @@ export class RecordingService {
         liveDraft,
         ...(liveDraftIsFinal ? { liveDraftIsFinal } : {}),
         pausedDurationMs: Math.round(outcome.pausedSeconds * 1000),
-        projectId: folder,
+        projectId: resolved,
         highlightsMs: highlights,
         ...(liveOutput !== null && hasLiveTakeOutput(liveOutput)
           ? { liveTake: this.liveTake(liveOutput) }
@@ -739,12 +745,12 @@ export class RecordingService {
     this.publish();
   }
 
-  private async resolveFolder(projectId: string | null): Promise<string | null> {
+  /** A failing project store files the take in the Inbox with no project: a take never fails for it. */
+  private async resolveProject(projectId: string | null): Promise<string | null> {
     if (projectId === null) return null;
     try {
-      return (await this.deps.library.folderExists(projectId)) ? projectId : null;
+      return await this.deps.library.resolveProject(projectId);
     } catch {
-      // A failing folder store files the take in the Inbox.
       return null;
     }
   }
@@ -790,8 +796,18 @@ export class RecordingService {
   // -- capture events ----------------------------------------------------------------------------
 
   /** The title, notes and phase the live ask reads. Asking is allowed only while recording. */
-  get liveAskContext(): { recording: boolean; title: string; notes: string } {
-    return { recording: this.gate.phase === 'Recording', title: this.title, notes: this.notes };
+  get liveAskContext(): {
+    recording: boolean;
+    title: string;
+    notes: string;
+    projectId: string | null;
+  } {
+    return {
+      recording: this.gate.phase === 'Recording',
+      title: this.title,
+      notes: this.notes,
+      projectId: this.take?.projectId ?? null,
+    };
   }
 
   private onCaptureEvent(event: RecordingNoticeDto): void {

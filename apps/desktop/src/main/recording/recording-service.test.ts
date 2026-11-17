@@ -5,7 +5,9 @@ import type { AudioRpcCall } from '@vozella/contracts';
 import {
   CancelledError,
   FakeOfflineTranscriber,
+  InMemoryProjectRepository,
   InMemorySettingsStore,
+  InMemoryStorageState,
   RecordingPipeline,
   ScriptedMeetingStore,
   SummaryStage,
@@ -20,6 +22,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AudioController, type AudioHostLike } from '../audio/audio-controller';
 import { RecordingTakes } from '../audio/recording-take';
 import type { AudioPushEvent } from '../workers/audio-worker-host';
+import { createProjectPlacement } from './project-placement';
 import { RecordingService } from './recording-service';
 
 const logger: Logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
@@ -136,7 +139,12 @@ afterEach(() => {
 });
 
 interface Options {
-  folders?: Record<string, string>;
+  /** Projects of the library, by id with their directory name. */
+  projects?: Record<string, string>;
+  /** The storage is not ready: no project can be placed. */
+  storageNotReady?: boolean;
+  /** A project the repository cannot place: its directory answers the Inbox. */
+  unreadable?: string[];
   transcript?: string;
   liveStartFails?: boolean;
   liveDraft?: string | null;
@@ -158,7 +166,29 @@ function build(options: Options = {}) {
     selectedSummaryProvider: 'ClaudeCode',
     liveTranscriptionEnabled: true,
   });
-  const folders: Record<string, string> = { ...options.folders };
+  const storage = new InMemoryStorageState(
+    options.storageNotReady ? { status: 'migrating' } : { status: 'ready' },
+  );
+  const projects = new InMemoryProjectRepository({ state: storage, libraryRoot: root });
+  for (const [id, name] of Object.entries(options.projects ?? {})) {
+    projects.records.set(id, {
+      id,
+      name,
+      description: '',
+      instructions: '',
+      pinned: false,
+      createdAt: '2026-11-01T00:00:00.000Z',
+      updatedAt: '2026-11-01T00:00:00.000Z',
+    });
+  }
+  const placement = createProjectPlacement(
+    {
+      get: (id) => projects.get(id),
+      directoryOf: (id) =>
+        projects.directoryOf(id !== null && options.unreadable?.includes(id) ? null : id),
+    },
+    () => root,
+  );
   const events: { name: string; payload: unknown }[] = [];
   const broadcast = (channel: { name: string }, payload: unknown): void => {
     events.push({ name: channel.name, payload });
@@ -235,12 +265,8 @@ function build(options: Options = {}) {
       audioDirectory: (projectId) =>
         options.audioDirectoryError
           ? Promise.reject(options.audioDirectoryError)
-          : Promise.resolve(
-              projectId !== null && folders[projectId] !== undefined
-                ? path.join(root, folders[projectId])
-                : inbox,
-            ),
-      folderExists: (id) => Promise.resolve(folders[id] !== undefined),
+          : placement.audioDirectory(projectId),
+      resolveProject: (projectId) => placement.resolveProject(projectId),
       ownsMarkdown: (id, p) => Promise.resolve(options.ownsMarkdown?.(id, p) ?? false),
     },
     files: {
@@ -307,7 +333,8 @@ function build(options: Options = {}) {
     events,
     repaired,
     inbox,
-    folders,
+    projects,
+    liveAskContext: () => service.liveAskContext,
   };
 }
 
@@ -320,8 +347,8 @@ const sources = {
 };
 
 describe('RecordingService start', () => {
-  it('records into the dated stem of the destination folder and publishes the state', async () => {
-    const t = build({ folders: { f1: 'Clients' } });
+  it('records into the dated stem of the destination project and publishes the state', async () => {
+    const t = build({ projects: { f1: 'Clients' } });
     const result = await t.service.start({ ...sources, projectId: 'f1' });
     expect(result).toMatchObject({ started: true, meetingId: 'meeting-1' });
     const state = t.service.getState();
@@ -331,6 +358,37 @@ describe('RecordingService start', () => {
     expect(fs.existsSync(wav)).toBe(true);
     expect(t.events.some((e) => e.name === 'recording.state')).toBe(true);
   });
+
+  it('exposes the project of the take to the live ask', async () => {
+    const t = build({ projects: { f1: 'Clients' } });
+    expect(t.liveAskContext().projectId).toBeNull();
+    await t.service.start({ ...sources, projectId: 'f1' });
+    expect(t.liveAskContext()).toMatchObject({ recording: true, projectId: 'f1' });
+  });
+
+  it.each([
+    ['is not in the library any more', {}],
+    ['is unreadable', { projects: { f1: 'Clients' }, unreadable: ['f1'] }],
+    [
+      'cannot be placed while the storage is not ready',
+      { projects: { f1: 'Clients' }, storageNotReady: true },
+    ],
+  ] as const)(
+    'a take for a project that %s records into the Inbox with no project',
+    async (_name, options) => {
+      const t = build({
+        ...options,
+        unreadable: 'unreadable' in options ? [...options.unreadable] : [],
+      });
+      const result = await t.service.start({ ...sources, projectId: 'f1' });
+      expect(result).toMatchObject({ started: true });
+      expect(fs.existsSync(path.join(t.inbox, '2026-11-03 Standup.wav'))).toBe(true);
+      expect(t.liveAskContext().projectId).toBeNull();
+      await t.service.stop();
+      await t.service.completion;
+      expect(t.store.saves[0]?.projectId).toBeNull();
+    },
+  );
 
   it('refuses a second start while a take holds the session', async () => {
     const t = build();
@@ -665,7 +723,12 @@ describe('RecordingService live ask hooks (127)', () => {
     const t = build();
     await t.service.start(sources);
     expect(t.liveAskCalls).toEqual(['reset']);
-    expect(t.service.liveAskContext).toEqual({ recording: true, title: 'Standup', notes: '' });
+    expect(t.service.liveAskContext).toEqual({
+      recording: true,
+      title: 'Standup',
+      notes: '',
+      projectId: null,
+    });
     for (const listener of t.liveListeners) listener('shown', 'committed text');
     expect(t.liveAskCalls).toContain('committed:committed text');
     await t.service.stop();
@@ -712,7 +775,7 @@ describe('RecordingService live take output', () => {
 
 describe('RecordingService stop', () => {
   it('74, 77, 78: saves the meeting with the title, folder and audio of the take', async () => {
-    const t = build({ folders: { f1: 'Clients' }, liveDraft: '[00:00.00-00:01.00] live' });
+    const t = build({ projects: { f1: 'Clients' }, liveDraft: '[00:00.00-00:01.00] live' });
     await t.service.start({ ...sources, projectId: 'f1' });
     now += 30_000;
     const stopped = t.service.stop();
@@ -834,10 +897,10 @@ describe('RecordingService stop', () => {
     expect(t.service.getState().liveText).toBe('');
   });
 
-  it('190: a destination folder deleted during the take files the meeting in the Inbox', async () => {
-    const t = build({ folders: { f1: 'Clients' } });
+  it('190: a destination project deleted during the take files the meeting in the Inbox', async () => {
+    const t = build({ projects: { f1: 'Clients' } });
     await t.service.start({ ...sources, projectId: 'f1' });
-    delete t.folders.f1;
+    t.projects.records.delete('f1');
     await t.service.stop();
     await t.service.completion;
     expect(t.store.saves[0]?.projectId).toBeNull();
@@ -1056,6 +1119,22 @@ describe('RecordingService import (2.12)', () => {
     expect(t.service.gate.phase).toBe('Idle');
   });
 
+  it('an imported file lands in its project and is filed there; an unknown project means none', async () => {
+    const inProject = build({ projects: { f1: 'Clients' } });
+    await inProject.service.importAudio({ ...picked, projectId: 'f1' });
+    await inProject.service.completion;
+    expect(path.dirname(inProject.store.saves.at(-1)?.audioFilePath ?? '')).toBe(
+      path.join(root, 'Clients'),
+    );
+    expect(inProject.store.saves.at(-1)?.projectId).toBe('f1');
+
+    const gone = build();
+    await gone.service.importAudio({ ...picked, projectId: 'f1' });
+    await gone.service.completion;
+    expect(path.dirname(gone.store.saves.at(-1)?.audioFilePath ?? '')).toBe(gone.inbox);
+    expect(gone.store.saves.at(-1)?.projectId).toBeNull();
+  });
+
   it('173: the idle preview stops for the import and comes back after a failure', async () => {
     const t = build();
     t.controller.startPreview('mic-1', 'record');
@@ -1184,6 +1263,16 @@ describe('RecordingService import from YouTube', () => {
   const link = { title: 'Talk', projectId: null, url: 'https://youtu.be/dQw4w9WgXcQ' };
   const canonical = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
   const workFolder = (): string => path.join(root, 'youtube', 'meeting-1');
+
+  it('a YouTube import is filed in the project of the link', async () => {
+    const t = build({ projects: { f1: 'Clients' } });
+    await t.service.importUrl({ ...link, projectId: 'f1' });
+    await t.service.completion;
+    expect(t.store.saves.at(-1)?.projectId).toBe('f1');
+    expect(path.dirname(t.store.saves.at(-1)?.audioFilePath ?? '')).toBe(
+      path.join(root, 'Clients'),
+    );
+  });
 
   it('rejects a link that is not a YouTube video without downloading anything', async () => {
     const t = build();
