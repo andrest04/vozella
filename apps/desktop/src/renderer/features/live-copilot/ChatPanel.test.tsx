@@ -202,7 +202,7 @@ describe('chips', () => {
       'en',
       'BtnLiveCopilotChipMissed',
       'What did I miss?',
-      'What did I miss? Summarize the last few minutes.',
+      'What did I miss? Summarize the whole recording so far.',
     ],
     [
       'en',
@@ -214,7 +214,7 @@ describe('chips', () => {
       'es',
       'BtnLiveCopilotChipMissed',
       '¿Qué me perdí?',
-      '¿Qué me perdí? Resume los últimos minutos.',
+      '¿Qué me perdí? Resume toda la grabación hasta ahora.',
     ],
     [
       'es',
@@ -245,7 +245,7 @@ describe('chips', () => {
   it('names the chips with the long accessible names and disables them outside a take', () => {
     render(<Panel recording={false} />);
     const missed = screen.getByTestId('BtnLiveCopilotChipMissed');
-    expect(missed).toHaveAccessibleName('Ask what you missed in the last few minutes');
+    expect(missed).toHaveAccessibleName('Ask what you missed so far in this recording');
     expect(missed).toBeDisabled();
     expect(screen.getByTestId('BtnLiveCopilotChipExplain')).toHaveAccessibleName(
       'Ask for the last point in simple terms',
