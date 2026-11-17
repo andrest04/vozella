@@ -441,7 +441,7 @@ Stored in the app settings JSON (camelCase, indented, `JsonSerializerDefaults.We
 
 - `liveCopilotPillEdge`: string, the `DockEdge` enum name; null or absent means Right. Resolved with `ParseEdge` (section 2.4).
 - `liveCopilotPillAlong`: number or null; resolved as `clamp(value, 0, 1)` if finite, else 0.5.
-- Legacy `liveCopilotPillX` and `liveCopilotPillY` (ints) still exist in the model and are round-tripped by tests, but the pill no longer reads or writes them.
+- Legacy `liveCopilotPillX` and `liveCopilotPillY` (ints) were removed from the model; old files that hold them load and keep them as unknown keys, and the pill never reads or writes them.
 - Read once per process lifetime on first show (`RestoreDockAsync`); written on a 500 ms debounce after each snap, and immediately (awaited) when the pill hides. `SavePositionAsync` loads the full settings, returns without writing if the edge string is equal and the saved along is within 0.0005 of the current value, else sets both fields and saves the whole settings object. All errors are swallowed.
 - Not persisted: the monitor, the panel open/closed state, `ForceWebSearch`, the typed text.
 

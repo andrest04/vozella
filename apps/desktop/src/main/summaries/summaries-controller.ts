@@ -42,7 +42,6 @@ export interface SummariesControllerDeps {
     | 'toggleActionItem'
     | 'copyActionItems'
     | 'copyText'
-    | 'setTemplate'
     | 'replaceSummary'
     | 'setActionItemDate'
     | 'setNextSessionDate'
@@ -129,10 +128,6 @@ export class SummariesController {
 
   copyText(meetingId: string, mode: 'notes' | 'summary') {
     return this.deps.tab.copyText(meetingId, mode);
-  }
-
-  setTemplate(meetingId: string, templateId: string | null) {
-    return this.deps.tab.setTemplate(meetingId, templateId);
   }
 
   /**

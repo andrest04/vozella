@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  MEETING_LINK_PREFIX,
-  meetingLink,
-  meetingTimeLink,
-  tryParseMeetingCitation,
-  tryParseMeetingLink,
-} from './meeting-link';
+import { MEETING_LINK_PREFIX, meetingLink, tryParseMeetingCitation } from './meeting-link';
 import {
   LIVE_TIME_RULE,
   MULTI_MEETING_TIME_RULE,
@@ -153,13 +147,13 @@ describe('buildPrompt', () => {
 });
 
 describe('meeting links', () => {
-  it('MeetingLink_RoundTripsThroughTryParseMeetingLink', () => {
+  it('MeetingLink_RoundTripsThroughTryParseMeetingCitation', () => {
     const link = meetingLink('01234567-89AB-CDEF-0123-456789ABCDEF');
     expect(link).toBe('https://meetinglive.local/meeting/0123456789abcdef0123456789abcdef');
-    expect(tryParseMeetingLink(link)).toBe(ID);
+    expect(tryParseMeetingCitation(link)).toEqual({ meetingId: ID, seconds: null });
   });
 
-  it('TryParseMeetingLink_RejectsOtherLinks', () => {
+  it('TryParseMeetingCitation_RejectsOtherLinks', () => {
     for (const l of [
       null,
       undefined,
@@ -171,13 +165,16 @@ describe('meeting links', () => {
       `https://meetinglive.local/meeting/${ID}#frag`,
       `https://meetinglive.local/meeting/${ID}/extra`,
     ])
-      expect(tryParseMeetingLink(l)).toBeNull();
+      expect(tryParseMeetingCitation(l)).toBeNull();
   });
 
   it('accepts prefix case-insensitively, trailing slashes and every Guid form', () => {
     const hy = '01234567-89ab-cdef-0123-456789abcdef';
     for (const rest of [ID, `${ID}/`, `${ID}///`, hy, `{${hy}}`, `(${hy})`, ID.toUpperCase()])
-      expect(tryParseMeetingLink(`HTTPS://MeetingLive.Local/Meeting/${rest}`)).toBe(ID);
+      expect(tryParseMeetingCitation(`HTTPS://MeetingLive.Local/Meeting/${rest}`)).toEqual({
+        meetingId: ID,
+        seconds: null,
+      });
   });
 });
 
@@ -233,12 +230,6 @@ describe('meeting time citations (T3)', () => {
     '',
   ])('rejects %s', (link) => {
     expect(tryParseMeetingCitation(link)).toBeNull();
-  });
-
-  it('meetingTimeLink builds a link the parser reads back', () => {
-    const link = meetingTimeLink('01234567-89ab-cdef-0123-456789abcdef', 725.9);
-    expect(link).toBe(`${MEETING_LINK_PREFIX}${ID}?t=725`);
-    expect(tryParseMeetingCitation(link)).toEqual({ meetingId: ID, seconds: 725 });
   });
 });
 

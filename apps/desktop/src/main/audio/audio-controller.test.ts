@@ -326,7 +326,7 @@ describe('recording', () => {
 });
 
 describe('pushed events', () => {
-  it('turns worker events into level and notice events and frames for subscribers', () => {
+  it('turns worker events into level events and frames for subscribers', () => {
     const r = rig();
     const frames: number[] = [];
     r.controller.onRecordingFrame((f) => frames.push(f.samples.length));
@@ -340,12 +340,6 @@ describe('pushed events', () => {
     expect(r.events).toEqual([
       { name: 'audio.preview.level', payload: { level: 100 } },
       { name: 'audio.recording.level', payload: { level: 0 } },
-      {
-        name: 'audio.recording.notice',
-        payload: { kind: 'source-lost', source: 'Microphone', remaining: 1 },
-      },
-      { name: 'audio.recording.notice', payload: { kind: 'output-failed', message: 'died' } },
-      { name: 'audio.recording.notice', payload: { kind: 'faulted', message: 'disk full' } },
     ]);
   });
 

@@ -93,23 +93,7 @@ export const audioPreviewStop = defineRequest('audio.preview.stop', {
   output: z.object({ stopped: z.literal(true) }),
 });
 
-/**
- * Starts a take. The page names the title and the microphone; the main process allocates the file
- * in the Inbox, so the page never chooses a path. A failure carries the worker's code when it has
- * one, so the page can use its own words for it.
- */
-export const audioRecordingStart = defineRequest('audio.recording.start', {
-  input: z.object({ title: z.string(), microphone: microphoneChoiceSchema }),
-  output: z.discriminatedUnion('started', [
-    z.object({ started: z.literal(true), recordedAtMs: z.number() }),
-    z.object({ started: z.literal(false), code: z.string().nullable(), message: z.string() }),
-  ]),
-});
-/**
- * Where the take stands in main. The Record page asks when it opens, so a take that kept running
- * while the user visited another page can still be paused, resumed and stopped.
- */
-const recordingNoticeSchema = z.discriminatedUnion('kind', [
+export const recordingNoticeSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('source-lost'),
     source: z.enum(['Microphone', 'Output']),
@@ -120,54 +104,6 @@ const recordingNoticeSchema = z.discriminatedUnion('kind', [
 ]);
 
 export type RecordingNoticeDto = z.infer<typeof recordingNoticeSchema>;
-
-export const audioRecordingState = defineRequest('audio.recording.state', {
-  input: empty,
-  output: z.object({
-    phase: z.enum(['idle', 'starting', 'recording', 'paused', 'stopping', 'importing']),
-    /** Notices raised since the take started, for a page that was not mounted to hear them. */
-    notices: z.array(recordingNoticeSchema).default([]),
-  }),
-});
-export const audioRecordingPause = defineRequest('audio.recording.pause', {
-  input: empty,
-  output: z.object({ paused: z.boolean() }),
-});
-export const audioRecordingResume = defineRequest('audio.recording.resume', {
-  input: empty,
-  output: z.object({ resumed: z.boolean() }),
-});
-/** Ends the take. A stop error still reports what is known about the file. */
-export const audioRecordingStop = defineRequest('audio.recording.stop', {
-  input: empty,
-  output: z.object({
-    path: z.string().nullable(),
-    recordedAtMs: z.number().nullable(),
-    /** Time spent paused, for the live transcript clock. */
-    pausedSeconds: z.number(),
-    /** The failure to show, or null. */
-    error: z.string().nullable(),
-  }),
-});
-
-/**
- * Converts the file picked with `audio.import.pickFile` into a take in the Inbox. The path comes
- * from the main process's own memory of the pick, never from the page.
- */
-export const audioImportRun = defineRequest('audio.import.run', {
-  input: z.object({ title: z.string() }),
-  output: z.discriminatedUnion('imported', [
-    z.object({
-      imported: z.literal(true),
-      path: z.string(),
-      recordedAtMs: z.number(),
-      /** recordedAt plus the length of the converted audio. */
-      endedAtMs: z.number(),
-      durationSeconds: z.number(),
-    }),
-    z.object({ imported: z.literal(false), message: z.string() }),
-  ]),
-});
 
 /** The icon of an application's executable as a data URL, or null (spec 131). */
 export const audioAppIcon = defineRequest('audio.apps.icon', {
@@ -199,9 +135,4 @@ export const audioPreviewLevel = defineEvent('audio.preview.level', {
 /** Microphone level of the running recording, 0..100. */
 export const audioRecordingLevel = defineEvent('audio.recording.level', {
   payload: z.object({ level: z.number() }),
-});
-
-/** A source was lost, the meeting audio failed, or the writer faulted (spec 2.3.3). */
-export const audioRecordingNotice = defineEvent('audio.recording.notice', {
-  payload: recordingNoticeSchema,
 });

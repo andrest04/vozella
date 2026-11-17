@@ -4,7 +4,6 @@ import {
   CaptureSourcesError,
   effectiveMicrophoneId,
   isSourceLost,
-  legacyCaptureSources,
   processTreeSources,
   shouldSurfaceOutputFailure,
   systemLoopbackSources,
@@ -74,10 +73,6 @@ describe('RecordingCaptureSources', () => {
     expect(() => assertValidCaptureSources(bad)).toThrow(
       'Output must be exactly system loopback or one process tree.',
     );
-  });
-
-  it('the legacy overload is system loopback with the microphone on', () => {
-    expect(legacyCaptureSources('x')).toEqual(systemLoopbackSources(true, 'x'));
   });
 });
 

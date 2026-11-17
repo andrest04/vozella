@@ -11,7 +11,6 @@ import {
   createCopyFeedback,
   createSlideTracker,
   deriveSessionView,
-  initialTabAfterTake,
   isSessionTab,
   renameMeeting,
   resolveRevealTarget,
@@ -266,11 +265,6 @@ describe('tabs', () => {
     expect(isSessionTab('Transcript')).toBe(true);
     expect(isSessionTab('Summary')).toBe(true);
     for (const v of ['summary', 'Notes', '', null, 1]) expect(isSessionTab(v)).toBe(false);
-  });
-
-  it('initialTabAfterTake', () => {
-    expect(initialTabAfterTake(true)).toBe('Summary');
-    expect(initialTabAfterTake(false)).toBe('Transcript');
   });
 });
 

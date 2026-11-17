@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createApi, type ClientTransport } from './api';
-import { appFocusChanged, appGetInfo, appReportRendererError } from './channels';
+import { audioRecordingLevel } from './audio';
+import { appGetInfo, appReportRendererError } from './channels';
 import { IpcError } from './result';
 import { callRequest, prepareEvent, receiveEvent, serveRequest } from './wire';
 
@@ -94,14 +95,14 @@ describe('callRequest', () => {
 
 describe('events', () => {
   it('validates on both ends', () => {
-    expect(prepareEvent(appFocusChanged, { focused: true })).toEqual({ focused: true });
-    expect(() => prepareEvent(appFocusChanged, { focused: 'yes' } as never)).toThrow(IpcError);
+    expect(prepareEvent(audioRecordingLevel, { level: 1 })).toEqual({ level: 1 });
+    expect(() => prepareEvent(audioRecordingLevel, { level: 'yes' } as never)).toThrow(IpcError);
 
     const listener = vi.fn();
     const onInvalid = vi.fn();
-    receiveEvent(appFocusChanged, { focused: false }, listener, onInvalid);
-    receiveEvent(appFocusChanged, { focused: 5 }, listener, onInvalid);
-    expect(listener).toHaveBeenCalledExactlyOnceWith({ focused: false });
+    receiveEvent(audioRecordingLevel, { level: 2 }, listener, onInvalid);
+    receiveEvent(audioRecordingLevel, { level: 'x' }, listener, onInvalid);
+    expect(listener).toHaveBeenCalledExactlyOnceWith({ level: 2 });
     expect(onInvalid).toHaveBeenCalledOnce();
   });
 });
@@ -121,9 +122,9 @@ describe('createApi', () => {
     expect(await api.invoke('app.getInfo', {})).toEqual(info);
 
     const listener = vi.fn();
-    api.on('app.focusChanged', listener);
-    emit({ focused: true });
-    expect(listener).toHaveBeenCalledWith({ focused: true });
+    api.on('audio.recording.level', listener);
+    emit({ level: 3 });
+    expect(listener).toHaveBeenCalledWith({ level: 3 });
   });
 
   it('rejects unknown channels', async () => {

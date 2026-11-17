@@ -32,9 +32,7 @@ function addon(overrides: Partial<NativeAddon> = {}): NativeAddon {
     getVersionDetails: () => null,
     windowsBuild: () => 26_300,
     openAudioDecoder: () => ({ read: () => null, close: () => undefined }),
-    probeCalendarsAsync: () => Promise.resolve({ hasIdentity: false, status: 'ok' }),
     listTopLevelWindows: () => Promise.resolve([]),
-    dpapiUnprotect: (d) => d,
     assignToKillOnCloseJob: () => undefined,
     ...overrides,
   };

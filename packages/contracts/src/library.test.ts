@@ -54,7 +54,7 @@ describe('library contracts', () => {
   it('rejects a settings patch with an unknown key', () => {
     expect(settingsUpdate.input.safeParse({ patch: { uiLanguage: 'en' } }).success).toBe(true);
     expect(settingsUpdate.input.safeParse({ patch: { nope: 1 } }).success).toBe(false);
-    expect(settingsUpdate.input.safeParse({ patch: { typeSafeEnabled: 'yes' } }).success).toBe(
+    expect(settingsUpdate.input.safeParse({ patch: { meetingPopupEnabled: 'yes' } }).success).toBe(
       false,
     );
   });

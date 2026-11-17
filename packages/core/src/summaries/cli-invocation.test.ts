@@ -4,11 +4,9 @@ import {
   InvalidCliOptionError,
   claudeImageArgs,
   claudePrintArgs,
-  claudePrintLine,
   claudeStreamArgs,
   codexExecArgs,
   codexImageArgs,
-  codexExecLine,
   codexStreamArgs,
   validateCliOption,
 } from './cli-invocation';
@@ -16,8 +14,6 @@ import {
 describe('Claude print invocation', () => {
   it('is a bare -p without options', () => {
     expect(claudePrintArgs()).toEqual(['-p', ...CLAUDE_LEAN_FLAGS]);
-    expect(claudePrintLine(null, null)).toBe('-p');
-    expect(claudePrintLine('  ', '')).toBe('-p');
   });
 
   it('adds model and effort in that order, each only when set', () => {
@@ -41,7 +37,6 @@ describe('Claude print invocation', () => {
       '--effort',
       'high',
     ]);
-    expect(claudePrintLine('sonnet', 'low')).toBe('-p --model sonnet --effort low');
   });
 
   it('adds the web search tool flags after the model and effort', () => {
@@ -57,9 +52,6 @@ describe('Claude print invocation', () => {
       '--allowedTools',
       'WebSearch',
     ]);
-    expect(claudePrintLine('sonnet', null, true)).toBe(
-      '-p --model sonnet --tools WebSearch --allowedTools WebSearch',
-    );
   });
 
   it('leaves web search out unless asked', () => {
@@ -70,7 +62,6 @@ describe('Claude print invocation', () => {
 describe('Codex exec invocation', () => {
   it('is a bare exec - without options', () => {
     expect(codexExecArgs()).toEqual(['exec', '-']);
-    expect(codexExecLine(null, null)).toBe('exec -');
   });
 
   it('adds -m and the reasoning effort config', () => {
@@ -82,9 +73,6 @@ describe('Codex exec invocation', () => {
       '-c',
       'model_reasoning_effort="low"',
     ]);
-    expect(codexExecLine('gpt-5.6', 'low')).toBe(
-      'exec - -m gpt-5.6 -c model_reasoning_effort="low"',
-    );
   });
 
   it('puts --search before exec', () => {
@@ -95,7 +83,6 @@ describe('Codex exec invocation', () => {
       '-m',
       'gpt-5.6',
     ]);
-    expect(codexExecLine(null, null, true)).toBe('--search exec -');
   });
 });
 
@@ -130,13 +117,6 @@ describe('streaming invocation', () => {
       'model_reasoning_effort="low"',
       '--json',
     ]);
-  });
-});
-
-describe('legacy string form', () => {
-  it('quotes a model with a space and nothing else, as WinUI did', () => {
-    expect(claudePrintLine('my model', null)).toBe('-p --model "my model"');
-    expect(codexExecLine('my model', null)).toBe('exec - -m "my model"');
   });
 });
 

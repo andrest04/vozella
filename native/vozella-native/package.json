@@ -2,7 +2,7 @@
   "name": "@vozella/native",
   "version": "0.1.0",
   "private": true,
-  "description": "Rust N-API addon: audio capture, calendar probe, DPAPI",
+  "description": "Rust N-API addon: audio capture",
   "napi": {
     "binaryName": "vozella-native",
     "targets": [

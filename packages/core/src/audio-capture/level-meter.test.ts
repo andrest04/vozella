@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   computeBufferRms,
-  computeRms,
-  normalizeFloat32,
-  normalizeInt16Le,
   pcm16ToFloat,
   resolveNormalizerGain,
   toMeterPercent,
@@ -51,11 +48,6 @@ describe('toMeterValue', () => {
 });
 
 describe('RMS', () => {
-  it('computes the root mean square in double precision', () => {
-    expect(computeRms([0.5, -0.5, 0.5, -0.5])).toBeCloseTo(0.5, 10);
-    expect(computeRms([])).toBe(0);
-  });
-
   it('reads float32, int16 and int32 buffers and skips non-finite floats', () => {
     const f = new Float32Array([0.5, -0.5, Number.NaN, Number.POSITIVE_INFINITY]);
     expect(computeBufferRms(new Uint8Array(f.buffer), 'float32')).toBeCloseTo(0.5, 6);
@@ -78,53 +70,19 @@ describe('RMS', () => {
   });
 });
 
-describe('level normalizer (kept, not wired in)', () => {
-  const int16 = (values: number[]): Uint8Array => new Uint8Array(new Int16Array(values).buffer);
-  const read = (b: Uint8Array): number[] => [
-    ...new Int16Array(b.buffer, b.byteOffset, b.length / 2),
-  ];
-
+describe('resolveNormalizerGain (kept, not wired in)', () => {
   it('leaves silence, quiet noise and loud audio unchanged', () => {
-    const silence = int16([0, 0, 0]);
-    normalizeInt16Le(silence);
-    expect(read(silence)).toEqual([0, 0, 0]);
-    const floor = int16([30, -30]); // peak 0.0009, under the silence floor
-    normalizeInt16Le(floor);
-    expect(read(floor)).toEqual([30, -30]);
-    const loud = int16([26000, -26000]);
-    normalizeInt16Le(loud);
-    expect(read(loud)).toEqual([26000, -26000]);
+    expect(resolveNormalizerGain(0)).toBe(1);
+    expect(resolveNormalizerGain(0.0009)).toBe(1);
+    expect(resolveNormalizerGain(0.8)).toBe(1);
   });
 
   it('raises quiet speech toward the target peak', () => {
-    const quiet = int16([1000, -2000]);
-    normalizeInt16Le(quiet);
-    const peak = Math.max(...read(quiet).map(Math.abs));
-    expect(peak / 32768).toBeCloseTo(0.7, 2);
+    expect(resolveNormalizerGain(0.1)).toBeCloseTo(7, 10);
   });
 
-  it('caps the gain at 16 and does not overflow int16', () => {
+  it('caps the gain at 16', () => {
     expect(resolveNormalizerGain(0.01)).toBe(16);
     expect(resolveNormalizerGain(0.003)).toBe(16);
-    const samples = int16([200, -200]);
-    normalizeInt16Le(samples);
-    expect(Math.max(...read(samples).map(Math.abs))).toBeLessThanOrEqual(32767);
-  });
-
-  it('applies one gain to a whole float32 utterance', () => {
-    const samples = new Float32Array([0.05, -0.1, 0.02]);
-    normalizeFloat32(samples);
-    expect(Math.max(...samples.map(Math.abs))).toBeCloseTo(0.7, 5);
-    expect(samples[0]! / samples[1]!).toBeCloseTo(-0.5, 5);
-  });
-
-  it('shows why per chunk normalization pumps the level', () => {
-    const a = new Float32Array([0.01, -0.01]);
-    const b = new Float32Array([0.2, -0.2]);
-    normalizeFloat32(a);
-    normalizeFloat32(b);
-    // Both chunks end up at different gains even though they were one steady voice.
-    expect(Math.abs(a[0]!)).toBeCloseTo(0.16, 5);
-    expect(Math.abs(b[0]!)).toBeCloseTo(0.7, 5);
   });
 });

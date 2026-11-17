@@ -26,7 +26,6 @@ import {
   LEGACY_SUMMARY_MODELS,
   SUMMARY_MODELS,
   findSummaryModel,
-  formatModelSize,
   rateFor,
   recommendedFor,
   serverArgsFor,
@@ -289,19 +288,6 @@ describe('summary model catalog', () => {
         'Ui_ModelUseCaseLegacy',
       ],
     ]);
-  });
-
-  it('formats the size with the 0.# pattern', () => {
-    expect(SUMMARY_MODELS.map((m) => formatModelSize(m.fileSizeGb, 'en'))).toEqual([
-      '0.8',
-      '2',
-      '2.1',
-      '5',
-      '2.5',
-      '5',
-      '7.1',
-    ]);
-    expect(formatModelSize(7.12, 'es')).toBe('7,1');
   });
 });
 

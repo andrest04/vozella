@@ -103,8 +103,3 @@ export class SummaryProviderResolver {
     return { status: 'ready', kind, provider };
   }
 }
-
-/** `CliProviderResolver.EnsureAvailableAsync` without the dialog: is the executable on PATH. */
-export function isCliAvailable(cli: CliPathProbe, kind: SummaryProviderKind): Promise<boolean> {
-  return cli.isOnPath(cliExecutableName(kind));
-}

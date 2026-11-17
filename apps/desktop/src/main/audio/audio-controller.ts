@@ -1,7 +1,6 @@
 import {
   audioPreviewLevel,
   audioRecordingLevel,
-  audioRecordingNotice,
   audioSourcesChanged,
   type AudioRpcCall,
   type CaptureSourcesDto,
@@ -349,7 +348,6 @@ export class AudioController {
 
   private notice(notice: RecordingNoticeDto): void {
     if (this.collecting) this.takeNotices.push(notice);
-    this.deps.broadcast(audioRecordingNotice, notice);
     for (const listener of [...this.noticeListeners]) listener(notice);
   }
 

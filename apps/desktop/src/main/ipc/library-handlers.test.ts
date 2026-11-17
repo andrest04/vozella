@@ -321,7 +321,7 @@ describe('library handlers', () => {
   it('reads and patches settings, keeping other fields', async () => {
     const t = await setup();
     expect((await t.call('settings.get')).value).toMatchObject({
-      typeSafeEnabled: true,
+      meetingPopupEnabled: true,
       uiLanguage: null,
     });
     await t.call('settings.update', { patch: { uiLanguage: 'en' } });
@@ -388,12 +388,12 @@ describe('workspace channels', () => {
   it('take-notes request and consume', async () => {
     const t = await setup();
     await t.call('workspace.dispatch', {
-      action: { type: 'requestTakeNotes', calendarEventId: 'evt' },
+      action: { type: 'requestTakeNotes' },
     });
     const first = await t.call('workspace.dispatch', { action: { type: 'consumeTakeNotes' } });
-    expect(first.value).toMatchObject({ takeNotes: { pending: true, calendarEventId: 'evt' } });
+    expect(first.value).toMatchObject({ takeNotes: { pending: true } });
     const second = await t.call('workspace.dispatch', { action: { type: 'consumeTakeNotes' } });
-    expect(second.value).toMatchObject({ takeNotes: { pending: false, calendarEventId: null } });
+    expect(second.value).toMatchObject({ takeNotes: { pending: false } });
   });
 
   it('applyWorkspaceAction covers every action type', () => {

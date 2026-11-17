@@ -18,7 +18,6 @@ describe('createAppPaths', () => {
     expect(paths.rootDirectory).toBe('C:\\Local\\App');
     expect(paths.settingsFilePath).toBe('C:\\Local\\App\\settings.json');
     expect(paths.xaiCredentialsFilePath).toBe('C:\\Local\\App\\xai-credentials.bin');
-    expect(paths.typeSafeCredentialsFilePath).toBe('C:\\Local\\App\\typesafe-credentials.bin');
     expect(paths.meetingsFilePath).toBe('C:\\Local\\App\\meetings.json');
     expect(paths.legacyMeetingsDirectory).toBe('C:\\Local\\App\\Meetings');
     expect(paths.legacyRecordingsDirectory).toBe('C:\\Local\\App\\Recordings');

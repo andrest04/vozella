@@ -347,18 +347,6 @@ describe('copy (items 99 and 104)', () => {
   });
 });
 
-describe('setTemplate (S15)', () => {
-  it('stores a built-in id, clears it for auto, and skips an unchanged write', async () => {
-    const { repo, service } = setup([rec('a')]);
-    expect(await service.setTemplate('a', 'standup')).toEqual({ status: 'saved' });
-    expect(repo.records.get('a')?.noteTemplateId).toBe('standup');
-    expect(await service.setTemplate('a', 'standup')).toEqual({ status: 'unchanged' });
-    expect(await service.setTemplate('a', 'auto')).toEqual({ status: 'saved' });
-    expect(repo.records.get('a')?.noteTemplateId).toBeNull();
-    expect(await service.setTemplate('zzz', 'sales')).toEqual({ status: 'not-found' });
-  });
-});
-
 describe('replaceSummary (T4: apply a chat answer, undo)', () => {
   const items = [{ text: 'Ana sends the deck', isDone: true }];
 

@@ -32,8 +32,3 @@ export function createSlideTracker(initialTab: SessionTab): {
     },
   };
 }
-
-/** Item 23: after a take, Summary when one exists, else Transcript. The recording module calls it. */
-export function initialTabAfterTake(hasSummary: boolean): SessionTab {
-  return hasSummary ? 'Summary' : 'Transcript';
-}

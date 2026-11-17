@@ -203,7 +203,7 @@ describe('SummaryRuntime on a real settings.json', () => {
       selectedCodexModelId: 'gpt-5.5',
       selectedCodexEffort: 'medium',
       summaryLanguage: 'en',
-      typeSafeEnabled: false,
+      meetingPopupEnabled: false,
     };
     await t.settings.update(patch);
     const reloaded = await new JsonSettingsStore({ settingsFilePath: settingsFile }).load();

@@ -16,14 +16,6 @@ export function toMeterPercent(amplitude: number): number {
   return toMeterValue(amplitude) * 100;
 }
 
-/** RMS of float samples, double precision. Empty input is zero. */
-export function computeRms(samples: ArrayLike<number>): number {
-  if (samples.length === 0) return 0;
-  let sum = 0;
-  for (const s of Array.from(samples)) sum += s * s;
-  return Math.sqrt(sum / samples.length);
-}
-
 export type SampleFormat = 'float32' | 'int16' | 'int32' | 'int24';
 
 /**
@@ -82,29 +74,4 @@ export function resolveNormalizerGain(peakFullScale: number): number {
     return 1;
   }
   return Math.min(NORMALIZER_TARGET_PEAK / peakFullScale, NORMALIZER_MAX_GAIN);
-}
-
-export function normalizeFloat32(samples: Float32Array): void {
-  if (samples.length === 0) return;
-  let peak = 0;
-  for (const s of samples) peak = Math.max(peak, Math.abs(s));
-  const gain = resolveNormalizerGain(peak);
-  if (gain <= 1) return;
-  for (let i = 0; i < samples.length; i += 1) {
-    samples[i] = Math.min(1, Math.max(-1, (samples[i] ?? 0) * gain));
-  }
-}
-
-export function normalizeInt16Le(bytes: Uint8Array): void {
-  if (bytes.byteLength < 2) return;
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const count = Math.floor(bytes.byteLength / 2);
-  let peak = 0;
-  for (let i = 0; i < count; i += 1) peak = Math.max(peak, Math.abs(view.getInt16(i * 2, true)));
-  const gain = resolveNormalizerGain(peak / 32768);
-  if (gain <= 1) return;
-  for (let i = 0; i < count; i += 1) {
-    const scaled = Math.round(view.getInt16(i * 2, true) * gain);
-    view.setInt16(i * 2, Math.min(32767, Math.max(-32768, scaled)), true);
-  }
 }

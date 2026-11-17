@@ -82,13 +82,6 @@ export function usesSystemLoopback(sources: RecordingCaptureSources): boolean {
   return sources.output === 'SystemLoopback';
 }
 
-/** The legacy `Start(path, deviceId)` overload: system loopback with the microphone on. */
-export function legacyCaptureSources(
-  microphoneDeviceId: string | null = null,
-): RecordingCaptureSources {
-  return systemLoopbackSources(true, microphoneDeviceId);
-}
-
 /** The id the capture should open: only when the microphone is on and an id was given. */
 export function effectiveMicrophoneId(sources: RecordingCaptureSources): string | null {
   if (!sources.captureMicrophone) return null;

@@ -2,8 +2,6 @@ export * from './cancel';
 export * from './clock';
 export * from './audio-capture';
 export * from './device/audio-capture';
-export * from './device/calendar-probe';
-export * from './device/legacy-secret';
 export * from './logging';
 export * from './library';
 export * from './i18n';

@@ -17,7 +17,6 @@ import {
   Badge,
   Button,
   Checkbox,
-  Combobox,
   ContextMenu,
   Dialog,
   EmptyState,
@@ -110,7 +109,6 @@ export function GalleryRoute() {
   const { preference, setPreference } = useTheme();
   const toast = useToast();
   const [language, setLanguage] = useState<string | null>('es');
-  const [combo, setCombo] = useState<string | null>(null);
   const [radio, setRadio] = useState('mic');
   const [tab, setTab] = useState('transcript');
   const [folder, setFolder] = useState<string | null>('clients-a');
@@ -190,19 +188,6 @@ export function GalleryRoute() {
               onValueChange={setLanguage}
             />
           </Field>
-          <div className="flex flex-col gap-1.5">
-            <span className="text-ui font-medium">Search languages</span>
-            <Combobox
-              label="Search languages"
-              options={OPTIONS}
-              value={combo}
-              onValueChange={setCombo}
-              placeholder="Type to filter"
-              emptyText="No language matches."
-              clearLabel="Clear"
-              openLabel="Show all"
-            />
-          </div>
         </div>
       </Section>
 

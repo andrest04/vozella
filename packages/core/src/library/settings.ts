@@ -32,14 +32,8 @@ export interface AppSettings {
   readonly recordAppName: string | null;
   readonly liveTranscriptionEnabled: boolean;
   readonly speakerDiarizationEnabled: boolean;
-  readonly typeSafeEnabled: boolean;
-  readonly calendarNotificationsEnabled: boolean;
   readonly meetingPopupEnabled: boolean;
-  readonly disabledCalendarIds: readonly string[];
   readonly uiLanguage: string | null;
-  readonly navigationPaneLength: number | null;
-  readonly liveCopilotPillX: number | null;
-  readonly liveCopilotPillY: number | null;
   readonly liveCopilotPillEdge: string | null;
   readonly liveCopilotPillAlong: number | null;
   /** Port addition: live question detection, `off`, `rules` or `rules+ai`. Null is the default. */
@@ -62,7 +56,7 @@ export interface AppSettings {
   readonly cloudTranscriptionModelId: string | null;
 }
 
-type Kind = 'string' | 'bool-true' | 'bool-false' | 'strings' | 'number';
+type Kind = 'string' | 'bool-true' | 'bool-false' | 'number';
 
 /**
  * Declaration order is the order in the file, so a new field goes last. The model field of an API
@@ -88,14 +82,8 @@ const FIELDS: readonly (readonly [keyof AppSettings, Kind])[] = [
   ['recordAppName', 'string'],
   ['liveTranscriptionEnabled', 'bool-true'],
   ['speakerDiarizationEnabled', 'bool-false'],
-  ['typeSafeEnabled', 'bool-true'],
-  ['calendarNotificationsEnabled', 'bool-true'],
   ['meetingPopupEnabled', 'bool-true'],
-  ['disabledCalendarIds', 'strings'],
   ['uiLanguage', 'string'],
-  ['navigationPaneLength', 'number'],
-  ['liveCopilotPillX', 'number'],
-  ['liveCopilotPillY', 'number'],
   ['liveCopilotPillEdge', 'string'],
   ['liveCopilotPillAlong', 'number'],
   ['liveQuestions', 'string'],
@@ -132,8 +120,6 @@ function coerce(kind: Kind, value: unknown): unknown {
       return typeof value === 'boolean' ? value : true;
     case 'bool-false':
       return typeof value === 'boolean' ? value : false;
-    case 'strings':
-      return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
     case 'number': {
       // .NET Web defaults also read numbers written as strings.
       const n = typeof value === 'string' && value.trim() !== '' ? Number(value) : value;
@@ -297,22 +283,6 @@ export function resolveSummaryProviderKind(s: AppSettings): SummaryProviderKind 
   return SUMMARY_PROVIDERS.find((kind) => kind === s.selectedSummaryProvider) ?? 'Local';
 }
 
-export function resolveNavigationPaneLength(s: AppSettings): number {
-  const value = s.navigationPaneLength;
-  if (value === null || !Number.isFinite(value)) return 280;
-  return Math.min(480, Math.max(200, value));
-}
-
-export function resolvePillEdge(s: AppSettings): PillEdge {
-  return PILL_EDGES.find((edge) => edge === s.liveCopilotPillEdge) ?? 'Right';
-}
-
-export function resolvePillAlong(s: AppSettings): number {
-  const value = s.liveCopilotPillAlong;
-  if (value === null || !Number.isFinite(value)) return 0.5;
-  return Math.min(1, Math.max(0, value));
-}
-
 export const LIVE_QUESTIONS_MODES = ['off', 'rules', 'rules+ai'] as const;
 export type LiveQuestionsMode = (typeof LIVE_QUESTIONS_MODES)[number];
 
@@ -327,8 +297,4 @@ export function resolveLiveQuestionsMode(
   const chosen = LIVE_QUESTIONS_MODES.find((mode) => mode === s.liveQuestions);
   if (chosen !== undefined) return chosen;
   return isRemoteProvider(s.selectedSummaryProvider) ? 'rules+ai' : 'rules';
-}
-
-export function disabledCalendarIdsAsSet(s: AppSettings): ReadonlySet<string> {
-  return new Set(s.disabledCalendarIds.filter((id) => id.trim() !== ''));
 }

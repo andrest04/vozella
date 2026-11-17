@@ -144,21 +144,21 @@ describe('Workspace selection', () => {
 });
 
 describe('Workspace take-notes request', () => {
-  it('stores a blank-normalized event id, raises the event, then navigates to Recording', () => {
+  it('raises the event, then navigates to Recording', () => {
     const { workspace } = make();
     const order: string[] = [];
     workspace.on('takeNotesRequested', () => order.push('requested'));
     workspace.on('navigationRequested', (tag) => order.push(`nav:${tag}`));
-    workspace.requestTakeNotes('  ');
+    workspace.requestTakeNotes();
     expect(order).toEqual(['requested', 'nav:Recording']);
-    expect(workspace.consumeTakeNotes()).toEqual({ pending: true, calendarEventId: null });
+    expect(workspace.consumeTakeNotes()).toEqual({ pending: true });
   });
 
   it('consume returns the pending flag once and clears everything', () => {
     const { workspace } = make();
-    workspace.requestTakeNotes('evt-1');
-    expect(workspace.consumeTakeNotes()).toEqual({ pending: true, calendarEventId: 'evt-1' });
-    expect(workspace.consumeTakeNotes()).toEqual({ pending: false, calendarEventId: null });
+    workspace.requestTakeNotes();
+    expect(workspace.consumeTakeNotes()).toEqual({ pending: true });
+    expect(workspace.consumeTakeNotes()).toEqual({ pending: false });
   });
 
   it('OfferCallPrompt raises CallPromptOffered', () => {

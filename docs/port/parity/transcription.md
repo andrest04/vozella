@@ -198,7 +198,7 @@ Status words: `done`, `improved` (a section 7 fix or a recorded decision changed
 | --- | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | 103 | done     | All six highlight cases of section 6; minutes use a double so ten-digit minutes do not throw (B19)                                    |
 | 104 | done     | The regex runs after the `* ` is stripped                                                                                             |
-| 105 | done     | `L000`, tagged document, `MAX_CHOICE_OPTIONS`, `truncateToCompleteLines`                                                              |
+| 105 | done     | Line index helpers were removed as unused (no caller).                                                            |
 | 106 | improved | B14. A starred line is read like the line under the star. The library snippet now uses this parser instead of its own copy            |
 
 ### Polish
@@ -208,8 +208,8 @@ Status words: `done`, `improved` (a section 7 fix or a recorded decision changed
 | 107     | done       | Prompt text identical to 3.14 for a known language                                                                                                                        |
 | 108     | improved   | B3. Blank is Spanish; `auto` and unknown codes ask to keep the spoken language instead of translating to Spanish                                                          |
 | 109     | done       | `splitTimestampedChunks`; chunks join with `\n`                                                                                                                           |
-| 110-113 | open-other | Providers (local model, Claude Code, Codex, xAI) and their selection need the CLI runner, the xAI client and the local model. They implement `TranscriptPolisher`, the port here |
-| 114     | improved   | `polishOrKeep` returns the raw transcript on any failure or when lines or stamps were lost (B16). Nothing in the app calls it yet (B2): the pipeline owner wires it            |
+| 110-113 | open-other | Providers (local model, Claude Code, Codex, xAI) and their selection need the CLI runner, the xAI client and the local model. The polish port was removed as unused |
+| 114     | improved   | The polish pipeline (`polishOrKeep`) was removed as unused (B2); a future owner re-adds it with the providers            |
 
 ### Catalogs
 
@@ -256,7 +256,7 @@ Each has a regression test. A mutation check reverted the fix and ran the suite:
 | B12  | Start and Stop are serialized                                                                                | `B12: a Start and a Stop issued together never see a half started session` |
 | B13  | Each percent value is reported once                                                                          | `B13: reports each distinct percent once`                                  |
 | B14  | Starred lines parse like unstarred ones; the library snippet uses the same parser                            | `B14: a starred line reads like the line under the star`                   |
-| B16  | `</transcript>` in the text is escaped, code fences are stripped, damaged output is dropped                  | `B16: ...`, `B2/B16: polishOrKeep returns the raw transcript ...`          |
+| B16  | `</transcript>` in the text is escaped, code fences are stripped, damaged output is dropped                  | removed with the polish pipeline          |
 | B17  | One transfer per file and per backend                                                                        | `B17: two callers for the same file share one transfer` (and the runtime one) |
 | B18  | A bare interim is stamped when committed                                                                     | `B18: committing a bare interim`                                           |
 | B19  | Minutes parse as a double (no overflow)                                                                      | `keeps CRLF and survives huge minute counts (B19)`                         |
@@ -274,7 +274,7 @@ Not changed: B2 (see Left for other modules), B15 (local polisher), B23 (GPU cho
 
 - **Recording module.** `startLive` and `stopLive` are already called by `RecordingTakes`; take `lastLiveDraft` as the draft. Call `transcribeFile` after Stop and after import, with the progress and a `CancelSource`. Use `resolveTranscriptionStage` and `ensureEndedHeader` for the saved transcript and `applyHighlights` with the marks of the take. The Record gate and the setup dialog are built (decision 13).
 - **Summary module.** Done (summaries S15): `TranscriptionController` takes `summarize`, `templateInstructions` and `formatFailure` from the summaries controller, so a re-transcription also regenerates the summary and ends `Completed` or `SummaryFailed`. The recording module reuses the same hook.
-- **Polish (B2, B15).** The four providers, their selection, the call from the pipeline, and the local model chunk budget. `TranscriptPolisher`, `buildPolishPrompt`, `splitTimestampedChunks` and `polishOrKeep` are ready.
+- **Polish (B2, B15).** The four providers, their selection, the call from the pipeline, and the local model chunk budget. The polish port and helpers were removed as unused.
 - **Session page.** The transcript and summary tabs belong to the session module. When it lands, mount `RetranscribeControl` in its header and reload the meeting from `onFinished`.
 - **Library.** CRLF in the meeting file if byte parity of transcripts matters; the accumulator now produces `\n`.
 - **Packaging.** koffi is already external and unpacked in `electron-builder.config.mjs`. A packaged build running the ASR worker was not tried.

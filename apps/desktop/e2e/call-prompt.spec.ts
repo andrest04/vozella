@@ -133,10 +133,7 @@ test.describe('popup toggle', () => {
   test('the toggle persists across a restart and leaves other settings keys alone', async () => {
     const first = await launchApp({}, (root) => {
       fs.mkdirSync(path.dirname(settingsPath(root)), { recursive: true });
-      fs.writeFileSync(
-        settingsPath(root),
-        JSON.stringify({ calendarNotificationsEnabled: false, disabledCalendarIds: ['cal-1'] }),
-      );
+      fs.writeFileSync(settingsPath(root), JSON.stringify({ futureThing: { a: 1 } }));
     });
     const settingsFile = settingsPath(first.dataRoot);
     let saved = '';
@@ -153,8 +150,7 @@ test.describe('popup toggle', () => {
       await expect(toggle).toHaveAttribute('aria-checked', 'false');
       await expect.poll(() => settingKey(settingsFile, 'meetingPopupEnabled')).toBe(false);
       saved = fs.readFileSync(settingsFile, 'utf8');
-      expect(settingKey(settingsFile, 'calendarNotificationsEnabled')).toBe(false);
-      expect(settingKey(settingsFile, 'disabledCalendarIds')).toEqual(['cal-1']);
+      expect(settingKey(settingsFile, 'futureThing')).toEqual({ a: 1 });
 
       if (process.env.VOZELLA_SCREENSHOTS === '1') {
         fs.mkdirSync(outDir, { recursive: true });

@@ -5,12 +5,9 @@ import type {
   AudioSessionSnapshot,
   AudioSessionSource,
   AudioSource,
-  CalendarProbePort,
-  CalendarProbeResult,
   CaptureSession,
   CaptureStopped,
   FileVersionInfo,
-  LegacySecretPort,
   MicrophoneDevice,
   MicrophoneDeviceSource,
   OsBuildProbe,
@@ -70,43 +67,12 @@ export class NativeAudioCapture implements AudioCapturePort {
   }
 }
 
-/** Adapter: calendar capability probe through the Rust addon. */
-export class NativeCalendarProbe implements CalendarProbePort {
-  constructor(private readonly addon: NativeAddon) {}
-
-  async probe(): Promise<CalendarProbeResult> {
-    const r = await this.addon.probeCalendarsAsync();
-    return {
-      hasIdentity: r.hasIdentity,
-      packageFullName: r.packageFullName ?? null,
-      status: r.status === 'ok' ? 'ok' : 'error',
-      hresult: r.hresult ?? null,
-      error: r.error ?? null,
-      calendarCount: r.calendarCount ?? null,
-      upcomingEventCount: r.upcomingEventCount ?? null,
-    };
-  }
-}
-
 /** Adapter: top-level window listing through the Rust addon (runs off the JS loop). */
 export class NativeWindowLister implements WindowLister {
   constructor(private readonly addon: NativeAddon) {}
 
   listWindows(): Promise<readonly TopLevelWindowInfo[]> {
     return this.addon.listTopLevelWindows();
-  }
-}
-
-/** Adapter: legacy DPAPI through the Rust addon. */
-export class NativeLegacySecret implements LegacySecretPort {
-  constructor(private readonly addon: NativeAddon) {}
-
-  unprotect(blob: Uint8Array): Promise<Uint8Array> {
-    try {
-      return Promise.resolve(this.addon.dpapiUnprotect(blob));
-    } catch (error) {
-      return Promise.reject(error instanceof Error ? error : new Error(String(error)));
-    }
   }
 }
 

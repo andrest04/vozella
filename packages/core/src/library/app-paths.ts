@@ -40,7 +40,6 @@ export interface AppPaths {
   readonly chatPromptsFilePath: string;
   /** Kept for on-disk compatibility with the WinUI app. Nothing reads or deletes this file (xAI was removed). */
   readonly xaiCredentialsFilePath: string;
-  readonly typeSafeCredentialsFilePath: string;
   readonly customNoteTemplateFilePath: string;
 }
 
@@ -67,7 +66,6 @@ export function createAppPaths(roots: AppPathRoots, path: PathJoiner): AppPaths 
     chatRecipesFilePath: path.join(root, 'chat-recipes.json'),
     chatPromptsFilePath: path.join(root, 'chat-prompts.json'),
     xaiCredentialsFilePath: path.join(root, 'xai-credentials.bin'),
-    typeSafeCredentialsFilePath: path.join(root, 'typesafe-credentials.bin'),
     customNoteTemplateFilePath: path.join(root, 'custom-note-template.json'),
   };
 }

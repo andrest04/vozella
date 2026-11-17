@@ -13,7 +13,7 @@ Reason for every item below: owner decision 2026-11-03, may return later. Audito
 - xAI/Grok provider: OAuth, API key, credential store, settings expander. Claude Code, Codex and the local provider stay. A settings file that selects Xai must still load.
 - Suggest-title button, custom note template, nav-pane resize grip, meeting-app suggestion bar on Record.
 - Chat thread history and user recipes (items 93 to 101, 113 to 116; item 105 keeps only the built-in part). The chat itself and built-in recipe chips stay.
-- On-disk compatibility still applies: typeSafeEnabled, calendar settings, Jev frontmatter, event frontmatter keys and the Brief section of existing meetings are read and rewritten without loss.
+- On-disk compatibility still applies: Jev frontmatter, event frontmatter keys and the Brief section of existing meetings are read and rewritten without loss.
 
 ## Where things are
 
@@ -33,7 +33,7 @@ Reason for every item below: owner decision 2026-11-03, may return later. Audito
 - **Cancel (chat-3).** A cancel after the provider returned text still drops the answer (B20).
 
 - **Recipe API (chat-2).** `builtInRecipes(t)` and `recipesForScope(kind, t)` take a `RecipeNameLookup` (`(key) => string`) and return fresh objects every call. `availabilityFor` throws RangeError on an unknown scope. `filterRecipes(list, draft)` is the slash filter; the flyout is chat-8.
-- **Link parsing (chat-2).** `tryParseMeetingLink` returns the 32-hex lowercase id or null. Braced and parenthesized forms need the hyphenated shape and matching delimiters, as .NET Guid.TryParse does.
+- **Link parsing (chat-2).** `tryParseMeetingCitation` returns the 32-hex lowercase id (and the optional `?t=` seconds) or null. Braced and parenthesized forms need the hyphenated shape and matching delimiters, as .NET Guid.TryParse does.
 - **Prompt messages (chat-2).** `buildPrompt` takes `{role, text}` prior messages; a null text counts as empty and a null element throws a TypeError on access.
 
 - **Line endings (chat-1).** The packer writes LF only. Summary, notes and transcript text is split on any line break and rejoined with LF.
@@ -259,7 +259,7 @@ Channels (`packages/contracts/src/chat.ts`): `chat.send` (request id, draft, sco
 | 103 | Built-ins are never written to disk. | chat-2 / chat-8 | done | catalog is code only; no repository exists |
 | 104 | Scope to availability: Meeting/Live single; Folder/All multiple. | chat-2 / chat-8 | done | recipes.test.ts AvailabilityFor_MatchesScope |
 | 105 | Scope list = built-ins (catalog order) then user recipes (file order); user rows with colliding built-in ids skipped (apply the B9 fix or keep, but document). | chat-2 / chat-8 | improved | recipes.test.ts ForScope; built-ins only, user half dropped (owner decision 2026-11-03, may return later), B9 moot |
-| 106 | Starter chips = first 4 of the scope list. | chat-2 / chat-8 | done | recipes.test.ts starterRecipes; chips UI in chat-8 |
+| 106 | Starter chips = first 4 of the scope list. | chat-2 / chat-8 | done | recipes.test.ts (`recipesForScope` list order); chips UI in chat-8, which takes the first four |
 | 107 | Chip click fills the draft and sends immediately. | chat-2 / chat-8 | done | e2e `chat-recipes.spec.ts` "a chip click sends and streams the answer"; chip behavior from chat-7. |
 | 108 | Recipes flyout lists name and two-line prompt preview; item click fills the draft without sending, closes the flyout, focuses and puts the caret at the end. | chat-2 / chat-8 | done | `RecipesMenu.test.tsx` (fill without send, closes, focus, caret at end); e2e click fills the draft. |
 | 109 | Delete icon only on user recipes; built-ins cannot be deleted even through the API. | chat-2 / chat-8 | dropped | moot: no user recipes (owner decision 2026-11-03, may return later); built-ins have no delete path |
@@ -377,7 +377,7 @@ Files in `apps/desktop/src/renderer/features/chat/`: `ChatBody` (container), `us
 
 ## Chat-9 (answer Markdown, citations, external links) and final audit
 
-- `use-chat-links.ts` classifies an address: a meeting citation (parsed with `tryParseMeetingLink` after percent decoding, because the Markdown reader normalizes braces to `%7B`), a web address, or ignored. Every click calls `preventDefault`, so the page never navigates and the window never opens a second tab.
+- `use-chat-links.ts` classifies an address: a meeting citation (parsed with `tryParseMeetingCitation` after percent decoding, because the Markdown reader normalizes braces to `%7B`), a web address, or ignored. Every click calls `preventDefault`, so the page never navigates and the window never opens a second tab.
 - Decision: `CitationLink.tsx` was not created. `MarkdownView` already renders the anchor, and a second component would only wrap it.
 - `MarkdownView` and `markdown.ts` gained pipe tables and a `title` on links. `onLink` already existed from chat-7. `MessageRow` and `MessageList` take one `onLink` prop; `ChatBody` supplies it, and `useChat.reportError` feeds the error notice.
 - S3 is documented: a braced or hyphenated id parses; an unknown id shows `Chat_MeetingLinkMissing`. Models that invent ids get that message.

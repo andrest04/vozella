@@ -18,7 +18,7 @@ Rules live in `stack.md` (Design direction). This page is how to use what exists
 
 Pure components: no IPC, no router, no i18n; text arrives as props. Containers live in `features/*`.
 
-Button (primary, secondary, quiet; no danger variant), IconButton (`label` is required and becomes the name and tooltip), Input, Textarea, Field (label, help, error), Select, Combobox, Checkbox, Switch, RadioGroup, Tabs, Tooltip, Menu, ContextMenu, Dialog, ToastProvider and `useToast()`, Progress, Skeleton, Tree, Splitter, SectionHeader, SettingRow, EmptyState, Kbd, Badge, Mark. Icons: lucide through `Icon` only (1.5 stroke, decorative).
+Button (primary, secondary, quiet; no danger variant), IconButton (`label` is required and becomes the name and tooltip), Input, Textarea, Field (label, help, error), Select, Checkbox, Switch, RadioGroup, Tabs, Tooltip, Menu, ContextMenu, Dialog, ToastProvider and `useToast()`, Progress, Skeleton, Tree, Splitter, SectionHeader, SettingRow, EmptyState, Kbd, Badge, Mark. Icons: lucide through `Icon` only (1.5 stroke, decorative).
 
 Tree and Splitter are ours (Base UI has neither); their key handling is in `tree-navigation.ts` and `splitter-logic.ts`, unit tested.
 

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { LibraryFileCorruptError } from './errors';
 import {
   applySettingsPatch,
-  disabledCalendarIdsAsSet,
   parseSettingsJson,
   readSettings,
   resolveClaudeEffort,
@@ -10,9 +9,6 @@ import {
   resolveCodexEffort,
   resolveCodexModelId,
   resolveLiveQuestionsMode,
-  resolveNavigationPaneLength,
-  resolvePillAlong,
-  resolvePillEdge,
   resolveSummaryLanguage,
   resolveSummaryProviderKind,
   resolveTranscriptionLanguage,
@@ -46,14 +42,8 @@ describe('defaults', () => {
       recordAppName: null,
       liveTranscriptionEnabled: true,
       speakerDiarizationEnabled: false,
-      typeSafeEnabled: true,
-      calendarNotificationsEnabled: true,
       meetingPopupEnabled: true,
-      disabledCalendarIds: [],
       uiLanguage: null,
-      navigationPaneLength: null,
-      liveCopilotPillX: null,
-      liveCopilotPillY: null,
       liveCopilotPillEdge: null,
       liveCopilotPillAlong: null,
       liveQuestions: null,
@@ -70,8 +60,6 @@ describe('defaults', () => {
 
   it('keeps true booleans true and false booleans false when the JSON omits them', () => {
     const read = readSettings({ uiLanguage: 'es' });
-    expect(read.typeSafeEnabled).toBe(true);
-    expect(read.calendarNotificationsEnabled).toBe(true);
     expect(read.meetingPopupEnabled).toBe(true);
     expect(read.liveTranscriptionEnabled).toBe(true);
     expect(read.speakerDiarizationEnabled).toBe(false);
@@ -84,16 +72,12 @@ describe('defaults', () => {
           applySettingsPatch(
             {},
             {
-              typeSafeEnabled: false,
-              calendarNotificationsEnabled: false,
               meetingPopupEnabled: false,
             },
           ),
         ),
       ),
     );
-    expect(read.typeSafeEnabled).toBe(false);
-    expect(read.calendarNotificationsEnabled).toBe(false);
     expect(read.meetingPopupEnabled).toBe(false);
   });
 });
@@ -182,66 +166,15 @@ describe('resolvers', () => {
     }
   });
 
-  it('navigation pane length defaults to 280 and clamps to 200..480', () => {
-    const w = (n: number | null) =>
-      resolveNavigationPaneLength({ ...defaults, navigationPaneLength: n });
-    expect(w(null)).toBe(280);
-    expect(w(150)).toBe(200);
-    expect(w(200)).toBe(200);
-    expect(w(320)).toBe(320);
-    expect(w(600)).toBe(480);
-    expect(w(100)).toBe(200);
-    expect(w(900)).toBe(480);
-    expect(w(333)).toBe(333);
-    expect(w(Number.NaN)).toBe(280);
-  });
-
-  it('pill position is null when unset and round-trips negative coordinates', () => {
-    expect(defaults.liveCopilotPillX).toBeNull();
-    const read = readSettings({ liveCopilotPillX: -1200, liveCopilotPillY: -30 });
-    expect(read.liveCopilotPillX).toBe(-1200);
-    expect(read.liveCopilotPillY).toBe(-30);
-  });
-
-  it('pill edge defaults to Right and along clamps to 0..1', () => {
-    const edge = (v: string | null) => resolvePillEdge({ ...defaults, liveCopilotPillEdge: v });
-    expect(edge(null)).toBe('Right');
-    expect(edge('Top')).toBe('Top');
-    expect(edge('bogus')).toBe('Right');
-    const along = (v: number | null) => resolvePillAlong({ ...defaults, liveCopilotPillAlong: v });
-    expect(along(null)).toBe(0.5);
-    expect(along(-2)).toBe(0);
-    expect(along(9)).toBe(1);
-    expect(along(Number.POSITIVE_INFINITY)).toBe(0.5);
-    expect(along(0.25)).toBe(0.25);
-  });
-
-  it('disabled calendar ids drop blanks and compare ordinally', () => {
-    const set = disabledCalendarIdsAsSet({ ...defaults, disabledCalendarIds: ['a', ' ', '', 'A'] });
-    expect([...set]).toEqual(['a', 'A']);
-    expect(disabledCalendarIdsAsSet(defaults).size).toBe(0);
-  });
-
-  it('disabled calendar ids drop true duplicates and round-trip through a write', () => {
-    const set = disabledCalendarIdsAsSet({
-      ...defaults,
-      disabledCalendarIds: ['a', 'a', ' ', 'b'],
-    });
-    expect([...set]).toEqual(['a', 'b']);
-    const text = serializeSettings(applySettingsPatch({}, { disabledCalendarIds: ['x', 'y'] }));
-    expect(parseSettingsJson(text).settings.disabledCalendarIds).toEqual(['x', 'y']);
-  });
-
-  it('pill dock round-trips through a write, and unset reads as Right and 0.5', () => {
+  it('pill dock round-trips through a write, and unset reads as null', () => {
     const text = serializeSettings(
       applySettingsPatch({}, { liveCopilotPillEdge: 'Top', liveCopilotPillAlong: 0.25 }),
     );
     const read = parseSettingsJson(text).settings;
-    expect(resolvePillEdge(read)).toBe('Top');
-    expect(resolvePillAlong(read)).toBe(0.25);
-    expect(resolvePillEdge(defaults)).toBe('Right');
-    expect(resolvePillAlong(defaults)).toBe(0.5);
-    expect(resolvePillAlong({ ...defaults, liveCopilotPillAlong: Number.NaN })).toBe(0.5);
+    expect(read.liveCopilotPillEdge).toBe('Top');
+    expect(read.liveCopilotPillAlong).toBe(0.25);
+    expect(defaults.liveCopilotPillEdge).toBeNull();
+    expect(defaults.liveCopilotPillAlong).toBeNull();
   });
 
   it('removed chat keys are ignored and a stored Codex provider still resolves to Codex', () => {
@@ -255,7 +188,7 @@ describe('resolvers', () => {
 
 describe('reading and writing', () => {
   it('accepts numbers written as strings', () => {
-    expect(readSettings({ navigationPaneLength: '300' }).navigationPaneLength).toBe(300);
+    expect(readSettings({ liveCopilotPillAlong: '0.3' }).liveCopilotPillAlong).toBe(0.3);
   });
 
   it('parses case-insensitive names and ignores removed provider keys', () => {
@@ -279,7 +212,7 @@ describe('reading and writing', () => {
   it('writes every property in declaration order with CRLF', () => {
     const text = serializeSettings({});
     expect(text.split('\r\n')[1]).toBe('  "selectedSummaryModelId": null,');
-    expect(text).toContain('  "disabledCalendarIds": [],');
+    expect(text).toContain('  "meetingPopupEnabled": true,');
     expect(text.split('\r\n').at(-2)).toBe('  "liveCopilotPillAlong": null');
     expect(text).not.toContain('liveQuestions');
     expect(text).not.toContain('OpenAi');
@@ -347,25 +280,23 @@ describe('reading and writing', () => {
     expect(text.indexOf('futureThing')).toBeGreaterThan(text.indexOf('liveCopilotPillAlong'));
   });
 
-  it('cd-1: a file with calendar settings, no Xai and Jev flags survives load and rewrite unchanged', () => {
+  it('cd-1: a file with the dropped calendar settings, no Xai and Jev flags survives load and rewrite unchanged', () => {
     const text = serializeSettings(
       applySettingsPatch(
-        { futureThing: { a: 1 } },
         {
-          typeSafeEnabled: false,
+          futureThing: { a: 1 },
           calendarNotificationsEnabled: false,
-          meetingPopupEnabled: false,
           disabledCalendarIds: ['cal-1', 'cal-2'],
+        },
+        {
+          meetingPopupEnabled: false,
           selectedSummaryProvider: 'Codex',
           uiLanguage: 'en',
         },
       ),
     );
     const { settings, raw } = parseSettingsJson(text);
-    expect(settings.typeSafeEnabled).toBe(false);
-    expect(settings.calendarNotificationsEnabled).toBe(false);
     expect(settings.meetingPopupEnabled).toBe(false);
-    expect(settings.disabledCalendarIds).toEqual(['cal-1', 'cal-2']);
     expect(settings.selectedXaiModelId).toBeNull();
     expect(serializeSettings(raw)).toBe(text);
     expect(serializeSettings(applySettingsPatch(raw, { summaryLanguage: 'en' }))).toContain(

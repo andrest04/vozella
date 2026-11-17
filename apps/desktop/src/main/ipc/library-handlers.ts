@@ -80,7 +80,7 @@ export function bridgeWorkspace(workspace: Workspace, broadcast: Broadcast): () 
 export function applyWorkspaceAction(
   workspace: Workspace,
   action: WorkspaceActionDto,
-): { takeNotes?: { pending: boolean; calendarEventId: string | null } } {
+): { takeNotes?: { pending: boolean } } {
   switch (action.type) {
     case 'selectMeeting':
       workspace.selectMeeting(action.id);
@@ -113,7 +113,7 @@ export function applyWorkspaceAction(
       workspace.setCaptureActive(action.active);
       break;
     case 'requestTakeNotes':
-      workspace.requestTakeNotes(action.calendarEventId);
+      workspace.requestTakeNotes();
       break;
     case 'consumeTakeNotes':
       return { takeNotes: workspace.consumeTakeNotes() };

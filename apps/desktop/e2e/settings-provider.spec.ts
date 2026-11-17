@@ -133,7 +133,6 @@ test('a settings file that names Grok shows the notice, selects nothing and chan
     selectedSummaryProvider: 'Xai',
     selectedXaiModelId: 'grok-4.6',
     selectedXaiEffort: 'low',
-    typeSafeEnabled: true,
   };
   const s = await start(seedFile);
   try {
@@ -159,7 +158,6 @@ test('a settings file that names Grok shows the notice, selects nothing and chan
       .toMatchObject({
         selectedSummaryProvider: 'ClaudeCode',
         selectedXaiModelId: 'grok-4.6',
-        typeSafeEnabled: true,
       });
   } finally {
     await s.launched.close();

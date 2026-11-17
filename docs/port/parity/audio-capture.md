@@ -61,7 +61,7 @@ Status words: `done`, `improved` (a section 7 fix or a recorded decision changed
 | 4   | done   | Out-of-range error before any device; service test checks no session opened      |
 | 5   | done   | Exact message                                                                    |
 | 6   | done   | `effectiveMicrophoneId`; the service test opens no mic when it is off            |
-| 7   | done   | `legacyCaptureSources`. TypeScript has no overloads, so there is only the helper |
+| 7   | done   | The legacy `Start(path, deviceId)` overload was not ported (removed as unused). |
 | 8   | done   | Validation is the first line of `start`                                          |
 | 9   | done   | Also during a stop; test covers both                                             |
 
@@ -103,7 +103,7 @@ Status words: `done`, `improved` (a section 7 fix or a recorded decision changed
 | 31  | done     | Real-time test: 0.5 s, 1 s pause, 0.5 s gave under 1.6 s                                                                                                                                                                                            |
 | 32  | done     |                                                                                                                                                                                                                                                     |
 | 33  | done     | `recordingStatus`, `RecordingStatusLine`: paused text, and a warning wins. Mounted on the Record page while a take runs (`RecordRoute.test.tsx`, e2e)                                                                                               |
-| 34  | improved | Main keeps the paused time of the take (`RecordingTakes`, `recording-take.test.ts`) and `audio.recording.stop` returns `pausedSeconds`. Applying it as the live ASR clock skew is the transcription module's, because no live transcript exists yet |
+| 34  | improved | Main keeps the paused time of the take (`RecordingTakes`, `recording-take.test.ts`) and the stop returns `pausedSeconds` (the old `audio.recording.*` channels were removed; `recording.*` is the only set). Applying it as the live ASR clock skew is the transcription module's, because no live transcript exists yet |
 
 ### Start failure handling
 
@@ -279,7 +279,7 @@ Activation, the 12-byte blob, the property variant and the wait are inside the `
 | 145 | done     |                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | 146 | done     | Checked after each buffer, with a yield, so a message can arrive                                                                                                                                                                                                                                                                                                                                                                                                             |
 | 147 | done     |                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| 148 | improved | The Import audio button on the Record page: `audio.import.pickFile`, then `audio.import.run`. Main keeps the picked path, so the page never names a file. Shows `Status_Importing`, then `Ui_TakeSaved`, or `Error_ImportAudio`; the partial file is deleted and the preview restarts when the page is idle again (`recording-take.test.ts`, `use-take.test.tsx`, `RecordRoute.test.tsx`, e2e). The meeting record and the pipeline after the WAV are the recording module's |
+| 148 | improved | The Import audio button on the Record page: `audio.import.pickFile`, then `recording.import` (the old `audio.import.run` was removed). Main keeps the picked path, so the page never names a file. Shows `Status_Importing`, then `Ui_TakeSaved`, or `Error_ImportAudio`; the partial file is deleted and the preview restarts when the page is idle again (`recording-take.test.ts`, `use-take.test.tsx`, `RecordRoute.test.tsx`, e2e). The meeting record and the pipeline after the WAV are the recording module's |
 | 149 | done     | `endedAtMs` = `recordedAtMs` + the converted WAV length (`recording-take.test.ts`). The recording module reads it when it builds the meeting                                                                                                                                                                                                                                                                                                                                 |
 
 ### WAV utilities
@@ -408,7 +408,7 @@ Not observed: the new start line and the zeroed meters in a refreshed screenshot
 
 Fixed, with tests:
 
-- **Take survives leaving the Record page (33, 49, 57, 60):** new channel `audio.recording.state`; `useTake` asks main on mount and picks up `recording` or `paused`, so Stop, Pause, Resume and the failure notice work again. Tests: `use-take.test.tsx` (3 cases), `audio-handlers.test.ts`.
+- **Take survives leaving the Record page (33, 49, 57, 60):** the former `audio.recording.state` channel (since removed; `recording.state` replaces it); `useTake` asks main on mount and picks up `recording` or `paused`, so Stop, Pause, Resume and the failure notice work again. Tests: `use-take.test.tsx` (3 cases), `audio-handlers.test.ts`.
 - **92 Settings preview during a take:** main refuses `audio.preview.start` while a take is busy, covering both pages. Test: `audio-handlers.test.ts`.
 - **Stale pick race in `useMicrophones`:** `choose` bumps the reload generation. Tests: `use-microphones.test.tsx` (also covers 100 and 102).
 - **C4 frozen bar while paused:** the Meter shows 0 while paused. Test: `RecordingStatusLine.test.tsx`.
@@ -432,7 +432,7 @@ Rejected or deferred, with the reason:
 
 Fixed, with the test that proves each:
 
-- **57, 56, 60 notices while another page is open:** main keeps the notices of the running take (`AudioController.pendingNotices`, cleared on start and stop) and `audio.recording.state` returns them. On return the Record page stops the take on the first output or writer failure and shows lost-source warnings again. Tests: `audio-controller.test.ts` (57), `audio-handlers.test.ts`, `use-take.test.tsx` (57, 56). Decision: the take is stopped when the user comes back, not while the page is away, because the stop flow and its message live in the page.
+- **57, 56, 60 notices while another page is open:** main keeps the notices of the running take (`AudioController.pendingNotices`, cleared on start and stop) and the former `audio.recording.state` (since removed) returned them. On return the Record page stops the take on the first output or writer failure and shows lost-source warnings again. Tests: `audio-controller.test.ts` (57), `audio-handlers.test.ts`, `use-take.test.tsx` (57, 56). Decision: the take is stopped when the user comes back, not while the page is away, because the stop flow and its message live in the page.
 - **Pump started before devices opened:** the pump now starts after both sources are open, as in C#, so a slow activation no longer writes a silent prefix. Test: `recording-service.test.ts` "the pump starts only after the devices are open".
 - **26, 30, 28, 43, 45:** order of write and frame, the 50 ms paused sleep (the test clock now records sleeps), empty microphone frames, first error kept, failure precedence with all stored failures cleared. Item 25 (2 byte rule) cannot be reached: chunks are always 6400 bytes; the guard stays as a defence.
 - **S6:** a differently named helper under a known browser or meeting app rolls up into that app (`active-audio-apps.test.ts`). Other cross-image parents still stop the climb. Supersedes the earlier "not fixed".

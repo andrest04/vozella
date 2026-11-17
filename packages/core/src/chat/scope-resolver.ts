@@ -73,8 +73,3 @@ export function matchesOpenThread(thread: ThreadScope, decision: ChatScopeDecisi
     (thread.meetingId ?? null) === decision.meetingId
   );
 }
-
-/** Whether two decisions are the same scope (used to collapse the bar on change). */
-export function sameScope(a: ChatScopeDecision, b: ChatScopeDecision): boolean {
-  return a.kind === b.kind && a.folderId === b.folderId && a.meetingId === b.meetingId;
-}

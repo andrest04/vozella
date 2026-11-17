@@ -3,7 +3,6 @@ import {
   CAPSULE_HORIZONTAL_LONG_DIP,
   CAPSULE_SHORT_DIP,
   CAPSULE_VERTICAL_LONG_DIP,
-  DRAG_THRESHOLD_DIP,
   EDGE_MARGIN_DIP,
   EXPANDED_RADIUS_DIP,
   PANEL_GAP_DIP,
@@ -13,15 +12,12 @@ import {
   PULSE_SCALE,
   TIMINGS,
   capsuleSizePx,
-  dragStarted,
   gapPx,
   marginPx,
   offscreenRect,
   panelRect,
   panelSizePx,
   roundHalfEven,
-  shapeRadiusDip,
-  shapeRadiusPx,
 } from './pill-layout';
 
 describe('constants (spec 2.3)', () => {
@@ -32,9 +28,7 @@ describe('constants (spec 2.3)', () => {
     expect([EDGE_MARGIN_DIP, PANEL_WIDTH_DIP, PANEL_HEIGHT_DIP, PANEL_GAP_DIP]).toEqual([
       16, 380, 500, 8,
     ]);
-    expect([EXPANDED_RADIUS_DIP, DRAG_THRESHOLD_DIP, PANEL_SLIDE_DIP, PULSE_SCALE]).toEqual([
-      28, 4, 16, 1.08,
-    ]);
+    expect([EXPANDED_RADIUS_DIP, PANEL_SLIDE_DIP, PULSE_SCALE]).toEqual([28, 16, 1.08]);
     expect(TIMINGS).toEqual({
       snapMs: 240,
       entranceMs: 300,
@@ -161,24 +155,6 @@ describe('panelRect (DIP inside the window)', () => {
   });
 });
 
-describe('shape radius', () => {
-  it('collapsed is half the short side in DIP', () => {
-    expect(shapeRadiusDip(64, 240, 1, false)).toBe(32);
-    expect(shapeRadiusDip(80, 300, 1.25, false)).toBe(32);
-    expect(shapeRadiusDip(340, 80, 1.25, false)).toBe(32);
-  });
-
-  it('expanded is 28 DIP', () => {
-    expect(shapeRadiusDip(452, 500, 1, true)).toBe(28);
-    expect(shapeRadiusPx(452, 500, 1.25, true)).toBe(35);
-  });
-
-  it('pixel radius uses banker rounding', () => {
-    expect(shapeRadiusPx(17, 240, 1, false)).toBe(8); // 8.5
-    expect(shapeRadiusPx(19, 240, 1, false)).toBe(10); // 9.5
-  });
-});
-
 describe('offscreenRect', () => {
   const docked = { x: 1000, y: 400, width: 64, height: 240 };
 
@@ -187,16 +163,5 @@ describe('offscreenRect', () => {
     expect(offscreenRect('Left', docked, 16)).toEqual({ ...docked, x: 920 });
     expect(offscreenRect('Top', docked, 16)).toEqual({ ...docked, y: 144 });
     expect(offscreenRect('Bottom', docked, 16)).toEqual({ ...docked, y: 656 });
-  });
-});
-
-describe('dragStarted', () => {
-  it('compares the Euclidean distance with 4 * scale in physical px', () => {
-    expect(dragStarted(3, 0, 1)).toBe(false);
-    expect(dragStarted(3, 3, 1)).toBe(true);
-    expect(dragStarted(2, 3, 1)).toBe(false);
-    expect(dragStarted(4, 0, 1)).toBe(true);
-    expect(dragStarted(5, 0, 1.5)).toBe(false);
-    expect(dragStarted(0, -6, 1.5)).toBe(true);
   });
 });

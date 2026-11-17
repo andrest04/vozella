@@ -153,12 +153,6 @@ export const cloudTranscriptionProvider = (
 /** The name `cloudTranscriptionProvider` had while every cloud engine was an API engine. */
 export const cloudTranscriptionApiEngine = cloudTranscriptionProvider;
 
-/** The endpoint of the provider without a trailing slash, as the provider resolves it. */
-export const cloudTranscriptionBaseUrl = (
-  kind: CloudTranscriptionKind,
-  settings: AppSettings,
-): string | null => cloudTranscriptionProvider(kind).resolveBaseUrl(settings);
-
 /**
  * The model an engine is asked for: the saved one, trimmed, when this engine lists it, else the
  * engine's default. One setting holds the model whatever engine is selected, so an id saved while

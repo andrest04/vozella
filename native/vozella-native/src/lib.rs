@@ -4,12 +4,10 @@
 use napi_derive::napi;
 
 pub mod audio;
-pub mod calendar;
-pub mod dpapi;
 pub mod job;
 pub mod windows_scan;
 
-/// True when this build can capture audio, read calendars and use DPAPI.
+/// True when this build can capture audio.
 #[napi]
 pub fn platform_supported() -> bool {
     cfg!(windows)
