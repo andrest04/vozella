@@ -61,7 +61,7 @@ Status words: `done`, `improved` (a section 7 fix or a recorded decision changed
 | 4   | done   | Out-of-range error before any device; service test checks no session opened      |
 | 5   | done   | Exact message                                                                    |
 | 6   | done   | `effectiveMicrophoneId`; the service test opens no mic when it is off            |
-| 7   | done   | `legacyCaptureSources`. TypeScript has no overloads, so there is only the helper |
+| 7   | done   | The legacy `Start(path, deviceId)` overload was not ported (removed as unused). |
 | 8   | done   | Validation is the first line of `start`                                          |
 | 9   | done   | Also during a stop; test covers both                                             |
 

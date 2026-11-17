@@ -8,7 +8,6 @@ import type {
   CaptureSession,
   CaptureStopped,
   FileVersionInfo,
-  LegacySecretPort,
   MicrophoneDevice,
   MicrophoneDeviceSource,
   OsBuildProbe,
@@ -74,19 +73,6 @@ export class NativeWindowLister implements WindowLister {
 
   listWindows(): Promise<readonly TopLevelWindowInfo[]> {
     return this.addon.listTopLevelWindows();
-  }
-}
-
-/** Adapter: legacy DPAPI through the Rust addon. */
-export class NativeLegacySecret implements LegacySecretPort {
-  constructor(private readonly addon: NativeAddon) {}
-
-  unprotect(blob: Uint8Array): Promise<Uint8Array> {
-    try {
-      return Promise.resolve(this.addon.dpapiUnprotect(blob));
-    } catch (error) {
-      return Promise.reject(error instanceof Error ? error : new Error(String(error)));
-    }
   }
 }
 

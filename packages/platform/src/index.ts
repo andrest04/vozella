@@ -8,7 +8,6 @@ export * from './data-root/resolve-data-root';
 export * from './fakes/fake-audio-capture';
 export * from './fakes/fake-audio-devices';
 export * from './fakes/fake-clock';
-export * from './fakes/fake-legacy-secret';
 export * from './logging/rotating-file-logger';
 export * from './native/addon';
 export * from './native/create-native-ports';

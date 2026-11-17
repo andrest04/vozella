@@ -11,7 +11,6 @@ import {
   apiEngineByProviderId,
   apiModelLabels,
   apiSetupGap,
-  estimateTokens,
   isApiEngine,
   isChatModelId,
   isRemoteEngine,
@@ -228,14 +227,6 @@ describe('apiSetupGap', () => {
       selectedOpenAiCompatibleModelId: 'qwen',
     });
     expect(apiSetupGap(API_ENGINES.OpenAiCompatible, ready, false)).toBeNull();
-  });
-});
-
-describe('estimateTokens', () => {
-  it('counts about four characters per token, rounding up', () => {
-    expect(estimateTokens('')).toBe(0);
-    expect(estimateTokens('abcd')).toBe(1);
-    expect(estimateTokens('abcde')).toBe(2);
   });
 });
 

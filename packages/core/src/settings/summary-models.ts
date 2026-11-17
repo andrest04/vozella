@@ -280,7 +280,3 @@ export const FIT_LABEL_KEYS: Readonly<Record<FitRating, string>> = {
   MayBeSlow: 'Ui_FitMayBeSlow',
   NotRecommended: 'Ui_FitTooHeavy',
 };
-
-/** The size as the .NET `0.#` pattern writes it in the locale: 0.81 gives 0.8, 4.98 gives 5. */
-export const formatModelSize = (sizeGb: number, locale: CatalogLocale): string =>
-  formatTemplate('{0:0.#}', [sizeGb], locale);

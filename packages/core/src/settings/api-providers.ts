@@ -140,6 +140,3 @@ export const API_KEY_SETTINGS_UI_KEYS = {
   storeUnavailable: 'Ui_ApiKeyStoreUnavailable',
   baseUrlMissing: 'Ui_ApiBaseUrlMissing',
 } as const;
-
-/** Rough token count for budgets on remote engines: about four characters per token. */
-export const estimateTokens = (text: string): number => Math.ceil(text.length / 4);

@@ -17,8 +17,8 @@ Binding brief for everyone working in `apps/desktop`, `packages/*`, and `native/
 | Audio | Rust napi-rs addon on `wasapi` 0.26 in a `utilityProcess`: 48 kHz f32 stereo in, 16 kHz mono PCM16 out, 20 ms frames, silence synthesized from the clock | cpal and Chromium cannot do per-process loopback; the spike proved exclusion |
 | ASR | NeMo-Speech.cpp v0.3.0 C ABI through koffi 3 in its own `utilityProcess`, Nemotron GGUF, CUDA or CPU | Same engine and models as today, with v0.3.0 streaming and diarization fixes. Spike: exact Spanish text, RTF 0.06 on GPU |
 | Local LLM | `llama-server` (llama.cpp, pinned b-tag, SHA-256 per zip) as a child process on loopback with an ephemeral API key, SSE streaming, backends cuda12, cuda13, vulkan, cpu | Spike: 230 t/s on GPU. Today's app is CPU-only, so GPU offload is a real upgrade. A Job Object or equivalent must kill it if the parent dies |
-| Calendar, DPAPI, sessions | Same Rust addon, `windows` crate, behind ports | Store read worked unpackaged. `safeStorage` cannot read .NET DPAPI blobs; `CryptUnprotectData` can |
-| Credentials | `safeStorage` for new secrets. Old DPAPI files are read only through an explicit import | API keys (BYOK) live in `api-keys.bin` through the `ApiKeyStore` port, main process only |
+| Sessions | Same Rust addon, `windows` crate, behind ports | Store read worked unpackaged |
+| Credentials | `safeStorage` for new secrets. The old DPAPI import was dropped (no consumer) | API keys (BYOK) live in `api-keys.bin` through the `ApiKeyStore` port, main process only |
 | Search | No database. Markdown files stay the source of truth; filter in memory as today | Add SQLite only if a measured need appears |
 | CLI tools | `spawn` with `shell:false`, argv array, prompt on stdin, explicit `.cmd` shim handling (CVE-2024-27980) | |
 | Tests | Vitest 5; Playwright `_electron` for e2e with a fake-native build flag; contract tests run against both fake and real adapters | |
@@ -36,7 +36,7 @@ apps/desktop/          Electron app
 packages/contracts/    zod schemas and channel definitions, no runtime dependencies beyond zod
 packages/core/         pure domain by feature, ports as interfaces; no electron, no fs
 packages/platform/     node adapters for the ports (fs, CLI, HTTP, llama, nemo) plus fakes
-native/vozella-native/ Rust addon: audio, calendar, dpapi, sessions, windows; per-OS modules
+native/vozella-native/ Rust addon: audio, sessions, windows; per-OS modules
 ```
 
 Dependency direction: `apps/desktop` to `platform` to `core`; `contracts` is shared. `core` never imports Electron or Node I/O. Every OS-specific capability is a port with a Windows adapter and a fake; macOS later adds adapters only.

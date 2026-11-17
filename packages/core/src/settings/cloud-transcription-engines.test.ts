@@ -11,7 +11,6 @@ import {
   CLOUD_TRANSCRIPTION_KINDS,
   CLOUD_TRANSCRIPTION_MAX_FILE_BYTES,
   cloudTranscriptionApiEngine,
-  cloudTranscriptionBaseUrl,
   cloudTranscriptionProvider,
   isCloudTranscriptionKind,
   LOCAL_TRANSCRIPTION_ENGINE,
@@ -122,23 +121,6 @@ describe('where the name, the endpoint and the key of a cloud engine come from',
 
   it('keeps the older name of the lookup for its callers', () => {
     expect(cloudTranscriptionApiEngine).toBe(cloudTranscriptionProvider);
-  });
-
-  it('takes the base URL from the API engine', () => {
-    const settings = readSettings({});
-    expect(cloudTranscriptionBaseUrl('Groq', settings)).toBe('https://api.groq.com/openai/v1');
-    expect(cloudTranscriptionBaseUrl('OpenAi', settings)).toBe('https://api.openai.com/v1');
-    for (const kind of ['Groq', 'OpenAi'] as const) {
-      expect(cloudTranscriptionBaseUrl(kind, settings)).toBe(
-        API_ENGINES[kind].resolveBaseUrl(settings),
-      );
-    }
-  });
-
-  it('takes the base URL of Deepgram from its provider', () => {
-    expect(cloudTranscriptionBaseUrl('Deepgram', readSettings({}))).toBe(
-      'https://api.deepgram.com/v1',
-    );
   });
 });
 

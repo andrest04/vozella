@@ -67,7 +67,7 @@ Spec: `docs/port/specs/session-views.md`. Section 8 has 160 items; every one is 
 
 - sv-5: replace `TranscriptSlot` and register its copy text on `copySourceRef`.
 - sv-6 (done): the control moved into the header and reads `lastResults`.
-- Recording: open the session with `initialTabAfterTake(hasSummary)`.
+- Recording: open the session on Summary when one exists, else Transcript.
 
 ## Left for other modules (sv-3)
 
@@ -79,7 +79,7 @@ Spec: `docs/port/specs/session-views.md`. Section 8 has 160 items; every one is 
 
 ## Left for other modules
 
-- Recording: call `initialTabAfterTake(hasSummary)` when a take finishes (item 23); provide the post-recording pipeline that `RetranscriptionPipeline` stands for (summary regeneration, B2, B3).
+- Recording: open Summary when one exists, else Transcript, when a take finishes (item 23); provide the post-recording pipeline that `RetranscriptionPipeline` stands for (summary regeneration, B2, B3).
 - Chat and Library: listen to `meetingChanged`, now raised by rename.
 - Recording: set workspace `isCaptureActive` (`setCaptureActive`) while capturing and register a `MeetingBusyRegistry` probe for the live meeting. sv-2 registers no busy probe.
 - sv-4/sv-5: call `session.getView`, `session.rename`, `session.revealFile`; copy uses the existing `summaries.writeClipboard`; react to `workspace.meetingDeleted` and `workspace.meetingChanged` (both already broadcast).
@@ -240,7 +240,7 @@ The new tests the spec asks for (rename rules, `SuggestTitleAsync` branching, tr
 - Recording, B3: when the pipeline rebuilds the record it must carry `JevAnalysis`, the Brief section and the event frontmatter keys over unchanged.
 - Recording, B5: `pausedSeconds` is 0 on re-transcription; validate against real recordings that were paused.
 - Recording: set `isCaptureActive` while a take is recording or processing and register the busy probe for the live meeting. Re-transcribe availability and start already refuse while it is set (sv-3).
-- Recording: on finish, open the session with `initialTabAfterTake(hasSummary)` (item 23).
+- Recording: on finish, open the session on Summary when one exists, else Transcript (item 23).
 - Recording: provide the pipeline adapter that `RetranscriptionPipeline` stands for (summary stage, status lines `Status_CancelledTranscriptSaved`, `Status_ProcessingCancelled`, `Status_TranscriptSavedSummaryFailed`, `Status_DoneNoSummary`) and the three `ShouldSaveBeforeTranscribing` rule tests for new takes.
 - Chat and Library: listen to `workspace.meetingChanged`, now raised by rename.
 - sv-7 (optional, not started): play the saved audio and seek from a transcript line (bug 21).
@@ -271,7 +271,7 @@ The new tests the spec asks for (rename rules, `SuggestTitleAsync` branching, tr
 | 20  | done     | Inner navigation keeps no back stack. -> tabs are switched in place; there is no back stack (no frame navigation exists)                                                                                                                                                                                                                                                                                                                                       |
 | 21  | done     | Tab change uses a horizontal slide: from right when moving to a higher index, else from left. -> `slideDirection`                                                                                                                                                                                                                                                                                                                                              |
 | 22  | improved | Inner content is reloaded after rename success, suggested title applied, and re-transcription finished. -> `contentKey` rebuilds the inner tab after a rename and after a re-transcription run ends; suggest title is dropped (owner decision 2026-11-03)                                                                                                                                                                                                      |
-| 23 | left | Entry points choose the initial tab: Library row opens Transcript; Library summary action, deep link and tasks dialog open Summary; Record finish opens Summary if a summary exists else Transcript. -> Library row, Library summary action and the Summary tab's own openSession are wired and tested. Record finish: audio.recording.stop returns only a file path in this tree and the recording pipeline that creates the meeting does not exist here, so there is no meeting to open; initialTabAfterTake stays ready for it. Deep link: WinUI selects the meeting and opens Summary when a chat meeting link is clicked (MainPage.xaml.cs:349-350); the chat link handler is the chat module's and is not ported here. Tasks dialog: scope cut (owner decision 2026-11-03, may return later). |
+| 23 | left | Entry points choose the initial tab: Library row opens Transcript; Library summary action, deep link and tasks dialog open Summary; Record finish opens Summary if a summary exists else Transcript. -> Library row, Library summary action and the Summary tab's own openSession are wired and tested. Record finish: audio.recording.stop returns only a file path in this tree and the recording pipeline that creates the meeting does not exist here, so there is no meeting to open; the helper was removed as unused. Deep link: WinUI selects the meeting and opens Summary when a chat meeting link is clicked (MainPage.xaml.cs:349-350); the chat link handler is the chat module's and is not ported here. Tasks dialog: scope cut (owner decision 2026-11-03, may return later). |
 | 24  | done     | Back button returns to the Library destination. -> `BtnSessionBack` dispatches `navigateTo History` (test, e2e)                                                                                                                                                                                                                                                                                                                                                |
 | 25  | done     | Title is shown single-line, ellipsized, max width 720 px, only when a meeting is loaded. -> single-line h1 with ellipsis inside a centered 720 px column (screenshots long-title-*)                                                                                                                                                                                                                                                                            |
 | 26  | improved | Rename button enabled iff meeting loaded and not suggesting a title. -> `canRename`: no longer tied to suggest title (dropped); blocked while a run targets this meeting (B4)                                                                                                                                                                                                                                                                                  |
@@ -450,7 +450,7 @@ Fixed, with tests
 Rejected or deferred
 - Owner drop of the resize grip (145-152): the grip lives in the shell module (AppShell, Splitter), not in session-views. Left to the shell ledger.
 - 113, 120, 121, bug 5, 114, 160: need the recording pipeline, which this port does not have yet. Still left for the recording module; the re-transcribe path keeps SummaryFailed as its only summary outcome until then.
-- Item 23: opening the session after a take belongs to the Record screen and needs the recording module; `initialTabAfterTake` stays ready for it.
+- Item 23: opening the session after a take belongs to the Record screen and needs the recording module; nothing is wired yet.
 - Item 70: padding is a recorded variance. The content uses ps-3 pe-2 py-1 to keep the page quiet; 24 px was not kept.
 - Item 63 adapter: `shell.showItemInFolder` is a one-line platform call; a real call is not exercised in tests.
 - Tests not added this round (coverage-only, behavior unchanged): items 21, 25, 28, 35, 53, 57 failure path, 107, 108, 124, 126, 129, bug 2/3/20, item 85 literal.

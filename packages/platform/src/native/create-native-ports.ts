@@ -2,7 +2,6 @@ import type {
   AudioCapturePort,
   AudioFileDecoder,
   AudioSessionSource,
-  LegacySecretPort,
   MicrophoneDeviceSource,
   OsBuildProbe,
   ProcessInfoProvider,
@@ -16,14 +15,12 @@ import {
   FakeOsBuild,
   FakeProcessInfo,
 } from '../fakes/fake-audio-devices';
-import { FakeLegacySecret } from '../fakes/fake-legacy-secret';
 import type { ProcessJobPort } from '../llama/process-guard';
 import { FakeWindowLister } from '../fakes/fake-window-scanner';
 import { loadNativeAddon } from './addon';
 import {
   NativeAudioCapture,
   NativeAudioSessionSource,
-  NativeLegacySecret,
   NativeMicrophoneDevices,
   NativeOsBuild,
   NativeProcessJob,
@@ -43,7 +40,6 @@ export interface NativePorts {
   readonly osBuild: OsBuildProbe;
   /** Opens an audio file as 16 kHz mono PCM16. Throws when it cannot be decoded. */
   readonly openDecoder: (path: string) => AudioFileDecoder;
-  readonly legacySecret: LegacySecretPort;
   /** Kill-on-close job for child processes. Undefined when the build has no real one. */
   readonly processJob: ProcessJobPort | undefined;
   /** Is any open window a meeting call. A failed scan answers false. */
@@ -73,7 +69,6 @@ export function createNativePorts(options: NativePortsOptions): NativePorts {
       processes: new FakeProcessInfo(),
       osBuild: new FakeOsBuild(),
       openDecoder: openWavFileDecoder,
-      legacySecret: new FakeLegacySecret(),
       processJob: undefined,
       windowScan: new WindowScanner(new FakeWindowLister()),
     };
@@ -88,7 +83,6 @@ export function createNativePorts(options: NativePortsOptions): NativePorts {
     processes: new NativeProcessInfo(addon),
     osBuild: new NativeOsBuild(addon),
     openDecoder: (path) => openNativeDecoder(addon, path),
-    legacySecret: new NativeLegacySecret(addon),
     processJob: addon.platformSupported() ? new NativeProcessJob(addon) : undefined,
     windowScan: new WindowScanner(new NativeWindowLister(addon), options.onError),
   };

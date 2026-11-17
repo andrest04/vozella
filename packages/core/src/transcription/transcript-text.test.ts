@@ -6,12 +6,6 @@ import {
   splitCommittedLines,
 } from './committed-line';
 import { applyHighlights, formatMarkLine, starredLineStarts } from './highlights';
-import {
-  buildTaggedDocument,
-  lineId,
-  parseTranscriptLines,
-  truncateToCompleteLines,
-} from './line-index';
 import { distinctPercent, toPercent } from './progress';
 import {
   ensureEndedHeader,
@@ -147,34 +141,6 @@ describe('highlights', () => {
   it('reads starred lines back for re-applying (B8)', () => {
     const starred = applyHighlights(t, [15_000, 31_000]);
     expect(starredLineStarts(starred)).toEqual([12_000, 30_000]);
-  });
-});
-
-describe('line index', () => {
-  it('Parse_NonEmptyLines_AssignsSequentialL000Ids', () => {
-    const lines = parseTranscriptLines('a\nb');
-    expect(lines.map((l) => l.id)).toEqual(['L000', 'L001']);
-  });
-  it('Parse_SkipsBlankLinesAndTrims_SplitsCrLf', () => {
-    const lines = parseTranscriptLines(' a \r\n\r\n  b\n');
-    expect(lines.map((l) => l.text)).toEqual(['a', 'b']);
-    expect(lines.map((l) => l.index)).toEqual([0, 1]);
-  });
-  it('Parse_WhenEmptyOrWhitespace_ReturnsNoLines', () => {
-    expect(parseTranscriptLines('  \n ')).toEqual([]);
-    expect(parseTranscriptLines(null)).toEqual([]);
-  });
-  it('BuildTaggedDocument_PrefixesIdsWithPipe', () => {
-    expect(buildTaggedDocument(parseTranscriptLines('a\nb'))).toBe('L000| a\nL001| b');
-    expect(lineId(1000)).toBe('L1000');
-  });
-  it('TruncateToCompleteLines keeps whole lines and at least the first', () => {
-    const lines = parseTranscriptLines('aaaa\nbbbb\ncccc');
-    expect(truncateToCompleteLines(lines, 0)).toEqual([]);
-    expect(truncateToCompleteLines(lines, 1000)).toHaveLength(3);
-    expect(truncateToCompleteLines(lines, 'L000| aaaa\nL001| bbbb'.length)).toHaveLength(2);
-    expect(truncateToCompleteLines(lines, 3)).toHaveLength(1);
-    expect(truncateToCompleteLines([], 10)).toEqual([]);
   });
 });
 

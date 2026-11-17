@@ -4,7 +4,6 @@ import { StreamingTranscriptAccumulator } from './accumulator';
 import { extractCommittedBody } from './committed-line';
 import { LOCAL_SPEAKER_MIN_SHARE, LOCAL_SPEAKER_TAG, markLocalSpeaker } from './local-speaker';
 import { MicActivityTimeline } from './mic-activity';
-import { polishKeepsStructure } from './polish';
 import { LOCAL_SPEAKER_LABEL, formatLine } from './stamp-format';
 
 const w = (startMs: number, endMs: number, speakerTag: number, text: string | null = null) =>
@@ -61,13 +60,6 @@ describe('the local speaker label', () => {
   it('is stripped from the spoken text like a speaker number', () => {
     expect(extractCommittedBody('[00:00.00-00:01.00] [ You ] Hola')).toBe('Hola');
     expect(extractCommittedBody('* [00:00.00-00:01.00] [ You ] Hola')).toBe('Hola');
-  });
-
-  it('must survive polish', () => {
-    const original = '[00:00.00-00:01.00] [ You ] hola';
-    expect(polishKeepsStructure(original, '[00:00.00-00:01.00] [ You ] Hola.')).toBe(true);
-    expect(polishKeepsStructure(original, '[00:00.00-00:01.00] Hola.')).toBe(false);
-    expect(polishKeepsStructure(original, '[00:00.00-00:01.00] [ Speaker-1 ] Hola.')).toBe(false);
   });
 });
 

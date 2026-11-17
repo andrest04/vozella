@@ -136,8 +136,6 @@ const LIVE_CATALOG: readonly Entry[] = [
   },
 ];
 
-const BUILT_IN_IDS: ReadonlySet<string> = new Set([...CATALOG, ...LIVE_CATALOG].map((e) => e.id));
-
 const toRecipe =
   (t: RecipeNameLookup) =>
   (e: Entry): ChatRecipe => ({
@@ -146,8 +144,6 @@ const toRecipe =
     prompt: t(e.promptKey),
     availability: e.availability,
   });
-
-export const isBuiltInRecipe = (id: string): boolean => BUILT_IN_IDS.has(id);
 
 /** B8: names and prompts are resolved on every call, so a language change shows up on the next read. */
 export function builtInRecipes(t: RecipeNameLookup): ChatRecipe[] {
@@ -212,13 +208,6 @@ export function recipesForScope(
 }
 
 export const STARTER_COUNT = 4;
-
-/** The chips above the composer: the first four recipes of the scope list. */
-export const starterRecipes = (
-  kind: ChatScopeKind,
-  t: RecipeNameLookup,
-  context: RecipeContext = {},
-): ChatRecipe[] => recipesForScope(kind, t, context).slice(0, STARTER_COUNT);
 
 /** Slash filter: case-insensitive substring of `draft.slice(1).trim()` in name or prompt; empty keeps all. */
 export function filterRecipes(list: readonly ChatRecipe[], draft: string): ChatRecipe[] {

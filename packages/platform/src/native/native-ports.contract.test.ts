@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AudioCapturePort, AudioFrame, CaptureSession } from '@vozella/core';
 import { FakeAudioCapture } from '../fakes/fake-audio-capture';
-import { FakeLegacySecret } from '../fakes/fake-legacy-secret';
 import { loadNativeAddon, type NativeAddon, type NativeFrame } from './addon';
 import { createNativePorts } from './create-native-ports';
 import { NativeAudioCapture } from './native-adapters';
@@ -35,7 +34,6 @@ function stubAddon(overrides: Partial<NativeAddon> = {}): NativeAddon {
       };
     },
     listTopLevelWindows: () => Promise.resolve([]),
-    dpapiUnprotect: (data) => data,
     assignToKillOnCloseJob: () => undefined,
     ...overrides,
   };
@@ -124,14 +122,5 @@ describe('createNativePorts', () => {
 
   it('rejects an addon with the wrong shape', () => {
     expect(() => loadNativeAddon('x.node', () => ({}))).toThrow(/expected API/);
-  });
-});
-
-describe('FakeLegacySecret', () => {
-  it('decrypts registered blobs and fails for the rest', async () => {
-    const secret = new FakeLegacySecret();
-    secret.register(new Uint8Array([1, 2]), new Uint8Array([9]));
-    expect(await secret.unprotect(new Uint8Array([1, 2]))).toEqual(new Uint8Array([9]));
-    await expect(secret.unprotect(new Uint8Array([3]))).rejects.toThrow(/invalid/);
   });
 });

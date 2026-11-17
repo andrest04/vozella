@@ -143,36 +143,3 @@ export function codexImageInvocation(
   if (!paths.some((path) => path.includes(','))) return { args: codexImageArgs(paths) };
   return { args: codexImageArgs(paths.map(fileNameOf)), cwd: directory };
 }
-
-/** The WinUI quoting: double quotes only when the value has a space, no escaping. */
-const quoteIfSpaced = (value: string): string => (value.includes(' ') ? `"${value}"` : value);
-const isBlank = (value: string | null | undefined): value is null | undefined =>
-  value === null || value === undefined || value.trim() === '';
-
-/**
- * The legacy argument string of `CliInvocation.ClaudePrint`, kept so the old tests port 1:1 and
- * logs can show a command. It does no validation and is never used to start a process.
- */
-export function claudePrintLine(
-  model: string | null | undefined,
-  effort: string | null | undefined,
-  webSearch = false,
-): string {
-  let line = '-p';
-  if (!isBlank(model)) line += ` --model ${quoteIfSpaced(model.trim())}`;
-  if (!isBlank(effort)) line += ` --effort ${effort.trim()}`;
-  if (webSearch) line += ' --tools WebSearch --allowedTools WebSearch';
-  return line;
-}
-
-/** The legacy argument string of `CliInvocation.CodexExec`. Display only, see `claudePrintLine`. */
-export function codexExecLine(
-  model: string | null | undefined,
-  effort: string | null | undefined,
-  webSearch = false,
-): string {
-  let line = webSearch ? '--search exec -' : 'exec -';
-  if (!isBlank(model)) line += ` -m ${quoteIfSpaced(model.trim())}`;
-  if (!isBlank(effort)) line += ` -c model_reasoning_effort="${effort.trim()}"`;
-  return line;
-}

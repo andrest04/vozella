@@ -19,16 +19,6 @@ function parseGuidToHex(text: string): string | null {
   return null;
 }
 
-/**
- * The meeting id (32 lowercase hex) when `link` is a meeting citation, else null. The prefix match
- * ignores case; trailing slashes are dropped; a query, fragment or extra segment makes the id
- * unparseable, so the link is rejected.
- */
-export function tryParseMeetingLink(link: string | null | undefined): string | null {
-  if (!hasMeetingPrefix(link)) return null;
-  return parseGuidToHex(link.slice(MEETING_LINK_PREFIX.length).replace(/\/+$/, ''));
-}
-
 /** Whether `link` starts with the citation prefix (case ignored), valid or not after it. */
 export function hasMeetingPrefix(link: string | null | undefined): link is string {
   return link?.slice(0, MEETING_LINK_PREFIX.length).toLowerCase() === MEETING_LINK_PREFIX;
@@ -64,7 +54,3 @@ export function tryParseMeetingCitation(link: string | null | undefined): Meetin
   const seconds = Number(time[1]);
   return seconds <= MAX_CITATION_SECONDS ? { meetingId, seconds } : null;
 }
-
-/** A citation of one moment: the meeting link plus `?t=` in whole seconds. */
-export const meetingTimeLink = (id: string, seconds: number): string =>
-  `${meetingLink(id)}?t=${String(Math.max(0, Math.floor(seconds)))}`;

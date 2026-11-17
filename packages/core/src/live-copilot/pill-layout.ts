@@ -13,7 +13,6 @@ export const PANEL_WIDTH_DIP = 380;
 export const PANEL_HEIGHT_DIP = 500;
 export const PANEL_GAP_DIP = 8;
 export const EXPANDED_RADIUS_DIP = 28;
-export const DRAG_THRESHOLD_DIP = 4;
 export const PANEL_SLIDE_DIP = 16;
 export const PULSE_SCALE = 1.08;
 
@@ -75,23 +74,6 @@ export function panelRect(edge: DockEdge, capsule: Rect, window: Rect, scale: nu
   };
 }
 
-/** Corner radius in DIP: half the short side when collapsed, 28 when expanded. */
-export function shapeRadiusDip(
-  widthPx: number,
-  heightPx: number,
-  scale: number,
-  expanded: boolean,
-): number {
-  return expanded ? EXPANDED_RADIUS_DIP : Math.min(widthPx, heightPx) / scale / 2;
-}
-
-export const shapeRadiusPx = (
-  widthPx: number,
-  heightPx: number,
-  scale: number,
-  expanded: boolean,
-): number => roundHalfEven(shapeRadiusDip(widthPx, heightPx, scale, expanded) * scale);
-
 /** The docked rectangle pushed past its own edge by its thickness plus the margin. */
 export function offscreenRect(edge: DockEdge, docked: Rect, margin: number): Rect {
   switch (edge) {
@@ -104,9 +86,4 @@ export function offscreenRect(edge: DockEdge, docked: Rect, margin: number): Rec
     case 'Bottom':
       return { ...docked, y: docked.y + docked.height + margin };
   }
-}
-
-/** Drag starts once the cursor moved `4 * scale` physical px (Euclidean) from the press point. */
-export function dragStarted(dx: number, dy: number, scale: number): boolean {
-  return Math.hypot(dx, dy) >= DRAG_THRESHOLD_DIP * scale;
 }
