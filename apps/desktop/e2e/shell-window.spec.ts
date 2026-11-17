@@ -26,7 +26,9 @@ function removeQuietly(dir: string): void {
  * was seen for 1180 x 760), so the default size is compared within that rounding.
  */
 function near(actual: number | undefined, expected: number): void {
-  expect(Math.abs((actual ?? 0) - expected)).toBeLessThanOrEqual(4);
+  // Off-screen (VOZELLA_E2E_BACKGROUND=1) the parked window was seen at 1185 x 763 for 1180 x 760.
+  const tolerance = process.env.VOZELLA_E2E_BACKGROUND === '1' ? 6 : 4;
+  expect(Math.abs((actual ?? 0) - expected)).toBeLessThanOrEqual(tolerance);
 }
 
 test('opens at 1180 x 760 with a 960 x 680 minimum, titled Vozella, without a menu bar', async () => {
