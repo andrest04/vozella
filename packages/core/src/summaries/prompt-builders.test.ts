@@ -395,6 +395,41 @@ describe('live take context', () => {
   });
 });
 
+describe('series context', () => {
+  const series = {
+    folderNote: 'Weekly sync with the vendor.',
+    priorOpenItems: 'Standup (2026-09-01)\n- Send the deck',
+  };
+
+  it('is not a context on its own when it has nothing', () => {
+    const ctx = createEnhancementContext({
+      seriesContext: { folderNote: null, priorOpenItems: null },
+    });
+    expect(ctx.hasAny).toBe(false);
+    expect(base({ enhancement: ctx })).toBe(SUMMARY_EN);
+  });
+
+  it('adds labelled blocks and a rule telling the model not to copy prior items', () => {
+    const text = base({ enhancement: createEnhancementContext({ seriesContext: series }) });
+    expect(text).toContain('<folder_note>\nWeekly sync with the vendor.\n</folder_note>');
+    expect(text).toContain(
+      '<prior_open_items>\nStandup (2026-09-01)\n- Send the deck\n</prior_open_items>',
+    );
+    expect(text).toContain('Use <folder_note> and <prior_open_items> as background only');
+    expect(text).toContain('do not copy them as new action items');
+  });
+
+  it('omits the block that is empty and its rule', () => {
+    const text = base({
+      enhancement: createEnhancementContext({
+        seriesContext: { folderNote: 'Note', priorOpenItems: null },
+      }),
+    });
+    expect(text).toContain('<folder_note>\nNote\n</folder_note>');
+    expect(text).not.toContain('<prior_open_items>\n');
+  });
+});
+
 describe('map-reduce prompts', () => {
   it('buildPartPrompt matches spec 3.5', () => {
     expect(buildPartPrompt('PART', 2, 5, 'English'))

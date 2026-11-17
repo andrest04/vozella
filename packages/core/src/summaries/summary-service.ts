@@ -1,9 +1,10 @@
 import type { CancelSignal } from '../cancel';
 import type { Clock } from '../clock';
 import type { TranslateFn } from '../i18n/translator';
-import type { ActionItem } from '../library/meeting';
+import type { ActionItem, MeetingRecord } from '../library/meeting';
 import { offsetDateFromInstant, parseOffsetDate, type OffsetDate } from '../library/offset-date';
 import type {
+  FolderRepository,
   MeetingBusyProbe,
   MeetingRepository,
   NextSessionDateStore,
@@ -16,7 +17,11 @@ import { withResolvedDeadlines } from './deadline-resolver';
 import { applySummaryPatch } from './meeting-patch';
 import { rememberedNextSessionDate } from './next-session';
 import { PatchQueue } from './patch-queue';
-import { createEnhancementContext, type LiveContextInput } from './prompt-builders';
+import {
+  createEnhancementContext,
+  type LiveContextInput,
+  type SeriesContextInput,
+} from './prompt-builders';
 import { isCancellation, type ProviderId } from './provider';
 import type { SetupKind, SetupReason, SummaryProviderResolver } from './provider-resolver';
 import {
@@ -24,6 +29,8 @@ import {
   placeholderPatternsFromFormats,
   resolveTitle,
 } from './suggested-title';
+import { findRelated, instantOf } from './related-meetings';
+import { buildSeriesContext, MAX_PRIOR_MEETINGS } from './series-context';
 import { resolveTemplateInstructions, templateIdToStore } from './template-instructions';
 
 export interface GenerateRequest {
@@ -100,6 +107,8 @@ export interface SummaryServiceDeps {
   readonly queue?: PatchQueue;
   /** Remembered next-session dates, for `next_meeting` deadlines. None means none is filled. */
   readonly nextSessionDates?: NextSessionDateStore;
+  /** The folder tree, for the folder note of the meeting's folder. None means no note is used. */
+  readonly folders?: Pick<FolderRepository, 'getAll'>;
 }
 
 export function failureFromError(error: unknown): GenerateFailure {
@@ -168,6 +177,53 @@ export class SummaryService {
     }
   }
 
+  /**
+   * The folder note and the open action items of up to three earlier related meetings. Context is
+   * a bonus: any failure reading it leaves it out and the summary still runs.
+   */
+  private async seriesContextFor(record: MeetingRecord): Promise<SeriesContextInput | null> {
+    try {
+      const folderNote = await this.folderNoteOf(record.folderId);
+      const title = record.title.trim();
+      const hasSeries = (record.seriesId ?? '').trim() !== '';
+      const before = instantOf(record.recordedAt);
+      const listed = (await this.deps.meetings.list()).items.filter(
+        (item) => item.id !== record.id && instantOf(item.recordedAt) < before,
+      );
+      const candidates = await Promise.all(
+        listed.map(async (item) => {
+          const base = { id: item.id, title: item.title, recordedAt: item.recordedAt };
+          if (!hasSeries || item.title.trim() === title) return { ...base, seriesId: null };
+          try {
+            return { ...base, seriesId: (await this.deps.meetings.get(item.id))?.seriesId ?? null };
+          } catch {
+            return { ...base, seriesId: null };
+          }
+        }),
+      );
+      const related = findRelated(record, candidates).slice(0, MAX_PRIOR_MEETINGS);
+      const prior = await Promise.all(
+        related.map(async (item) => {
+          const other = await this.deps.meetings.get(item.id);
+          return {
+            title: item.title,
+            recordedAt: item.recordedAt,
+            items: other?.actionItems ?? [],
+          };
+        }),
+      );
+      return buildSeriesContext(folderNote, prior);
+    } catch {
+      return null;
+    }
+  }
+
+  private async folderNoteOf(folderId: string | null): Promise<string | null> {
+    if (folderId === null || this.deps.folders === undefined) return null;
+    const folder = (await this.deps.folders.getAll()).find((f) => f.id === folderId);
+    return folder?.note ?? null;
+  }
+
   private async run(request: GenerateRequest): Promise<GenerateOutcome> {
     const { meetingId, cancel } = request;
     // Loaded fresh: the page copy may be minutes old.
@@ -187,6 +243,7 @@ export class SummaryService {
     const enhancement = createEnhancementContext({
       rawNotes: request.rawNotes === undefined ? record.notes : request.rawNotes,
       liveContext: request.liveContext ?? null,
+      seriesContext: await this.seriesContextFor(record),
       attendees: record.attendees,
       agenda: request.agenda ?? null,
       templateInstructions:

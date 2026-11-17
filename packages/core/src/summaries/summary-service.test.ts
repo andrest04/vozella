@@ -1,7 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { CancelSource, type CancelSignal } from '../cancel';
 import type { Clock } from '../clock';
-import { InMemoryMeetingRepository, InMemorySettingsStore } from '../library/in-memory-library';
+import {
+  InMemoryFolderRepository,
+  InMemoryMeetingRepository,
+  InMemorySettingsStore,
+} from '../library/in-memory-library';
 import type { ActionItem, MeetingRecord } from '../library/meeting';
 import { CliToolError } from './cli-failure';
 import { SummaryError } from './cli-failure-messages';
@@ -66,9 +70,12 @@ function setup(
     gate?: ProviderResolution;
     stored?: MeetingRecord;
     queue?: PatchQueue;
+    folders?: InMemoryFolderRepository;
+    others?: MeetingRecord[];
   } = {},
 ) {
   const repo = new InMemoryMeetingRepository();
+  for (const other of options.others ?? []) repo.records.set(other.id, other);
   repo.records.set(ID, options.stored ?? record());
   const settings = new InMemorySettingsStore();
   const seen: Seen[] = [];
@@ -94,6 +101,7 @@ function setup(
     notifyMeetingChanged: (id) => notified.push(id),
     placeholderFormats: ['Meeting {0}', 'Reunión {0}'],
     nextSessionDates: settings,
+    ...(options.folders === undefined ? {} : { folders: options.folders }),
     ...(options.queue === undefined ? {} : { queue: options.queue }),
   });
   return { repo, settings, service, seen, notified };
@@ -357,15 +365,16 @@ describe('SummaryService.generate', () => {
 
   it('a second generate for the same meeting is busy while the first runs', async () => {
     let release: (r: SummaryResult) => void = () => undefined;
-    const { service } = setup({
+    const { service, seen } = setup({
       onSummarize: () =>
         new Promise((resolve) => {
           release = resolve;
         }),
     });
     const first = run(service);
-    await Promise.resolve();
-    await Promise.resolve();
+    await vi.waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
     expect(service.isGenerating(ID)).toBe(true);
     expect(await run(service)).toEqual({ status: 'busy' });
     release(result());
@@ -464,6 +473,82 @@ describe('deadline dates on save (action item deadlines T4)', () => {
     await settings.rememberNextSessionDate('weekly sync', '2026-09-01');
     await run(service);
     expect(repo.records.get(ID)!.actionItems[0]!.deadline?.date).toBeUndefined();
+  });
+});
+
+describe('series context', () => {
+  const FOLDER = 'folder-1';
+  const folderWith = (note: string | null): InMemoryFolderRepository => {
+    const folders = new InMemoryFolderRepository();
+    folders.folders = [
+      {
+        id: FOLDER,
+        name: 'Vendor',
+        parentId: null,
+        note,
+        colorKey: null,
+        iconKey: null,
+        createdAt: '2026-01-01T00:00:00.0000000+00:00',
+      },
+    ];
+    return folders;
+  };
+  const other = (id: string, day: string, patch: Partial<MeetingRecord> = {}): MeetingRecord =>
+    record({
+      id,
+      title: 'Weekly sync',
+      recordedAt: `2026-${day}T12:00:00.0000000+00:00`,
+      seriesId: 'series-1',
+      actionItems: [{ text: `open from ${id}`, isDone: false }],
+      ...patch,
+    });
+
+  it('hands the prompt the folder note and open items of earlier related meetings', async () => {
+    const { service, seen } = setup({
+      folders: folderWith('  Vendor sync notes  '),
+      others: [
+        other('a', '08-25'),
+        other('b', '08-18', { actionItems: [{ text: 'done', isDone: true }] }),
+      ],
+    });
+    await run(service);
+    const context = seen[0]?.request.enhancement;
+    expect(context?.folderNote).toBe('Vendor sync notes');
+    expect(context?.priorOpenItems).toContain('Weekly sync (2026-08-25)\n- open from a');
+    expect(context?.priorOpenItems).not.toContain('done');
+  });
+
+  it('ignores later meetings, itself and caps the meetings at the 3 most recent', async () => {
+    const { service, seen } = setup({
+      others: [
+        other('later', '09-20'),
+        other('e1', '08-01'),
+        other('e2', '08-08'),
+        other('e3', '08-15'),
+        other('e4', '08-22'),
+      ],
+    });
+    await run(service);
+    const text = seen[0]?.request.enhancement?.priorOpenItems ?? '';
+    expect(text).toContain('open from e4');
+    expect(text).toContain('open from e3');
+    expect(text).toContain('open from e2');
+    expect(text).not.toContain('open from e1');
+    expect(text).not.toContain('open from later');
+  });
+
+  it('adds nothing when the folder note is blank and no meeting is related', async () => {
+    const { service, seen } = setup({ folders: folderWith(' ') });
+    await run(service);
+    expect(seen[0]?.request.enhancement?.hasFolderNote).not.toBe(true);
+    expect(seen[0]?.request.enhancement?.hasPriorOpenItems).not.toBe(true);
+  });
+
+  it('still summarizes when the folder store fails', async () => {
+    const folders = folderWith('note');
+    folders.getAll = () => Promise.reject(new Error('disk'));
+    const { service } = setup({ folders });
+    expect((await run(service)).status).toBe('generated');
   });
 });
 
