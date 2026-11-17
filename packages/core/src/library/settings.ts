@@ -32,12 +32,8 @@ export interface AppSettings {
   readonly recordAppName: string | null;
   readonly liveTranscriptionEnabled: boolean;
   readonly speakerDiarizationEnabled: boolean;
-  readonly typeSafeEnabled: boolean;
   readonly meetingPopupEnabled: boolean;
   readonly uiLanguage: string | null;
-  readonly navigationPaneLength: number | null;
-  readonly liveCopilotPillX: number | null;
-  readonly liveCopilotPillY: number | null;
   readonly liveCopilotPillEdge: string | null;
   readonly liveCopilotPillAlong: number | null;
   /** Port addition: live question detection, `off`, `rules` or `rules+ai`. Null is the default. */
@@ -86,12 +82,8 @@ const FIELDS: readonly (readonly [keyof AppSettings, Kind])[] = [
   ['recordAppName', 'string'],
   ['liveTranscriptionEnabled', 'bool-true'],
   ['speakerDiarizationEnabled', 'bool-false'],
-  ['typeSafeEnabled', 'bool-true'],
   ['meetingPopupEnabled', 'bool-true'],
   ['uiLanguage', 'string'],
-  ['navigationPaneLength', 'number'],
-  ['liveCopilotPillX', 'number'],
-  ['liveCopilotPillY', 'number'],
   ['liveCopilotPillEdge', 'string'],
   ['liveCopilotPillAlong', 'number'],
   ['liveQuestions', 'string'],
@@ -289,22 +281,6 @@ export const resolveCodexEffort = (s: AppSettings): string =>
 /** Case-sensitive name match only; numeric text no longer maps to an undefined value (B18). */
 export function resolveSummaryProviderKind(s: AppSettings): SummaryProviderKind {
   return SUMMARY_PROVIDERS.find((kind) => kind === s.selectedSummaryProvider) ?? 'Local';
-}
-
-export function resolveNavigationPaneLength(s: AppSettings): number {
-  const value = s.navigationPaneLength;
-  if (value === null || !Number.isFinite(value)) return 280;
-  return Math.min(480, Math.max(200, value));
-}
-
-export function resolvePillEdge(s: AppSettings): PillEdge {
-  return PILL_EDGES.find((edge) => edge === s.liveCopilotPillEdge) ?? 'Right';
-}
-
-export function resolvePillAlong(s: AppSettings): number {
-  const value = s.liveCopilotPillAlong;
-  if (value === null || !Number.isFinite(value)) return 0.5;
-  return Math.min(1, Math.max(0, value));
 }
 
 export const LIVE_QUESTIONS_MODES = ['off', 'rules', 'rules+ai'] as const;

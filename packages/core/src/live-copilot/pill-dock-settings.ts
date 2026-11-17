@@ -9,9 +9,9 @@ export interface DockState {
 export const ALONG_SAVE_EPSILON = 0.0005;
 
 /**
- * Edge and along from the settings (spec 4.1). The legacy `liveCopilotPillX` and
- * `liveCopilotPillY` are never read (bug 8, no migration); they stay in the file untouched
- * because `dockPatch` names only the two current fields.
+ * Edge and along from the settings (spec 4.1). Unknown keys in an old settings file (such as the
+ * removed legacy pill position) stay in the file untouched because `dockPatch` names only the
+ * two current fields.
  */
 export function resolveDock(
   settings: Pick<AppSettings, 'liveCopilotPillEdge' | 'liveCopilotPillAlong'>,

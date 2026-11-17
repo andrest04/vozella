@@ -693,7 +693,7 @@ Reason for every row: owner decision 2026-11-03, may return later. Auditors: the
 | Meeting-app suggestion bar on Record                                                                                                                                                                            | dropped | owner decision 2026-11-03, may return later |
 | Chat thread history and user recipes                                                                                                                                                                            | dropped | owner decision 2026-11-03, may return later |
 
-On-disk compatibility still applies: `typeSafeEnabled`, calendar settings, Jev frontmatter, event frontmatter keys and the Brief section of existing meetings are read and rewritten without loss.
+On-disk compatibility still applies: Jev frontmatter, event frontmatter keys and the Brief section of existing meetings are read and rewritten without loss.
 
 ## Dead code in the WinUI app, never ported
 

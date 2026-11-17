@@ -22,7 +22,7 @@ Status words: `done`, `improved` (a section 7 fix or a recorded decision changed
 ## Decisions
 
 1. **Calendar probe removed.** The calendar probe port, its native adapter and fake, and the Rust `calendar.rs` module were deleted as dead code. Nothing in this module calls a probe. The calendar features are dropped (owner decision 2026-11-03, may return later).
-2. **On-disk compatibility.** Settings key `typeSafeEnabled`, the `Xai` provider value, the event frontmatter keys and the `## Brief` section are read and rewritten without loss. Proven by the round-trip tests under Tests added by this package.
+2. **On-disk compatibility.** The `Xai` provider value, the event frontmatter keys and the `## Brief` section are read and rewritten without loss. Proven by the round-trip tests under Tests added by this package.
 3. **Nothing in this module reads a calendar.** No code path uses any appointment API.
 4. Decisions of cd-2 to cd-8 are appended here by their packages.
 

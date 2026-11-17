@@ -321,7 +321,7 @@ describe('library handlers', () => {
   it('reads and patches settings, keeping other fields', async () => {
     const t = await setup();
     expect((await t.call('settings.get')).value).toMatchObject({
-      typeSafeEnabled: true,
+      meetingPopupEnabled: true,
       uiLanguage: null,
     });
     await t.call('settings.update', { patch: { uiLanguage: 'en' } });

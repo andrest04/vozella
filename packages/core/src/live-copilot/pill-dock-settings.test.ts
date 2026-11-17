@@ -31,13 +31,6 @@ describe('resolveDock', () => {
     ).toEqual({ edge: 'Right', along: 0.5 });
     expect(resolveDock(base({ liveCopilotPillAlong: Number.POSITIVE_INFINITY })).along).toBe(0.5);
   });
-
-  it('bug 8: legacy X and Y are never read', () => {
-    expect(resolveDock(base({ liveCopilotPillX: -1200, liveCopilotPillY: 340 }))).toEqual({
-      edge: 'Right',
-      along: 0.5,
-    });
-  });
 });
 
 describe('shouldSaveDock', () => {
@@ -70,14 +63,13 @@ describe('dockPatch and the settings round trip', () => {
     });
   });
 
-  it('edge and along survive serialize and read; legacy X and Y round trip untouched', () => {
-    const raw = { liveCopilotPillX: -1200, liveCopilotPillY: 340, futureThing: 1 };
+  it('edge and along survive serialize and read; unknown keys round trip untouched', () => {
+    const raw = { removedLegacyKey: 340, futureThing: 1 };
     const next = applySettingsPatch(raw, dockPatch({ edge: 'Bottom', along: 0.4 }));
     const text = serializeSettings(next);
     const back = readSettings(JSON.parse(text) as Record<string, unknown>);
     expect(resolveDock(back)).toEqual({ edge: 'Bottom', along: 0.4 });
-    expect(back.liveCopilotPillX).toBe(-1200);
-    expect(back.liveCopilotPillY).toBe(340);
+    expect(text).toContain('removedLegacyKey');
     expect(text).toContain('futureThing');
   });
 });

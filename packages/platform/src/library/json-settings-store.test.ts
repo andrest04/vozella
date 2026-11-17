@@ -21,7 +21,7 @@ const store = () => new JsonSettingsStore({ settingsFilePath: file });
 describe('JsonSettingsStore', () => {
   it('a missing file loads the defaults', async () => {
     const settings = await store().load();
-    expect(settings.typeSafeEnabled).toBe(true);
+    expect(settings.meetingPopupEnabled).toBe(true);
     expect(settings.uiLanguage).toBeNull();
   });
 
@@ -29,30 +29,27 @@ describe('JsonSettingsStore', () => {
     await store().update({ uiLanguage: 'en' });
     const doc = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>;
     expect(doc.uiLanguage).toBe('en');
-    expect(Object.keys(doc)).toHaveLength(26);
+    expect(Object.keys(doc)).toHaveLength(22);
     expect(doc.meetingPopupEnabled).toBe(true);
   });
 
-  it('bug 24: a legacy pill position in the file survives an update and is written back unchanged', async () => {
+  it('bug 24: an unknown key in the file survives an update and is written back unchanged', async () => {
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, JSON.stringify({ liveCopilotPillX: -1200, liveCopilotPillY: 340 }));
+    fs.writeFileSync(file, JSON.stringify({ removedLegacyKey: 340 }));
     await store().update({ uiLanguage: 'es' });
     const doc = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>;
-    expect(doc.liveCopilotPillX).toBe(-1200);
-    expect(doc.liveCopilotPillY).toBe(340);
-    expect(await store().load()).toMatchObject({ liveCopilotPillX: -1200, liveCopilotPillY: 340 });
+    expect(doc.removedLegacyKey).toBe(340);
   });
 
-  it('live copilot: edge and along round trip while the legacy X and Y stay untouched (bug 8)', async () => {
+  it('live copilot: edge and along round trip while unknown keys stay untouched', async () => {
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, JSON.stringify({ liveCopilotPillX: -1200, liveCopilotPillY: 340 }));
+    fs.writeFileSync(file, JSON.stringify({ removedLegacyKey: 340 }));
     expect(resolveDock(await store().load())).toEqual({ edge: 'Right', along: 0.5 });
     await store().update(dockPatch({ edge: 'Top', along: 0.25 }));
     const doc = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>;
     expect(doc.liveCopilotPillEdge).toBe('Top');
     expect(doc.liveCopilotPillAlong).toBe(0.25);
-    expect(doc.liveCopilotPillX).toBe(-1200);
-    expect(doc.liveCopilotPillY).toBe(340);
+    expect(doc.removedLegacyKey).toBe(340);
     expect(resolveDock(await store().load())).toEqual({ edge: 'Top', along: 0.25 });
   });
 
@@ -63,13 +60,13 @@ describe('JsonSettingsStore', () => {
       a.update({ uiLanguage: 'es' }),
       b.update({ summaryLanguage: 'en' }),
       a.update({ speakerDiarizationEnabled: true }),
-      b.update({ navigationPaneLength: 300 }),
+      b.update({ liveCopilotPillAlong: 0.3 }),
     ]);
     expect(await store().load()).toMatchObject({
       uiLanguage: 'es',
       summaryLanguage: 'en',
       speakerDiarizationEnabled: true,
-      navigationPaneLength: 300,
+      liveCopilotPillAlong: 0.3,
     });
   });
 
@@ -153,11 +150,11 @@ describe('JsonSettingsStore', () => {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(
       file,
-      '{\r\n  "selectedSummaryProvider": "ClaudeCode",\r\n  "navigationPaneLength": "310"\r\n}',
+      '{\r\n  "selectedSummaryProvider": "ClaudeCode",\r\n  "liveCopilotPillAlong": "0.31"\r\n}',
     );
     expect(await store().load()).toMatchObject({
       selectedSummaryProvider: 'ClaudeCode',
-      navigationPaneLength: 310,
+      liveCopilotPillAlong: 0.31,
     });
   });
 });

@@ -13,7 +13,7 @@ Reason for every item below: owner decision 2026-11-03, may return later. Audito
 - xAI/Grok provider: OAuth, API key, credential store, settings expander. Claude Code, Codex and the local provider stay. A settings file that selects Xai must still load.
 - Suggest-title button, custom note template, nav-pane resize grip, meeting-app suggestion bar on Record.
 - Chat thread history and user recipes (items 93 to 101, 113 to 116; item 105 keeps only the built-in part). The chat itself and built-in recipe chips stay.
-- On-disk compatibility still applies: typeSafeEnabled, calendar settings, Jev frontmatter, event frontmatter keys and the Brief section of existing meetings are read and rewritten without loss.
+- On-disk compatibility still applies: Jev frontmatter, event frontmatter keys and the Brief section of existing meetings are read and rewritten without loss.
 
 ## Where things are
 

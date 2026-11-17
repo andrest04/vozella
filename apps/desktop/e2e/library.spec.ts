@@ -50,7 +50,7 @@ test('the library works end to end through the typed API, on a throwaway data ro
     window.vozella.invoke('settings.update', { patch: { uiLanguage: 'en' } }),
   );
   const settings = await page.evaluate(() => window.vozella.invoke('settings.get', {}));
-  expect(settings).toMatchObject({ uiLanguage: 'en', typeSafeEnabled: true });
+  expect(settings).toMatchObject({ uiLanguage: 'en', meetingPopupEnabled: true });
   expect(fs.existsSync(path.join(launched.dataRoot, 'app', 'settings.json'))).toBe(true);
 
   // The data-root guard: a MeetingLive folder is refused while testing.

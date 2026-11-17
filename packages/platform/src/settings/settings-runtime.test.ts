@@ -60,7 +60,7 @@ describe('SettingsRuntime over the real settings file', () => {
     const { runtime: r, settingsFile } = runtime();
     fs.writeFileSync(
       settingsFile,
-      JSON.stringify({ somethingNew: { a: 1 }, typeSafeEnabled: false }),
+      JSON.stringify({ somethingNew: { a: 1 }, removedLegacyKey: false }),
     );
     await r.commands.setSummaryProvider('Codex');
     await r.commands.setMeetingLanguage('summary', 'en');
@@ -70,7 +70,7 @@ describe('SettingsRuntime over the real settings file', () => {
       selectedSummaryProvider: 'Codex',
       summaryLanguage: 'en',
       uiLanguage: 'es',
-      typeSafeEnabled: false,
+      removedLegacyKey: false,
       somethingNew: { a: 1 },
     });
   });

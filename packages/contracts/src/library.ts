@@ -313,12 +313,8 @@ export const appSettingsSchema = z.object({
   recordAppName: z.string().nullable(),
   liveTranscriptionEnabled: z.boolean(),
   speakerDiarizationEnabled: z.boolean(),
-  typeSafeEnabled: z.boolean(),
   meetingPopupEnabled: z.boolean(),
   uiLanguage: z.string().nullable(),
-  navigationPaneLength: z.number().nullable(),
-  liveCopilotPillX: z.number().nullable(),
-  liveCopilotPillY: z.number().nullable(),
   liveCopilotPillEdge: z.string().nullable(),
   liveCopilotPillAlong: z.number().nullable(),
   /** `off`, `rules` or `rules+ai`; null takes the default for the summary engine. */
