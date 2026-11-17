@@ -15,7 +15,6 @@ import {
   summariesSaveNotes,
   summariesSetActionItemDate,
   summariesSetNextSessionDate,
-  summariesSetTemplate,
   summariesToggleAction,
   summariesWriteClipboard,
 } from '@vozella/contracts';
@@ -64,9 +63,6 @@ export function registerSummariesHandlers(deps: SummariesHandlerDeps): void {
       };
     }
   });
-  registerRequest(server, summariesSetTemplate, ({ meetingId, templateId }) =>
-    controller.setTemplate(meetingId, templateId),
-  );
   registerRequest(server, summariesSetActionItemDate, ({ meetingId, index, date }) =>
     controller.setActionItemDate(meetingId, index, date),
   );

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   audioMicrophonesLoad,
   audioPreviewLevel,
-  audioRecordingNotice,
   sourcePickerStateSchema,
 } from './audio';
 import { eventChannels, requestChannels } from './channels';
@@ -94,7 +93,6 @@ describe('audio page channels', () => {
   it('registers every audio channel by name', () => {
     expect(requestChannels[audioMicrophonesLoad.name]).toBe(audioMicrophonesLoad);
     expect(eventChannels[audioPreviewLevel.name]).toBe(audioPreviewLevel);
-    expect(eventChannels[audioRecordingNotice.name]).toBe(audioRecordingNotice);
   });
 
   it('refuses a microphone kind it does not know', () => {
@@ -114,16 +112,5 @@ describe('audio page channels', () => {
     };
     expect(sourcePickerStateSchema.safeParse(state).success).toBe(true);
     expect(sourcePickerStateSchema.safeParse({ ...state, cards: 'none' }).success).toBe(false);
-  });
-
-  it('describes the recording notices', () => {
-    expect(
-      audioRecordingNotice.payload.safeParse({
-        kind: 'source-lost',
-        source: 'Output',
-        remaining: 0,
-      }).success,
-    ).toBe(true);
-    expect(audioRecordingNotice.payload.safeParse({ kind: 'mystery' }).success).toBe(false);
   });
 });

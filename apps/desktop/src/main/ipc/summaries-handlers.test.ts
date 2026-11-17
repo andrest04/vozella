@@ -169,7 +169,7 @@ describe('summaries handlers', () => {
   it('registers every summaries request channel', () => {
     const { handlers } = setup();
     const expected = Object.keys(requestChannels).filter((name) => name.startsWith('summaries.'));
-    expect(expected).toHaveLength(19);
+    expect(expected).toHaveLength(18);
     for (const name of expected) expect(handlers.has(name)).toBe(true);
   });
 
@@ -259,10 +259,6 @@ describe('summaries handlers', () => {
     expect(ok(await call('summaries.copyText', { meetingId: 'missing', mode: 'summary' }))).toEqual(
       { text: null },
     );
-    expect(
-      ok(await call('summaries.setTemplate', { meetingId: ID, templateId: 'standup' })),
-    ).toEqual({ status: 'saved' });
-    expect(repo.records.get(ID)?.noteTemplateId).toBe('standup');
   });
 
   it('replaceSummary applies an answer, tells open pages, and a restore undoes it (T4)', async () => {

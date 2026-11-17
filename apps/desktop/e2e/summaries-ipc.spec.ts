@@ -108,12 +108,6 @@ test.describe('local engine and the full tab round trip', () => {
       ID,
     );
     expect(notes).toEqual({ status: 'saved' });
-    const template = await page.evaluate(
-      (meetingId) =>
-        window.vozella.invoke('summaries.setTemplate', { meetingId, templateId: 'standup' }),
-      ID,
-    );
-    expect(template).toEqual({ status: 'saved' });
   });
 });
 

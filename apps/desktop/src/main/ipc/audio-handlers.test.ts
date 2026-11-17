@@ -35,7 +35,6 @@ function setup(pick: string | null = null) {
   const handlers = new Map<string, (event: never, ...args: unknown[]) => unknown>();
   const ipc: IpcMainLike = { handle: (name, listener) => void handlers.set(name, listener) };
   const controller = {
-    pendingNotices: [{ kind: 'faulted', message: 'disk full' }],
     loadMicrophones: vi.fn(() =>
       Promise.resolve({
         options: [{ kind: 'None', deviceId: null, name: null }],
@@ -51,22 +50,7 @@ function setup(pick: string | null = null) {
     stopPreview: vi.fn(),
   };
   const takes = {
-    start: vi.fn(() => Promise.resolve({ started: true as const, recordedAtMs: 9 })),
-    pause: vi.fn(() => Promise.resolve(true)),
-    resume: vi.fn(() => Promise.resolve(true)),
-    stop: vi.fn(() =>
-      Promise.resolve({ path: 'a.wav', recordedAtMs: 9, pausedSeconds: 2, error: null }),
-    ),
     rememberPick: vi.fn(),
-    importPicked: vi.fn(() =>
-      Promise.resolve({
-        imported: true as const,
-        path: 'a.wav',
-        recordedAtMs: 1,
-        endedAtMs: 2,
-        durationSeconds: 0.001,
-      }),
-    ),
   };
   const appIcon = vi.fn((_: string) =>
     Promise.resolve<string | null>('data:image/png;base64,AA=='),
@@ -160,7 +144,7 @@ describe('audio handlers', () => {
     expect(await cancelled.call('audio.import.pickFile', {})).toMatchObject({ value: null });
   });
 
-  it('remembers the pick in main and never lets the page name the file to convert', async () => {
+  it('remembers the pick in main', async () => {
     const file = path.join(dir, 'talk.mp3');
     fs.writeFileSync(file, 'x');
     const { call, takes } = setup(file);
@@ -169,14 +153,6 @@ describe('audio handlers', () => {
       path: file,
       recordedAtMs: expect.any(Number) as number,
     });
-    const run = await call('audio.import.run', { title: 'Call' });
-    expect(run).toMatchObject({ ok: true, value: { imported: true } });
-    expect(takes.importPicked).toHaveBeenCalledWith('Call');
-    const smuggled = await call('audio.import.run', {
-      title: 'x',
-      path: String.raw`C:\secret.wav`,
-    });
-    expect(smuggled).toMatchObject({ ok: true });
   });
 
   it('forgets an earlier pick when the dialog is cancelled', async () => {
@@ -185,48 +161,14 @@ describe('audio handlers', () => {
     expect(takes.rememberPick).toHaveBeenCalledWith(null);
   });
 
-  it('reports where the take stands and starts no preview while a take runs (item 92)', async () => {
+  it('starts no preview while a take runs (item 92)', async () => {
     const { call, takes, controller } = setup();
-    Object.assign(takes, { currentPhase: 'paused', busy: true });
-    expect(await call('audio.recording.state', {})).toMatchObject({
-      ok: true,
-      value: { phase: 'paused', notices: [{ kind: 'faulted', message: 'disk full' }] },
-    });
+    Object.assign(takes, { busy: true });
     expect(await call('audio.preview.start', { deviceId: null })).toMatchObject({ ok: true });
     expect(controller.startPreview).not.toHaveBeenCalled();
-    Object.assign(takes, { currentPhase: 'idle', busy: false });
-    expect(await call('audio.recording.state', {})).toMatchObject({
-      value: { phase: 'idle', notices: [] },
-    });
+    Object.assign(takes, { busy: false });
     await call('audio.preview.start', { deviceId: 'x' });
     expect(controller.startPreview).toHaveBeenCalledWith('x', 'settings');
-  });
-
-  it('starts, pauses, resumes and stops a take through the take object', async () => {
-    const { call, takes } = setup();
-    const micInput = { kind: 'SystemDefault', deviceId: null };
-    expect(await call('audio.recording.start', { title: 'T', microphone: micInput })).toMatchObject(
-      {
-        ok: true,
-        value: { started: true, recordedAtMs: 9 },
-      },
-    );
-    expect(takes.start).toHaveBeenCalledWith('T', micInput);
-    expect(await call('audio.recording.pause', {})).toMatchObject({ value: { paused: true } });
-    expect(await call('audio.recording.resume', {})).toMatchObject({ value: { resumed: true } });
-    expect(await call('audio.recording.stop', {})).toMatchObject({
-      value: { path: 'a.wav', pausedSeconds: 2, error: null },
-    });
-  });
-
-  it('rejects a recording start with a bad microphone kind', async () => {
-    const { call, takes } = setup();
-    const result = await call('audio.recording.start', {
-      title: 'T',
-      microphone: { kind: 'Everything', deviceId: null },
-    });
-    expect(result).toMatchObject({ ok: false });
-    expect(takes.start).not.toHaveBeenCalled();
   });
 
   it('returns the icon of an executable', async () => {

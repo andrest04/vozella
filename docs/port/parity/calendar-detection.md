@@ -294,7 +294,7 @@ Bugs fixed (cd-8):
 - B7 (in-app bar while the popup is off): kept as in C#, the bar is offered whenever a call is detected (e2e runs with the default setting; unit test C8 covers the watcher). Decision, unattended.
 - S9, an open Settings page went stale after Never again: fixed on the renderer side. The toggle listens to `settings.meetingPopupChanged`. Test: "follows the Never again broadcast".
 - A take-notes request made while Record was already open and the window hidden was lost: now also consumed when the window becomes visible again.
-- A request arriving while main already runs a take no longer starts a second one: the hook asks `audio.recording.state` before starting.
+- A request arriving while main already runs a take no longer starts a second one: the hook asks `recording.state` before starting.
 
 Decisions (unattended):
 

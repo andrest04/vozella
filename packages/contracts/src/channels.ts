@@ -68,10 +68,6 @@ export const appSetThemePreference = defineRequest('app.setThemePreference', {
   output: z.object({ resolved: z.enum(['light', 'dark']) }),
 });
 
-export const appFocusChanged = defineEvent('app.focusChanged', {
-  payload: z.object({ focused: z.boolean() }),
-});
-
 export const requestChannels = {
   [appGetInfo.name]: appGetInfo,
   [appReportRendererError.name]: appReportRendererError,
@@ -124,12 +120,6 @@ export const requestChannels = {
   [audio.audioPreviewStart.name]: audio.audioPreviewStart,
   [audio.audioPreviewStop.name]: audio.audioPreviewStop,
   [audio.audioImportPickFile.name]: audio.audioImportPickFile,
-  [audio.audioRecordingStart.name]: audio.audioRecordingStart,
-  [audio.audioRecordingState.name]: audio.audioRecordingState,
-  [audio.audioRecordingPause.name]: audio.audioRecordingPause,
-  [audio.audioRecordingResume.name]: audio.audioRecordingResume,
-  [audio.audioRecordingStop.name]: audio.audioRecordingStop,
-  [audio.audioImportRun.name]: audio.audioImportRun,
   [audio.audioAppIcon.name]: audio.audioAppIcon,
   [meetingPrompt.meetingPromptStart.name]: meetingPrompt.meetingPromptStart,
   [meetingPrompt.meetingPromptDismiss.name]: meetingPrompt.meetingPromptDismiss,
@@ -163,7 +153,6 @@ export const requestChannels = {
   [summaries.summariesCopyActions.name]: summaries.summariesCopyActions,
   [summaries.summariesCopyText.name]: summaries.summariesCopyText,
   [summaries.summariesWriteClipboard.name]: summaries.summariesWriteClipboard,
-  [summaries.summariesSetTemplate.name]: summaries.summariesSetTemplate,
   [summaries.summariesSetActionItemDate.name]: summaries.summariesSetActionItemDate,
   [summaries.summariesSetNextSessionDate.name]: summaries.summariesSetNextSessionDate,
   [summaries.summariesExportActionItemsIcs.name]: summaries.summariesExportActionItemsIcs,
@@ -222,7 +211,6 @@ export const requestChannels = {
 } as const;
 
 export const eventChannels = {
-  [appFocusChanged.name]: appFocusChanged,
   [library.libraryChanged.name]: library.libraryChanged,
   [library.workspaceChanged.name]: library.workspaceChanged,
   [library.workspaceNavigationRequested.name]: library.workspaceNavigationRequested,
@@ -239,7 +227,6 @@ export const eventChannels = {
   [audio.audioSourcesChanged.name]: audio.audioSourcesChanged,
   [audio.audioPreviewLevel.name]: audio.audioPreviewLevel,
   [audio.audioRecordingLevel.name]: audio.audioRecordingLevel,
-  [audio.audioRecordingNotice.name]: audio.audioRecordingNotice,
   [transcription.transcriptionStatusChanged.name]: transcription.transcriptionStatusChanged,
   [transcription.transcriptionInstallProgress.name]: transcription.transcriptionInstallProgress,
   [transcription.transcriptionLiveUpdate.name]: transcription.transcriptionLiveUpdate,

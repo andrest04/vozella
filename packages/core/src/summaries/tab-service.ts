@@ -7,7 +7,6 @@ import { buildActionItemsIcs, icsFileName } from './action-items-ics';
 import { summaryFromAnswer, type SummaryContent } from './answer-to-summary';
 import { withResolvedDeadlines } from './deadline-resolver';
 import { nextSessionKey, rememberedNextSessionDate, usableNextSessionDate } from './next-session';
-import { templateIdToStore } from './template-instructions';
 import { PatchQueue } from './patch-queue';
 import {
   findRelated,
@@ -69,10 +68,6 @@ export type ActionItemsIcsResult =
     }
   /** None of the chosen items has a date. */
   | { readonly status: 'empty' | 'not-found' };
-
-export type SetTemplateResult =
-  | { readonly status: 'saved' | 'unchanged' | 'not-found' }
-  | { readonly status: 'failed'; readonly detail: string };
 
 export type ReplaceSummaryRequest =
   | { readonly kind: 'answer'; readonly text: string }
@@ -315,26 +310,6 @@ export class SummaryTabService {
       message: this.deps.translate('Error_SaveActionItem', detail),
       detail,
     };
-  }
-
-  /**
-   * Remembers the picker's choice on the record. Only a built-in template is stored; `auto` and
-   * unknown ids clear it, as a generate does. Queued with the other writes (B5).
-   */
-  setTemplate(meetingId: string, templateId: string | null): Promise<SetTemplateResult> {
-    return this.queue
-      .run(meetingId, async (): Promise<SetTemplateResult> => {
-        const fresh = await this.deps.meetings.get(meetingId);
-        if (fresh === null) return { status: 'not-found' };
-        const stored = templateIdToStore(templateId);
-        if (stored === (fresh.noteTemplateId ?? null)) return { status: 'unchanged' };
-        await this.deps.meetings.save({ ...fresh, noteTemplateId: stored });
-        return { status: 'saved' };
-      })
-      .catch((error: unknown): SetTemplateResult => ({
-        status: 'failed',
-        detail: errorText(error),
-      }));
   }
 
   /**

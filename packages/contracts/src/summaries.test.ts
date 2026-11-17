@@ -28,7 +28,6 @@ describe('summaries contracts', () => {
       'summaries.toggleAction',
       'summaries.copyActions',
       'summaries.writeClipboard',
-      'summaries.setTemplate',
       'summaries.providerStatus',
       'summaries.hardware',
       'summaries.checkCli',

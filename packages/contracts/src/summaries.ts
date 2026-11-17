@@ -207,14 +207,6 @@ export const summariesWriteClipboard = defineRequest('summaries.writeClipboard',
   ]),
 });
 
-export const summariesSetTemplate = defineRequest('summaries.setTemplate', {
-  input: z.object({ meetingId, templateId: z.string().max(80).nullable() }),
-  output: z.discriminatedUnion('status', [
-    z.object({ status: z.enum(['saved', 'unchanged', 'not-found']) }),
-    z.object({ status: z.literal('failed'), detail: z.string() }),
-  ]),
-});
-
 // ------------------------------------------------- action item deadlines
 
 const saveFailed = z.object({

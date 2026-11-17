@@ -1,4 +1,4 @@
-import { appFocusChanged, appGetInfo, diagnosticsNativeSelfTest } from '@vozella/contracts';
+import { appGetInfo, audioRecordingLevel, diagnosticsNativeSelfTest } from '@vozella/contracts';
 import type { Logger } from '@vozella/core';
 import { describe, expect, it, vi } from 'vitest';
 import type { IpcEventLike } from '../security/trusted-origin';
@@ -72,15 +72,15 @@ describe('registerRequest', () => {
 describe('sendEvent', () => {
   it('validates the payload and skips destroyed targets', () => {
     const send = vi.fn();
-    sendEvent({ send, isDestroyed: () => false }, appFocusChanged, { focused: true });
-    expect(send).toHaveBeenCalledWith('app.focusChanged', { focused: true });
+    sendEvent({ send, isDestroyed: () => false }, audioRecordingLevel, { level: 1 });
+    expect(send).toHaveBeenCalledWith('audio.recording.level', { level: 1 });
 
     expect(() =>
-      sendEvent({ send, isDestroyed: () => false }, appFocusChanged, { focused: 1 } as never),
+      sendEvent({ send, isDestroyed: () => false }, audioRecordingLevel, { level: 'x' } as never),
     ).toThrow();
 
     send.mockClear();
-    sendEvent({ send, isDestroyed: () => true }, appFocusChanged, { focused: true });
+    sendEvent({ send, isDestroyed: () => true }, audioRecordingLevel, { level: 1 });
     expect(send).not.toHaveBeenCalled();
   });
 });

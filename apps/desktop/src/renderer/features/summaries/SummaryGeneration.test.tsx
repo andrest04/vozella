@@ -566,8 +566,6 @@ describe('note template (item 105)', () => {
     expect(await screen.findByRole('combobox', { name: 'Note template' })).toHaveTextContent(
       'Standup',
     );
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(calls(api, 'summaries.setTemplate')).toHaveLength(0);
     expect(calls(api, 'summaries.saveNotes')).toHaveLength(0);
   });
 
@@ -606,7 +604,6 @@ describe('note template (item 105)', () => {
     await userEvent.click(screen.getByRole('combobox', { name: 'Note template' }));
     await userEvent.click(await screen.findByRole('option', { name: '1:1' }));
     expect(screen.getByRole('combobox', { name: 'Note template' })).toHaveTextContent('1:1');
-    expect(calls(api, 'summaries.setTemplate')).toHaveLength(0);
     await userEvent.click(screen.getByTestId('BtnRegenerateSummary'));
     await userEvent.click(await screen.findByRole('button', { name: 'Regenerate' }));
     await waitFor(() => {

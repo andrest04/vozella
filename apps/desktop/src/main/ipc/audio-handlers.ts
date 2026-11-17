@@ -2,16 +2,10 @@ import fs from 'node:fs';
 import {
   audioAppIcon,
   audioImportPickFile,
-  audioImportRun,
   audioMicrophonesLoad,
   audioMicrophonesRemember,
   audioPreviewStart,
   audioPreviewStop,
-  audioRecordingPause,
-  audioRecordingResume,
-  audioRecordingStart,
-  audioRecordingState,
-  audioRecordingStop,
   audioSourcesCloseFallback,
   audioSourcesSelect,
   audioSourcesStart,
@@ -77,17 +71,6 @@ export function registerAudioHandlers(deps: AudioHandlerDeps): void {
     takes.rememberPick({ path: file, recordedAtMs });
     return { path: file, recordedAtMs };
   });
-  registerRequest(server, audioImportRun, ({ title }) => takes.importPicked(title));
-  registerRequest(server, audioRecordingStart, ({ title, microphone }) =>
-    takes.start(title, microphone),
-  );
-  registerRequest(server, audioRecordingState, () => ({
-    phase: takes.currentPhase,
-    notices: takes.currentPhase === 'idle' ? [] : [...controller.pendingNotices],
-  }));
-  registerRequest(server, audioRecordingPause, async () => ({ paused: await takes.pause() }));
-  registerRequest(server, audioRecordingResume, async () => ({ resumed: await takes.resume() }));
-  registerRequest(server, audioRecordingStop, () => takes.stop());
   registerRequest(server, audioAppIcon, async ({ exePath }) => ({
     dataUrl: await deps.appIcon(exePath),
   }));

@@ -1,8 +1,6 @@
 import path from 'node:path';
-import { appFocusChanged } from '@vozella/contracts';
 import type { WindowPlacement } from '@vozella/core';
 import { BrowserWindow } from 'electron';
-import { sendEvent } from '../ipc/ipc-server';
 import { APP_ENTRY_URL } from '../security/trusted-origin';
 import { mainWindowOptions } from './main-window-options';
 import type { ResolvedTheme } from './title-bar-theme';
@@ -39,12 +37,6 @@ export function createMainWindow(options: MainWindowOptions): BrowserWindow {
 
   window.once('ready-to-show', () => {
     if (options.showOnReady) window.show();
-  });
-  window.on('focus', () => {
-    sendEvent(window.webContents, appFocusChanged, { focused: true });
-  });
-  window.on('blur', () => {
-    sendEvent(window.webContents, appFocusChanged, { focused: false });
   });
 
   void window.loadURL(options.devServerUrl ?? APP_ENTRY_URL);
