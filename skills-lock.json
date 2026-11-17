@@ -7,12 +7,6 @@
       "skillPath": "skills/accessibility/SKILL.md",
       "computedHash": "88c64dead9bb55925c7b983f5fd95cfecf30bd8c076fd384cdb17019d1becd87"
     },
-    "assertion-quality": {
-      "source": "dotnet/skills",
-      "sourceType": "github",
-      "skillPath": "plugins/dotnet-test/skills/assertion-quality/SKILL.md",
-      "computedHash": "d681790389db1ae627328fbcdff0797355f0aeece3c2065f31dd31293ee6c72f"
-    },
     "electron-best-practices": {
       "source": "jwynia/agent-skills",
       "sourceType": "github",
@@ -48,18 +42,6 @@
       "sourceType": "github",
       "skillPath": "skills/rust-best-practices/SKILL.md",
       "computedHash": "5f050929b5b62c8c847b75955d7d773be9dc649d03778e6e94cd8db1101fb674"
-    },
-    "test-anti-patterns": {
-      "source": "dotnet/skills",
-      "sourceType": "github",
-      "skillPath": "plugins/dotnet-test/skills/test-anti-patterns/SKILL.md",
-      "computedHash": "4821d52c9e71b92a5ccdb624d3679a9638aaa3632e2f5a277e92b9add6674fa5"
-    },
-    "test-gap-analysis": {
-      "source": "dotnet/skills",
-      "sourceType": "github",
-      "skillPath": "plugins/dotnet-test/skills/test-gap-analysis/SKILL.md",
-      "computedHash": "51bd4f434d68e8a2fb5081f49df73963e3d37463fc4f0a03c37d76e73e632cf7"
     },
     "vitest": {
       "source": "antfu/skills",

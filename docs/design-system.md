@@ -35,6 +35,6 @@ Rules: errors are ink plus an icon and words, never red; `signal` appears only a
 - `pnpm test` covers the logic and component keyboard behavior (jsdom).
 - `pnpm test:e2e` includes `shell.spec.ts`: navigation, theme to `nativeTheme`, language switch, keyboard resize, axe on the gallery in both themes (serious and critical must be zero). axe is injected directly because Electron cannot open the second page AxeBuilder wants.
 - Playwright pins `prefers-color-scheme` to light, so the system-follow path is not observable there.
-- `VOZELLA_SCREENSHOTS=1 pnpm --filter @vozella/desktop exec playwright test screens` rewrites `docs/port/screens/foundation/`.
+- `VOZELLA_SCREENSHOTS=1 pnpm --filter @vozella/desktop exec playwright test screens` rewrites `docs/screenshots/foundation/`.
 
 Not verified: real forced-colors rendering (only the CSS mapping exists), screen readers, a high-DPI or multi-monitor window, caption buttons in the screenshots (they are drawn by Windows outside the page).

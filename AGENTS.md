@@ -4,14 +4,14 @@ This file provides guidance to AI coding agents (Claude Code, GitHub Copilot, Op
 
 ## Product name
 
-The product is named **Vozella**: an Electron app in `apps/desktop`, `packages/*`, and `native/*`. It began as a port of an earlier WinUI 3 app named MeetingLive, which is no longer in this repo. A few `MeetingLive` names stay on purpose; do not rename them, because that can orphan user data or break stored links:
+The product is named **Vozella**: an Electron app in `apps/desktop`, `packages/*`, and `native/*`.
 
-- legacy data-folder detection (`LEGACY_FOLDER_NAME = 'MeetingLive'`, `sharesMeetingLive`) and the guard that refuses to run dev or tests against the real `MeetingLive` folders;
-- the internal meeting link scheme `https://meetinglive.local/meeting/`, stored in chats and notes.
+- Never point dev or tests at the real data folders (`Documents\MeetingLive`, `Documents\Vozella`). The data-root guard refuses them; every run sets `VOZELLA_DATA_ROOT` to a temp folder.
+- The internal link scheme `https://meetinglive.local/meeting/` is stored in chats and notes and must not change.
 
 ## Stack and conventions
 
-Follow `docs/port/stack.md` (stack, layout, dependency direction, data safety, design direction, porting rules). Feature behavior is specified in `docs/port/specs/*`.
+Follow `docs/stack.md` (stack, layout, dependency direction, data safety, design direction, working rules).
 
 ## Hard gate: every change MUST go through skills
 
@@ -50,7 +50,7 @@ Exact paths are in `.atl/skill-registry.md`. Example: `C:\Code\vozella\.claude\s
 
 ## Strings
 
-User-facing text lives in `apps/desktop/src/renderer/i18n/locales/`: `en.json` / `es.json` (the strings carried over from the original app, keys unchanged) and `ui.en.json` / `ui.es.json` (the hand-written `Ui_` strings). Edit these JSON files directly; nothing generates them. Add every key to both locales with the same `{0}` placeholders — `apps/desktop/src/main/i18n-catalog-checks.test.ts` enforces key parity, order, non-empty values, and placeholder sets. Do not hardcode UI strings.
+User-facing text lives in `apps/desktop/src/renderer/i18n/locales/`: `en.json` / `es.json` (the base catalog, keys are stable) and `ui.en.json` / `ui.es.json` (the `Ui_` strings). Edit these JSON files directly; nothing generates them. Add every key to both locales with the same `{0}` placeholders — `apps/desktop/src/main/i18n-catalog-checks.test.ts` enforces key parity, order, non-empty values, and placeholder sets. Do not hardcode UI strings.
 
 ## Commands
 
@@ -77,7 +77,7 @@ packages/platform/     node adapters for the ports (fs, CLI, HTTP, llama, nemo) 
 native/vozella-native/ Rust addon: audio, calendar, dpapi, sessions, windows
 ```
 
-Dependency direction: `apps/desktop` to `platform` to `core`; `contracts` is shared. `core` never imports Electron or Node I/O. Folders name features, never `utils` or `services`. Details in `docs/port/stack.md`.
+Dependency direction: `apps/desktop` to `platform` to `core`; `contracts` is shared. `core` never imports Electron or Node I/O. Folders name features, never `utils` or `services`. Details in `docs/stack.md`.
 
 ## Testing
 

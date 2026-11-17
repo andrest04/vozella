@@ -1,6 +1,6 @@
-# Electron port: stack and conventions
+# Stack and conventions
 
-Binding brief for everyone working in `apps/desktop`, `packages/*`, and `native/*`. Evidence lives in `docs/port/research/*`. Every native choice below was run in a spike on this machine on 2026-11-02; caveats are listed at the end.
+Binding brief for everyone working in `apps/desktop`, `packages/*`, and `native/*`.
 
 ## Stack
 
@@ -15,11 +15,11 @@ Binding brief for everyone working in `apps/desktop`, `packages/*`, and `native/
 | Lists, routing | TanStack Virtual; TanStack Router with hash history (pill and popup windows have no router) | |
 | IPC | Own typed contract: zod schemas in `packages/contracts`, `invoke` for requests, named event channels for streams | `electron-trpc` 1.0.0 is days old; our surface is small enough that a thin layer is safer |
 | Audio | Rust napi-rs addon on `wasapi` 0.26 in a `utilityProcess`: 48 kHz f32 stereo in, 16 kHz mono PCM16 out, 20 ms frames, silence synthesized from the clock | cpal and Chromium cannot do per-process loopback; the spike proved exclusion |
-| ASR | NeMo-Speech.cpp v0.3.0 C ABI through koffi 3 in its own `utilityProcess`, Nemotron GGUF, CUDA or CPU | Same engine and models as today, with v0.3.0 streaming and diarization fixes. Spike: exact Spanish text, RTF 0.06 on GPU |
-| Local LLM | `llama-server` (llama.cpp, pinned b-tag, SHA-256 per zip) as a child process on loopback with an ephemeral API key, SSE streaming, backends cuda12, cuda13, vulkan, cpu | Spike: 230 t/s on GPU. Today's app is CPU-only, so GPU offload is a real upgrade. A Job Object or equivalent must kill it if the parent dies |
+| ASR | NeMo-Speech.cpp v0.3.0 C ABI through koffi 3 in its own `utilityProcess`, Nemotron GGUF, CUDA or CPU | v0.3.0 brings streaming and diarization fixes. Spike: exact Spanish text, RTF 0.06 on GPU |
+| Local LLM | `llama-server` (llama.cpp, pinned b-tag, SHA-256 per zip) as a child process on loopback with an ephemeral API key, SSE streaming, backends cuda12, cuda13, vulkan, cpu | Spike: 230 t/s on GPU. A Job Object or equivalent must kill it if the parent dies |
 | Sessions | Same Rust addon, `windows` crate, behind ports | Store read worked unpackaged |
-| Credentials | `safeStorage` for new secrets. The old DPAPI import was dropped (no consumer) | API keys (BYOK) live in `api-keys.bin` through the `ApiKeyStore` port, main process only |
-| Search | No database. Markdown files stay the source of truth; filter in memory as today | Add SQLite only if a measured need appears |
+| Credentials | `safeStorage` for new secrets. No other secret store is read | API keys (BYOK) live in `api-keys.bin` through the `ApiKeyStore` port, main process only |
+| Search | No database. Markdown files stay the source of truth; filter in memory | Add SQLite only if a measured need appears |
 | CLI tools | `spawn` with `shell:false`, argv array, prompt on stdin, explicit `.cmd` shim handling (CVE-2024-27980) | |
 | Tests | Vitest 5; Playwright `_electron` for e2e with a fake-native build flag; contract tests run against both fake and real adapters | |
 
@@ -45,11 +45,10 @@ Screaming architecture: folders name features (`recording`, `library`, `chat`), 
 
 ## Data safety
 
-- App data: `%LOCALAPPDATA%\Vozella`. Meetings default: `Documents\Vozella`. Neither is the existing `MeetingLive` location.
-- The user's real folder (`Documents\MeetingLive`) is used only if they pick it in Settings. Agents never pick it, read it, or test against it.
-- All runs set `VOZELLA_DATA_ROOT` to a temp folder. A guard refuses to start in dev or test if the resolved path is under the real `MeetingLive` folders.
-- Meetings are plain Markdown files that any editor opens; the meeting format is described in `docs/port/specs/library-storage.md` (sections 3.8 and 3.9) and its readers stay tolerant (BOM, CRLF, any key case, dates with any fraction length). The app's own files are plain UTF-8 JSON with LF and an explicit `schemaVersion`, under `<Library>/.vozella`, with forward migrations (`docs/design/projects.md`, section 4). Writes are atomic: temp file then rename.
-- No use of the user's Claude, Codex, xAI, or TypeSafe accounts. Provider tests use doubles. Whatever stayed unverified goes in the parity ledger as `pending-real-validation`.
+- App data: `%LOCALAPPDATA%\Vozella`. Meetings: `Documents\Vozella`.
+- Dev and test runs never use the real folders. Every run sets `VOZELLA_DATA_ROOT` to a temp folder, and the guard refuses the real folders (`Documents\MeetingLive`, `Documents\Vozella` and the LocalAppData ones).
+- Meetings are plain Markdown files that any editor opens. Readers stay tolerant of files written by earlier versions (BOM, CRLF, any key case, dates with any fraction length). The app's own files are plain UTF-8 JSON with LF and an explicit `schemaVersion`, under `<Library>/.vozella`, with forward migrations (`docs/design/projects.md`, section 4). Writes are atomic: temp file then rename.
+- No use of the user's Claude, Codex, xAI, or TypeSafe accounts. Provider tests use doubles.
 
 ## Design direction
 
@@ -66,20 +65,13 @@ Reference points: Granola and Notion. The app should feel like a quiet document 
 
 The recording bars mark from `docs/brand` is the only ornament. If a screen looks like a generic SaaS template, it is wrong.
 
-## Porting rules
+## Working rules
 
-1. The module spec in `docs/port/specs/<module>.md` is the requirement; the C# is the tiebreaker. Copy behavior, constants, prompts, and formats exactly. Layout and visuals are new; flows and capabilities are not removed.
-2. Fix confirmed bugs from the spec's section 7 as you port, each with a regression test. Do not copy a bug for fidelity, except on-disk format compatibility. Do not port dead code; note it.
-3. Every parity item goes in `docs/port/parity/<module>.md` with status `done`, `improved`, `dropped` (reason), or `pending-real-validation` (what is needed). Nothing is left silent.
-4. Test first where a deterministic test exists: observe RED, then GREEN. Port the xUnit cases listed in section 6 of the spec.
-5. All user text goes through i18n keys (`en`, `es`), reusing the existing keys and translations.
-6. Conventional commits by work unit, tests with behavior. No attribution lines in commit messages. No push.
-7. `pnpm check` (typecheck, lint, unit tests) must pass before each commit.
+1. Tests first where a deterministic test exists: observe RED, then GREEN.
+2. All user text goes through i18n keys (`en`, `es`).
+3. Conventional commits by work unit, tests with behavior. No attribution lines in commit messages. No push.
+4. `pnpm check` (typecheck, lint, unit tests) must pass before each commit.
 
-## Known unverified after the spikes
+## Known unverified
 
-Windows 10; real Teams, Zoom, and browser calls and their root PID; device hot-swap and long-session drift in capture; Sortformer diarization on v0.3.0; Gemma 4 GGUF templates and 12B on 8 GB; orphan `llama-server` after a parent crash; multi-monitor docking and mixed DPI; toast activation; signed and packaged builds of native addons; calendars that appear only for packaged callers (the spike's unpackaged read found 1 calendar and 0 upcoming events).
-
-## Spike code
-
-Working proofs to reuse, under `spikes/` in the session scratchpad until the port absorbs them: `audio`, `asr`, `llm`, `calendar`, `window`. pnpm 12 skips install scripts, so builds must be allow-listed and Electron's binary fetched explicitly.
+Windows 10; real Teams, Zoom, and browser calls and their root PID; device hot-swap and long-session drift in capture; Sortformer diarization on v0.3.0; Gemma 4 GGUF templates and 12B on 8 GB; orphan `llama-server` after a parent crash; multi-monitor docking and mixed DPI; toast activation; signed and packaged builds of native addons; calendars that appear only for packaged callers (an unpackaged read found 1 calendar and 0 upcoming events).

@@ -38,7 +38,7 @@ Vozella writes every meeting down. It records the user's microphone plus system 
 - Transcription languages: auto, English, Spanish, Portuguese, French, German, Italian, Dutch, Japanese, Chinese. UI and summary languages: English and Spanish (both locales must stay in sync).
 - Optional TypeSafe integration sends the transcript to TypeSafe only after the user saves a key.
 - Stack: Electron + React renderer, typed IPC contracts, pure core packages, Node platform adapters, and a Rust native addon for audio, calendar, DPAPI, sessions and windows.
-- The Electron port has passing automated tests but is not yet validated with real meetings, real accounts, or the installer.
+- The app has passing automated tests but is not yet validated with real meetings, real accounts, or the installer.
 - Terminology: "meeting", "recording", "transcript", "summary", "action items", "Live copilot", "library", "engine", "project", "No project" (a meeting that is in no project), "instructions", "context files", "chat history". "Folder" means only a folder on disk, such as the Library location; nothing in the library is a folder.
 
 ## Brand Commitments
@@ -46,11 +46,11 @@ Vozella writes every meeting down. It records the user's microphone plus system 
 - Name: Vozella. Tagline: "Every meeting, written down."
 - Logo files in `docs/brand/` (light and dark tiles).
 - Voice, as used across the README and landing page: plain, short, factual sentences; says what happens to the user's data without hedging; no hype.
-- An earlier app (MeetingLive, removed from the repo) stored its data in `Documents\MeetingLive`; Vozella detects that folder and never writes to it during tests.
+- Dev and test runs never use `Documents\MeetingLive` or `Documents\Vozella`.
 
 ## Evidence on Hand
 
-- App screenshots: `docs/screenshots/` (for example `record.png`) and port screenshots under `docs/port/`.
+- App screenshots: `docs/screenshots/` (for example `record.png`).
 - Landing page copy and sample meeting content: `website/index.html`.
 - No customers, testimonials, usage numbers, press, pricing, or benchmarks exist. Do not invent them.
 
