@@ -28,7 +28,8 @@ Vozella writes every meeting down. It records the user's microphone plus system 
 - Used alongside a live call: a recording pill, a Live copilot window that stays on top, detected questions, and "What did I miss?".
 - Proactive entry points: Windows calendar reminders about one minute before meetings with two or more people, and a popup when a Zoom, Teams or Meet call is detected.
 - After the call: transcript, summary, action items, templates; optional speaker labels for up to four voices.
-- Library: folders, date and status filters, search, and chat scoped to one meeting, a folder, or all meetings, with answers linking back to source meetings.
+- Projects: a flat list of projects (no nesting). A project holds related meetings, written instructions that shape summaries and answers, and context files copied into the project. Its page has Meetings and Chats tabs and a primary action, "Start meeting in this project". Meetings that belong to no project are listed under "No project".
+- Library: every meeting in one flat list, filtered by project, date and status, with search, and chat scoped to one meeting, a project, or all meetings. Chats are saved per project (or per no project) and can be reopened, renamed and deleted. Answers link back to source meetings.
 - Audio can also be imported.
 
 ## Capabilities and Constraints
@@ -38,14 +39,14 @@ Vozella writes every meeting down. It records the user's microphone plus system 
 - Optional TypeSafe integration sends the transcript to TypeSafe only after the user saves a key.
 - Stack: Electron + React renderer, typed IPC contracts, pure core packages, Node platform adapters, and a Rust native addon for audio, calendar, DPAPI, sessions and windows.
 - The Electron port has passing automated tests but is not yet validated with real meetings, real accounts, or the installer.
-- Terminology: "meeting", "recording", "transcript", "summary", "action items", "Live copilot", "library", "engine".
+- Terminology: "meeting", "recording", "transcript", "summary", "action items", "Live copilot", "library", "engine", "project", "No project" (a meeting that is in no project), "instructions", "context files", "chat history". "Folder" means only a folder on disk, such as the Library location; nothing in the library is a folder.
 
 ## Brand Commitments
 
 - Name: Vozella. Tagline: "Every meeting, written down."
 - Logo files in `docs/brand/` (light and dark tiles).
 - Voice, as used across the README and landing page: plain, short, factual sentences; says what happens to the user's data without hedging; no hype.
-- The legacy WinUI app (MeetingLive, removed from the repo) stored its data in `Documents\MeetingLive`; Vozella detects that folder and never writes to it during tests.
+- An earlier app (MeetingLive, removed from the repo) stored its data in `Documents\MeetingLive`; Vozella detects that folder and never writes to it during tests.
 
 ## Evidence on Hand
 

@@ -22,14 +22,6 @@ colors:
   border-control-dark: "#6b6b6b"
   hairline-dark: "#262626"
   signal-dark: "#ff5a4f"
-  folder-blue: "#3b6bd0"
-  folder-teal: "#2f7f78"
-  folder-green: "#3f7d4f"
-  folder-amber: "#a9742a"
-  folder-orange: "#b9632f"
-  folder-red: "#b04545"
-  folder-purple: "#7c5aa8"
-  folder-neutral: "#7a7a7a"
 typography:
   title:
     fontFamily: "'Schibsted Grotesk Variable', 'Segoe UI Variable', system-ui, sans-serif"
@@ -186,11 +178,8 @@ The palette is a strict neutral ramp plus one red that only ever means "recordin
 - **On-Ink pair** (`on-ink`, `on-ink-muted`, `hairline-on-ink`): text and dividers on inverted ink surfaces.
 - **Interaction tints** (derived in `tokens.css`): hover is ink mixed into transparent at 6%, pressed is ink at 12%, and the scrim is #0a0a0a at 45%.
 
-### Folder Accents
-- **Folder palette** (`folder-blue`, `folder-teal`, `folder-green`, `folder-amber`, `folder-orange`, `folder-red`, `folder-purple`, `folder-neutral`, each with a lighter dark-mode value in `tokens.css`): user-chosen labels for library folders and nothing else. They are muted on purpose so a folder color never reads as status.
-
 ### Named Rules
-**The Tally Light Rule.** Signal red means "recording now". It is never used for errors, deletion, emphasis, branding, or folders. If nothing is recording, no signal red is on screen.
+**The Tally Light Rule.** Signal red means "recording now". It is never used for errors, deletion, emphasis, or branding. If nothing is recording, no signal red is on screen.
 
 **The Ink Is the Accent Rule.** There is no chromatic primary. Emphasis comes from ink (`ink`) against paper, from weight, and from the pressed tint.
 
@@ -299,4 +288,4 @@ Flat rows divided by hairlines, with a 72px mono date column in Faint Ink. Hover
 - **Don't** add shadows to cards, rows, or panels at rest.
 - **Don't** use arbitrary radii (`[3px]`, `[2px]`, `[1.5px]`) or undefined tokens such as `rounded-card`. These exist today and are drift, not precedent.
 - **Don't** use off-scale type sizes such as the 17px h2 in the notepad. Map to the scale instead.
-- **Don't** use folder accents (`folder-*`) for status or for branding.
+- **Don't** give a project a color, an icon or an accent of its own. Projects are told apart by name; the Projects tab carries no per-project color.

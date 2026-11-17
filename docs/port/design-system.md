@@ -12,21 +12,21 @@ Rules live in `stack.md` (Design direction). This page is how to use what exists
 
 ## Strings
 
-`scripts/convert-strings.mjs` converts the WinUI `.resw` and Core `.resx` files to `i18n/locales/{en,es}.json`, keys untouched, placeholders (`{0}`, `{1:t}`) kept. `--check` fails when the JSON is stale (run in unit tests). New keys that have no WinUI equivalent go in `locales/ui.{en,es}.json` with a `Ui_` prefix. Use `useT()`; `t('Nav_Record.Content')`, `t('Download_ModelProgress', name, 40)`. Keys are typed.
+`scripts/convert-strings.mjs` converts the carried-over resource files to `i18n/locales/{en,es}.json`, keys untouched, placeholders (`{0}`, `{1:t}`) kept. `--check` fails when the JSON is stale (run in unit tests). New keys go in `locales/ui.{en,es}.json` with a `Ui_<Area><Name>` prefix (`Ui_ProjectsTitle`, `Ui_ProjectStartMeeting`), in both files with the same placeholders in the same order. Use `useT()`; `t('Nav_Record.Content')`, `t('Download_ModelProgress', name, 40)`. Keys are typed.
 
 ## Kit (`ui/`)
 
 Pure components: no IPC, no router, no i18n; text arrives as props. Containers live in `features/*`.
 
-Button (primary, secondary, quiet; no danger variant), IconButton (`label` is required and becomes the name and tooltip), Input, Textarea, Field (label, help, error), Select, Checkbox, Switch, RadioGroup, Tabs, Tooltip, Menu, ContextMenu, Dialog, ToastProvider and `useToast()`, Progress, Skeleton, Tree, Splitter, SectionHeader, SettingRow, EmptyState, Kbd, Badge, Mark. Icons: lucide through `Icon` only (1.5 stroke, decorative).
+Button (primary, secondary, quiet; no danger variant), IconButton (`label` is required and becomes the name and tooltip), Input, Textarea, Field (label, help, error), Select, Checkbox, Switch, RadioGroup, Tabs, Tooltip, Menu, ContextMenu, Dialog, ToastProvider and `useToast()`, Progress, Skeleton, Disclosure (native details and summary, 150 ms chevron), InlineText (text edited in place: Enter or blur saves, Escape cancels), Splitter, SectionHeader, SettingRow, EmptyState, Kbd, Badge, Mark. Icons: lucide through `Icon` only (1.5 stroke, decorative).
 
-Tree and Splitter are ours (Base UI has neither); their key handling is in `tree-navigation.ts` and `splitter-logic.ts`, unit tested.
+Splitter and Disclosure are ours (Base UI has neither); the splitter's key handling is in `splitter-logic.ts`, unit tested. `useMediaQuery` drives the project page layout (`data-layout` side or stacked at 960 px). There is no tree: the library has no nesting.
 
 Rules: errors are ink plus an icon and words, never red; `signal` appears only as the Badge `live` dot; every state that uses color also changes something else (border, weight, check) so forced-colors stays legible; Base UI popups are portaled, so do not rely on a parent theme scope.
 
 ## Shell and gallery
 
-`features/shell/AppShell.tsx`: sidebar (resizable with the Splitter, Mark, nav) and a 720 px document column. The top 40 px of both panes is the drag strip behind the native caption buttons. Routes are hash-routed (`app/router.tsx`). Record, Library and Settings are placeholders using real strings; the Record button is inert until the recording module lands.
+`features/shell/AppShell.tsx`: sidebar (resizable with the Splitter, Mark, nav) and a 720 px document column. The top 40 px of both panes is the drag strip behind the native caption buttons. Routes are hash-routed (`app/router.tsx`). The rail has Record, Projects, Library and Settings; `/projects`, `/projects/<id>` and `/projects/none` keep Projects selected, and Session keeps Library selected.
 
 `#/gallery` shows every component and has a theme switch. It redirects to Record in a packaged app.
 
