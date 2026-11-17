@@ -142,6 +142,7 @@ interface Options {
   liveDraft?: string | null;
   /** What the transcription module says of the last live draft; absent: the port has no answer. */
   draftIsFinal?: boolean;
+  liveSnapshot?: { digest: string | null; qa: { question: string; answer?: string }[] };
   providerReady?: boolean;
   fileTimeMs?: number | null;
   ownsMarkdown?: (meetingId: string, markdownPath: string) => boolean;
@@ -218,6 +219,14 @@ function build(options: Options = {}) {
         liveAskCalls.push('reset');
       },
       cancel: () => liveAskCalls.push('cancel'),
+      ...(options.liveSnapshot === undefined
+        ? {}
+        : {
+            snapshot: () => {
+              liveAskCalls.push('snapshot');
+              return options.liveSnapshot ?? { digest: null, qa: [] };
+            },
+          }),
       committed: (text) => liveAskCalls.push(`committed:${text}`),
     },
     takes,
@@ -274,6 +283,10 @@ function build(options: Options = {}) {
     defaultTitle: () => 'Meeting 3 Nov, 10:00',
     meetingTitle: () => Promise.resolve(savedTitle.value),
     youtube,
+    translate: (key) =>
+      ({ Ui_LiveQaHeading: 'Live Q&A', Ui_LiveQaQuestion: 'Question', Ui_LiveQaAnswer: 'Answer' })[
+        key
+      ] ?? key,
   });
   return {
     youtube,
@@ -663,6 +676,37 @@ describe('RecordingService live ask hooks (127)', () => {
     await d.service.start(sources);
     await d.service.discard();
     expect(d.liveAskCalls).toEqual(['reset', 'cancel']);
+  });
+});
+
+describe('RecordingService live take output', () => {
+  it('snapshots the digest and Q&A before the live ask is cancelled and hands them to the pipeline', async () => {
+    const t = build({
+      liveSnapshot: { digest: 'A digest.', qa: [{ question: 'Why?', answer: 'Because.' }] },
+    });
+    await t.service.start(sources);
+    await t.service.stop();
+    await t.service.completion;
+    expect(t.liveAskCalls).toEqual(['reset', 'snapshot', 'cancel']);
+    const notes = t.store.saves.at(-1)?.notes ?? '';
+    expect(notes).toContain('## Live Q&A');
+    expect(notes).toContain('**Question:** Why?');
+    expect(notes).toContain('**Answer:** Because.');
+  });
+
+  it('adds nothing when the take had no digest and no Q&A', async () => {
+    const t = build({ liveSnapshot: { digest: null, qa: [] } });
+    await t.service.start(sources);
+    await t.service.stop();
+    await t.service.completion;
+    expect(t.store.saves.at(-1)?.notes ?? null).toBeNull();
+  });
+
+  it('does not snapshot on discard', async () => {
+    const t = build({ liveSnapshot: { digest: 'A digest.', qa: [] } });
+    await t.service.start(sources);
+    await t.service.discard();
+    expect(t.liveAskCalls).toEqual(['reset', 'cancel']);
   });
 });
 

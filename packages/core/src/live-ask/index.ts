@@ -5,3 +5,4 @@ export * from './web-policy';
 export * from './live-questions';
 export * from './question-detector';
 export * from './rolling-digest';
+export * from './live-take-output';

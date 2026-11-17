@@ -24,6 +24,14 @@ export interface ProcessedContent {
 const trimmedOrNull = (text: string | null | undefined): string | null =>
   isBlankText(text) ? null : (text ?? '').trim();
 
+/** Appends the live Q&A block once: a later save over the same notes does not repeat it. */
+function withLiveQa(notes: string | null, block: string | null | undefined): string | null {
+  const text = trimmedOrNull(block);
+  if (text === null) return notes;
+  if (notes === null) return text;
+  return notes.includes(text) ? notes : `${notes}\n\n${text}`;
+}
+
 const roundTrip = (ms: number): string =>
   formatOffsetDate(offsetDateFromInstant(new Date(ms)), 'round-trip');
 
@@ -72,7 +80,10 @@ export function buildProcessedRecord(
     summary: content.summary,
     actionItems: content.actionItems,
     jevAnalysis: base?.jevAnalysis ?? null,
-    notes: trimmedOrNull(content.sessionNotes) ?? base?.notes ?? null,
+    notes: withLiveQa(
+      trimmedOrNull(content.sessionNotes) ?? base?.notes ?? null,
+      request.liveTake?.notesBlock,
+    ),
     followUp: base?.followUp ?? null,
     projectPlan: base?.projectPlan ?? null,
   };

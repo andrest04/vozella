@@ -97,6 +97,31 @@ describe('LiveAskSession', () => {
     expect(t.published[0]).toMatchObject({ isAnswering: true, text: '' });
   });
 
+  it('keeps the typed asks with their answers until the next take', async () => {
+    const t = setup({
+      chunks: async function* () {
+        yield ' Because. ';
+      },
+    });
+    await t.session.ask('  Why?  ');
+    await t.session.askPreset('What did I miss?');
+    expect(t.session.exchanges).toEqual([{ question: 'Why?', answer: 'Because.' }]);
+    t.session.cancel();
+    expect(t.session.exchanges).toHaveLength(1);
+    t.session.reset();
+    expect(t.session.exchanges).toEqual([]);
+  });
+
+  it('keeps no exchange for an empty or failed answer', async () => {
+    const t = setup({
+      chunks: async function* () {
+        yield '  ';
+      },
+    });
+    await t.session.ask('Why?');
+    expect(t.session.exchanges).toEqual([]);
+  });
+
   it('publishes nothing until visible text, then trimStart first and at most every 80 ms', async () => {
     const t = setup({
       chunks: async function* () {

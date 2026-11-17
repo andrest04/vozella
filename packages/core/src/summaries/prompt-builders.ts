@@ -48,8 +48,15 @@ const isEnglish = (code: string | null | undefined): boolean =>
 const contentKey = (code: string | null | undefined): 'en' | 'es' =>
   isEnglish(code) ? 'en' : 'es';
 
+/** What the live pass of the take produced: the rolling digest and the questions with answers. */
+export interface LiveContextInput {
+  readonly digest: string | null;
+  readonly qa: readonly { readonly question: string; readonly answer?: string }[];
+}
+
 export interface SummaryEnhancementInput {
   readonly rawNotes?: string | null;
+  readonly liveContext?: LiveContextInput | null;
   readonly attendees?: readonly string[] | null;
   readonly agenda?: string | null;
   readonly templateInstructions?: string | null;
@@ -57,10 +64,13 @@ export interface SummaryEnhancementInput {
 
 export interface SummaryEnhancementContext {
   readonly rawNotes: string | null;
+  readonly liveDigest: string | null;
+  readonly liveQa: LiveContextInput['qa'];
   readonly attendees: readonly string[];
   readonly agenda: string | null;
   readonly templateInstructions: string | null;
   readonly hasRawNotes: boolean;
+  readonly hasLiveContext: boolean;
   readonly hasAttendees: boolean;
   readonly hasAgenda: boolean;
   readonly hasTemplateInstructions: boolean;
@@ -75,19 +85,27 @@ export function createEnhancementContext(
 ): SummaryEnhancementContext {
   const attendees = input.attendees ?? [];
   const hasRawNotes = !isBlank(input.rawNotes);
+  const liveDigest = isBlank(input.liveContext?.digest)
+    ? null
+    : (input.liveContext?.digest ?? null);
+  const liveQa = (input.liveContext?.qa ?? []).filter((entry) => !isBlank(entry.question));
+  const hasLiveContext = liveDigest !== null || liveQa.length > 0;
   const hasAttendees = attendees.some((name) => !isBlank(name));
   const hasAgenda = !isBlank(input.agenda);
   const hasTemplateInstructions = !isBlank(input.templateInstructions);
   return {
     rawNotes: input.rawNotes ?? null,
+    liveDigest,
+    liveQa,
     attendees,
     agenda: input.agenda ?? null,
     templateInstructions: input.templateInstructions ?? null,
     hasRawNotes,
+    hasLiveContext,
     hasAttendees,
     hasAgenda,
     hasTemplateInstructions,
-    hasAny: hasRawNotes || hasAttendees || hasAgenda || hasTemplateInstructions,
+    hasAny: hasRawNotes || hasLiveContext || hasAttendees || hasAgenda || hasTemplateInstructions,
   };
 }
 
@@ -186,12 +204,15 @@ function enhancementRules(enhancement: SummaryEnhancementContext): string {
   const rawNotesRule = enhancement.hasRawNotes
     ? '\n- Treat the raw notes as important. Include those points. Fix typos. Fill structure from the transcript.'
     : '';
+  const liveRule = enhancement.hasLiveContext
+    ? '\n- Use <live_digest> and <live_qa> as extra context only. They come from the live session while recording; the transcript stays the source of truth.'
+    : '';
   const templateRule = enhancement.hasTemplateInstructions
     ? '\n- <template_instructions> sets the Summary body structure: it replaces the inferred ### sections. The three ## headings still apply.'
     : '';
   return `Extra rules for the supplied context:
 - Do not invent attendees, dates, quotes, or tasks that are not in the transcript or the supplied context.
-- Still emit exactly "## Title", "## Summary", and "## Action Items" in that order, and nothing else.${rawNotesRule}${templateRule}`;
+- Still emit exactly "## Title", "## Summary", and "## Action Items" in that order, and nothing else.${rawNotesRule}${liveRule}${templateRule}`;
 }
 
 /** Each block is a newline, the open tag, the value, the close tag, each on its own line. */
@@ -200,6 +221,15 @@ function enhancementBlocks(enhancement: SummaryEnhancementContext): string {
     `\n<${tag}>\n${lf(value.trim())}\n</${tag}>\n`;
   let blocks = '';
   if (enhancement.hasRawNotes) blocks += block('raw_notes', enhancement.rawNotes ?? '');
+  if (enhancement.liveDigest !== null) blocks += block('live_digest', enhancement.liveDigest);
+  if (enhancement.liveQa.length > 0) {
+    const pairs = enhancement.liveQa.map((entry) =>
+      entry.answer === undefined || isBlank(entry.answer)
+        ? `Q: ${entry.question.trim()}`
+        : `Q: ${entry.question.trim()}\nA: ${entry.answer.trim()}`,
+    );
+    blocks += block('live_qa', pairs.join('\n\n'));
+  }
   if (enhancement.hasAttendees) {
     const names = enhancement.attendees
       .filter((name) => !isBlank(name))

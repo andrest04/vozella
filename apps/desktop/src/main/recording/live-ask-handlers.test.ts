@@ -10,7 +10,11 @@ const event = { sender: { id: 1 }, senderFrame: { url: 'vozella://app/index.html
 function setup(
   recording = true,
   provider: string | null = 'Codex',
-  extra: { now?: () => number; localModelLoaded?: () => boolean } = {},
+  extra: {
+    now?: () => number;
+    localModelLoaded?: () => boolean;
+    liveQuestions?: string | null;
+  } = {},
 ) {
   const handlers = new Map<string, (event: never, ...args: unknown[]) => unknown>();
   const ipc: IpcMainLike = { handle: (name, listener) => void handlers.set(name, listener) };
@@ -20,7 +24,11 @@ function setup(
   const liveAsk = new LiveAsk({
     settings: {
       load: () =>
-        Promise.resolve({ selectedSummaryProvider: provider, summaryLanguage: 'en' } as never),
+        Promise.resolve({
+          selectedSummaryProvider: provider,
+          summaryLanguage: 'en',
+          ...(extra.liveQuestions === undefined ? {} : { liveQuestions: extra.liveQuestions }),
+        } as never),
     },
     resolver: {
       resolveSummaryProvider: (request) => {
@@ -316,6 +324,55 @@ describe('live question detection', () => {
     t.liveAsk.hooks.committed(line(0, QUESTION));
     await flush();
     expect(t.on('recording.questionDetected')).toEqual([]);
+  });
+});
+
+describe('live take snapshot', () => {
+  const QUESTION = '¿Cuál es el tercer principio del manifesto ágil?';
+  const line = `[00:00.00-00:04.00] ${QUESTION}`;
+
+  it('hands over the digest-less Q&A of the take before it resets', async () => {
+    const t = setup(true, 'Codex', {});
+    expect(t.liveAsk.snapshot()).toEqual({ digest: null, qa: [] });
+    await t.call('recording.ask', { question: 'Why?', webSearch: false });
+    await settle();
+    await settle();
+    expect(t.liveAsk.snapshot().qa).toEqual([{ question: 'Why?', answer: 'Because it does.' }]);
+    t.liveAsk.hooks.cancel();
+    expect(t.liveAsk.snapshot().qa).toEqual([{ question: 'Why?', answer: 'Because it does.' }]);
+    t.liveAsk.hooks.reset();
+    expect(t.liveAsk.snapshot().qa).toEqual([]);
+  });
+
+  it('keeps a surfaced question that nobody answered', async () => {
+    const t = setup(true, 'Codex', {});
+    t.liveAsk.hooks.committed(line);
+    for (let i = 0; i < 5; i += 1) await settle();
+    expect(t.liveAsk.snapshot().qa).toEqual([{ question: QUESTION }]);
+    t.liveAsk.hooks.cancel();
+    expect(t.liveAsk.snapshot().qa).toEqual([]);
+  });
+});
+
+describe('question check never loads the local model', () => {
+  const QUESTION = '¿Cuál es el tercer principio del manifesto ágil?';
+  const line = `[00:00.00-00:04.00] ${QUESTION}`;
+
+  it('Local engine, model not loaded: the engine is not asked and the rules result stands', async () => {
+    const t = setup(true, 'Local', { localModelLoaded: () => false, liveQuestions: 'rules+ai' });
+    t.liveAsk.hooks.committed(line);
+    for (let i = 0; i < 6; i += 1) await settle();
+    expect(t.prompts).toEqual([]);
+    const cards = t.sent.filter((s) => s.channel === 'recording.questionDetected');
+    expect(cards.length).toBeGreaterThan(0);
+    expect(t.sent.some((s) => s.channel === 'recording.questionWithdrawn')).toBe(false);
+  });
+
+  it('Local engine, model loaded: the check runs', async () => {
+    const t = setup(true, 'Local', { localModelLoaded: () => true, liveQuestions: 'rules+ai' });
+    t.liveAsk.hooks.committed(line);
+    for (let i = 0; i < 6; i += 1) await settle();
+    expect(t.prompts).toHaveLength(1);
   });
 });
 

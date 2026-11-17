@@ -14,12 +14,14 @@ import {
   LiveAskSession,
   LiveQuestionTracker,
   RollingDigest,
+  buildLiveQa,
   liveAnswerLanguageName,
   resolveLiveQuestionsMode,
   resolveSummaryLanguage,
   parseSummaryProvider,
   type CancelSignal,
   type DigestEngine,
+  type LiveTakeOutput,
   type SettingsStore,
   type SummaryProviderResolver,
 } from '@vozella/core';
@@ -112,7 +114,7 @@ export class LiveAsk {
     });
     this.questions = new LiveQuestionTracker({
       mode: async () => resolveLiveQuestionsMode(await deps.settings.load()),
-      confirm: (prompt, cancel) => this.complete(prompt, cancel),
+      confirm: (prompt, cancel) => this.confirmQuestion(prompt, cancel),
       detected: (event) => {
         deps.broadcast(recordingQuestionDetected, event);
       },
@@ -140,6 +142,32 @@ export class LiveAsk {
         : null;
     }
     return { language, maxInputChars: DIGEST_INPUT_CLI_CHARS };
+  }
+
+  /**
+   * The question check: like the digest, it never loads the local model mid-take. A refusal
+   * rejects, so the tracker keeps the rules result.
+   */
+  private async confirmQuestion(prompt: string, cancel: CancelSignal): Promise<string> {
+    const settings = await this.deps.settings.load();
+    if (
+      parseSummaryProvider(settings.selectedSummaryProvider) === 'Local' &&
+      this.deps.localModelLoaded?.() !== true
+    ) {
+      throw new Error('local model not loaded');
+    }
+    return this.complete(prompt, cancel);
+  }
+
+  /**
+   * What the take produced so far: the rolling digest and the questions with their answers. The
+   * recording service reads it at Stop, before `hooks.cancel` clears the live state.
+   */
+  snapshot(): LiveTakeOutput {
+    return {
+      digest: this.digest.current,
+      qa: buildLiveQa(this.questions.history(), this.session.exchanges),
+    };
   }
 
   /** The live chat's extra context: the digest and the session context, read at send start. */
@@ -182,6 +210,7 @@ export class LiveAsk {
       this.questions.reset();
       this.digest.reset();
     },
+    snapshot: () => this.snapshot(),
     committed: (text) => {
       this.committedText = text;
       this.questions.committed(text);

@@ -16,7 +16,7 @@ import { withResolvedDeadlines } from './deadline-resolver';
 import { applySummaryPatch } from './meeting-patch';
 import { rememberedNextSessionDate } from './next-session';
 import { PatchQueue } from './patch-queue';
-import { createEnhancementContext } from './prompt-builders';
+import { createEnhancementContext, type LiveContextInput } from './prompt-builders';
 import { isCancellation, type ProviderId } from './provider';
 import type { SetupKind, SetupReason, SummaryProviderResolver } from './provider-resolver';
 import {
@@ -48,6 +48,8 @@ export interface GenerateRequest {
    * live session notes). When undefined the stored notes are used.
    */
   readonly rawNotes?: string | null;
+  /** The digest and Q&A the live pass of the take produced, as extra context for the prompt. */
+  readonly liveContext?: LiveContextInput | null;
   /** The template text for the prompt. When undefined it is resolved from the template id. */
   readonly templateInstructions?: string | null;
 }
@@ -184,6 +186,7 @@ export class SummaryService {
     const requested = request.templateId === undefined ? record.noteTemplateId : request.templateId;
     const enhancement = createEnhancementContext({
       rawNotes: request.rawNotes === undefined ? record.notes : request.rawNotes,
+      liveContext: request.liveContext ?? null,
       attendees: record.attendees,
       agenda: request.agenda ?? null,
       templateInstructions:

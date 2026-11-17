@@ -97,6 +97,9 @@ export class SummaryStage {
         templateId: request.noteTemplateId ?? null,
         agenda: request.agenda ?? null,
         rawNotes: host.currentSessionNotes,
+        ...(request.liveTake === undefined
+          ? {}
+          : { liveContext: { digest: request.liveTake.digest, qa: request.liveTake.qa } }),
         ...(request.templateInstructions === undefined
           ? {}
           : { templateInstructions: request.templateInstructions }),

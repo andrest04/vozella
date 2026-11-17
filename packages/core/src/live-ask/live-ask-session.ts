@@ -69,6 +69,15 @@ export type LiveAskScope = 'recent' | 'overview';
 const budgetFor = (kind: SummaryProviderKind): ContextBudget =>
   kind === 'Local' ? LOCAL_CONTEXT_BUDGET : CLI_CONTEXT_BUDGET;
 
+/** A typed ask of the take with the answer it got. */
+export interface LiveAskExchange {
+  readonly question: string;
+  readonly answer: string;
+}
+
+/** The take keeps this many exchanges; the oldest go first. */
+export const LIVE_ASK_HISTORY_MAX = 50;
+
 const hasVisible = (text: string): boolean => text.trim() !== '';
 
 const IDLE = { isAnswering: false, text: '', error: null, usedWeb: false } as const;
@@ -82,6 +91,7 @@ export class LiveAskSession {
   private source: CancelSource | null = null;
   private forceWeb = false;
   private state: LiveAnswerState = { ...IDLE, canUseWebSearch: false };
+  private asked: LiveAskExchange[] = [];
 
   constructor(private readonly deps: LiveAskDeps) {}
 
@@ -92,6 +102,11 @@ export class LiveAskSession {
   /** The toggle. It is not reset between takes (114). */
   setForceWebSearch(value: boolean): void {
     this.forceWeb = value;
+  }
+
+  /** The typed asks of this take that got an answer, oldest first. Stop keeps them; a new take clears them. */
+  get exchanges(): readonly LiveAskExchange[] {
+    return this.asked;
   }
 
   get forceWebSearch(): boolean {
@@ -152,6 +167,8 @@ export class LiveAskSession {
         return;
       }
       this.set({ ...this.state, isAnswering: false, text: answer, error: null, usedWeb: useWeb });
+      // The chips are fixed prompts, not the user's questions: only typed asks are kept.
+      if (scope === 'recent') this.remember({ question: text, answer });
     } catch (error) {
       if (stale() || isCancellation(error)) return;
       this.set({
@@ -183,6 +200,7 @@ export class LiveAskSession {
   /** A new take: any answer goes, the web toggle stays (127, 114). */
   reset(): void {
     this.begin();
+    this.asked = [];
     this.set({ ...IDLE, canUseWebSearch: this.state.canUseWebSearch });
     // The toggle must know the provider before the first ask.
     void this.refreshWebSupport();
@@ -206,6 +224,10 @@ export class LiveAskSession {
   /** Sends the current state again, for a window that opened after the last change. */
   republish(): void {
     this.deps.publish(this.state);
+  }
+
+  private remember(exchange: LiveAskExchange): void {
+    this.asked = [...this.asked, exchange].slice(-LIVE_ASK_HISTORY_MAX);
   }
 
   private begin(): number {

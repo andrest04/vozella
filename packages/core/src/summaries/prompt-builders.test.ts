@@ -362,6 +362,39 @@ call Ana
   });
 });
 
+describe('live take context', () => {
+  const live = {
+    digest: ' The team agreed on the budget. ',
+    qa: [{ question: 'What is the deadline?', answer: 'Friday.' }, { question: 'Who owns it?' }],
+  };
+
+  it('is not a context on its own when it has nothing', () => {
+    const ctx = createEnhancementContext({ liveContext: { digest: ' ', qa: [] } });
+    expect(ctx.hasAny).toBe(false);
+    expect(base({ enhancement: ctx })).toBe(SUMMARY_EN);
+  });
+
+  it('adds a labelled digest block and a labelled Q&A block next to the raw notes', () => {
+    const text = base({
+      enhancement: createEnhancementContext({ rawNotes: 'n', liveContext: live }),
+    });
+    expect(text).toContain('<live_digest>\nThe team agreed on the budget.\n</live_digest>');
+    expect(text).toContain(
+      '<live_qa>\nQ: What is the deadline?\nA: Friday.\n\nQ: Who owns it?\n</live_qa>',
+    );
+    expect(text.indexOf('<raw_notes>\n')).toBeLessThan(text.indexOf('<live_digest>\n'));
+    expect(text).toContain('Use <live_digest> and <live_qa> as extra context only');
+  });
+
+  it('omits a block that is empty', () => {
+    const text = base({
+      enhancement: createEnhancementContext({ liveContext: { digest: null, qa: live.qa } }),
+    });
+    expect(text).not.toContain('<live_digest>\n');
+    expect(text).toContain('<live_qa>\n');
+  });
+});
+
 describe('map-reduce prompts', () => {
   it('buildPartPrompt matches spec 3.5', () => {
     expect(buildPartPrompt('PART', 2, 5, 'English'))

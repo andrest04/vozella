@@ -172,6 +172,64 @@ describe('summary stage: notes and enhancement (134, 143)', () => {
     expect(h.seen[0]?.enhancement?.rawNotes).toBe('late notes');
   });
 
+  it('passes the live digest and Q&A of the take to the generator as context', async () => {
+    const h = harness();
+    await h.pipeline.run(
+      makeRequest({
+        liveTake: {
+          digest: 'They agreed on the budget.',
+          qa: [{ question: 'When?', answer: 'Friday.' }],
+          notesBlock: null,
+        },
+      }),
+      h.host,
+      h.cancel,
+    );
+    expect(h.seen[0]?.enhancement).toMatchObject({
+      liveDigest: 'They agreed on the budget.',
+      liveQa: [{ question: 'When?', answer: 'Friday.' }],
+      hasLiveContext: true,
+    });
+  });
+
+  it('sends no live context when the take had none', async () => {
+    const h = harness();
+    await h.pipeline.run(makeRequest(), h.host, h.cancel);
+    expect(h.seen[0]?.enhancement?.hasLiveContext ?? false).toBe(false);
+  });
+
+  it('saves the Q&A block with the meeting notes once, however many times it saves', async () => {
+    const h = harness();
+    h.host.currentSessionNotes = 'my notes';
+    await h.pipeline.run(
+      makeRequest({
+        liveTake: {
+          digest: null,
+          qa: [{ question: 'When?' }],
+          notesBlock: '## Live Q&A\n\n**Q:** When?',
+        },
+      }),
+      h.host,
+      h.cancel,
+    );
+    expect(h.store.records.get(TEST_MEETING_ID)?.notes).toBe(
+      'my notes\n\n## Live Q&A\n\n**Q:** When?',
+    );
+  });
+
+  it('saves the Q&A block alone when there are no notes', async () => {
+    const h = harness();
+    h.host.currentSessionNotes = '';
+    await h.pipeline.run(
+      makeRequest({
+        liveTake: { digest: null, qa: [{ question: 'When?' }], notesBlock: '## Live Q&A' },
+      }),
+      h.host,
+      h.cancel,
+    );
+    expect(h.store.records.get(TEST_MEETING_ID)?.notes).toBe('## Live Q&A');
+  });
+
   it('adds attendees, agenda and template text, and sends none when all are blank', async () => {
     const full = harness();
     await full.pipeline.run(

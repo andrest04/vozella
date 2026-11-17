@@ -17,10 +17,13 @@ import {
   RecordingRuns,
   RecordingSessionGate,
   decideRecordingHandoff,
+  formatLiveQaNotes,
+  hasLiveTakeOutput,
   recordingStatusText,
   startFailureMessage,
   type CaptureNotice,
   type Logger,
+  type LiveTakeOutput,
   type Message,
   type PipelineOutcome,
   type PipelineRequest,
@@ -30,6 +33,7 @@ import {
   type RecordingSetupPorts,
   type Schedule,
   type SettingsStore,
+  type TranslateFn,
   type Workspace,
 } from '@vozella/core';
 import type { PreviewOwner } from '../audio/audio-controller';
@@ -110,6 +114,11 @@ export interface LiveAskHooks {
   reset(): void;
   /** Stop or Discard: any running answer ends silently. */
   cancel(): void;
+  /**
+   * What the take produced so far (digest, questions and answers). Read at Stop before `cancel`
+   * clears it; never read on Discard.
+   */
+  snapshot?(): LiveTakeOutput;
   committed(text: string): void;
 }
 
@@ -117,6 +126,8 @@ export interface RecordingServiceDeps {
   /** The start handoff (182): called once on the false to true change of `isRecording`. */
   readonly onRecordingStarted?: () => void;
   readonly liveAsk?: LiveAskHooks;
+  /** Writes the "Live Q&A" block saved with the notes. Without it the Q&A is not saved there. */
+  readonly translate?: TranslateFn;
   readonly takes: CapturePort;
   readonly controller: ControllerPort;
   readonly library: LibraryPort;
@@ -646,6 +657,8 @@ export class RecordingService {
   private async runStop(): Promise<boolean> {
     const { deps } = this;
     const take = this.take;
+    // Before cancel: it clears the digest and the questions of the take.
+    const liveOutput = deps.liveAsk?.snapshot?.() ?? null;
     deps.liveAsk?.cancel();
     this.offNotices?.();
     this.offNotices = null;
@@ -693,6 +706,9 @@ export class RecordingService {
         pausedDurationMs: Math.round(outcome.pausedSeconds * 1000),
         folderId: folder,
         highlightsMs: highlights,
+        ...(liveOutput !== null && hasLiveTakeOutput(liveOutput)
+          ? { liveTake: this.liveTake(liveOutput) }
+          : {}),
       };
       void this.runPipeline(run, request, this.notes);
       return true;
@@ -704,6 +720,11 @@ export class RecordingService {
       this.publish();
       return false;
     }
+  }
+
+  private liveTake(output: LiveTakeOutput): NonNullable<PipelineRequest['liveTake']> {
+    const block = this.deps.translate ? formatLiveQaNotes(output.qa, this.deps.translate) : '';
+    return { digest: output.digest, qa: output.qa, notesBlock: block === '' ? null : block };
   }
 
   private async runPipeline(
