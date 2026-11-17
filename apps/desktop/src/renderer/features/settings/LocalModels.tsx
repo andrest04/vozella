@@ -15,8 +15,8 @@ import {
 } from '../../ui';
 
 /**
- * The local summary models, in catalog order: which one is active, and download, cancel and delete
- *. One row is badged "Recommended for your PC"; it drops its "runs well" label, which the
+ * The local summary models, in catalog order: which one is active, and download, cancel and delete.
+ * One row is badged "Recommended for your PC"; it drops its "runs well" label, which the
  * badge implies. A legacy model (left the catalog, still on disk) says so and can be deleted. A
  * model can be chosen only once its file is on this PC, and its row says so. Deleting asks
  * nothing, as the page always did; a running download can be cancelled.

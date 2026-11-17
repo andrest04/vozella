@@ -50,6 +50,9 @@ const BANNED = new RegExp(
     ['c', 'sharp'].join(''),
     ['one', 'drive'].join(''),
     ['docs', '/', 'port'].join(''),
+    ['old', ' app'].join(''),
+    ['original', ' app'].join(''),
+    ['\\b', 'port', ' of'].join(''),
   ].join('|'),
   'i',
 );

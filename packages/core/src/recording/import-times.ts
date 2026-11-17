@@ -4,7 +4,7 @@ export interface ImportTimes {
 }
 
 /**
- * The meeting times of an imported file . The file's last-write time is when the recording ended, so it is not
+ * The meeting times of an imported file. The file's last-write time is when the recording ended, so it is not
  * used as the start (a voice memo would land after its real end): the file time is the end and the start is derived.
  * A time that is missing or unreadable means "now", also read as the end.
  */

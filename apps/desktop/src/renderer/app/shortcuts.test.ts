@@ -17,7 +17,7 @@ const key = (init: Partial<KeyLike> & { key: string }): KeyLike => ({
   ...init,
 });
 
-describe('shortcut table ', () => {
+describe('shortcut table', () => {
   it('lists every chord once, with its scope', () => {
     expect(
       Object.entries(SHORTCUTS).map(([id, s]) => [id, s.scope, chordLabel(id as never)]),

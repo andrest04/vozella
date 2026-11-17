@@ -3,7 +3,7 @@ const MEET_CODE = /\b[a-z]{3}-[a-z]{4}-[a-z]{3}\b/i;
 // Word boundaries: "Calls | Microsoft Teams" is not a call, "Call with Ana" is.
 const TEAMS_CALL = /\b(?:meeting|call)\b/i;
 
-/** Pure port of MeetingCallDetector.IsMeeting. */
+/** Decides whether a process or window title looks like a meeting call. */
 export function isMeeting(processName: string, windowTitle: string): boolean {
   const proc = processName.trim().toLowerCase();
   if (proc === '') return false;

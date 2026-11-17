@@ -1,5 +1,5 @@
 /**
- * The live answer prompt . The Live Copilot module
+ * The live answer prompt. The Live Copilot module
  * imports this same code. With web search off the text never contains the word "web".
  */
 

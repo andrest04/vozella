@@ -4,10 +4,10 @@ import { Meter } from '../../ui';
 
 /**
  * The level of the take being recorded, 96 px wide, on the same dB scale as every other meter:
- * the audio worker applies `toMeterPercent` to both the idle preview and the recording level
- *. It is zero while paused and when the take ends.
+ * the audio worker applies `toMeterPercent` to both the idle preview and the recording level.
+ * It is zero while paused and when the take ends.
  *
- * the capture engine meters the microphone only, so this is the microphone level and is
+ * The capture engine meters the microphone only, so this is the microphone level and is
  * named that way. The session bar mounts it only when the take records a microphone.
  */
 export function RecordingLevel({ paused }: { readonly paused: boolean }) {

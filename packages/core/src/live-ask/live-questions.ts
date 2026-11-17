@@ -113,7 +113,7 @@ interface Card extends LiveQuestionEvent {
 }
 
 /**
- * The live questions of one take . Rules find a question in
+ * The live questions of one take. Rules find a question in
  * newly committed lines; the card shows at once. With `rules+ai` the engine then says yes or no:
  * no withdraws the card, yes or any failure leaves it. A newer question, a dismissal or a new take
  * cancels a running check. Every shown question goes into the seen set, so a dismissed one never

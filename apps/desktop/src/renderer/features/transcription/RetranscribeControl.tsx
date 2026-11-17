@@ -37,8 +37,8 @@ function resultMessage(
 
 /**
  * The Re-transcribe button of the session header: drawn only when the meeting has saved
- * audio, enabled only when `canRetranscribe` says so, with a line that says why when it is greyed
- *. A click asks again before the confirmation, and the confirmation names the meeting.
+ * audio, enabled only when `canRetranscribe` says so, with a line that says why when it is greyed.
+ * A click asks again before the confirmation, and the confirmation names the meeting.
  */
 export function RetranscribeButton({
   model,

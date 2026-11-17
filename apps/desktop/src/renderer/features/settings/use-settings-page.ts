@@ -69,8 +69,8 @@ export interface SettingsPageModel {
 }
 
 /**
- * The last snapshot, kept so a revisit paints it at once and refreshes without the skeleton
- *. Only the first visit shows the loading state.
+ * The last snapshot, kept so a revisit paints it at once and refreshes without the skeleton.
+ * Only the first visit shows the loading state.
  */
 let lastPage: SettingsPageDto | null = null;
 

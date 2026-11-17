@@ -13,8 +13,8 @@ export interface RecoveryReport {
 }
 
 /**
- * Finds recordings a crash or a kill left with an unwritten header and repairs them
- *. A consistent file is never touched. Runs at startup, off the
+ * Finds recordings a crash or a kill left with an unwritten header and repairs them.
+ * A consistent file is never touched. Runs at startup, off the
  * hot path: it yields between files so the app stays responsive in a large library.
  */
 export async function recoverCrashedRecordings(

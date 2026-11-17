@@ -75,8 +75,8 @@ const frameMs = (frame: Frame): number =>
 
 /**
  * Live recognition while recording. `pushFrame` only queues; one loop feeds the engine, so a slow
- * backend drops the oldest audio instead of slowing the recording. Start and Stop are serialized
- *. The stream is closed without `finish`.
+ * backend drops the oldest audio instead of slowing the recording. Start and Stop are serialized.
+ * The stream is closed without `finish`.
  */
 export class LiveTranscriptionService {
   private session: Session | null = null;
