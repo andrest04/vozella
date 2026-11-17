@@ -1,4 +1,7 @@
 import { CancelSource, CancelledError, CliToolError } from '@vozella/core';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   FAKE_SUMMARY_REPLY,
@@ -50,7 +53,52 @@ describe('FakeSummaryProvider', () => {
     expect(Date.now() - started).toBeLessThan(2_000);
   });
 
+  it('appends the summary prompt it was given to a log file on request', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fake-summary-'));
+    try {
+      const promptLogFile = path.join(dir, 'summary-prompts.log');
+      const provider = new FakeSummaryProvider('local', {
+        delayMs: 0,
+        failWith: null,
+        promptLogFile,
+      });
+      await provider.summarize(
+        {
+          ...(request as object),
+          recordedAt: { ms: 0, offsetMinutes: 0, fraction: '0000000' },
+          enhancement: {
+            rawNotes: null,
+            liveDigest: null,
+            liveQa: [],
+            projectInstructions: 'Be brief.',
+            projectFiles: null,
+            priorOpenItems: null,
+            attendees: [],
+            agenda: null,
+            templateInstructions: null,
+            hasRawNotes: false,
+            hasLiveContext: false,
+            hasProjectInstructions: true,
+            hasProjectFiles: false,
+            hasPriorOpenItems: false,
+            hasAttendees: false,
+            hasAgenda: false,
+            hasTemplateInstructions: false,
+            hasAny: true,
+          },
+        } as never,
+        new CancelSource().signal,
+      );
+      expect(fs.readFileSync(promptLogFile, 'utf8')).toContain('<project_instructions>');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('reads its options from the environment', () => {
+    expect(fakeSummaryOptionsFromEnv({ VOZELLA_FAKE_SUMMARY_PROMPT_LOG: 'p.log' })).toMatchObject({
+      promptLogFile: 'p.log',
+    });
     expect(fakeSummaryOptionsFromEnv({})).toEqual({ delayMs: 0, failWith: null });
     expect(
       fakeSummaryOptionsFromEnv({

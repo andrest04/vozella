@@ -100,8 +100,8 @@ describe('scopeRecipes (merge with built-ins)', () => {
     expect(list[2]?.owner).toBeUndefined();
   });
 
-  it('a folder or all meetings take the multiple-meeting prompts; Live takes the single ones', () => {
-    expect(scopeRecipes('Folder', names, mine)[0]?.id).toBe('p2');
+  it('a project or all meetings take the multiple-meeting prompts; Live takes the single ones', () => {
+    expect(scopeRecipes('Project', names, mine)[0]?.id).toBe('p2');
     expect(scopeRecipes('AllMeetings', names, mine).filter((r) => r.owner === 'user')).toHaveLength(
       1,
     );
@@ -132,9 +132,9 @@ describe('scopeStarters (chips)', () => {
   });
 
   it('one user prompt leaves three built-ins; none leaves the built-in four', () => {
-    const builtIns = recipesForScope('Folder', names);
+    const builtIns = recipesForScope('Project', names);
     expect(
-      scopeStarters('Folder', names, [prompt(9, { availability: 'multiple' })]).map((r) => r.id),
+      scopeStarters('Project', names, [prompt(9, { availability: 'multiple' })]).map((r) => r.id),
     ).toEqual(['p9', ...builtIns.slice(0, 3).map((r) => r.id)]);
     expect(scopeStarters('Meeting', names, [])).toEqual(
       recipesForScope('Meeting', names).slice(0, 4),

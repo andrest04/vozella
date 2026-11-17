@@ -11,7 +11,7 @@ vi.mock('../ai-provider/ProviderGateDialogs', () => ({ ProviderGateDialogs: () =
 
 type Listener = (payload: unknown) => void;
 
-const MEETING = { isVisible: true, kind: 'Meeting', folderId: null, meetingId: 'm1' } as const;
+const MEETING = { isVisible: true, kind: 'Meeting', projectId: null, meetingId: 'm1' } as const;
 
 const chip = (over: Partial<ChatAttachmentDto> = {}): ChatAttachmentDto => ({
   id: 'att-1',
@@ -32,6 +32,8 @@ const stateOf = (attachments: ChatAttachmentDto[] = []): ChatStateDto => ({
   hasMessages: false,
   canStartNewChat: true,
   attachments,
+  threadId: null,
+  historySaved: true,
 });
 
 interface Rig {

@@ -1,5 +1,7 @@
 # Spec: library-storage
 
+> **Status: partly superseded by `docs/design/projects.md`.** The nested folder tree, `folders.json`, the folder personality catalogs, the three startup migrations and the folder actions described below no longer exist: a library holds flat projects stored under `<Library>/.vozella` (versioned, with forward migrations), and an old folder list is migrated once by step `001-folders-to-projects`. Sections marked *superseded* are kept as history of the first port. The meeting Markdown (sections 3.3 to 3.9 and 4.1), `settings.json` and the busy rules still apply, with these changes: meeting files and `settings.json` are written as plain UTF-8 with LF, no escaping, and dates with millisecond precision (`2026-09-01T12:00:00.000-05:00`); the readers still accept a BOM, CRLF, any key case, numbers written as text and dates with up to seven fraction digits.
+
 Module scope: where meetings, folders, and settings live on disk; how they are read and written; the one-time migrations; and the Library page (folder tree, meeting list, folder actions) plus the Settings "Data" section and the app-lifetime `WorkspaceService`.
 
 Source of truth is the C# in `MeetingLive.Core` and `MeetingLive.App` as of branch `feat/electron-port`. File:line references use the WinUI tree. Statements marked "(trace)" come from reading the code, not from running it.
@@ -56,6 +58,8 @@ Stable automation ids (keep for end-to-end tests): `BtnLibraryFoldersToggle`, `B
 
 ### 2.3 Folder tree
 
+> *Superseded by flat projects (`docs/design/projects.md`).*
+
 - Root node "Inbox" (`Library_Inbox`: "Inbox" / "Bandeja de entrada") is virtual: `FolderId = null`, never persisted, always first. It has an invisible accent dot (opacity 0, the slot is kept so names align) and the Inbox glyph U+E716. Real folders show an 8 px accent dot (circle) plus a 16 px icon in the same accent color plus the name.
 - Real folders are children of their `ParentId`, siblings sorted by name, case-insensitive, current-culture comparison.
 - Node accent color: `FolderAccent.ResolveKey(colorKey, folderId)` mapped to a theme brush (see 3.9). Inbox uses the neutral brush.
@@ -66,11 +70,15 @@ Stable automation ids (keep for end-to-end tests): `BtnLibraryFoldersToggle`, `B
 
 ### 2.4 Breadcrumbs
 
+> *Superseded by flat projects (`docs/design/projects.md`).*
+
 Always starts with an "Inbox" item (`FolderId = null`, label `Library_Inbox`). For a real folder, the chain root-to-selected follows after it, so the path reads `Inbox > Parent > Child`. Cycle-safe. Clicking an item selects that folder (Inbox selects Inbox). The click handler also handles a click by index when the clicked item is not a breadcrumb object.
 
 Note: the breadcrumb shows "Inbox" first even though root folders are not children of Inbox in the tree. Keep this for parity.
 
 ### 2.5 Folder note
+
+> *Superseded by flat projects (`docs/design/projects.md`).*
 
 - A multiline text box (header `Library_FolderNote.Header` "Folder notes" / "Notas de la carpeta"; placeholder `Library_FolderNote.PlaceholderText` "Notes for this folder" / "Notas para esta carpeta"), max height 120, wrap, visible only when a real folder is selected.
 - Bound two-way to `FolderNote` with per-keystroke updates. It is persisted only when `PersistSelectedFolderNoteAsync` runs (see 3.14). Empty or whitespace-only text is stored as `null`; otherwise the trimmed text is stored.
@@ -117,6 +125,8 @@ A closable warning InfoBar (`InfoLibraryStatus`) between the note and the list. 
 
 ### 2.11 New folder
 
+> *Superseded by flat projects (`docs/design/projects.md`).*
+
 - Button in the header. Dialog title: `LibraryNewFolder_Title` ("New folder" / "Nueva carpeta") when Inbox is selected, otherwise `LibraryNewFolder_TitleIn` ("New folder in {0}" / "Nueva carpeta en {0}") with the selected folder's name.
 - Body: a text box, header `LibraryFolderName.Header` ("Name" / "Nombre"), placeholder `LibraryFolderName.PlaceholderText` ("Folder name" / "Nombre de la carpeta").
 - Buttons: primary `LibraryNewFolder_Primary` ("Create" / "Crear"), close `LibraryNewFolder_Cancel` ("Cancel" / "Cancelar"). Default button: Primary.
@@ -125,10 +135,14 @@ A closable warning InfoBar (`InfoLibraryStatus`) between the note and the list. 
 
 ### 2.12 Rename folder
 
+> *Superseded by flat projects (`docs/design/projects.md`).*
+
 - Opened from the folder context menu. Title `LibraryRenameFolder_Title` ("Rename folder" / "Renombrar carpeta"), primary `LibraryRenameFolder_Primary` ("Rename" / "Renombrar"), close `LibraryRenameFolder_Cancel`. Text box pre-filled with the current name. Same empty-name block. Default: Primary.
 - Only the name changes (trimmed). The directory on disk is renamed with it and every meeting file inside gets its `audioFilePath` rewritten (3.12).
 
 ### 2.13 Folder personality
+
+> *Superseded by flat projects (`docs/design/projects.md`).*
 
 - Dialog `DlgLibraryPersonality`, title `LibraryPersonality_Title` ("Folder personality" / "Personalidad de la carpeta"), primary `LibraryPersonality_Primary` ("Save" / "Guardar"), close `LibraryPersonality_Cancel` ("Cancel" / "Cancelar"). Default: Primary.
 - Content (min width 400, max 440): a live preview row (8 px dot, 16 px icon, folder name), a "Color" section (`LibraryPersonality_ColorHeader` "Color" / "Color") with 7 round 28 px swatches in the order `blue, teal, green, amber, orange, red, purple`, and an "Icon" section (`LibraryPersonality_IconHeader` "Icon" / "Ícono") with 18 tiles (40 px) in the order of 3.10, max height 220. Each swatch and tile exposes its key as accessible name.
@@ -136,6 +150,8 @@ A closable warning InfoBar (`InfoLibraryStatus`) between the note and the list. 
 - Save stores both keys (resolved) and reloads keeping the folder selected.
 
 ### 2.14 Delete folder
+
+> *Superseded by flat projects (`docs/design/projects.md`).*
 
 - Allowed only when the folder has no child folders and no meetings filed in it (judged from the in-memory snapshot from the last load). Otherwise the status bar shows `LibraryDeleteFolder_NotEmpty` ("This folder still has subfolders or meetings. Empty it before deleting." / "Esta carpeta todavía tiene subcarpetas o reuniones. Vacíala antes de eliminarla.") and nothing else happens.
 - Confirmation dialog: title `LibraryDeleteFolder_Title` ("Delete this folder?" / "¿Eliminar esta carpeta?"), content `LibraryDeleteFolder_Content` (`This deletes the folder "{0}". Meetings inside it are not deleted.` / `Esto elimina la carpeta "{0}". Las reuniones que contiene no se eliminan.`), primary `LibraryDeleteFolder_Primary` ("Delete" / "Eliminar"), close `LibraryDeleteFolder_Cancel`. Default button: Close (Cancel).
@@ -175,7 +191,7 @@ Run in `App.OnLaunched`, in this order, in one try block: `UserDataLocationMigra
 | Name | Value | Notes |
 | --- | --- | --- |
 | `RootDirectory` | `%LOCALAPPDATA%\MeetingLive` | Electron has no `localAppData` path name; use `process.env.LOCALAPPDATA` on Windows. `app.getPath('appData')` is Roaming and is wrong. |
-| `UserDataDirectory` | `<Documents>\MeetingLive` | Windows shell Documents folder, follows OneDrive redirection. `app.getPath('documents')` matches. |
+| `UserDataDirectory` | `<Documents>\MeetingLive` | The Documents folder of the user. `app.getPath('documents')` returns it. |
 | `InboxDirectory` | `<UserData>\Inbox` | |
 | `FoldersFilePath` | `<UserData>\folders.json` | |
 | `SettingsFilePath` | `<Root>\settings.json` | |
@@ -193,6 +209,8 @@ Other paths in `AppPaths` belong to other modules and must keep these exact name
 Paths are computed once at process start.
 
 ### 3.2 Directory layout
+
+> *Superseded by flat projects (`docs/design/projects.md`).*
 
 ```
 Documents\MeetingLive\
@@ -360,6 +378,8 @@ Examples (from the tests):
 
 ### 3.10 Folder personality catalogs
 
+> *Superseded by flat projects (`docs/design/projects.md`).*
+
 Colors (`FolderAccent.Keys`, ordered): `blue, teal, green, amber, orange, red, purple`. Neutral brush key is any other value.
 
 Brush colors (App.xaml): light theme `blue #2563EB`, `teal #0F766E`, `green #15803D`, `amber #B45309`, `orange #C2410C`, `red #B91C1C`, `purple #6D28D9`, `neutral #64748B`. Dark theme `blue #60A5FA`, `teal #2DD4BF`, `green #4ADE80`, `amber #FBBF24`, `orange #FB923C`, `red #F87171`, `purple #A78BFA`, `neutral #94A3B8`. High contrast uses the system highlight color for all. Fallback color if a brush is missing: `#64748B`. The Electron app should replace these with Vozella brand tokens, but the 7 keys and the neutral fallback are data and must stay.
@@ -372,11 +392,15 @@ Icons (`FolderIcon.Keys`, ordered, 18): `folder, briefcase, people, home, star, 
 
 ### 3.11 `FolderPathList.Flatten(folders, inboxLabel)`
 
+> *Superseded by flat projects (`docs/design/projects.md`).*
+
 Requires non-blank `inboxLabel`. First row `(null, inboxLabel)`. Then depth-first from roots: for each folder with the given parent, ordered by name using `StringComparer.CurrentCultureIgnoreCase`, emit `(folder.Id, path)` where `path` = name for roots or `parentPath + " / " + name` (space, slash, space), then recurse. Folders whose parent chain never reaches a root are not emitted (S-bug B26b).
 
 Port note: use `Intl.Collator(locale, { sensitivity: 'accent' })` to match "ignore case, keep accents".
 
 ### 3.12 `JsonFolderRepository`
+
+> *Superseded by flat projects (`docs/design/projects.md`).*
 
 Constructor: `foldersFilePath` defaults to `<UserData>\folders.json`; the library root is `dirname(foldersFilePath)`. One instance holds a `SemaphoreSlim(1,1)` guarding all operations (instance-level, B6).
 
@@ -421,6 +445,8 @@ On: `LoadAsync` start, `SelectFolder`, `CreateFolder`, `Rename`, `UpdatePersonal
 `FromMarkdown`: blank returns empty. Normalize line endings to `\n`. For each line: `isHeading` = trimmed line starts with 1 to 6 `#` followed by whitespace or end; strip markers (remove the leading `#`s and following whitespace for headings; remove `` ``` ``, `**`, `__`, `` ` ``, `*`, `_`; trim); skip empty lines; append to the body buffer, or to the headings buffer if it was a heading, separated by a single space. Use the body buffer if non-empty, otherwise the headings buffer. Collapse any whitespace run to one space, trim. If longer than 140 characters, cut to 140 and append `…` (U+2026). Result max length 141.
 
 ### 3.16 Migrations
+
+> *Superseded by flat projects (`docs/design/projects.md`).*
 
 All are idempotent and non-destructive where stated. Use a temp root in tests.
 
@@ -575,6 +601,8 @@ Notes for implementers:
 
 ### 4.2 `folders.json`
 
+> *Superseded by flat projects (`docs/design/projects.md`).*
+
 JSON array, camelCase, indented with 2 spaces, `null` written for unset optionals, GUIDs as lowercase hyphenated strings, dates as ISO 8601 with offset (trailing fractional zeros trimmed). Written with the .NET default encoder, so non-ASCII characters and `<`, `>`, `&`, `'`, `+` appear as `\uXXXX`; readers must accept both. Line endings are CRLF on Windows (`Environment.NewLine`); readers must accept LF. No BOM.
 
 ```json
@@ -653,6 +681,8 @@ The WinUI app drops unknown keys the next time it saves (B17). The Electron app 
 
 ### 4.5 Legacy formats read by migrations
 
+> *Superseded by flat projects (`docs/design/projects.md`).*
+
 `<Root>\meetings.json`: a JSON array of meeting objects with the same camelCase names as `MeetingRecord` (`id, title, recordedAt, endedAt, audioFilePath, sourcePath, transcript, summary, summaryProvider, folderId, notes, actionItems[{text,isDone}], jevAnalysis, calendarEventId, calendarId, seriesId, joinUrl, attendees[], brief, noteTemplateId, followUp, projectPlan`). `id`, `title`, `recordedAt`, `audioFilePath` are required. Example:
 
 ```json
@@ -693,7 +723,7 @@ Rules:
 
 | Item | Portability | Port note |
 | --- | --- | --- |
-| Windows Documents folder (`Environment.SpecialFolder.MyDocuments`), OneDrive redirection | Portable with care | `app.getPath('documents')` |
+| Windows Documents folder (`Environment.SpecialFolder.MyDocuments`) | Portable with care | `app.getPath('documents')` |
 | `%LOCALAPPDATA%` | Windows-only | `process.env.LOCALAPPDATA`; on macOS use `~/Library/Application Support/MeetingLive` behind a path interface |
 | File name rules (`GetInvalidFileNameChars`, case-insensitive compare `OrdinalIgnoreCase`) | Windows semantics | Fix the Windows rule set in code; compare paths case-insensitively on Windows and macOS default volumes |
 | Open folder in file manager (`ProcessStartInfo` with `UseShellExecute`) | Windows-only call, portable concept | `shell.openPath` |

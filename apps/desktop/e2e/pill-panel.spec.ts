@@ -132,7 +132,7 @@ async function startTake(page: Page, title: string): Promise<void> {
     (t) =>
       window.vozella.invoke('recording.start', {
         title: t,
-        folderId: null,
+        projectId: null,
         microphone: null,
         appName: null,
       }),

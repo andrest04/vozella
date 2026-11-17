@@ -6,7 +6,7 @@ import uiEs from './locales/ui.es.json';
 
 export const LOCALES = ['en', 'es'] as const;
 export type Locale = (typeof LOCALES)[number];
-/** Keys converted from the WinUI resources, plus the few `Ui_` keys written by hand for the new shell. */
+/** Keys of the carried-over catalogs, plus the `Ui_` keys written by hand for the shell and the pages. */
 export type StringKey = keyof typeof en | keyof typeof uiEn;
 export type Arg = string | number | Date;
 
@@ -28,7 +28,7 @@ export function detectLocale(languages: readonly string[]): Locale {
   return 'en';
 }
 
-/** Fills .NET style positional placeholders: {0}, {1:t}, {2:0.#}. Missing arguments stay visible. */
+/** Fills positional placeholders: {0}, {1:t}, {2:0.#}. Missing arguments stay visible. */
 export function format(template: string, args: readonly Arg[], locale: Locale = 'en'): string {
   return formatTemplate(template, args, locale);
 }

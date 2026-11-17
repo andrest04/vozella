@@ -1,4 +1,3 @@
-import type { FolderRecord } from '@vozella/core';
 import { describe, expect, it } from 'vitest';
 import {
   buildDestinations,
@@ -7,43 +6,36 @@ import {
   toOptionValue,
 } from './destinations';
 
-const folder = (id: string, name: string, parentId: string | null = null): FolderRecord => ({
-  id,
-  name,
-  parentId,
-  note: null,
-  colorKey: null,
-  iconKey: null,
-  createdAt: '2026-09-01T12:00:00+00:00',
-});
+const project = (id: string, name: string, pinned = false) => ({ id, name, pinned });
 
-describe('buildDestinations (item 190)', () => {
-  const folders = [
-    folder('b', 'beta'),
-    folder('a', 'Alpha'),
-    folder('a2', 'zeta', 'a'),
-    folder('a1', 'Child', 'a'),
+describe('buildDestinations', () => {
+  const projects = [
+    project('b', 'beta'),
+    project('a', 'Alpha'),
+    project('z', 'Zeta', true),
+    project('c', 'álgebra', true),
   ];
 
-  it('lists the Inbox first, then the tree depth first with case-insensitive order', () => {
-    expect(buildDestinations(folders, 'Inbox', 'en').map((d) => d.path)).toEqual([
-      'Inbox',
-      'Alpha',
-      'Alpha / Child',
-      'Alpha / zeta',
-      'beta',
-    ]);
-    expect(buildDestinations(folders, 'Inbox', 'en')[0]?.folderId).toBeNull();
+  it('lists No project first, then the pinned projects, then the rest by name, flat', () => {
+    const list = buildDestinations(projects, 'No project', 'en');
+    expect(list.map((d) => d.label)).toEqual(['No project', 'álgebra', 'Zeta', 'Alpha', 'beta']);
+    expect(list[0]?.projectId).toBeNull();
   });
 
-  it('keeps the selection while the folder exists and falls back to the Inbox', () => {
-    const list = buildDestinations(folders, 'Inbox', 'en');
-    expect(retainDestination('a1', list)).toBe('a1');
+  it('uses the label it is given for No project, so it follows the language', () => {
+    expect(buildDestinations([], 'Sin proyecto', 'es')).toEqual([
+      { projectId: null, label: 'Sin proyecto' },
+    ]);
+  });
+
+  it('keeps the selection while the project exists and falls back to No project', () => {
+    const list = buildDestinations(projects, 'No project', 'en');
+    expect(retainDestination('a', list)).toBe('a');
     expect(retainDestination('gone', list)).toBeNull();
     expect(retainDestination(null, list)).toBeNull();
   });
 
-  it('maps the Inbox to a select value and back', () => {
+  it('maps No project to a select value and back', () => {
     expect(fromOptionValue(toOptionValue(null))).toBeNull();
     expect(fromOptionValue(toOptionValue('x'))).toBe('x');
   });

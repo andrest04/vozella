@@ -30,6 +30,7 @@ function setup() {
     captureNotices: [],
     liveNotice: null,
     meetingId: null,
+    projectId: null,
     title: '',
     recordedAtMs: null,
     highlightCount: 0,
@@ -80,7 +81,7 @@ describe('recording handlers', () => {
     const { call, service } = setup();
     const input = {
       title: 'Standup',
-      folderId: null,
+      projectId: null,
       microphone: { kind: 'SystemDefault', deviceId: null },
       processId: 7,
       appName: 'Zoom',
@@ -96,7 +97,7 @@ describe('recording handlers', () => {
     const { call, service } = setup();
     await call('recording.start', {
       title: '',
-      folderId: null,
+      projectId: null,
       microphone: null,
       appName: null,
     });
@@ -127,7 +128,8 @@ describe('recording handlers', () => {
 
   it('imports from a YouTube link', async () => {
     const { call, service } = setup();
-    const input = { title: '', folderId: 'f1', url: 'https://youtu.be/dQw4w9WgXcQ' };
+    const projectId = '9f1c2a3b-4d5e-4f60-8a7b-0c1d2e3f4a5b';
+    const input = { title: '', projectId, url: 'https://youtu.be/dQw4w9WgXcQ' };
     expect(await call('recording.importUrl', input)).toMatchObject({
       value: { started: true, meetingId: 'm3' },
     });
@@ -136,7 +138,7 @@ describe('recording handlers', () => {
 
   it('imports a picked file and relays the close dialog answers', async () => {
     const { call, service } = setup();
-    const input = { title: 'Call', folderId: null, path: 'C:\\in\\call.mp3' };
+    const input = { title: 'Call', projectId: null, path: 'C:\\in\\call.mp3' };
     expect(await call('recording.import', input)).toMatchObject({
       value: { started: true, meetingId: 'm2' },
     });

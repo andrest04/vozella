@@ -18,6 +18,8 @@ export interface ChatController {
   readonly setDraft: (value: string) => void;
   readonly isSending: boolean;
   readonly showScopeMismatch: boolean;
+  /** False when saving the history failed or storage is read only: this chat is not kept. */
+  readonly historySaved: boolean;
   /**
    * Sends `text` (the composer draft or a chip prompt). Resolves when the answer is settled, with
    * how it ended. A saved prompt's `engine` answers this send only, also after the setup gate.
@@ -99,7 +101,11 @@ export function useChat(
   const t = useT();
   const [view, dispatch] = useReducer(chatViewReducer, INITIAL_VIEW);
   const [draft, setDraftState] = useState('');
-  const [server, setServer] = useState({ isSending: false, showScopeMismatch: false });
+  const [server, setServer] = useState({
+    isSending: false,
+    showScopeMismatch: false,
+    historySaved: true,
+  });
   const draftRef = useRef('');
   const mismatchRef = useRef(false);
   const sendingRef = useRef(false);
@@ -118,7 +124,11 @@ export function useChat(
     alive.current = true;
     const apply = (state: ChatStateDto): void => {
       mismatchRef.current = state.showScopeMismatch;
-      setServer({ isSending: state.isSending, showScopeMismatch: state.showScopeMismatch });
+      setServer({
+        isSending: state.isSending,
+        showScopeMismatch: state.showScopeMismatch,
+        historySaved: state.historySaved,
+      });
       if (!sendingRef.current) dispatch({ type: 'hydrate', messages: state.messages });
     };
     void window.vozella
@@ -288,6 +298,7 @@ export function useChat(
     setDraft,
     isSending: view.activeRequestId !== null || server.isSending,
     showScopeMismatch: server.showScopeMismatch,
+    historySaved: server.historySaved,
     send,
     stop,
     copy,

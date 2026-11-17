@@ -1,15 +1,6 @@
 import fs from 'node:fs/promises';
 import nodePath from 'node:path';
-import { folderDirectorySegments, siblingWavPath, type FolderRecord } from '@vozella/core';
-
-/** Directory of a folder under the Library root. Unknown or null folders are Inbox. */
-export function directoryFor(
-  libraryRoot: string,
-  folders: readonly FolderRecord[],
-  folderId: string | null,
-): string {
-  return nodePath.join(libraryRoot, ...folderDirectorySegments(folders, folderId));
-}
+import { siblingWavPath } from '@vozella/core';
 
 /** Windows and macOS volumes ignore case by default; comparing paths must too. */
 export function samePath(a: string, b: string): boolean {
@@ -38,7 +29,10 @@ export function errorCode(error: unknown): string | undefined {
     : undefined;
 }
 
-/** Every `*.md` under `root`, at any depth. A missing root is an empty list. */
+/**
+ * Every `*.md` under `root`, at any depth. A missing root is an empty list. Directories whose name
+ * starts with a dot (the app's own `.vozella`, version-control folders) are never entered.
+ */
 export async function listMarkdownFiles(root: string): Promise<string[]> {
   const found: string[] = [];
   const walk = async (dir: string): Promise<void> => {
@@ -51,8 +45,9 @@ export async function listMarkdownFiles(root: string): Promise<string[]> {
     }
     for (const entry of entries) {
       const full = nodePath.join(dir, entry.name);
-      if (entry.isDirectory()) await walk(full);
-      else if (entry.isFile() && entry.name.toLowerCase().endsWith('.md')) found.push(full);
+      if (entry.isDirectory()) {
+        if (!entry.name.startsWith('.')) await walk(full);
+      } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.md')) found.push(full);
     }
   };
   await walk(root);

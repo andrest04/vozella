@@ -3,34 +3,32 @@ import fs from 'node:fs/promises';
 import nodePath from 'node:path';
 import {
   foldSearchText,
-  LibraryFileCorruptError,
   MeetingFormatError,
   MeetingTrashError,
+  INBOX_DIR_NAME,
   fileStem,
-  folderChain,
   meetingListItem,
   meetingSearchText,
   micActivityPathFor,
   parseMeetingMarkdown,
   renderMeetingMarkdown,
-  sanitizeName,
   siblingWavPath,
-  type FolderRecord,
   type Logger,
   type MeetingBody,
   type MeetingDeleteMode,
   type MeetingList,
   type MeetingListItem,
+  type MeetingPlacement,
   type MeetingRecord,
   type MeetingRepository,
   type MeetingSearchText,
+  type ShadowedMeeting,
   type SkippedMeetingFile,
 } from '@vozella/core';
 import { writeFileAtomic } from '../fs/atomic-write';
 import { KeyedMutex, lockKeyFor } from '../fs/keyed-mutex';
 import { FoldedTextCache } from './folded-text-cache';
 import {
-  directoryFor,
   errorCode,
   exists,
   isUnder,
@@ -40,9 +38,10 @@ import {
 } from './library-layout';
 
 export interface MarkdownMeetingRepositoryOptions {
-  /** The Library root: the folder that holds Inbox and `folders.json`. */
+  /** The Library root: the folder that holds Inbox and the project directories. */
   readonly root: string;
-  readonly folders: { getAll(): Promise<FolderRecord[]> };
+  /** Where a meeting of a project is saved. Null from it means "cannot place now". */
+  readonly placement: MeetingPlacement;
   readonly logger?: Logger;
   /** Mutations on one root are serialized here. Defaults to a private mutex. */
   readonly locks?: KeyedMutex;
@@ -59,13 +58,22 @@ interface IndexEntry {
   readonly path: string;
   readonly mtimeMs: number;
   readonly size: number;
-  readonly legacy: boolean;
   readonly item: MeetingListItem | null;
+  /** The recording the file names, for protecting a recording another copy still uses. */
+  readonly audioFilePath: string | null;
   readonly skipReason: string | null;
 }
 
 const READ_CONCURRENCY = 16;
 const FOLDED_TEXT_BYTES = 64 * 1024 * 1024;
+/** A path as a map key: Windows and macOS volumes ignore case, and so does this key. */
+const audioKey = (path: string): string => nodePath.resolve(path).toLowerCase();
+
+/** Copies a file to where a move would have put it, leaving the original. */
+const copyFileTo = async (from: string, to: string): Promise<void> => {
+  await fs.mkdir(nodePath.dirname(to), { recursive: true });
+  await fs.copyFile(from, to);
+};
 const probe = { fileExists: (path: string): boolean => existsSync(path) };
 /** Search never looks at the recording, so its re-reads skip the blocking checks for it. */
 const noAudioProbe = { fileExists: (): boolean => false };
@@ -73,11 +81,15 @@ const noAudioProbe = { fileExists: (): boolean => false };
 /**
  * Meetings as Markdown files under the Library root (spec 3.6).
  *
- * The folder tree on disk is a write-only mirror: a meeting's folder is the `folderId` in its
- * frontmatter. A small in-memory index (id, title, date, snippet per file, keyed by modified
+ * A meeting's project is the `projectId` in its frontmatter; the directory it sits in is a
+ * convenience. A small in-memory index (id, title, date, snippet per file, keyed by modified
  * time and size) means a Save, Delete or lookup costs one stat per file instead of a parse of
  * every file (B19), and a Library list never re-reads a transcript it has already seen (B28).
  * Indexing already parses each file, so it also keeps the folded text search reads.
+ *
+ * Two files can hold one id (a copied folder). The newest file wins, ties go to the path, and the
+ * other copy is reported as shadowed and is never deleted, moved or rewritten; a recording that a
+ * shadowed copy names is never moved or removed with the winner.
  */
 export class MarkdownMeetingRepository implements MeetingRepository {
   private readonly cache = new Map<string, IndexEntry>();
@@ -88,6 +100,8 @@ export class MarkdownMeetingRepository implements MeetingRepository {
   /** Open `batch` calls. While any is open, the first scan stands in for the later ones. */
   private batches = 0;
   private batchScanned = false;
+  /** What `list` last reported as shadowed, so the log says it once per change. */
+  private reportedShadowed = '';
 
   constructor(private readonly options: MarkdownMeetingRepositoryOptions) {
     this.folded = new FoldedTextCache(options.foldedTextBytes ?? FOLDED_TEXT_BYTES);
@@ -111,7 +125,7 @@ export class MarkdownMeetingRepository implements MeetingRepository {
     const items = this.winners(entries)
       .map((e) => e.item)
       .filter((i): i is MeetingListItem => i !== null);
-    return { items, skipped };
+    return { items, skipped, shadowed: this.shadowedOf(entries) };
   }
 
   async *bodies(filter: (item: MeetingListItem) => boolean): AsyncGenerator<MeetingBody> {
@@ -147,6 +161,32 @@ export class MarkdownMeetingRepository implements MeetingRepository {
     }
   }
 
+  /** The copies that lost to a newer file with the same id. Reported, never touched. */
+  private shadowedOf(entries: readonly IndexEntry[]): ShadowedMeeting[] {
+    const winners = new Map(this.winners(entries).map((e) => [e.item?.id ?? '', e]));
+    const shadowed: ShadowedMeeting[] = [];
+    for (const entry of entries) {
+      const id = entry.item?.id;
+      const kept = id === undefined ? undefined : winners.get(id);
+      if (id !== undefined && kept !== undefined && kept.path !== entry.path) {
+        shadowed.push({ id, keptPath: kept.path, shadowedPath: entry.path });
+      }
+    }
+    shadowed.sort((a, b) =>
+      a.shadowedPath < b.shadowedPath ? -1 : a.shadowedPath > b.shadowedPath ? 1 : 0,
+    );
+    const key = shadowed.map((s) => `${s.keptPath}|${s.shadowedPath}`).join('\n');
+    if (key !== this.reportedShadowed) {
+      this.reportedShadowed = key;
+      if (shadowed.length > 0) {
+        this.options.logger?.warn('two files hold the same meeting id; the newest is used', {
+          count: shadowed.length,
+        });
+      }
+    }
+    return shadowed;
+  }
+
   private winners(entries: readonly IndexEntry[]): IndexEntry[] {
     const winners = new Map<string, IndexEntry>();
     for (const entry of entries) {
@@ -160,15 +200,6 @@ export class MarkdownMeetingRepository implements MeetingRepository {
   async get(id: string): Promise<MeetingRecord | null> {
     const entry = await this.pick(id);
     return entry ? this.parseFile(entry.path) : null;
-  }
-
-  /** Paths of every file holding this id, current layout first. For migrations. */
-  async locate(id: string): Promise<{ path: string; legacy: boolean }[]> {
-    const entries = await this.scan();
-    return entries
-      .filter((e) => e.item?.id === id)
-      .sort((a, b) => Number(a.legacy) - Number(b.legacy))
-      .map((e) => ({ path: e.path, legacy: e.legacy }));
   }
 
   // ----------------------------------------------------------------- writes
@@ -192,11 +223,13 @@ export class MarkdownMeetingRepository implements MeetingRepository {
   }
 
   private async saveLocked(record: MeetingRecord): Promise<MeetingRecord> {
-    const folders = await this.folderList();
-    const directory = directoryFor(this.root, folders, record.folderId);
+    const existing = await this.pick(record.id);
+    const placed = await this.options.placement.directoryOf(record.projectId);
+    if (placed === null && existing !== undefined) return this.saveInPlace(record, existing);
+    // A new meeting that cannot be placed yet goes to the Inbox, which always exists.
+    const directory = placed ?? nodePath.join(this.root, INBOX_DIR_NAME);
     const desiredStem = fileStem(record.recordedAt, record.title);
 
-    const existing = await this.pick(record.id);
     let existingAudio = record.audioFilePath;
     if (existingAudio.trim() === '' && existing) existingAudio = siblingWavPath(existing.path);
 
@@ -204,7 +237,7 @@ export class MarkdownMeetingRepository implements MeetingRepository {
     const markdownPath = nodePath.join(directory, `${stem}.md`);
     const audioPath = nodePath.join(directory, `${stem}.wav`);
 
-    await this.moveAudioIfNeeded(existingAudio, audioPath);
+    await this.moveAudioIfNeeded(existingAudio, audioPath, await this.audioUsedElsewhere(existing));
     const audioFilePath = (await exists(audioPath)) ? audioPath : record.audioFilePath;
     const saved: MeetingRecord = { ...record, audioFilePath, sourcePath: markdownPath };
 
@@ -218,6 +251,28 @@ export class MarkdownMeetingRepository implements MeetingRepository {
     if (existing && !samePath(existing.path, markdownPath) && (await exists(existing.path))) {
       await this.unlink(existing.path);
       this.cache.delete(existing.path);
+    }
+    return saved;
+  }
+
+  /**
+   * The projects cannot place a meeting now (the storage is migrating, failed or too new, or the
+   * project is unusable). The meeting stays exactly where it is: same file, same recording, and
+   * the project it already has in its frontmatter, so an edit of the notes still saves but
+   * nothing moves.
+   */
+  private async saveInPlace(record: MeetingRecord, existing: IndexEntry): Promise<MeetingRecord> {
+    const keptProject = existing.item?.projectId ?? null;
+    const saved: MeetingRecord = {
+      ...record,
+      projectId: keptProject,
+      sourcePath: existing.path,
+    };
+    await writeFileAtomic(existing.path, renderMeetingMarkdown(saved));
+    this.cache.delete(existing.path);
+    if (this.batchScanned) {
+      const entry = await this.indexFile(existing.path);
+      if (entry) this.cache.set(existing.path, entry);
     }
     return saved;
   }
@@ -246,17 +301,21 @@ export class MarkdownMeetingRepository implements MeetingRepository {
     } catch {
       // An unreadable file still goes; its sibling recording is found by name below.
     }
+    // A recording that another file (a shadowed copy) names is not this meeting's to remove.
+    const sharedAudio = await this.audioUsedElsewhere(entry);
+    const shared = (audio: string): boolean =>
+      audio.trim() !== '' && sharedAudio.has(audioKey(audio));
     // The recording goes first: if it is locked this throws while the markdown still exists, so
     // the meeting stays listed and the delete can be retried.
     // B25: a stored path outside the Library is never deleted, only logged.
-    if (storedAudio.trim() !== '' && (await exists(storedAudio))) {
+    if (storedAudio.trim() !== '' && (await exists(storedAudio)) && !shared(storedAudio)) {
       if (isUnder(storedAudio, this.root)) await remove(storedAudio);
       else this.options.logger?.warn('left a recording outside the library in place', { id });
     }
     const sibling = siblingWavPath(entry.path);
-    if (await exists(sibling)) await remove(sibling);
+    if ((await exists(sibling)) && !shared(sibling)) await remove(sibling);
     for (const audio of new Set([storedAudio, sibling])) {
-      if (audio.trim() !== '' && isUnder(audio, this.root)) {
+      if (audio.trim() !== '' && isUnder(audio, this.root) && !shared(audio)) {
         await this.removeMicActivity(audio, remove);
       }
     }
@@ -270,33 +329,22 @@ export class MarkdownMeetingRepository implements MeetingRepository {
     return `meetings:${lockKeyFor(this.root)}`;
   }
 
-  /** A damaged `folders.json` must not stop meetings from being saved (B5). */
-  private async folderList(): Promise<FolderRecord[]> {
-    try {
-      return await this.options.folders.getAll();
-    } catch (error) {
-      if (!(error instanceof LibraryFileCorruptError)) throw error;
-      this.options.logger?.warn('folders.json is damaged; filing by Inbox for now', {
-        error: error.message,
-      });
-      return [];
-    }
-  }
-
-  private isLegacyFlatDump(path: string): boolean {
-    const rel = nodePath.relative(this.root, path);
-    const first = rel.split(/[\\/]/)[0]?.toLowerCase();
-    return first === 'meetings' || first === 'recordings';
-  }
-
   /**
-   * B10: WinUI reserves only "Inbox", so its top-level folder "Meetings" or "Recordings" has
-   * the directory `Library/Meetings`. A file there that belongs to that folder is not a dump.
+   * The recordings that files other than `entry` name, by normalized path. Deleting or moving
+   * a meeting must not take a recording away from a copy that still uses it.
    */
-  private async isUserFolderDirectory(path: string, record: MeetingRecord): Promise<boolean> {
-    const first = nodePath.relative(this.root, path).split(/[\\/]/)[0]?.toLowerCase();
-    const top = folderChain(await this.folderList(), record.folderId)[0];
-    return top !== undefined && sanitizeName(top.name).toLowerCase() === first;
+  private async audioUsedElsewhere(entry: IndexEntry | undefined): Promise<Set<string>> {
+    const used = new Set<string>();
+    if (entry === undefined) return used;
+    for (const other of await this.scan()) {
+      if (other.path === entry.path) continue;
+      if (other.audioFilePath !== null && other.audioFilePath.trim() !== '') {
+        used.add(audioKey(other.audioFilePath));
+      }
+      // The recording next to a file is the file's own, whether or not it names it.
+      used.add(audioKey(siblingWavPath(other.path)));
+    }
+    return used;
   }
 
   /** Spec 3.6 step 4 and B2: a recording the saving meeting already owns does not force " 2". */
@@ -331,15 +379,24 @@ export class MarkdownMeetingRepository implements MeetingRepository {
     }
   }
 
-  private async moveAudioIfNeeded(source: string, destination: string): Promise<void> {
+  private async moveAudioIfNeeded(
+    source: string,
+    destination: string,
+    sharedAudio: ReadonlySet<string>,
+  ): Promise<void> {
     if (source.trim() === '' || samePath(source, destination)) return;
     if (!(await exists(source))) return;
-    await moveFile(source, destination, this.rename);
+    // A recording a shadowed copy still names stays where it is: the winner gets its own copy.
+    const keep = sharedAudio.has(audioKey(source));
+    const transfer = keep
+      ? copyFileTo
+      : (from: string, to: string) => moveFile(from, to, this.rename);
+    await transfer(source, destination);
     // The microphone activity of the recording (the local user as You) goes with it.
     const activity = micActivityPathFor(source);
     if (!(await exists(activity))) return;
     try {
-      await moveFile(activity, micActivityPathFor(destination), this.rename);
+      await transfer(activity, micActivityPathFor(destination));
     } catch (error) {
       this.options.logger?.warn('could not move the microphone activity of a recording', {
         error: error instanceof Error ? error.message : String(error),
@@ -373,11 +430,10 @@ export class MarkdownMeetingRepository implements MeetingRepository {
     return code === 'EACCES' || code === 'EPERM' || code === 'EBUSY' || code === 'ENOENT';
   }
 
-  /** Which of two files with one id is the meeting: current layout, then newest, then path. */
+  /** Which of two files with one id is the meeting: the newest, then the path (case-folded). */
   private prefer(candidate: IndexEntry, kept: IndexEntry): boolean {
-    if (candidate.legacy !== kept.legacy) return !candidate.legacy;
     if (candidate.mtimeMs !== kept.mtimeMs) return candidate.mtimeMs > kept.mtimeMs;
-    return candidate.path < kept.path;
+    return audioKey(candidate.path) < audioKey(kept.path);
   }
 
   private async pick(id: string): Promise<IndexEntry | undefined> {
@@ -421,18 +477,16 @@ export class MarkdownMeetingRepository implements MeetingRepository {
     const cached = this.cache.get(path);
     if (cached?.mtimeMs === stat.mtimeMs && cached.size === stat.size) return cached;
 
-    let legacy = this.isLegacyFlatDump(path);
     try {
       const record = await this.parseFile(path);
-      if (legacy && (await this.isUserFolderDirectory(path, record))) legacy = false;
       this.folded.set(path, stat.mtimeMs, stat.size, foldSearchText(meetingSearchText(record)));
       return {
         path,
         mtimeMs: stat.mtimeMs,
         size: stat.size,
-        legacy,
         skipReason: null,
         item: meetingListItem(record),
+        audioFilePath: record.audioFilePath,
       };
     } catch (error) {
       if (error instanceof MeetingFormatError) {
@@ -440,8 +494,8 @@ export class MarkdownMeetingRepository implements MeetingRepository {
           path,
           mtimeMs: stat.mtimeMs,
           size: stat.size,
-          legacy,
           item: null,
+          audioFilePath: null,
           skipReason: error.message,
         };
       }
@@ -451,8 +505,8 @@ export class MarkdownMeetingRepository implements MeetingRepository {
           path,
           mtimeMs: -1,
           size: -1,
-          legacy,
           item: null,
+          audioFilePath: null,
           skipReason: String(errorCode(error)),
         };
       }

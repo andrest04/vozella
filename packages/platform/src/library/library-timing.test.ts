@@ -1,14 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { LibraryService, MeetingBusyRegistry, renderMeetingMarkdown } from '@vozella/core';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  FOLDER_1,
-  createLibraryFixture,
-  folder,
-  meeting,
-  type LibraryFixture,
-} from './library-test-kit';
+  InMemoryProjectRepository,
+  LibraryService,
+  MeetingBusyRegistry,
+  renderMeetingMarkdown,
+} from '@vozella/core';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { FOLDER_1, createLibraryFixture, meeting, type LibraryFixture } from './library-test-kit';
 import { MarkdownMeetingRepository } from './markdown-meeting-repository';
 
 /**
@@ -80,14 +79,27 @@ function seed(fx: LibraryFixture, lines: number): number {
   return bytes;
 }
 
+/** The one project the move benchmark files meetings under. */
+const knownProjects = (): InMemoryProjectRepository => {
+  const projects = new InMemoryProjectRepository();
+  projects.records.set(FOLDER_1, {
+    id: FOLDER_1,
+    name: 'Clients',
+    description: '',
+    instructions: '',
+    pinned: false,
+    createdAt: '2026-09-01T00:00:00.000Z',
+    updatedAt: '2026-09-01T00:00:00.000Z',
+  });
+  return projects;
+};
+
 /** A service over a new repository, so nothing from an earlier run is in memory. */
 const freshService = (fx: LibraryFixture): LibraryService =>
   new LibraryService({
-    meetings: new MarkdownMeetingRepository({ root: fx.root, folders: fx.folders }),
-    folders: fx.folders,
+    meetings: new MarkdownMeetingRepository({ root: fx.root, placement: fx.projects }),
+    projects: knownProjects(),
     busy: new MeetingBusyRegistry(),
-    clock: { now: () => new Date('2026-09-05T15:00:00.000Z') },
-    newId: () => crypto.randomUUID(),
   });
 
 const median = (values: readonly number[]): number =>
@@ -109,7 +121,7 @@ describe.runIf(process.env.VOZELLA_LIBRARY_TIMING === '1')(
     it(`moves ${String(MOVES)} meetings in one batch`, async () => {
       const bytes = seed(fx, 40);
       report(`moves: seeded ${String(COUNT)} meetings, ${String(Math.round(bytes / 1e6))} MB`);
-      await fx.folders.save(folder(FOLDER_1, 'Clients'));
+      fx.projects.add(FOLDER_1, 'Clients');
       const service = freshService(fx);
       const load = await elapsed(() => service.load());
       report(`library.load, first: ${String(load.ms)} ms`);
@@ -118,7 +130,7 @@ describe.runIf(process.env.VOZELLA_LIBRARY_TIMING === '1')(
 
       const ids = Array.from({ length: MOVES }, (_, index) => idOf(index));
       const move = await elapsed(() =>
-        service.moveMeetings({ meetingIds: ids, folderId: FOLDER_1 }),
+        service.moveMeetings({ meetingIds: ids, projectId: FOLDER_1 }),
       );
       report(`moveMeetings ${String(MOVES)}: ${String(move.ms)} ms`);
       expect(move.value.every((result) => result.ok)).toBe(true);

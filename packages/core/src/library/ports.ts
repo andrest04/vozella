@@ -1,5 +1,9 @@
-import type { FolderRecord } from './folder';
-import type { MeetingListItem, MeetingRecord, SkippedMeetingFile } from './meeting';
+import type {
+  MeetingListItem,
+  MeetingRecord,
+  ShadowedMeeting,
+  SkippedMeetingFile,
+} from './meeting';
 import type { MeetingBody } from './meeting-search';
 import type { AppSettings } from './settings';
 
@@ -10,6 +14,11 @@ export interface MeetingList {
   readonly items: readonly MeetingListItem[];
   /** Files that could not be read as meetings. They are reported, never silently dropped. */
   readonly skipped: readonly SkippedMeetingFile[];
+  /**
+   * Meetings whose id sits in two files. The newest file is listed; the other one is reported here
+   * and is never deleted, moved or rewritten.
+   */
+  readonly shadowed: readonly ShadowedMeeting[];
 }
 
 /** Port: where meetings live. Adapter: MarkdownMeetingRepository (platform). */
@@ -34,15 +43,6 @@ export interface MeetingRepository {
    * per meeting. Changes the calls make are seen; changes from outside wait for the next look.
    */
   batch<T>(run: () => Promise<T>): Promise<T>;
-}
-
-/** Port: the folder tree. Adapter: JsonFolderRepository (platform). */
-export interface FolderRepository {
-  getAll(): Promise<FolderRecord[]>;
-  /** Upsert by id. Moves the folder's directory when its path changes. */
-  save(folder: FolderRecord): Promise<void>;
-  /** Removes the record and its directory if empty. The caller checks children and meetings. */
-  delete(id: string): Promise<void>;
 }
 
 /** Port: settings.json. Updates are read-modify-write under one lock (B17). */

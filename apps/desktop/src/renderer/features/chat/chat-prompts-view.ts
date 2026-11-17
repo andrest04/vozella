@@ -22,7 +22,7 @@ export const ENGINE_LABEL: Readonly<Record<ChatEngineDto, StringKey>> = {
   ...byApiEngineId((engine) => engine.nameKey),
 };
 
-/** A meeting (or Live) gets one-meeting prompts; a folder or all meetings get several. */
+/** A meeting (or Live) gets one-meeting prompts; a project or all meetings get several. */
 export const availabilityForScope = (kind: ChatScopeKind): 'single' | 'multiple' =>
   kind === 'Meeting' || kind === 'Live' ? 'single' : 'multiple';
 

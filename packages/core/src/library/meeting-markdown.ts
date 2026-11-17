@@ -1,4 +1,5 @@
-import { parseGuid, stringifyCompact, stripBom } from './dotnet-json';
+import { parseGuid } from './guid';
+import { stripBom } from './text-bom';
 import {
   MeetingFormatError,
   formatDeadlineKind,
@@ -59,7 +60,7 @@ const present = (value: string | null): value is string => value !== null && val
 
 function jevToJson(jev: JevAnalysis): string {
   const analyzed = parseOffsetDate(jev.analyzedAt);
-  return stringifyCompact({
+  return JSON.stringify({
     meetingType: jev.meetingType,
     meetingTypeConfidence: jev.meetingTypeConfidence,
     spokenLanguage: jev.spokenLanguage,
@@ -77,7 +78,7 @@ function jevToJson(jev: JevAnalysis): string {
       confidence: a.confidence,
     })),
     model: jev.model,
-    analyzedAt: analyzed ? formatOffsetDate(analyzed, 'json') : jev.analyzedAt,
+    analyzedAt: analyzed ? formatOffsetDate(analyzed) : jev.analyzedAt,
   });
 }
 
@@ -89,7 +90,7 @@ const hasItemData = (item: ActionItem): boolean =>
  * owner or deadline, otherwise its line text (to detect hand edits) plus the extra fields.
  */
 function actionDataToJson(items: readonly ActionItem[]): string {
-  return stringifyCompact(
+  return JSON.stringify(
     items.map((item) => {
       if (!hasItemData(item)) return null;
       const deadline = item.deadline;
@@ -136,7 +137,9 @@ export function renderMeetingMarkdown(record: MeetingRecord): string {
   out += `recordedAt: ${normalizeOffsetDate(record.recordedAt) ?? record.recordedAt}\n`;
   if (record.endedAt) out += `endedAt: ${normalizeOffsetDate(record.endedAt) ?? record.endedAt}\n`;
   out += `audioFilePath: ${oneLine(record.audioFilePath)}\n`;
-  if (record.folderId) out += `folderId: ${parseGuid(record.folderId) ?? record.folderId}\n`;
+  // `folderId` is the on-disk name of the project id: meeting files written before projects
+  // existed carry it, and renaming the key would orphan them.
+  if (record.projectId) out += `folderId: ${parseGuid(record.projectId) ?? record.projectId}\n`;
   if (record.summaryProvider) out += `summaryProvider: ${oneLine(record.summaryProvider)}\n`;
   const optional: readonly (readonly [string, string | null])[] = [
     ['calendarEventId', record.calendarEventId],
@@ -329,9 +332,7 @@ function parseJev(text: string): JevAnalysis {
     folderConfidence: num(o.folderconfidence),
     actionItems,
     model: str(o.model) ?? '',
-    analyzedAt: parsed
-      ? formatOffsetDate(parsed, 'json')
-      : (analyzed ?? '0001-01-01T00:00:00+00:00'),
+    analyzedAt: parsed ? formatOffsetDate(parsed) : (analyzed ?? '0001-01-01T00:00:00+00:00'),
   };
 }
 
@@ -379,7 +380,8 @@ export function parseMeetingMarkdown(
     endedAt,
     audioFilePath,
     sourcePath: path,
-    folderId: parseGuid(map.get('folderId')),
+    // On-disk key of the project id, see `renderMeetingMarkdown`.
+    projectId: parseGuid(map.get('folderId')),
     summaryProvider: optional('summaryProvider'),
     calendarEventId: optional('calendarEventId'),
     calendarId: optional('calendarId'),

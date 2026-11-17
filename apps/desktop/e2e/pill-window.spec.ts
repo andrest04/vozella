@@ -262,7 +262,7 @@ test('a take starts: the main window is minimized and the pill appears docked ri
   const start = await main.evaluate(() =>
     window.vozella.invoke('recording.start', {
       title: 'Pill e2e',
-      folderId: null,
+      projectId: null,
       microphone: null,
       appName: null,
     }),

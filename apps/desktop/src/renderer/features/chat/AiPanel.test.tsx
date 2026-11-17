@@ -18,7 +18,7 @@ function install(initial: Partial<WorkspaceStateDto> = {}, recording = { isPause
     lastProcessedMeetingId: null,
     sessionTab: 'Transcript',
     currentShellTag: 'Recording',
-    selectedFolderId: null,
+    selectedProjectId: null,
     liveTranscript: '',
     isCaptureActive: false,
     ...initial,
@@ -38,8 +38,8 @@ function install(initial: Partial<WorkspaceStateDto> = {}, recording = { isPause
         if (entry?.delay) await entry.delay;
         return { record: entry ? { title: entry.title } : null };
       }
-      case 'library.load':
-        return { ok: true, folders: [{ id: FOLDER, name: 'Calculo' }], meetings: [], skipped: [] };
+      case 'projects.list':
+        return { projects: [{ id: FOLDER, name: 'Calculo' }] };
       case 'chat.setScope':
         return { canStartNewChat: true };
       case 'chat.newChat':
@@ -180,7 +180,8 @@ describe('AiPanel scope chip (items 6 to 11)', () => {
     });
     expect(screen.getByTestId('BarMeetingChat')).toBeTruthy();
     expect(screen.getByTestId('BtnMeetingChatNew')).toBeTruthy();
-    expect(screen.queryByTestId('BtnMeetingChatHistory')).toBeNull();
+    // The History control sits beside New chat; its list is read only when it opens.
+    expect(screen.getByTestId('BtnMeetingChatHistory')).toBeTruthy();
   });
 
   it('shows Live while capture is active, in Spanish too', async () => {
@@ -256,17 +257,17 @@ describe('AiPanel scope chip (items 6 to 11)', () => {
     });
   });
 
-  it('shows the folder name on the library, and Carpeta without a name in Spanish', async () => {
-    install({ currentShellTag: 'History', selectedFolderId: FOLDER });
+  it('shows the project name on its page, and Proyecto without a name in Spanish', async () => {
+    install({ currentShellTag: 'Projects', selectedProjectId: FOLDER });
     mount();
     await waitFor(() => {
-      expect(chip().textContent).toBe('Folder: Calculo');
+      expect(chip().textContent).toBe('Project: Calculo');
     });
     cleanup();
-    install({ currentShellTag: 'History', selectedFolderId: 'missing' });
+    install({ currentShellTag: 'Projects', selectedProjectId: 'missing' });
     mount('es');
     await waitFor(() => {
-      expect(chip().textContent).toBe('Carpeta');
+      expect(chip().textContent).toBe('Proyecto');
     });
   });
 
@@ -275,7 +276,7 @@ describe('AiPanel scope chip (items 6 to 11)', () => {
     for (const state of [
       { isCaptureActive: true },
       { currentShellTag: 'Session' as const, selectedMeetingId: MEETING },
-      { currentShellTag: 'History' as const, selectedFolderId: FOLDER },
+      { currentShellTag: 'History' as const, selectedProjectId: FOLDER },
       {},
     ]) {
       install(state);
@@ -334,9 +335,9 @@ describe('scope delivery (items 18 to 20)', () => {
     await api.change({
       currentShellTag: 'Session',
       selectedMeetingId: null,
-      selectedFolderId: FOLDER,
+      selectedProjectId: FOLDER,
     });
-    await api.change({ currentShellTag: 'Recording', selectedFolderId: null });
+    await api.change({ currentShellTag: 'Recording', selectedProjectId: null });
     await act(async () => {
       release();
       await Promise.resolve();

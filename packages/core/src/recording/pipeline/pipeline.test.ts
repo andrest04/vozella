@@ -417,7 +417,7 @@ describe('saved record', () => {
     folderConfidence: null,
     actionItems: [],
     model: 'm',
-    analyzedAt: '2026-09-01T12:40:00+00:00',
+    analyzedAt: '2026-09-01T12:40:00.000+00:00',
   };
 
   it('B-6: carries over Jev, notes, attendees, calendar ids, template, follow-up and plan', async () => {

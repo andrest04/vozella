@@ -29,6 +29,7 @@ export function SessionHeader({
   onCopy,
   onOpenLocation,
   renameDisabled = false,
+  moveControl,
   extraActions,
 }: {
   readonly title: string;
@@ -37,6 +38,8 @@ export function SessionHeader({
   readonly onOpenLocation: () => void;
   /** B4: a run for this meeting is going, so the title cannot change now. */
   readonly renameDisabled?: boolean;
+  /** Move to project: a popover trigger the page owns. */
+  readonly moveControl?: ReactNode;
   /** More buttons for the action row, such as Re-transcribe. */
   readonly extraActions?: ReactNode;
 }) {
@@ -72,6 +75,7 @@ export function SessionHeader({
         >
           {t('SessionPage_OpenLocation.AutomationProperties.Name')}
         </Button>
+        {moveControl}
         {extraActions}
       </div>
     </header>

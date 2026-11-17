@@ -17,8 +17,8 @@ beforeAll(() => {
 
 type Listener = (payload: unknown) => void;
 
-const MEETING = { isVisible: true, kind: 'Meeting', folderId: null, meetingId: 'm1' } as const;
-const ALL = { isVisible: true, kind: 'AllMeetings', folderId: null, meetingId: null } as const;
+const MEETING = { isVisible: true, kind: 'Meeting', projectId: null, meetingId: 'm1' } as const;
+const ALL = { isVisible: true, kind: 'AllMeetings', projectId: null, meetingId: null } as const;
 
 const saved = (n: number, over: Partial<ChatPromptDto> = {}): ChatPromptDto => ({
   id: `p${String(n)}`,
@@ -36,6 +36,8 @@ const stateOf = (over: Partial<ChatStateDto> = {}): ChatStateDto => ({
   hasMessages: false,
   canStartNewChat: true,
   attachments: [],
+  threadId: null,
+  historySaved: true,
   ...over,
 });
 

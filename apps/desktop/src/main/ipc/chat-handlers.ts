@@ -12,6 +12,10 @@ import {
   chatSend,
   chatSetScope,
   chatState,
+  chatThreadsDelete,
+  chatThreadsList,
+  chatThreadsOpen,
+  chatThreadsRename,
 } from '@vozella/contracts';
 import type { ChatController } from '../chat/chat-controller';
 import { registerRequest, type IpcServerDeps } from './ipc-server';
@@ -38,4 +42,15 @@ export function registerChatHandlers({ server, controller }: ChatHandlerDeps): v
   registerRequest(server, chatAttachDrop, ({ paths }) => controller.attachDrop(paths));
   registerRequest(server, chatAttachRemove, ({ id }) => controller.attachRemove(id));
   registerRequest(server, chatAttachList, () => controller.attachList());
+  // Saved conversations: every id is a guid by the time it gets here (the schema checked it).
+  registerRequest(server, chatThreadsList, ({ projectId }) => controller.threadsList(projectId));
+  registerRequest(server, chatThreadsOpen, ({ projectId, id }) =>
+    controller.threadsOpen(projectId, id),
+  );
+  registerRequest(server, chatThreadsRename, async ({ projectId, id, title }) => ({
+    ok: await controller.threadsRename(projectId, id, title),
+  }));
+  registerRequest(server, chatThreadsDelete, async ({ projectId, id }) => ({
+    ok: await controller.threadsDelete(projectId, id),
+  }));
 }

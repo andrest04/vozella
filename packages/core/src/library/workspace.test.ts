@@ -16,7 +16,7 @@ describe('Workspace defaults', () => {
       lastProcessedMeetingId: null,
       sessionTab: 'Transcript',
       currentShellTag: 'Recording',
-      selectedFolderId: null,
+      selectedProjectId: null,
       liveTranscript: '',
       isCaptureActive: false,
     });
@@ -34,8 +34,8 @@ describe('Workspace ScopeChanged', () => {
 
   it('fires for every folder publish, even the same folder', () => {
     const { workspace, scope } = make();
-    workspace.publishSelectedFolder('f');
-    workspace.publishSelectedFolder('f');
+    workspace.publishSelectedProject('f');
+    workspace.publishSelectedProject('f');
     expect(scope).toHaveBeenCalledTimes(2);
   });
 
@@ -176,5 +176,27 @@ describe('Workspace take-notes request', () => {
     off();
     workspace.notifyMeetingChanged('x');
     expect(listener).not.toHaveBeenCalled();
+  });
+});
+
+describe('Workspace projects', () => {
+  it('knows the Projects shell tag, for the tag and for navigation', () => {
+    const { workspace, scope } = make();
+    const requested = vi.fn();
+    workspace.on('navigationRequested', requested);
+    workspace.setCurrentShellTag('Projects');
+    expect(workspace.state.currentShellTag).toBe('Projects');
+    expect(scope).toHaveBeenCalledTimes(1);
+    workspace.navigateTo('Projects');
+    expect(requested).toHaveBeenCalledWith('Projects');
+  });
+
+  it('publishes the selected project, and null for none', () => {
+    const { workspace, scope } = make();
+    workspace.publishSelectedProject('p1');
+    expect(workspace.state.selectedProjectId).toBe('p1');
+    workspace.publishSelectedProject(null);
+    expect(workspace.state.selectedProjectId).toBeNull();
+    expect(scope).toHaveBeenCalledTimes(2);
   });
 });

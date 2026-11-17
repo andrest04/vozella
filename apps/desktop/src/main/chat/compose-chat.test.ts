@@ -1,4 +1,8 @@
-import type { SummaryProviderResolver } from '@vozella/core';
+import type {
+  ChatThreadRepository,
+  ProjectContextSource,
+  SummaryProviderResolver,
+} from '@vozella/core';
 import type { LibraryRuntime } from '@vozella/platform';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -15,20 +19,22 @@ function compose(overrides: Partial<ComposeChatDeps> = {}) {
   const composed = composeChat({
     library: {
       meetings: {},
-      folders: {},
+      projects: {},
       paths: { chatPromptsFilePath: 'C:/app-data/chat-prompts.json' },
-    } as unknown as Pick<LibraryRuntime, 'meetings' | 'folders' | 'paths'>,
+    } as unknown as Pick<LibraryRuntime, 'meetings' | 'projects' | 'paths'>,
     resolver: {} as SummaryProviderResolver,
     logger: silentLogger(),
     translate: (key) => key,
     uiLanguage: () => 'en-US',
-    liveContext: () => ({ digest: null, title: null, notes: null }),
+    liveContext: () => ({ digest: null, title: null, notes: null, projectId: null }),
     broadcast: vi.fn(),
     server,
     dialogs,
     tempDirectory: () => 'C:/temp',
     documentsDirectory: () => 'C:/Documents',
-    workersDirectory: 'C:/app/workers',
+    extractor: () => Promise.resolve({ ok: false, reason: 'unreadable' }),
+    projectContext: {} as ProjectContextSource,
+    threads: {} as ChatThreadRepository,
     writeClipboard: () => Promise.resolve(),
     openExternal: () => Promise.resolve(),
     ...overrides,
@@ -40,11 +46,9 @@ describe('composeChat', () => {
   it('registers every chat and saved prompt request channel once', () => {
     const { channels } = compose();
     expect([...channels].sort()).toEqual(requestChannelsWithPrefix('chat.'));
-  });
-
-  it('builds no worker until a document is attached', () => {
-    // The extractor makes its worker thread on first use; composing must stay cheap.
-    expect(() => compose({ workersDirectory: 'Z:/does-not-exist' })).not.toThrow();
+    expect([...channels]).toEqual(
+      expect.arrayContaining(['chat.threads.list', 'chat.threads.open']),
+    );
   });
 
   it('returns the service the live ask reads', () => {

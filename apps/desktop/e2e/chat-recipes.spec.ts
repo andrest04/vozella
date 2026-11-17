@@ -74,7 +74,7 @@ const openMeeting = async (page: Page): Promise<void> => {
   await expect(page.getByTestId('LblMeetingChatScope')).toHaveText('Meeting: Weekly planning');
 };
 
-test('a meeting scope lists nine recipes, a folder scope lists three', async () => {
+test('a meeting scope lists nine recipes, a project scope lists three', async () => {
   const { launched, page } = await open();
   try {
     await openMeeting(page);
@@ -90,9 +90,9 @@ test('a meeting scope lists nine recipes, a folder scope lists three', async () 
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('ListMeetingChatRecipes')).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Back' }).click();
-    await page.getByRole('treeitem', { name: /Trabajo/ }).click();
-    await expect(page.getByTestId('LblMeetingChatScope')).toHaveText('Folder: Trabajo');
+    await page.getByRole('navigation').getByRole('link', { name: 'Projects' }).click();
+    await page.getByRole('article').getByRole('link', { name: 'Trabajo', exact: true }).click();
+    await expect(page.getByTestId('LblMeetingChatScope')).toHaveText('Project: Trabajo');
     await openPanel(page);
     await page.getByTestId('BtnMeetingChatRecipes').click();
     await expect(page.getByTestId('ListMeetingChatRecipes').getByRole('option')).toHaveCount(3);

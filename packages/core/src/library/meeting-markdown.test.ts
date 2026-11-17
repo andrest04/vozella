@@ -8,11 +8,11 @@ function meeting(patch: Partial<MeetingRecord> = {}): MeetingRecord {
   return {
     id: ID,
     title: 'Standup',
-    recordedAt: '2026-09-01T12:00:00.0000000+00:00',
+    recordedAt: '2026-09-01T12:00:00.000+00:00',
     endedAt: null,
     audioFilePath: '',
     sourcePath: null,
-    folderId: null,
+    projectId: null,
     summaryProvider: null,
     calendarEventId: null,
     calendarId: null,
@@ -38,7 +38,7 @@ const parse = (text: string, path = 'x.md') => parseMeetingMarkdown(path, text, 
 describe('render', () => {
   it('writes the minimal record byte for byte, keeping the empty audioFilePath space', () => {
     expect(renderMeetingMarkdown(meeting())).toBe(
-      `---\nid: ${ID}\ntitle: Standup\nrecordedAt: 2026-09-01T12:00:00.0000000+00:00\naudioFilePath: \n---\n`,
+      `---\nid: ${ID}\ntitle: Standup\nrecordedAt: 2026-09-01T12:00:00.000+00:00\naudioFilePath: \n---\n`,
     );
   });
 
@@ -47,7 +47,7 @@ describe('render', () => {
       '---\n' +
       `id: ${ID}\n` +
       'title: Standup\n' +
-      'recordedAt: 2026-09-01T12:00:00.0000000+00:00\n' +
+      'recordedAt: 2026-09-01T12:00:00.000+00:00\n' +
       'audioFilePath: \n' +
       '---\n' +
       '\n## Brief\n\nBrief text\n' +
@@ -83,14 +83,14 @@ describe('render', () => {
       folderConfidence: 0.5,
       actionItems: [{ text: 'Follow up: reunión', relation: 'supports', confidence: 0.88 }],
       model: 'jev-1.13.0',
-      analyzedAt: '2026-09-01T13:00:00+00:00',
+      analyzedAt: '2026-09-01T13:00:00.000+00:00',
     };
     const full = meeting({
       title: 'Weekly sync: planning',
-      endedAt: '2026-09-01T13:45:00.0000000-05:00',
-      recordedAt: '2026-09-01T12:00:00.0000000-05:00',
+      endedAt: '2026-09-01T13:45:00.000-05:00',
+      recordedAt: '2026-09-01T12:00:00.000-05:00',
       audioFilePath: 'C:\\Lib\\Universidad\\2026-09-01 Weekly sync planning.wav',
-      folderId: '7d1e0a52-33c4-4f6b-8a90-0c1d2e3f4a5b',
+      projectId: '7d1e0a52-33c4-4f6b-8a90-0c1d2e3f4a5b',
       summaryProvider: 'local',
       calendarEventId: 'AAMkAGI2',
       calendarId: 'cal-1',
@@ -118,8 +118,8 @@ describe('render', () => {
   it('orders frontmatter as the spec says and omits unset optional fields', () => {
     const text = renderMeetingMarkdown(
       meeting({
-        endedAt: '2026-09-01T13:00:00.0000000+00:00',
-        folderId: '7d1e0a52-33c4-4f6b-8a90-0c1d2e3f4a5b',
+        endedAt: '2026-09-01T13:00:00.000+00:00',
+        projectId: '7d1e0a52-33c4-4f6b-8a90-0c1d2e3f4a5b',
         summaryProvider: 'local',
         calendarEventId: 'e',
         attendees: ['A', 'B'],
@@ -144,7 +144,7 @@ describe('render', () => {
     expect(renderMeetingMarkdown(meeting())).not.toContain('endedAt');
   });
 
-  it('writes Jev as one compact camelCase line with .NET escaping', () => {
+  it('writes Jev as one compact camelCase line, plain UTF-8, no escaping', () => {
     const text = renderMeetingMarkdown(
       meeting({
         jevAnalysis: {
@@ -165,10 +165,8 @@ describe('render', () => {
         },
       }),
     );
-    expect(text).toContain(
-      '\n## Jev\n\n{"meetingType":"\\u00F1\\u002Bx","meetingTypeConfidence":null,',
-    );
-    expect(text.endsWith('"analyzedAt":"2026-09-01T13:00:00\\u002B00:00"}\n')).toBe(true);
+    expect(text).toContain('\n## Jev\n\n{"meetingType":"ñ+x","meetingTypeConfidence":null,');
+    expect(text.endsWith('"analyzedAt":"2026-09-01T13:00:00.000+00:00"}\n')).toBe(true);
   });
 
   it('writes the id lowercase and the dates in round-trip form whatever the caller passed (item 14)', () => {
@@ -177,12 +175,12 @@ describe('render', () => {
         id: 'ABCDEF12-1111-4111-8111-ABCDEFABCDEF',
         recordedAt: '2026-09-01T12:00:00Z',
         endedAt: '2026-09-01T13:00:00.5+00:00',
-        folderId: '7D1E0A52-33C4-4F6B-8A90-0C1D2E3F4A5B',
+        projectId: '7D1E0A52-33C4-4F6B-8A90-0C1D2E3F4A5B',
       }),
     );
     expect(text).toContain('id: abcdef12-1111-4111-8111-abcdefabcdef\n');
-    expect(text).toContain('recordedAt: 2026-09-01T12:00:00.0000000+00:00\n');
-    expect(text).toContain('endedAt: 2026-09-01T13:00:00.5000000+00:00\n');
+    expect(text).toContain('recordedAt: 2026-09-01T12:00:00.000+00:00\n');
+    expect(text).toContain('endedAt: 2026-09-01T13:00:00.500+00:00\n');
     expect(text).toContain('folderId: 7d1e0a52-33c4-4f6b-8a90-0c1d2e3f4a5b\n');
   });
 
@@ -356,7 +354,7 @@ describe('header escaping', () => {
 
   it('reads a legacy file without the key literally and splits the old way', () => {
     const text =
-      `---\nid: ${ID}\ntitle: Standup\nrecordedAt: 2026-09-01T12:00:00.0000000+00:00\naudioFilePath: \n---\n` +
+      `---\nid: ${ID}\ntitle: Standup\nrecordedAt: 2026-09-01T12:00:00.000+00:00\naudioFilePath: \n---\n` +
       '\n## Personal Notes\n\nBefore\n## Summary\nAfter\n';
     const back = parse(text);
     expect(back.notes).toBe('Before');
@@ -392,13 +390,13 @@ describe('parse', () => {
     const back = parse(text);
     expect(back.title).toBe('Hi');
     expect(back.summary).toBe('body');
-    expect(back.recordedAt).toBe('2026-09-01T12:00:00.0000000+00:00');
+    expect(back.recordedAt).toBe('2026-09-01T12:00:00.000+00:00');
   });
 
   it('ignores lines without a colon, lets later duplicates win, trims keys and values', () => {
     const back = parse(`${head}garbage line\n title :  First \ntitle: Second\nfolderId\n---\n`);
     expect(back.title).toBe('Second');
-    expect(back.folderId).toBeNull();
+    expect(back.projectId).toBeNull();
   });
 
   it('keeps colons inside values and reads a key without a value as empty', () => {
@@ -410,13 +408,13 @@ describe('parse', () => {
 
   it('reads a recordedAt without an offset as local time', () => {
     const back = parse(`---\nid: ${ID}\nrecordedAt: 2026-09-01T12:00:00\n---\n`);
-    expect(back.recordedAt).toMatch(/^2026-09-01T12:00:00\.0000000[+-]\d{2}:\d{2}$/);
+    expect(back.recordedAt).toMatch(/^2026-09-01T12:00:00\.000[+-]\d{2}:\d{2}$/);
   });
 
   it('ignores an unparsable endedAt and an invalid folderId', () => {
     const back = parse(`${head}endedAt: later\nfolderId: nope\n---\n`);
     expect(back.endedAt).toBeNull();
-    expect(back.folderId).toBeNull();
+    expect(back.projectId).toBeNull();
   });
 
   it('accepts any GUID text form for id', () => {
@@ -495,13 +493,13 @@ describe('golden sample (spec 4.1, every field)', () => {
     '"urgencyConfidence":0.9,"containsDecisions":0.8,"containsCommitments":0.2,"piiRisk":0.01,' +
     '"summaryFaithful":0.7,"suggestedFolderId":"inbox","folderConfidence":0.5,' +
     '"actionItems":[{"text":"Follow up","relation":"supports","confidence":0.88}],' +
-    '"model":"jev-1.13.0","analyzedAt":"2026-09-01T13:00:00+00:00"}';
+    '"model":"jev-1.13.0","analyzedAt":"2026-09-01T13:00:00.000+00:00"}';
   const sample = (jevLine: string) =>
     '---\n' +
     'id: 3f2b8c1e-9a47-4d0e-b1c2-5e6f7a8b9c0d\n' +
     'title: Weekly sync: planning\n' +
-    'recordedAt: 2026-09-01T12:00:00.0000000-05:00\n' +
-    'endedAt: 2026-09-01T13:45:00.0000000-05:00\n' +
+    'recordedAt: 2026-09-01T12:00:00.000-05:00\n' +
+    'endedAt: 2026-09-01T13:45:00.000-05:00\n' +
     'audioFilePath: C:\\Users\\ana\\Documents\\MeetingLive\\Universidad\\2026-09-01 Weekly sync planning.wav\n' +
     'folderId: 7d1e0a52-33c4-4f6b-8a90-0c1d2e3f4a5b\n' +
     'summaryProvider: local\n' +
@@ -521,21 +519,30 @@ describe('golden sample (spec 4.1, every field)', () => {
     '\n## Follow-up\n\nSubject: recap\n' +
     '\n## Project plan\n\n### Steps\nShip\n';
 
-  const escapedJev = jev.replace(/\+/g, '\\u002B');
+  /** What an older version wrote: escaped plus signs, seven fraction digits. */
+  const olderJev = jev
+    .replace('2026-09-01T13:00:00.000+00:00', '2026-09-01T13:00:00.0000000+00:00')
+    .replace(/\+/g, '\\u002B');
+  const older = (text: string): string => text.replaceAll('.000-05:00', '.0000000-05:00');
 
   it('re-renders byte for byte', () => {
-    const text = sample(escapedJev);
+    const text = sample(jev);
     expect(renderMeetingMarkdown(parse(text, 'a.md'))).toBe(text);
   });
 
-  it('reads the raw "+" form the same way and writes the escaped form', () => {
-    const raw = parse(sample(jev), 'a.md');
-    expect(raw).toEqual(parse(sample(escapedJev), 'a.md'));
-    expect(renderMeetingMarkdown(raw)).toBe(sample(escapedJev));
+  it('reads an older file (escaped plus signs, seven fraction digits) and writes it plain', () => {
+    const raw = parse(older(sample(olderJev)), 'a.md');
+    expect(raw).toEqual(parse(sample(jev), 'a.md'));
+    expect(renderMeetingMarkdown(raw)).toBe(sample(jev));
+  });
+
+  it('a BOM and CRLF copy of an older file reads and rewrites to the plain form', () => {
+    const text = `\uFEFF${older(sample(olderJev)).replace(/\n/g, '\r\n')}`;
+    expect(renderMeetingMarkdown(parse(text, 'a.md'))).toBe(sample(jev));
   });
 
   it('a CRLF copy of the sample parses to the same record', () => {
-    const text = sample(escapedJev);
+    const text = sample(jev);
     expect(parse(text.replace(/\n/g, '\r\n'), 'a.md')).toEqual(parse(text, 'a.md'));
   });
 });
@@ -587,7 +594,7 @@ describe('action item owner and deadline (## Action Item Data)', () => {
     const text = renderMeetingMarkdown(meeting({ actionItems: plain }));
     expect(text).not.toContain('## Action Item Data');
     expect(text).toBe(
-      `---\nid: ${ID}\ntitle: Standup\nrecordedAt: 2026-09-01T12:00:00.0000000+00:00\naudioFilePath: \n---\n` +
+      `---\nid: ${ID}\ntitle: Standup\nrecordedAt: 2026-09-01T12:00:00.000+00:00\naudioFilePath: \n---\n` +
         '\n## Action Items\n\n- [ ] a\n- [x] b\n',
     );
   });

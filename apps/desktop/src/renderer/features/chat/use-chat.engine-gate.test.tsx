@@ -10,7 +10,7 @@ import { useChat } from './use-chat';
 const SCOPE: ChatScopeDto = {
   kind: 'Meeting',
   isVisible: true,
-  folderId: null,
+  projectId: null,
   meetingId: 'm1',
 };
 

@@ -7,7 +7,7 @@ import { writeMeeting } from './library-data';
 // answers every engine, so nothing touches a model, a CLI or the network.
 
 const ID = '3f2b8c1e-9a47-4d0e-b1c2-5e6f7a8b9c0d';
-const SCOPE = { isVisible: true, kind: 'AllMeetings', folderId: null, meetingId: null } as const;
+const SCOPE = { isVisible: true, kind: 'AllMeetings', projectId: null, meetingId: null } as const;
 
 async function open(
   extraEnv: Record<string, string> = {},

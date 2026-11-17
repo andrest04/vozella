@@ -31,7 +31,7 @@ export interface PipelineRequest {
   readonly liveDraftIsFinal?: boolean;
   /** The time the user paused, in milliseconds. Passed to the offline pass as clock skew. */
   readonly pausedDurationMs: number;
-  readonly folderId: string | null;
+  readonly projectId: string | null;
   /** Elapsed milliseconds of the highlights marked during the take. */
   readonly highlightsMs: readonly number[];
   /** The live digest and Q&A of the take: context for the summary, Q&A saved with the notes. */

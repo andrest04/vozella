@@ -1,5 +1,4 @@
 import type {
-  FolderDto,
   MicrophoneChoiceDto,
   OutputOf,
   RecordingMessageDto,
@@ -31,9 +30,8 @@ export interface RecordingStore {
   /** The part of the live transcript the engine will not rewrite (the rest is the interim tail). */
   readonly committedText: string;
   readonly setup: RecordingSetupDto | null;
-  readonly folders: readonly FolderDto[];
-  /** Null is the Inbox. */
-  readonly folderId: string | null;
+  /** Where the next take is saved, and where the one under way is being saved. Null is No project. */
+  readonly projectId: string | null;
   /** What the user typed; null shows the default title for `defaultAtMs`. */
   readonly title: string | null;
   readonly defaultAtMs: number;
@@ -49,8 +47,7 @@ const initial = (): RecordingStore => ({
   liveText: '',
   committedText: '',
   setup: null,
-  folders: [],
-  folderId: null,
+  projectId: null,
   title: null,
   defaultAtMs: Date.now(),
   notice: null,
@@ -81,7 +78,7 @@ export function resetRecordingStore(): void {
 
 /**
  * Applies a state from main. The end of a take (back to Idle) resets the title for the next one,
- * as the WinUI run reset does (spec 2.2).
+ * as the run reset always did (spec 2.2).
  */
 export function applyRecordingState(next: RecordingStateDto): void {
   const previous = get().state;
@@ -119,25 +116,13 @@ export async function refreshSetup(): Promise<RecordingSetupDto | null> {
   }
 }
 
-/** The destination list reloads on every entry; the choice is kept while its folder exists. */
-export async function loadFolders(): Promise<void> {
-  try {
-    const result = await window.vozella.invoke('library.load', {});
-    if (!result.ok) return;
-    const folders = result.folders;
-    const { folderId } = get();
-    const kept = folderId !== null && folders.some((folder) => folder.id === folderId);
-    set({ folders, folderId: kept ? folderId : null });
-  } catch {
-    // The list stays as it was.
-  }
-}
-
 export const setTitle = (title: string): void => {
   set({ title });
 };
-export const setFolderId = (folderId: string | null): void => {
-  set({ folderId });
+export const setProjectId = (projectId: string | null): void => {
+  // Unchanged means unnotified: the Record page sets it from an effect that must not re-run itself.
+  if (get().projectId === projectId) return;
+  set({ projectId });
 };
 export const setNotice = (notice: RecordingMessageDto | null): void => {
   set({ notice });
@@ -176,7 +161,6 @@ export function connectRecording(): () => void {
   }
   void loadRecordingState();
   void refreshSetup();
-  void loadFolders();
   return () => {
     connections -= 1;
     if (connections === 0) {
@@ -198,7 +182,7 @@ export async function startRecording(input: StartInput): Promise<boolean> {
   try {
     const result = await window.vozella.invoke('recording.start', {
       title: input.title,
-      folderId: get().folderId,
+      projectId: get().projectId,
       microphone: input.microphone,
       processId: input.processId,
       appName: input.appName,
@@ -223,7 +207,7 @@ export function importRecording(title: string): Promise<boolean> {
     if (picked === null) return null;
     return window.vozella.invoke('recording.import', {
       title,
-      folderId: get().folderId,
+      projectId: get().projectId,
       path: picked.path,
     });
   });
@@ -232,7 +216,7 @@ export function importRecording(title: string): Promise<boolean> {
 /** Spec 2.12.1: the same import for a YouTube link; main downloads the audio first. */
 export function importFromYouTube(title: string, url: string): Promise<boolean> {
   return runImport(() =>
-    window.vozella.invoke('recording.importUrl', { title, folderId: get().folderId, url }),
+    window.vozella.invoke('recording.importUrl', { title, projectId: get().projectId, url }),
   );
 }
 

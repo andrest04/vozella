@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { fileStem, folderDirectoryName, sanitizeName } from './names';
+import { fileStem, sanitizeName } from './names';
 
 describe('sanitizeName', () => {
   it.each([
     ['Q3: plan/review?', 'Q3 plan review'],
     ['Notes...', 'Notes'],
-    ['inbox', 'Inbox folder'],
-    ['INBOX', 'Inbox folder'],
+    ['inbox', 'inbox'],
     ['   ', 'Meeting'],
     ['', 'Meeting'],
     ['a   b', 'a b'],
@@ -51,15 +50,6 @@ describe('sanitizeName', () => {
   it('does not touch names that merely contain a device name', () => {
     expect(sanitizeName('Console notes')).toBe('Console notes');
     expect(sanitizeName('COM10')).toBe('COM10');
-  });
-});
-
-describe('folderDirectoryName', () => {
-  it('B10: Meetings and Recordings are reserved like Inbox', () => {
-    expect(folderDirectoryName('Meetings')).toBe('Meetings folder');
-    expect(folderDirectoryName('recordings')).toBe('recordings folder');
-    expect(folderDirectoryName('Inbox')).toBe('Inbox folder');
-    expect(folderDirectoryName('Universidad')).toBe('Universidad');
   });
 });
 

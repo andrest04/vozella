@@ -21,7 +21,7 @@ function Harness({
   initial = '',
   onSend = () => undefined,
 }: {
-  kind?: 'Meeting' | 'Folder';
+  kind?: 'Meeting' | 'Project';
   initial?: string;
   onSend?: (draft: string) => void;
 }) {
@@ -52,7 +52,7 @@ const item = (index: number): HTMLElement => {
   if (!found) throw new Error(`no recipe row ${String(index)}`);
   return found;
 };
-const recipe = (index: number, kind: 'Meeting' | 'Folder' = 'Meeting') => {
+const recipe = (index: number, kind: 'Meeting' | 'Project' = 'Meeting') => {
   const found = recipesForScope(kind, names)[index];
   if (!found) throw new Error(`no recipe ${String(index)}`);
   return found;
@@ -68,7 +68,7 @@ describe('Recipes button (items 108, 111)', () => {
     expect(button()).toHaveAttribute('aria-expanded', 'true');
     expect(items()).toHaveLength(9);
     unmount();
-    render(<Harness kind="Folder" />);
+    render(<Harness kind="Project" />);
     await user.click(button());
     expect(items()).toHaveLength(3);
   });

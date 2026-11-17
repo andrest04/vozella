@@ -7,6 +7,9 @@ import {
 } from '@tanstack/react-router';
 import { GalleryRoute } from '../features/gallery/GalleryRoute';
 import { LibraryRoute } from '../features/library/LibraryRoute';
+import { NoProjectRoute } from '../features/projects/NoProjectRoute';
+import { ProjectRoute } from '../features/projects/ProjectRoute';
+import { ProjectsRoute } from '../features/projects/ProjectsRoute';
 import { RecordRoute } from '../features/record/RecordRoute';
 import { SessionRoute } from '../features/session/SessionRoute';
 import { SettingsRoute } from '../features/settings/SettingsRoute';
@@ -24,10 +27,36 @@ const indexRoute = createRoute({
   },
 });
 
+/** `/record?project=<id>&start=1` is Start meeting in this project; the page reads it once. */
+export interface RecordSearch {
+  readonly project?: string;
+  readonly start?: 1;
+}
+
 const recordRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/record',
+  validateSearch: (search: Record<string, unknown>): RecordSearch => ({
+    ...(typeof search.project === 'string' ? { project: search.project } : {}),
+    ...(search.start === 1 || search.start === '1' ? { start: 1 as const } : {}),
+  }),
   component: RecordRoute,
+});
+const projectsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/projects',
+  component: ProjectsRoute,
+});
+// Static before dynamic: `none` is No project, any other segment is a project id.
+const noProjectRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/projects/none',
+  component: NoProjectRoute,
+});
+const projectRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/projects/$projectId',
+  component: ProjectRoute,
 });
 const libraryRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -62,6 +91,9 @@ const galleryRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   recordRoute,
+  projectsRoute,
+  noProjectRoute,
+  projectRoute,
   libraryRoute,
   sessionRoute,
   settingsRoute,

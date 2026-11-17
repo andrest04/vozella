@@ -1,16 +1,16 @@
 import type { ChatScopeDecision, ChatScopeKind } from '@vozella/core';
-import { FileText, Folder, Layers, Radio, type LucideIcon } from 'lucide-react';
+import { Briefcase, FileText, Layers, Radio, type LucideIcon } from 'lucide-react';
 import type { Translate } from '../../i18n/translate';
 
-/** Four distinct glyphs, same meaning as the WinUI ones (spec 2.1, item 7). */
+/** Four distinct glyphs, one for each scope (spec 2.1, item 7). */
 export const SCOPE_ICON: Readonly<Record<ChatScopeKind, LucideIcon>> = {
   Live: Radio,
   Meeting: FileText,
-  Folder,
+  Project: Briefcase,
   AllMeetings: Layers,
 };
 
-/** The name is a meeting title or a folder name. Blank counts as missing. */
+/** The name is a meeting title or a project name. Blank counts as missing. */
 export function scopeLabel(
   t: Translate,
   decision: Pick<ChatScopeDecision, 'isVisible' | 'kind'>,
@@ -23,7 +23,7 @@ export function scopeLabel(
       return t('Chat_ScopeLive');
     case 'Meeting':
       return named === null ? t('Chat_ScopeMeeting') : t('Chat_ScopeMeetingNamed', named);
-    case 'Folder':
+    case 'Project':
       return named === null ? t('Chat_ScopeFolder') : t('Chat_ScopeFolderNamed', named);
     case 'AllMeetings':
       return t('Chat_ScopeAll');

@@ -11,7 +11,7 @@ export function starterHeadingKey(kind: ChatScopeKind, context: RecipeContext): 
       return context.hasActionItems === true
         ? 'Ui_ChatStartersMeeting'
         : 'Ui_ChatStartersRecording';
-    case 'Folder':
+    case 'Project':
       return 'Ui_ChatStartersFolder';
     case 'Live':
       return 'Ui_ChatStartersLive';

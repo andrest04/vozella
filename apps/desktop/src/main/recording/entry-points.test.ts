@@ -21,18 +21,49 @@ function fakeService(over: Partial<Record<string, unknown>> = {}) {
 }
 
 describe('recording entry points', () => {
-  it('startRecording uses the remembered sources, the selected folder and an optional meeting', async () => {
+  it('startRecording uses the remembered sources, the selected project and an optional meeting', async () => {
     const service = fakeService();
     const workspace = new Workspace();
-    workspace.publishSelectedFolder('f1');
+    workspace.publishSelectedProject('f1');
     const entry = createRecordingEntryPoints(service as unknown as RecordingService, workspace);
     expect(await entry.startRecording({ meetingId: 'm1' })).toEqual({
       started: true,
       meetingId: 'm1',
     });
     expect(service.start).toHaveBeenCalledWith(
-      { title: '', folderId: 'f1', microphone: null, appName: null },
+      { title: '', projectId: 'f1', microphone: null, appName: null },
       { meetingId: 'm1' },
+    );
+  });
+
+  it('startRecording uses no project when none is selected', async () => {
+    const service = fakeService();
+    const entry = createRecordingEntryPoints(
+      service as unknown as RecordingService,
+      new Workspace(),
+    );
+    await entry.startRecording();
+    expect(service.start).toHaveBeenCalledWith(
+      { title: '', projectId: null, microphone: null, appName: null },
+      { meetingId: null },
+    );
+  });
+
+  it('startRecording prefers the project the caller names over the selected one', async () => {
+    const service = fakeService();
+    const workspace = new Workspace();
+    workspace.publishSelectedProject('f1');
+    const entry = createRecordingEntryPoints(service as unknown as RecordingService, workspace);
+    await entry.startRecording({ projectId: 'f2' });
+    expect(service.start).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: 'f2' }),
+      expect.anything(),
+    );
+    workspace.publishSelectedProject(null);
+    await entry.startRecording();
+    expect(service.start).toHaveBeenLastCalledWith(
+      expect.objectContaining({ projectId: null }),
+      expect.anything(),
     );
   });
 

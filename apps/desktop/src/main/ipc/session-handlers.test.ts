@@ -21,7 +21,7 @@ function meeting(patch: Partial<MeetingRecord> = {}): MeetingRecord {
     endedAt: null,
     audioFilePath: '',
     sourcePath: null,
-    folderId: null,
+    projectId: null,
     summaryProvider: null,
     calendarEventId: null,
     calendarId: null,

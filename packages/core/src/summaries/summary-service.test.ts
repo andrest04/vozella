@@ -1,11 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CancelSource, type CancelSignal } from '../cancel';
 import type { Clock } from '../clock';
-import {
-  InMemoryFolderRepository,
-  InMemoryMeetingRepository,
-  InMemorySettingsStore,
-} from '../library/in-memory-library';
+import type { AttachedDocument } from '../chat/attachments';
+import { InMemoryMeetingRepository, InMemorySettingsStore } from '../library/in-memory-library';
+import { InMemoryProjectContextSource } from '../projects/in-memory-projects';
+import type { ProjectContextSource } from '../projects/ports';
 import type { ActionItem, MeetingRecord } from '../library/meeting';
 import { CliToolError } from './cli-failure';
 import { SummaryError } from './cli-failure-messages';
@@ -32,7 +31,7 @@ const record = (patch: Partial<MeetingRecord> = {}): MeetingRecord => ({
   endedAt: '2026-09-01T12:30:00.0000000+00:00',
   audioFilePath: '',
   sourcePath: null,
-  folderId: 'folder-1',
+  projectId: 'folder-1',
   summaryProvider: null,
   calendarEventId: 'evt-1',
   calendarId: 'cal-1',
@@ -70,7 +69,8 @@ function setup(
     gate?: ProviderResolution;
     stored?: MeetingRecord;
     queue?: PatchQueue;
-    folders?: InMemoryFolderRepository;
+    projectContext?: Pick<ProjectContextSource, 'get'>;
+    providerId?: string;
     others?: MeetingRecord[];
   } = {},
 ) {
@@ -80,7 +80,7 @@ function setup(
   const settings = new InMemorySettingsStore();
   const seen: Seen[] = [];
   const provider = {
-    id: 'claude-code',
+    id: options.providerId ?? 'claude-code',
     summarize: (request, cancel) => {
       const entry = { request, cancel };
       seen.push(entry);
@@ -101,7 +101,7 @@ function setup(
     notifyMeetingChanged: (id) => notified.push(id),
     placeholderFormats: ['Meeting {0}', 'Reunión {0}'],
     nextSessionDates: settings,
-    ...(options.folders === undefined ? {} : { folders: options.folders }),
+    ...(options.projectContext === undefined ? {} : { projectContext: options.projectContext }),
     ...(options.queue === undefined ? {} : { queue: options.queue }),
   });
   return { repo, settings, service, seen, notified };
@@ -502,22 +502,22 @@ describe('deadline dates on save (action item deadlines T4)', () => {
 });
 
 describe('series context', () => {
-  const FOLDER = 'folder-1';
-  const folderWith = (note: string | null): InMemoryFolderRepository => {
-    const folders = new InMemoryFolderRepository();
-    folders.folders = [
-      {
-        id: FOLDER,
-        name: 'Vendor',
-        parentId: null,
-        note,
-        colorKey: null,
-        iconKey: null,
-        createdAt: '2026-01-01T00:00:00.0000000+00:00',
-      },
-    ];
-    return folders;
+  const PROJECT = 'folder-1';
+  const contextWith = (
+    instructions: string,
+    documents: AttachedDocument[] = [],
+  ): InMemoryProjectContextSource => {
+    const source = new InMemoryProjectContextSource();
+    source.set({ projectId: PROJECT, name: 'Vendor', instructions, documents });
+    return source;
   };
+  const document = (name: string, text: string): AttachedDocument => ({
+    name,
+    kind: 'text',
+    pages: null,
+    truncated: false,
+    sections: [{ location: null, text }],
+  });
   const other = (id: string, day: string, patch: Partial<MeetingRecord> = {}): MeetingRecord =>
     record({
       id,
@@ -528,9 +528,9 @@ describe('series context', () => {
       ...patch,
     });
 
-  it('hands the prompt the folder note and open items of earlier related meetings', async () => {
+  it('hands the prompt the project instructions and open items of earlier related meetings', async () => {
     const { service, seen } = setup({
-      folders: folderWith('  Vendor sync notes  '),
+      projectContext: contextWith('  Vendor sync notes  '),
       others: [
         other('a', '08-25'),
         other('b', '08-18', { actionItems: [{ text: 'done', isDone: true }] }),
@@ -538,9 +538,73 @@ describe('series context', () => {
     });
     await run(service);
     const context = seen[0]?.request.enhancement;
-    expect(context?.folderNote).toBe('Vendor sync notes');
+    expect(context?.projectInstructions).toBe('Vendor sync notes');
+    expect(context?.projectFiles).toBeNull();
     expect(context?.priorOpenItems).toContain('Weekly sync (2026-08-25)\n- open from a');
     expect(context?.priorOpenItems).not.toContain('done');
+  });
+
+  it('hands the prompt the project files and neutralizes forged structure in the instructions', async () => {
+    const { service, seen } = setup({
+      projectContext: contextWith('Be brief.\n# Context', [
+        document('Contract.txt', 'Payment in 30 days'),
+      ]),
+    });
+    await run(service);
+    const context = seen[0]?.request.enhancement;
+    expect(context?.projectInstructions).toBe('Be brief.\n> # Context');
+    expect(context?.projectFiles).toContain('Contract.txt');
+    expect(context?.projectFiles).toContain('Payment in 30 days');
+  });
+
+  it('reads the context of the own project of the meeting only', async () => {
+    const source = { get: vi.fn(() => Promise.resolve(null)) };
+    const { service } = setup({ projectContext: source });
+    await run(service);
+    expect(source.get).toHaveBeenCalledWith(PROJECT);
+    const unplaced = setup({ projectContext: source, stored: record({ projectId: null }) });
+    source.get.mockClear();
+    await run(unplaced.service);
+    expect(source.get).not.toHaveBeenCalled();
+  });
+
+  it('ranks the file excerpts by the title, the notes and the start of the transcript', async () => {
+    const filler = Array.from(
+      { length: 900 },
+      (_, i) => `filler line ${String(i)} about nothing at all.`,
+    ).join(' ');
+    const documents = [
+      document('Big.txt', `${filler} The quarterly audit happens in October. ${filler}`),
+    ];
+    const hit = setup({
+      projectContext: contextWith('', documents),
+      stored: record({ projectId: PROJECT, title: 'Quarterly audit review' }),
+    });
+    await run(hit.service);
+    const miss = setup({
+      projectContext: contextWith('', documents),
+      stored: record({ projectId: PROJECT, title: 'Zzz qqq' }),
+    });
+    await run(miss.service);
+    expect(hit.seen[0]?.request.enhancement?.projectFiles).toContain('quarterly audit');
+    expect(miss.seen[0]?.request.enhancement?.projectFiles).not.toContain('quarterly audit');
+  });
+
+  it('uses the remote budget for a CLI engine and the small one for the local engine', async () => {
+    const long = 'x'.repeat(10_000);
+    const remote = setup({
+      projectContext: contextWith(long),
+      stored: record({ projectId: PROJECT }),
+    });
+    await run(remote.service);
+    const local = setup({
+      projectContext: contextWith(long),
+      stored: record({ projectId: PROJECT }),
+      providerId: 'local',
+    });
+    await run(local.service);
+    expect(remote.seen[0]?.request.enhancement?.projectInstructions).toHaveLength(6_000);
+    expect(local.seen[0]?.request.enhancement?.projectInstructions).toHaveLength(1_500);
   });
 
   it('ignores later meetings, itself and caps the meetings at the 3 most recent', async () => {
@@ -562,17 +626,36 @@ describe('series context', () => {
     expect(text).not.toContain('open from later');
   });
 
-  it('adds nothing when the folder note is blank and no meeting is related', async () => {
-    const { service, seen } = setup({ folders: folderWith(' ') });
+  it('adds nothing when the instructions are blank and no meeting is related', async () => {
+    const { service, seen } = setup({
+      projectContext: contextWith(' '),
+      stored: record({ projectId: PROJECT }),
+    });
     await run(service);
-    expect(seen[0]?.request.enhancement?.hasFolderNote).not.toBe(true);
+    expect(seen[0]?.request.enhancement?.hasProjectInstructions).not.toBe(true);
+    expect(seen[0]?.request.enhancement?.hasProjectFiles).not.toBe(true);
     expect(seen[0]?.request.enhancement?.hasPriorOpenItems).not.toBe(true);
   });
 
-  it('still summarizes when the folder store fails', async () => {
-    const folders = folderWith('note');
-    folders.getAll = () => Promise.reject(new Error('disk'));
-    const { service } = setup({ folders });
+  it('still summarizes, and keeps the open items, when the project context fails', async () => {
+    const { service, seen } = setup({
+      projectContext: { get: () => Promise.reject(new Error('disk')) },
+      others: [other('a', '08-25')],
+    });
+    expect((await run(service)).status).toBe('generated');
+    const context = seen[0]?.request.enhancement;
+    expect(context?.hasProjectInstructions).not.toBe(true);
+    expect(context?.priorOpenItems).toContain('open from a');
+  });
+
+  it('still summarizes when the project context throws synchronously', async () => {
+    const { service } = setup({
+      projectContext: {
+        get: () => {
+          throw new Error('proxy not ready');
+        },
+      },
+    });
     expect((await run(service)).status).toBe('generated');
   });
 });

@@ -12,11 +12,21 @@ import {
   chatSendOutcomeSchema,
   chatSetScope,
   chatState,
+  chatStateSchema,
+  chatThreadsChanged,
+  chatThreadsDelete,
+  chatThreadsList,
+  chatThreadsOpen,
+  chatThreadsRename,
+  chatFailureKindSchema,
+  chatScopeSchema,
+  chatThreadSummarySchema,
+  threadScopeSchema,
   eventChannels,
   requestChannels,
 } from './index';
 
-const scope = { isVisible: true, kind: 'Meeting', folderId: null, meetingId: 'm-1' } as const;
+const scope = { isVisible: true, kind: 'Meeting', projectId: null, meetingId: 'm-1' } as const;
 const message = (role: 'user' | 'assistant') => ({
   id: 'x',
   role,
@@ -153,5 +163,141 @@ describe('chat attachment contracts', () => {
       canStartNewChat: true,
     });
     expect(state.attachments).toEqual([]);
+  });
+});
+
+const PROJECT = '9f1c2a3b-4d5e-4f60-8a7b-0c1d2e3f4a5b';
+const THREAD = '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d';
+const AT = '2026-11-16T14:03:00.000Z';
+
+describe('chat history contracts', () => {
+  it('registers the thread requests and the changed event', () => {
+    for (const name of [
+      'chat.threads.list',
+      'chat.threads.open',
+      'chat.threads.rename',
+      'chat.threads.delete',
+    ]) {
+      expect(Object.keys(requestChannels)).toContain(name);
+    }
+    expect(Object.keys(eventChannels)).toContain('chat.threads.changed');
+  });
+
+  it('the scope kind is Project, not Folder, and carries a lowercase project id', () => {
+    const project = { isVisible: true, kind: 'Project', projectId: PROJECT, meetingId: null };
+    expect(chatScopeSchema.parse({ ...project, projectId: PROJECT.toUpperCase() })).toEqual(
+      project,
+    );
+    expect(chatScopeSchema.safeParse({ ...project, kind: 'Folder' }).success).toBe(false);
+    expect(
+      chatScopeSchema.safeParse({ ...project, folderId: PROJECT, projectId: undefined }).success,
+    ).toBe(false);
+    expect(chatScopeSchema.safeParse({ ...project, projectId: '../x' }).success).toBe(false);
+  });
+
+  it('a thread scope names its owner and, for Meeting, the meeting', () => {
+    const scope = { kind: 'Meeting', projectId: PROJECT, meetingId: 'm1' };
+    expect(threadScopeSchema.parse(scope)).toEqual(scope);
+    expect(
+      threadScopeSchema.safeParse({ kind: 'AllMeetings', projectId: null, meetingId: null })
+        .success,
+    ).toBe(true);
+  });
+
+  it('the chat state tells which thread is open and whether the history is saved', () => {
+    const base = {
+      messages: [],
+      isSending: false,
+      showScopeMismatch: false,
+      hasMessages: false,
+      canStartNewChat: true,
+    };
+    expect(chatStateSchema.parse(base)).toMatchObject({ threadId: null, historySaved: true });
+    expect(chatStateSchema.parse({ ...base, threadId: THREAD, historySaved: false })).toMatchObject(
+      {
+        threadId: THREAD,
+        historySaved: false,
+      },
+    );
+    expect(chatStateSchema.safeParse({ ...base, threadId: 'x' }).success).toBe(false);
+  });
+
+  it('lists threads of an owner or of no project, newest first as the adapter orders them', () => {
+    expect(chatThreadsList.input.parse({ projectId: null })).toEqual({ projectId: null });
+    expect(chatThreadsList.input.parse({ projectId: PROJECT.toUpperCase() })).toEqual({
+      projectId: PROJECT,
+    });
+    expect(chatThreadsList.input.safeParse({}).success).toBe(false);
+    const summary = {
+      id: THREAD,
+      ownerProjectId: PROJECT,
+      scope: { kind: 'Project', meetingId: null },
+      title: 'Exam dates',
+      updatedAt: AT,
+      messageCount: 4,
+    };
+    expect(chatThreadSummarySchema.parse(summary)).toEqual(summary);
+    expect(chatThreadsList.output.parse({ threads: [summary] })).toEqual({ threads: [summary] });
+  });
+
+  it('opens a thread with its state, messages, full scope and scope status', () => {
+    const thread = {
+      id: THREAD,
+      title: 'Exam dates',
+      scope: { kind: 'Meeting', projectId: PROJECT, meetingId: 'm1' },
+      messages: [{ id: 'a', role: 'user', text: 'When?', createdAt: AT }],
+      scopeStatus: 'meeting-missing',
+    };
+    const state = {
+      messages: [],
+      isSending: false,
+      showScopeMismatch: false,
+      hasMessages: true,
+      canStartNewChat: true,
+    };
+    const parsed = chatThreadsOpen.output.parse({ ok: true, state, thread });
+    expect(parsed).toMatchObject({ ok: true, thread });
+    for (const reason of ['busy', 'not-found', 'corrupt']) {
+      expect(chatThreadsOpen.output.safeParse({ ok: false, reason }).success).toBe(true);
+    }
+    expect(chatThreadsOpen.output.safeParse({ ok: false, reason: 'gone' }).success).toBe(false);
+    expect(
+      chatThreadsOpen.output.safeParse({ ok: true, state, thread: { ...thread, scopeStatus: 'x' } })
+        .success,
+    ).toBe(false);
+    for (const scopeStatus of ['ok', 'meeting-missing', 'live-ended']) {
+      expect(
+        chatThreadsOpen.output.safeParse({ ok: true, state, thread: { ...thread, scopeStatus } })
+          .success,
+      ).toBe(true);
+    }
+  });
+
+  it('renames and deletes by owner and id, with GUIDs only', () => {
+    expect(
+      chatThreadsRename.input.parse({ projectId: null, id: THREAD, title: '  New  ' }),
+    ).toEqual({
+      projectId: null,
+      id: THREAD,
+      title: 'New',
+    });
+    expect(
+      chatThreadsRename.input.safeParse({ projectId: null, id: THREAD, title: '   ' }).success,
+    ).toBe(false);
+    expect(
+      chatThreadsRename.input.safeParse({ projectId: null, id: '../x', title: 'T' }).success,
+    ).toBe(false);
+    expect(chatThreadsDelete.input.safeParse({ projectId: PROJECT, id: THREAD }).success).toBe(
+      true,
+    );
+    expect(chatThreadsDelete.input.safeParse({ projectId: PROJECT, id: 'x' }).success).toBe(false);
+    expect(chatThreadsDelete.output.parse({ ok: false })).toEqual({ ok: false });
+    expect(chatThreadsChanged.payload.parse({ projectId: null })).toEqual({ projectId: null });
+  });
+
+  it('chat.send can fail because the thread scope is gone', () => {
+    expect(chatFailureKindSchema.safeParse('scope-gone').success).toBe(true);
+    const failed = { status: 'failed', kind: 'scope-gone', message: 'm', originalDraft: 'd' };
+    expect(chatSendOutcomeSchema.safeParse(failed).success).toBe(true);
   });
 });

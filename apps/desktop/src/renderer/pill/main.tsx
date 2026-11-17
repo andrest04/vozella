@@ -9,7 +9,7 @@ import { PillContainer } from '../features/live-copilot/PillContainer';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/translate';
 
-// Always dark, whatever the app theme says (the Light dictionary of the WinUI window is dropped,
+// Always dark, whatever the app theme says (the Light dictionary of the old window is dropped,
 // bug 7). High contrast follows the system colors through forced-colors.
 document.documentElement.setAttribute('data-theme', 'dark');
 

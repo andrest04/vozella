@@ -6,7 +6,10 @@ import {
   type ContextBudget,
 } from '../chat/context-packer';
 import type { SummaryProviderKind } from '../library/settings';
-import { isCancellation, type SummaryProvider } from '../summaries/provider';
+import type { Logger } from '../logging';
+import type { ProjectContextSource } from '../projects/ports';
+import { packProjectContext, projectBudgetFor } from '../projects/project-context';
+import { isCancellation, type ProviderId, type SummaryProvider } from '../summaries/provider';
 import {
   DEFAULT_ANSWER_WINDOW_MS,
   OVERVIEW_WINDOW_NO_DIGEST_MS,
@@ -35,7 +38,12 @@ export interface LiveAnswerState {
 }
 
 export type LiveAskResolution =
-  | { readonly status: 'ready'; readonly provider: Pick<SummaryProvider, 'streamPrompt'> }
+  | {
+      readonly status: 'ready';
+      /** `id` sizes the project block; an engine that does not say gets the small budget. */
+      readonly provider: Pick<SummaryProvider, 'streamPrompt'> &
+        Partial<Pick<SummaryProvider, 'id'>>;
+    }
   | { readonly status: 'unresolved' };
 
 export interface LiveAskDeps {
@@ -55,6 +63,12 @@ export interface LiveAskDeps {
     readonly notes?: string | null;
     readonly digest?: string | null;
   };
+  /** The project of the take; null (or unset) when it has none. Read for every question. */
+  projectId?(): string | null;
+  /** The instructions and files of a project. Unset: the ask never has a project block. */
+  readonly projectContext?: Pick<ProjectContextSource, 'get'>;
+  /** A failing project read is logged here and the ask goes on without the block. */
+  readonly logger?: Pick<Logger, 'warn'>;
   publish(state: LiveAnswerState): void;
   nowMs(): number;
   formatFailure(error: unknown): string;
@@ -146,11 +160,13 @@ export class LiveAskSession {
       const budget = budgetFor(settings.providerKind);
       const context = this.deps.sessionContext();
       const hasDigest = (context.digest ?? '').trim() !== '';
+      const projectBlock = await this.projectBlock(text, resolution.provider.id);
+      if (stale()) return;
       const prompt = buildLiveAnswerPrompt(
         text,
         this.transcriptWindow(scope, hasDigest, budget),
         settings.language,
-        packLiveSession(context, budget),
+        packLiveSession(context, budget, projectBlock),
         useWeb,
         scope === 'overview',
       );
@@ -176,6 +192,35 @@ export class LiveAskSession {
         isAnswering: false,
         error: { key: null, text: this.deps.formatFailure(error) },
       });
+    }
+  }
+
+  /**
+   * The project block for one question: the question ranks the file excerpts. It never throws: a
+   * read failure is logged and the ask goes on without the block.
+   */
+  private async projectBlock(
+    question: string,
+    providerId: ProviderId | undefined,
+  ): Promise<string | null> {
+    const projectId = this.deps.projectId?.() ?? null;
+    const source = this.deps.projectContext;
+    if (projectId === null || source === undefined) return null;
+    try {
+      const project = await source.get(projectId);
+      if (project === null) return null;
+      return packProjectContext({
+        name: project.name,
+        instructions: project.instructions,
+        documents: project.documents,
+        budget: projectBudgetFor('live', providerId),
+        query: question,
+      });
+    } catch (error) {
+      this.deps.logger?.warn('could not read the project for the live ask', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return null;
     }
   }
 

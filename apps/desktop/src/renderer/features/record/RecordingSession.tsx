@@ -132,6 +132,9 @@ export function RecordingSession({
         onCopy={copy}
         onDiscard={askDiscard}
       />
+      <p data-testid="take-destination" className="-mt-2 text-ui text-ink-muted">
+        {t('Ui_RecordSavingTo', destination)}
+      </p>
       <div
         className={
           sideBySide

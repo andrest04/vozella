@@ -3,6 +3,8 @@ import { CancelSource } from '../cancel';
 import type { Clock } from '../clock';
 import type { TranslateFn } from '../i18n/translator';
 import type { Logger } from '../logging';
+import { packProjectContext, projectBudgetFor } from '../projects/project-context';
+import type { ProjectContextSource, Result } from '../projects/ports';
 import { isRemoteEngine } from '../settings/api-providers';
 import { isCliEngine, readsImagesFromDisk } from '../settings/cli-providers';
 import type { CliPromptOptions } from '../summaries/cli-provider';
@@ -20,25 +22,36 @@ import {
   emptyAnswerFailure,
   isCancellation,
   providerRemovedFailure,
+  scopeGoneFailure,
   sendFailedFailure,
   setupCancelledFailure,
   type ChatFailure,
 } from './chat-errors';
+import type {
+  ChatThread,
+  ChatThreadRepository,
+  ChatThreadSummary,
+  ThreadOwner,
+  ThreadScope,
+  ThreadScopeStatus,
+} from './chat-thread';
 import {
+  carveProjectBlock,
   contextBudgetFor,
   packContext,
-  type ContextBudget,
-  type ContextFolder,
+  singleLine,
   type ContextMeeting,
+  type ContextProject,
   type LiveContextSnapshot,
 } from './context-packer';
 import { answerLanguageName, buildPrompt, priorTurnLimitsFor } from './prompt-builder';
 import { matchesOpenThread, type ChatScopeDecision } from './scope-resolver';
 import { StreamCoalescer } from './stream-coalescer';
+import { cutPrefix } from './text-cut';
 import type { ChatEngine } from './user-prompts';
 
 /**
- * Core ports for chat. Each query is scoped by id or folder (B17), so a send never loads every
+ * Core ports for chat. Each query is scoped by id or project (B17), so a send never loads every
  * meeting just to answer about one.
  */
 export interface ChatMeetingReader {
@@ -47,10 +60,10 @@ export interface ChatMeetingReader {
    * `question` lets the reader read the meetings that match it in full (marked with
    * `relevanceRank`) before the newest ones.
    */
-  meetingsInFolder(folderId: string, question?: string): Promise<readonly ContextMeeting[]>;
+  meetingsInProject(projectId: string, question?: string): Promise<readonly ContextMeeting[]>;
   /** Every meeting, in any order: the packer sorts and caps. Same `question` rule. */
   listRecent(question?: string): Promise<readonly ContextMeeting[]>;
-  listFolders(): Promise<readonly ContextFolder[]>;
+  listProjects(): Promise<readonly ContextProject[]>;
 }
 
 /** What chat passes with a prompt: the shared options plus the images of the send. */
@@ -95,9 +108,26 @@ export interface ChatMessage {
   readonly createdAt: Date;
 }
 
+/** The saved side of a conversation. The owner is fixed when the thread is created. */
+interface OpenThread {
+  readonly id: string;
+  readonly owner: ThreadOwner;
+  readonly title: string;
+  /** ISO-8601 UTC, kept from the first turn. */
+  readonly createdAt: string;
+  /** False until a save succeeded; a later turn saves the whole thread again. */
+  readonly saved: boolean;
+}
+
 interface Conversation {
   readonly scope: ChatScopeDecision;
   readonly messages: readonly ChatMessage[];
+  /** Null until the first successful turn (or when there is no thread repository). */
+  readonly thread: OpenThread | null;
+  /** Set when a reopened thread's meeting or Live take is gone: it cannot take a new question. */
+  readonly scopeStatus: ThreadScopeStatus;
+  /** False after a failed save, true again once a save succeeds. */
+  readonly historySaved: boolean;
 }
 
 /** The turn being answered: the user row and the pending assistant row (spec 2.4 step 3). */
@@ -115,6 +145,46 @@ export interface ChatState {
   readonly hasMessages: boolean;
   /** New chat is off while sending (B1). */
   readonly canStartNewChat: boolean;
+  /** The saved thread this conversation writes to; null until its first turn is saved. */
+  readonly threadId: string | null;
+  /** False when the last save failed: the chat goes on in memory only. */
+  readonly historySaved: boolean;
+}
+
+/** What `openThread` answers: the thread to show, or why it cannot be opened. */
+export type OpenThreadOutcome =
+  | {
+      readonly ok: true;
+      readonly thread: {
+        readonly id: string;
+        readonly title: string;
+        readonly scope: ThreadScope;
+        readonly messages: readonly ChatMessage[];
+        readonly scopeStatus: ThreadScopeStatus;
+      };
+    }
+  | { readonly ok: false; readonly reason: 'busy' | 'not-found' | 'corrupt' };
+
+/** The most characters of a thread title taken from the first message. */
+export const THREAD_TITLE_MAX = 60;
+
+/** The first user message on one line, cut at `THREAD_TITLE_MAX`. */
+export function threadTitleOf(text: string): string {
+  return cutPrefix(singleLine(text).replace(/\s+/g, ' ').trim(), THREAD_TITLE_MAX).trimEnd();
+}
+
+const isoOf = (date: Date): string => date.toISOString();
+
+/** A renamed title may be longer than the one cut from a message; the contract allows 200. */
+const THREAD_TITLE_RENAME_MAX = 200;
+
+/** What packing the context tells the send besides the text. */
+interface PackedContext {
+  readonly text: string;
+  /** The project that owns the conversation; null for no project. */
+  readonly owner: ThreadOwner;
+  /** The scope names a meeting that no longer exists. */
+  readonly meetingGone: boolean;
 }
 
 export type ChatSendOutcome =
@@ -148,6 +218,10 @@ export interface ChatServiceDeps {
   readonly uiLanguage?: () => string;
   /** Files attached to the conversation. Unset: sends never carry files. */
   readonly attachments?: ChatAttachmentSource;
+  /** Saved conversations. Unset: the chat lives in memory only and nothing is listed. */
+  readonly threads?: ChatThreadRepository;
+  /** The instructions and files of a project. Unset: no chat has a project block. */
+  readonly projects?: ProjectContextSource;
 }
 
 export interface SendOptions {
@@ -188,20 +262,21 @@ export class ScopeRefreshGuard {
 
 const threadScope = (scope: ChatScopeDecision) => ({
   scopeKind: scope.kind,
-  folderId: scope.folderId,
+  projectId: scope.projectId,
   meetingId: scope.meetingId,
 });
 
 /**
- * One in-memory conversation for the app session (thread history is dropped). The scope it
- * started under decides whether a later send continues it or starts a fresh one.
+ * One open conversation. Its turns are saved as a thread of the project that owns it (or of no
+ * project), so history survives the session. The scope it started under decides whether a later
+ * send continues it or starts a fresh thread; the old one stays in the history.
  */
 export class ChatService {
   private conversation: Conversation | null = null;
   private decision: ChatScopeDecision = {
     isVisible: true,
     kind: 'AllMeetings',
-    folderId: null,
+    projectId: null,
     meetingId: null,
   };
   private sending = false;
@@ -210,6 +285,7 @@ export class ChatService {
   private localStreaming = false;
   private readonly refreshGuard = new ScopeRefreshGuard();
   private readonly listeners = new Set<() => void>();
+  private readonly threadListeners = new Set<(owner: ThreadOwner) => void>();
 
   constructor(private readonly deps: ChatServiceDeps) {}
 
@@ -225,6 +301,8 @@ export class ChatService {
         !matchesOpenThread(threadScope(this.conversation.scope), this.decision),
       hasMessages: messages.length > 0 || this.pending !== null,
       canStartNewChat: !this.sending,
+      threadId: this.conversation?.thread?.saved === true ? this.conversation.thread.id : null,
+      historySaved: this.conversation?.historySaved ?? true,
     };
   }
 
@@ -252,7 +330,15 @@ export class ChatService {
     return true;
   }
 
-  /** Clears the conversation. Refused while sending (B1). */
+  /** Tells `listener` which owner's thread list changed (a thread was saved, renamed or deleted). */
+  onThreadsChange(listener: (owner: ThreadOwner) => void): () => void {
+    this.threadListeners.add(listener);
+    return () => {
+      this.threadListeners.delete(listener);
+    };
+  }
+
+  /** Clears the open conversation, never a saved thread. Refused while sending (B1). */
   newChat(): boolean {
     if (this.sending) return false;
     this.conversation = null;
@@ -307,10 +393,13 @@ export class ChatService {
     });
 
     try {
-      const prior =
+      const open =
         this.conversation !== null && matchesOpenThread(threadScope(this.conversation.scope), scope)
-          ? this.conversation.messages
-          : [];
+          ? this.conversation
+          : null;
+      // A reopened thread whose meeting or Live take is gone is read-only, whatever the page does.
+      if (open !== null && open.scopeStatus !== 'ok') return fail(scopeGoneFailure(t));
+      const prior = open?.messages ?? [];
 
       // T2: the engine decides the context size, so it is resolved before packing.
       const choice = choiceOf(options);
@@ -336,8 +425,10 @@ export class ChatService {
 
       const lastUserTurn = prior.findLast((m) => m.role === 'user')?.text ?? '';
       const query = `${userText}\n${lastUserTurn}`;
-      const context = await this.pack(scope, live, contextBudgetFor(provider.id), query);
+      const packed = await this.pack(scope, live, provider.id, query);
       if (wasStopped()) return cancelled();
+      if (packed.meetingGone) return fail(scopeGoneFailure(t));
+      const context = packed.text;
 
       const ids = options.attachmentIds ?? [];
       const source = this.deps.attachments;
@@ -402,7 +493,11 @@ export class ChatService {
         text,
         createdAt: this.deps.clock.now(),
       };
-      this.conversation = { scope, messages: [...prior, user, assistant] };
+      this.conversation = await this.commitTurn(open, scope, packed.owner, [
+        ...prior,
+        user,
+        assistant,
+      ]);
       return { status: 'sent', user, assistant, notice };
     } catch (error) {
       if (wasStopped() || isCancellation(error)) return cancelled();
@@ -418,34 +513,274 @@ export class ChatService {
     }
   }
 
+  /**
+   * The context text for the scope, and the project that owns the conversation: the project of
+   * the Project scope, of the meeting, or of the Live take (null for none).
+   */
   private async pack(
     scope: ChatScopeDecision,
     live: string | LiveContextSnapshot | null,
-    budget: ContextBudget,
+    providerId: ProviderId | undefined,
     query: string,
-  ): Promise<string> {
+  ): Promise<PackedContext> {
     const reader = this.deps.meetings;
     let meetings: readonly ContextMeeting[] = [];
+    let owner: ThreadOwner = null;
+    let meetingGone = false;
     if (scope.kind === 'Meeting' && scope.meetingId !== null) {
       const found = await reader.meetingById(scope.meetingId);
       meetings = found === null ? [] : [found];
-    } else if (scope.kind === 'Folder' && scope.folderId !== null) {
-      meetings = await reader.meetingsInFolder(scope.folderId, query);
+      meetingGone = found === null;
+      owner = found?.projectId ?? null;
+    } else if (scope.kind === 'Project' && scope.projectId !== null) {
+      meetings = await reader.meetingsInProject(scope.projectId, query);
+      owner = scope.projectId;
     } else if (scope.kind === 'AllMeetings') {
       meetings = await reader.listRecent(query);
     }
-    const folders =
-      scope.kind === 'Folder' || scope.kind === 'AllMeetings' ? await reader.listFolders() : [];
-    return packContext(
+    const snapshot: LiveContextSnapshot | null =
+      scope.kind !== 'Live'
+        ? null
+        : live !== null && typeof live === 'object'
+          ? live
+          : { transcript: live };
+    if (snapshot !== null) owner = snapshot.projectId ?? null;
+
+    // The project block is the same kernel as the Live copilot and the summaries use.
+    const block = await this.projectBlock(owner, providerId, query);
+    const base = contextBudgetFor(providerId);
+    // The local window is fixed: the block is taken out of the meeting text, not added to it.
+    const budget =
+      block === null || isRemoteEngine(providerId) ? base : carveProjectBlock(base, block.length);
+    const projects =
+      scope.kind === 'Project' || scope.kind === 'AllMeetings' ? await reader.listProjects() : [];
+    const text = packContext(
       scope.kind,
-      scope.folderId,
+      scope.projectId,
       scope.meetingId,
-      live,
+      snapshot === null ? live : { ...snapshot, project: block ?? snapshot.project ?? null },
       meetings,
-      folders,
+      projects,
       this.deps.translate,
-      { budget, query },
+      { budget, query, projectBlock: block },
     );
+    return { text, owner, meetingGone };
+  }
+
+  /** The packed project block, or null for no project, an unknown one, or a read that failed. */
+  private async projectBlock(
+    projectId: string | null,
+    providerId: ProviderId | undefined,
+    query: string,
+  ): Promise<string | null> {
+    const source = this.deps.projects;
+    if (source === undefined || projectId === null) return null;
+    try {
+      const data = await source.get(projectId);
+      if (data === null) return null;
+      return packProjectContext({
+        name: data.name,
+        instructions: data.instructions,
+        documents: data.documents,
+        budget: projectBudgetFor('chat', providerId),
+        query,
+      });
+    } catch (error) {
+      // The answer does not wait on the project: it runs without its block.
+      this.deps.logger?.warn('chat project context unavailable', { error });
+      return null;
+    }
+  }
+
+  /**
+   * The conversation after a successful turn. The thread is created here, on the first answer,
+   * and saved whole after every answer. A failed save is logged and the chat goes on in memory.
+   */
+  private async commitTurn(
+    open: Conversation | null,
+    scope: ChatScopeDecision,
+    owner: ThreadOwner,
+    messages: readonly ChatMessage[],
+  ): Promise<Conversation> {
+    const repo = this.deps.threads;
+    const first = messages[0];
+    let thread = open?.thread ?? null;
+    if (repo === undefined || first === undefined) {
+      return { scope, messages, thread, scopeStatus: 'ok', historySaved: true };
+    }
+    thread ??= {
+      id: this.deps.newId(),
+      owner,
+      title: threadTitleOf(first.text),
+      createdAt: isoOf(first.createdAt),
+      saved: false,
+    };
+    const stored: ChatThread = {
+      schemaVersion: 1,
+      id: thread.id,
+      ownerProjectId: thread.owner,
+      scope: { kind: scope.kind, meetingId: scope.meetingId },
+      title: thread.title,
+      createdAt: thread.createdAt,
+      updatedAt: isoOf(this.deps.clock.now()),
+      messages: messages.map((m) => ({
+        id: m.id,
+        role: m.role,
+        text: m.text,
+        createdAt: isoOf(m.createdAt),
+      })),
+    };
+    const saved = await this.save(repo, stored);
+    if (saved) this.notifyThreads(thread.owner);
+    return {
+      scope,
+      messages,
+      thread: { ...thread, saved: saved || thread.saved },
+      scopeStatus: 'ok',
+      historySaved: saved,
+    };
+  }
+
+  private async save(repo: ChatThreadRepository, thread: ChatThread): Promise<boolean> {
+    let result: Result<void>;
+    try {
+      result = await repo.save(thread);
+    } catch (error) {
+      this.deps.logger?.warn('chat history not saved', { error });
+      return false;
+    }
+    if (!result.ok) this.deps.logger?.warn('chat history not saved', { reason: result.reason });
+    return result.ok;
+  }
+
+  /** The saved conversations of an owner, newest first. A failed read is an empty list. */
+  async listThreads(owner: ThreadOwner): Promise<readonly ChatThreadSummary[]> {
+    try {
+      return (await this.deps.threads?.list(owner)) ?? [];
+    } catch (error) {
+      this.deps.logger?.warn('chat history unreadable', { error });
+      return [];
+    }
+  }
+
+  /**
+   * Makes a saved thread the open conversation. Refused while an answer is running. A thread
+   * whose meeting was deleted, or that came from a Live take, opens read-only (`scopeStatus`).
+   */
+  async openThread(owner: ThreadOwner, id: string): Promise<OpenThreadOutcome> {
+    const repo = this.deps.threads;
+    if (this.sending) return { ok: false, reason: 'busy' };
+    if (repo === undefined) return { ok: false, reason: 'not-found' };
+    let stored: ChatThread | null;
+    try {
+      stored = await repo.get(owner, id);
+    } catch (error) {
+      this.deps.logger?.warn('chat thread unreadable', { error });
+      return { ok: false, reason: 'corrupt' };
+    }
+    if (stored === null) return { ok: false, reason: 'not-found' };
+    const scope: ThreadScope = {
+      kind: stored.scope.kind,
+      projectId: stored.ownerProjectId,
+      meetingId: stored.scope.meetingId,
+    };
+    const scopeStatus = await this.scopeStatusOf(scope);
+    // An answer may have started while the thread was being read.
+    if (this.isSending()) return { ok: false, reason: 'busy' };
+    const messages = stored.messages.map((m): ChatMessage => ({
+      id: m.id,
+      role: m.role,
+      text: m.text,
+      createdAt: new Date(m.createdAt),
+    }));
+    this.conversation = {
+      scope: { isVisible: true, ...scope },
+      messages,
+      thread: {
+        id: stored.id,
+        owner: stored.ownerProjectId,
+        title: stored.title,
+        createdAt: stored.createdAt,
+        saved: true,
+      },
+      scopeStatus,
+      historySaved: true,
+    };
+    this.notify();
+    return {
+      ok: true,
+      thread: { id: stored.id, title: stored.title, scope, messages, scopeStatus },
+    };
+  }
+
+  /** A Live take cannot be resumed, and a Meeting thread needs its meeting. */
+  private async scopeStatusOf(scope: ThreadScope): Promise<ThreadScopeStatus> {
+    if (scope.kind === 'Live') return 'live-ended';
+    if (scope.kind !== 'Meeting') return 'ok';
+    if (scope.meetingId === null) return 'meeting-missing';
+    try {
+      return (await this.deps.meetings.meetingById(scope.meetingId)) === null
+        ? 'meeting-missing'
+        : 'ok';
+    } catch (error) {
+      this.deps.logger?.warn('chat thread meeting unreadable', { error });
+      return 'ok';
+    }
+  }
+
+  /** Renames a saved thread. The open thread keeps the new title on its next save. */
+  async renameThread(owner: ThreadOwner, id: string, title: string): Promise<boolean> {
+    const repo = this.deps.threads;
+    const clean = cutPrefix(singleLine(title).replace(/\s+/g, ' ').trim(), THREAD_TITLE_RENAME_MAX);
+    if (repo === undefined || clean === '' || this.isOpenWhileSending(id)) return false;
+    let renamed: boolean;
+    try {
+      renamed = await repo.rename(owner, id, clean);
+    } catch (error) {
+      this.deps.logger?.warn('chat thread not renamed', { error });
+      return false;
+    }
+    if (!renamed) return false;
+    const current = this.conversation;
+    if (current?.thread?.id === id) {
+      this.conversation = { ...current, thread: { ...current.thread, title: clean } };
+    }
+    this.notifyThreads(owner);
+    return true;
+  }
+
+  /** Deletes a saved thread. Deleting the open one resets the chat; nothing else is touched. */
+  async deleteThread(owner: ThreadOwner, id: string): Promise<boolean> {
+    const repo = this.deps.threads;
+    if (repo === undefined || this.isOpenWhileSending(id)) return false;
+    let deleted: boolean;
+    try {
+      deleted = await repo.delete(owner, id);
+    } catch (error) {
+      this.deps.logger?.warn('chat thread not deleted', { error });
+      return false;
+    }
+    if (!deleted) return false;
+    if (this.conversation?.thread?.id === id && !this.sending) {
+      this.conversation = null;
+      this.notify();
+    }
+    this.notifyThreads(owner);
+    return true;
+  }
+
+  /** The answer being written would save its thread again, so that thread is not touched now. */
+  private isOpenWhileSending(id: string): boolean {
+    return this.sending && this.conversation?.thread?.id === id;
+  }
+
+  /** Read through a method, so a check after an await is not folded into the one before it. */
+  private isSending(): boolean {
+    return this.sending;
+  }
+
+  private notifyThreads(owner: ThreadOwner): void {
+    for (const listener of [...this.threadListeners]) listener(owner);
   }
 
   private async stream(

@@ -4,8 +4,11 @@ import type {
   ChatScopeDecision,
   ChatSendOutcome,
   ChatState,
+  ChatThreadSummary,
   LiveContextSnapshot,
   Logger,
+  OpenThreadOutcome,
+  ThreadOwner,
 } from '@vozella/core';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -27,7 +30,7 @@ const event: IpcEventLike = {
   senderFrame: { url: 'vozella://app/index.html', parent: null },
 };
 
-const SCOPE = { isVisible: true, kind: 'AllMeetings', folderId: null, meetingId: null } as const;
+const SCOPE = { isVisible: true, kind: 'AllMeetings', projectId: null, meetingId: null } as const;
 const WHEN = new Date('2026-01-01T10:00:00.000Z');
 const message = (id: string, role: 'user' | 'assistant', text: string): ChatMessage => ({
   id,
@@ -71,7 +74,58 @@ class FakeChatService implements ChatServicePort {
       showScopeMismatch: this.mismatch,
       hasMessages: this.messages.length > 0 || this.pending !== null,
       canStartNewChat: !this.sending,
+      threadId: this.threadId,
+      historySaved: this.historySaved,
     };
+  }
+
+  threadId: string | null = null;
+  historySaved = true;
+  threads: ChatThreadSummary[] = [];
+  openOutcome: OpenThreadOutcome = { ok: false, reason: 'not-found' };
+  threadCalls: string[] = [];
+  renameResult = true;
+  deleteResult = true;
+  failThreads: unknown = null;
+  private readonly threadListeners = new Set<(owner: ThreadOwner) => void>();
+
+  onThreadsChange(listener: (owner: ThreadOwner) => void): () => void {
+    this.threadListeners.add(listener);
+    return () => this.threadListeners.delete(listener);
+  }
+
+  emitThreadsChanged(owner: ThreadOwner): void {
+    for (const listener of [...this.threadListeners]) listener(owner);
+  }
+
+  private threadCall<T>(call: string, value: () => T): Promise<T> {
+    this.threadCalls.push(call);
+    // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- the double rejects with any scripted value
+    if (this.failThreads !== null) return Promise.reject(this.failThreads);
+    return Promise.resolve(value());
+  }
+
+  listThreads(owner: ThreadOwner): Promise<readonly ChatThreadSummary[]> {
+    return this.threadCall(`list:${owner ?? 'none'}`, () => this.threads);
+  }
+
+  openThread(owner: ThreadOwner, id: string): Promise<OpenThreadOutcome> {
+    return this.threadCall(`open:${owner ?? 'none'}:${id}`, () => {
+      if (this.openOutcome.ok) {
+        this.threadId = this.openOutcome.thread.id;
+        this.messages = this.openOutcome.thread.messages;
+        this.notify();
+      }
+      return this.openOutcome;
+    });
+  }
+
+  renameThread(owner: ThreadOwner, id: string, title: string): Promise<boolean> {
+    return this.threadCall(`rename:${owner ?? 'none'}:${id}:${title}`, () => this.renameResult);
+  }
+
+  deleteThread(owner: ThreadOwner, id: string): Promise<boolean> {
+    return this.threadCall(`delete:${owner ?? 'none'}:${id}`, () => this.deleteResult);
   }
 
   onChange(listener: () => void): () => void {
@@ -138,6 +192,10 @@ class FakeChatService implements ChatServicePort {
     this.pending = null;
     this.notify();
     return outcome;
+  }
+
+  emitStateChange(): void {
+    this.notify();
   }
 
   private notify(): void {
@@ -208,7 +266,13 @@ describe('chat handlers', () => {
     const expected = Object.keys(requestChannels).filter(
       (name) => name.startsWith('chat.') && !name.startsWith('chat.prompts.'),
     );
-    expect(expected).toHaveLength(13);
+    expect(expected).toHaveLength(17);
+    expect(expected.filter((name) => name.startsWith('chat.threads.')).sort()).toEqual([
+      'chat.threads.delete',
+      'chat.threads.list',
+      'chat.threads.open',
+      'chat.threads.rename',
+    ]);
     for (const name of expected) expect(handlers.has(name)).toBe(true);
   });
 
@@ -290,7 +354,7 @@ describe('chat handlers', () => {
     const sending = call(
       'chat.send',
       sendInput({
-        scope: { isVisible: true, kind: 'Live', folderId: null, meetingId: null },
+        scope: { isVisible: true, kind: 'Live', projectId: null, meetingId: null },
         liveTranscript: 'Ana: we ship on Friday',
       }),
     );
@@ -311,14 +375,14 @@ describe('chat handlers', () => {
     await call(
       'chat.send',
       sendInput({
-        scope: { isVisible: true, kind: 'Live', folderId: null, meetingId: null },
+        scope: { isVisible: true, kind: 'Live', projectId: null, meetingId: null },
         liveTranscript: 'Ana: we ship on Friday',
       }),
     );
     expect(service.sendCalls).toEqual([
       {
         draft: 'What did we decide?',
-        scope: { isVisible: true, kind: 'Live', folderId: null, meetingId: null },
+        scope: { isVisible: true, kind: 'Live', projectId: null, meetingId: null },
         live: 'Ana: we ship on Friday',
       },
     ]);
@@ -409,13 +473,13 @@ describe('chat handlers', () => {
     const { call, events } = setup();
     const state = ok(
       await call('chat.setScope', {
-        scope: { isVisible: true, kind: 'Live', folderId: null, meetingId: null },
+        scope: { isVisible: true, kind: 'Live', projectId: null, meetingId: null },
       }),
     ) as { showScopeMismatch: boolean };
     expect(state.showScopeMismatch).toBe(true);
     expect(events.filter((e) => e.name === 'chat.stateChanged')).toHaveLength(1);
     await call('chat.setScope', {
-      scope: { isVisible: true, kind: 'Live', folderId: null, meetingId: null },
+      scope: { isVisible: true, kind: 'Live', projectId: null, meetingId: null },
     });
     expect(events.filter((e) => e.name === 'chat.stateChanged')).toHaveLength(1);
   });
@@ -679,5 +743,175 @@ describe('chat attachments', () => {
     const { call } = setup();
     expect(ok(await call('chat.attach.pick', {}))).toEqual({ attachments: [], notice: null });
     expect(ok(await call('chat.attach.list', {}))).toEqual({ attachments: [], notice: null });
+  });
+});
+
+const PROJECT = '9f1c2d3e-0000-4000-8000-000000000001';
+const THREAD = '7a000000-0000-4000-8000-000000000001';
+const summary = (over: Partial<ChatThreadSummary> = {}): ChatThreadSummary => ({
+  id: THREAD,
+  ownerProjectId: PROJECT,
+  scope: { kind: 'Project', meetingId: null },
+  title: 'Midterm',
+  updatedAt: '2026-01-01T10:00:00.000Z',
+  messageCount: 2,
+  ...over,
+});
+
+describe('chat thread channels', () => {
+  it('lists the threads of a project and of no project', async () => {
+    const { call, service } = setup();
+    service.threads = [summary()];
+    expect(ok(await call('chat.threads.list', { projectId: PROJECT }))).toEqual({
+      threads: [summary()],
+    });
+    await call('chat.threads.list', { projectId: null });
+    expect(service.threadCalls).toEqual([`list:${PROJECT}`, 'list:none']);
+  });
+
+  it('answers an empty list when the history cannot be read', async () => {
+    const { call, service } = setup();
+    service.failThreads = new Error('disk');
+    expect(ok(await call('chat.threads.list', { projectId: PROJECT }))).toEqual({ threads: [] });
+  });
+
+  it('refuses a project id that is not a guid, and an unknown key', async () => {
+    const { call, service } = setup();
+    expect(await call('chat.threads.list', { projectId: '..\\x' })).toMatchObject({ ok: false });
+    expect(await call('chat.threads.open', { projectId: PROJECT, id: 'nope' })).toMatchObject({
+      ok: false,
+    });
+    expect(
+      await call('chat.threads.delete', { projectId: PROJECT, id: THREAD, extra: 1 }),
+    ).toMatchObject({ ok: false });
+    expect(service.threadCalls).toEqual([]);
+  });
+
+  it('opens a thread: the new state and the thread with its full scope', async () => {
+    const { call, service } = setup();
+    service.openOutcome = {
+      ok: true,
+      thread: {
+        id: THREAD,
+        title: 'Midterm',
+        scope: { kind: 'Meeting', projectId: PROJECT, meetingId: 'm1' },
+        messages: [message('u1', 'user', 'Q'), message('a1', 'assistant', 'A')],
+        scopeStatus: 'meeting-missing',
+      },
+    };
+    const result = ok(await call('chat.threads.open', { projectId: PROJECT, id: THREAD }));
+    expect(result).toMatchObject({
+      ok: true,
+      state: { threadId: THREAD, hasMessages: true, historySaved: true },
+      thread: {
+        id: THREAD,
+        title: 'Midterm',
+        scope: { kind: 'Meeting', projectId: PROJECT, meetingId: 'm1' },
+        scopeStatus: 'meeting-missing',
+        messages: [
+          { id: 'u1', role: 'user', text: 'Q', createdAt: '2026-01-01T10:00:00.000Z' },
+          { id: 'a1', role: 'assistant', text: 'A', createdAt: '2026-01-01T10:00:00.000Z' },
+        ],
+      },
+    });
+  });
+
+  it.each(['busy', 'not-found', 'corrupt'] as const)(
+    'passes a refused open (%s) through',
+    async (reason) => {
+      const { call, service } = setup();
+      service.openOutcome = { ok: false, reason };
+      expect(ok(await call('chat.threads.open', { projectId: PROJECT, id: THREAD }))).toEqual({
+        ok: false,
+        reason,
+      });
+    },
+  );
+
+  it('answers corrupt, never throws, when opening fails unexpectedly', async () => {
+    const { call, service } = setup();
+    service.failThreads = new Error('boom');
+    expect(ok(await call('chat.threads.open', { projectId: PROJECT, id: THREAD }))).toEqual({
+      ok: false,
+      reason: 'corrupt',
+    });
+  });
+
+  it('renames and deletes, and answers false when the service does', async () => {
+    const { call, service } = setup();
+    expect(
+      ok(await call('chat.threads.rename', { projectId: PROJECT, id: THREAD, title: '  New  ' })),
+    ).toEqual({ ok: true });
+    expect(ok(await call('chat.threads.delete', { projectId: null, id: THREAD }))).toEqual({
+      ok: true,
+    });
+    expect(service.threadCalls).toEqual([
+      `rename:${PROJECT}:${THREAD}:New`,
+      `delete:none:${THREAD}`,
+    ]);
+    service.renameResult = false;
+    service.deleteResult = false;
+    expect(
+      ok(await call('chat.threads.rename', { projectId: PROJECT, id: THREAD, title: 'x' })),
+    ).toEqual({ ok: false });
+    expect(ok(await call('chat.threads.delete', { projectId: PROJECT, id: THREAD }))).toEqual({
+      ok: false,
+    });
+    service.failThreads = new Error('boom');
+    expect(ok(await call('chat.threads.delete', { projectId: PROJECT, id: THREAD }))).toEqual({
+      ok: false,
+    });
+    expect(
+      ok(await call('chat.threads.rename', { projectId: PROJECT, id: THREAD, title: 'x' })),
+    ).toEqual({ ok: false });
+  });
+
+  it('broadcasts chat.threads.changed with the owner when the service reports a change', () => {
+    const { service, events } = setup();
+    service.emitThreadsChanged(PROJECT);
+    service.emitThreadsChanged(null);
+    expect(events.filter((e) => e.name === 'chat.threads.changed').map((e) => e.payload)).toEqual([
+      { projectId: PROJECT },
+      { projectId: null },
+    ]);
+  });
+
+  it('chat.state carries the thread id and whether the history is saved', async () => {
+    const { call, service } = setup();
+    service.threadId = THREAD;
+    service.historySaved = false;
+    expect(ok(await call('chat.state', {}))).toMatchObject({
+      threadId: THREAD,
+      historySaved: false,
+    });
+  });
+
+  it('publishes the state again when the thread id or the saved flag changes', () => {
+    const { service, events } = setup();
+    const published = (): number => events.filter((e) => e.name === 'chat.stateChanged').length;
+    service.emitStateChange();
+    const first = published();
+    service.emitStateChange();
+    expect(published()).toBe(first);
+    service.threadId = THREAD;
+    service.emitStateChange();
+    expect(published()).toBe(first + 1);
+    service.historySaved = false;
+    service.emitStateChange();
+    expect(published()).toBe(first + 2);
+  });
+
+  it('the live context may carry the project of the take', async () => {
+    const { call, service } = setup({
+      liveContext: () => ({ digest: null, title: null, notes: null, projectId: PROJECT }),
+    });
+    await call(
+      'chat.send',
+      sendInput({
+        scope: { isVisible: true, kind: 'Live', projectId: null, meetingId: null },
+        liveTranscript: 'Ana: hi',
+      }),
+    );
+    expect(service.sendCalls[0]?.live).toMatchObject({ transcript: 'Ana: hi', projectId: PROJECT });
   });
 });

@@ -90,13 +90,13 @@ function cancelled(): ImportConversion {
 
 export interface ImportRequest {
   readonly title: string;
-  readonly folderId: string | null;
+  readonly projectId: string | null;
   readonly path: string;
 }
 
 export interface ImportUrlRequest {
   readonly title: string;
-  readonly folderId: string | null;
+  readonly projectId: string | null;
   readonly url: string;
 }
 
@@ -143,7 +143,7 @@ export interface ImportHost {
   /** Marks the import as protected work for a close (101); returns the call that settles it. */
   trackPreparing(): () => void;
   /** Files the converted WAV in its folder and starts the processing run on it. */
-  process(request: Omit<PipelineRequest, 'folderId'>, folderId: string | null): Promise<void>;
+  process(request: Omit<PipelineRequest, 'projectId'>, projectId: string | null): Promise<void>;
 }
 
 export interface ImportRunDeps {
@@ -157,7 +157,7 @@ export interface ImportRunDeps {
     cancelImport(): void;
   };
   readonly library: {
-    audioDirectory(folderId: string | null): Promise<string>;
+    audioDirectory(projectId: string | null): Promise<string>;
     ownsMarkdown(meetingId: string, markdownPath: string): Promise<boolean>;
   };
   readonly files: {
@@ -245,7 +245,7 @@ export class ImportRun {
 
   /** The import steps shared by a file and a link: gate, readiness, status, conversion, run. */
   private async run(
-    request: { readonly title: string; readonly folderId: string | null },
+    request: { readonly title: string; readonly projectId: string | null },
     options: ImportOptions,
     source: ImportSource,
   ): Promise<ImportResult> {
@@ -262,7 +262,7 @@ export class ImportRun {
 
       const meetingId = options.meetingId ?? deps.newId();
       const title = host.beginTake(options.meetingId ?? null, request.title);
-      const directory = await deps.library.audioDirectory(request.folderId);
+      const directory = await deps.library.audioDirectory(request.projectId);
       // 173: the status, and the idle meter stops for the length of the import.
       deps.setTakeStatus(source.status);
       host.holdPreview();
@@ -297,7 +297,7 @@ export class ImportRun {
           pausedDurationMs: 0,
           highlightsMs: [],
         },
-        request.folderId,
+        request.projectId,
       );
       previewStopped = false;
       return { started: true, meetingId };

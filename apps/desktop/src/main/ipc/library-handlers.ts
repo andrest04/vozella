@@ -1,8 +1,6 @@
 import {
   libraryChanged,
   libraryChooseLocation,
-  libraryCreateFolder,
-  libraryDeleteFolder,
   libraryDeleteMeeting,
   libraryDeleteMeetings,
   libraryGetLocation,
@@ -12,11 +10,8 @@ import {
   libraryMoveMeeting,
   libraryMoveMeetings,
   libraryOpenFolder,
-  libraryRenameFolder,
   librarySearch,
-  librarySetFolderNote,
   librarySetLocation,
-  libraryUpdateFolderPersonality,
   settingsGet,
   settingsUpdate,
   workspaceCallPromptOffered,
@@ -103,8 +98,8 @@ export function applyWorkspaceAction(
     case 'openSession':
       workspace.openSession(action.tab);
       break;
-    case 'publishSelectedFolder':
-      workspace.publishSelectedFolder(action.folderId);
+    case 'publishSelectedProject':
+      workspace.publishSelectedProject(action.projectId);
       break;
     case 'setLiveTranscript':
       workspace.setLiveTranscript(action.text);
@@ -143,7 +138,16 @@ export function registerLibraryHandlers(deps: LibraryHandlerDeps): LibraryWrites
     return write;
   };
 
-  registerRequest(server, libraryLoad, () => runtime.service.load());
+  registerRequest(server, libraryLoad, async () => {
+    const loaded = await runtime.service.load();
+    if (!loaded.ok) return loaded;
+    return {
+      ok: true as const,
+      meetings: loaded.meetings,
+      skipped: loaded.skipped,
+      shadowed: loaded.shadowed,
+    };
+  });
 
   registerRequest(server, libraryGetMeeting, async ({ id }) => {
     try {
@@ -152,39 +156,6 @@ export function registerLibraryHandlers(deps: LibraryHandlerDeps): LibraryWrites
       if (error instanceof MeetingFormatError) return { record: null };
       throw error;
     }
-  });
-
-  registerRequest(server, libraryCreateFolder, async (input) => {
-    const result = await track(runtime.service.createFolder(input));
-    if (result.ok) broadcast(libraryChanged, { reason: 'folder' });
-    return result;
-  });
-
-  registerRequest(server, libraryRenameFolder, async (input) => {
-    const result = await track(runtime.service.renameFolder(input));
-    if (result.ok) broadcast(libraryChanged, { reason: 'folder' });
-    return result;
-  });
-
-  registerRequest(server, libraryUpdateFolderPersonality, async (input) => {
-    const result = await track(runtime.service.updatePersonality(input));
-    if (result.ok) broadcast(libraryChanged, { reason: 'folder' });
-    return result;
-  });
-
-  registerRequest(server, librarySetFolderNote, async (input) => {
-    const result = await track(runtime.service.setFolderNote(input));
-    if (result.ok) broadcast(libraryChanged, { reason: 'folder' });
-    return result;
-  });
-
-  registerRequest(server, libraryDeleteFolder, async ({ id }) => {
-    const result = await track(runtime.service.deleteFolder(id));
-    if (result.ok) {
-      workspace.publishSelectedFolder(null);
-      broadcast(libraryChanged, { reason: 'folder' });
-    }
-    return result;
   });
 
   registerRequest(server, libraryMoveMeeting, async (input) => {

@@ -20,6 +20,8 @@ export interface ComposerProps {
   readonly onSend: () => void;
   readonly onStop: () => void;
   readonly isSending: boolean;
+  /** The chat cannot be continued (a reopened thread whose meeting is gone): nothing can be sent. */
+  readonly disabled?: boolean;
   /** Saved prompts, then the built-in recipes of the current scope, for the Recipes flyout. */
   readonly recipes: readonly ChatRecipe[];
   /** Opens the file picker. Unset hides the paperclip. */
@@ -45,6 +47,7 @@ export function Composer({
   onSend,
   onStop,
   isSending,
+  disabled = false,
   recipes,
   onAttach,
   promptActions,
@@ -104,7 +107,7 @@ export function Composer({
     el.style.overflowY = fit.overflowY;
   }, [draft]);
 
-  const canSend = !isSending && draft.trim() !== '';
+  const canSend = !disabled && !isSending && draft.trim() !== '';
 
   const activeId = menu.visible[menu.activeIndex]?.id;
 
@@ -122,6 +125,7 @@ export function Composer({
         id="TxtMeetingChat"
         data-testid="TxtMeetingChat"
         rows={1}
+        disabled={disabled}
         value={draft}
         placeholder={t('Chat_Composer.PlaceholderText')}
         aria-label={t('Chat_Composer.AutomationProperties.Name')}
@@ -173,6 +177,7 @@ export function Composer({
           label={t('Chat_Recipes.AutomationProperties.Name')}
           icon={BookOpenText}
           size="sm"
+          disabled={disabled}
           data-testid="BtnMeetingChatRecipes"
           aria-haspopup="listbox"
           aria-expanded={isOpen}
@@ -184,6 +189,7 @@ export function Composer({
             label={t('Ui_ChatAttach')}
             icon={Paperclip}
             size="sm"
+            disabled={disabled}
             data-testid="BtnMeetingChatAttach"
             onClick={onAttach}
           />

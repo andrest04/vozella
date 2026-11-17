@@ -64,7 +64,7 @@ describe('item 192: the strings of spec section 2', () => {
 });
 
 /**
- * Item 194: each control the spec lists, with where the port keeps it. The WinUI automation id
+ * Item 194: each control the spec lists, with where the port keeps it. The automation id
  * became a `data-testid`; a few were renamed with the control (the toggle is two buttons, Record
  * and Stop). A name that is an accessible-name resource key is checked in the catalog instead.
  */

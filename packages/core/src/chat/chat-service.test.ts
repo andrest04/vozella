@@ -75,13 +75,13 @@ describe('ChatService.send success', () => {
     expect(rig.reader.calls).toEqual([`byId:${MEETING}`]);
   });
 
-  it('reads the folder and its meetings for a folder scope, everything for all', async () => {
+  it('reads the project and its meetings for a project scope, everything for all', async () => {
     const rig = rigWithMeeting();
-    await rig.service.send('x', scopeOf({ kind: 'Folder', folderId: guid(1001) }), null);
-    expect(rig.reader.calls).toEqual([`folder:${guid(1001)}`, 'folders']);
+    await rig.service.send('x', scopeOf({ kind: 'Project', projectId: guid(1001) }), null);
+    expect(rig.reader.calls).toEqual([`project:${guid(1001)}`, 'projects']);
     rig.reader.calls.length = 0;
     await rig.service.send('x', scopeOf(), null);
-    expect(rig.reader.calls).toEqual(['recent', 'folders']);
+    expect(rig.reader.calls).toEqual(['recent', 'projects']);
   });
 
   it('gives the two messages their own timestamps (B7)', async () => {

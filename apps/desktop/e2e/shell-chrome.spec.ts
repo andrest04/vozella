@@ -37,8 +37,13 @@ test.beforeAll(async () => {
     { VOZELLA_FAKE_CALL_FLAG: flag, ...readyEnv, VOZELLA_E2E_SHOW: shots ? '1' : '0' },
     (dataRoot) => {
       seedReadySettings(dataRoot);
-      // A damaged legacy meetings.json makes the startup migration fail with a message.
-      fs.writeFileSync(path.join(dataRoot, 'app', 'meetings.json'), '{ not json', 'utf8');
+      // A damaged library manifest makes the startup migration fail with a message.
+      fs.mkdirSync(path.join(dataRoot, 'meetings', '.vozella'), { recursive: true });
+      fs.writeFileSync(
+        path.join(dataRoot, 'meetings', '.vozella', 'library.json'),
+        '{ not json',
+        'utf8',
+      );
       writeMeeting(path.join(dataRoot, 'meetings'), {
         id: MEETING,
         title: 'Weekly planning',
@@ -135,9 +140,9 @@ test('the startup notice in dark', async () => {
   await useTheme('light');
 });
 
-test('the rail has Record, Library and Settings with their automation ids (items 20, 21, 23)', async () => {
+test('the rail has Record, Projects, Library and Settings with their automation ids (items 20, 21, 23)', async () => {
   const nav = page.getByRole('navigation', { name: 'Main' });
-  await expect(nav.getByRole('link')).toHaveText(['Record', 'Library', 'Settings']);
+  await expect(nav.getByRole('link')).toHaveText(['Record', 'Projects', 'Library', 'Settings']);
   await expect(page.locator('#NavItemRecording')).toBeVisible();
   await expect(page.locator('#NavItemHistory')).toBeVisible();
   await expect(page.locator('#NavItemSettings')).toBeVisible();
@@ -187,7 +192,7 @@ test('selecting navigates and publishes the tag; the same page is a no-op; Sessi
   // Re-clicking Library on a session returns to the list.
   await page.locator('#NavItemHistory').click();
   await expect(page).toHaveURL(/#\/library$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'All' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Library' })).toBeVisible();
 });
 
 test('a navigation request from elsewhere moves the rail and the page together (item 28)', async () => {

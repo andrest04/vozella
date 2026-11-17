@@ -12,6 +12,7 @@ import {
   type HardwareProbe,
   type Logger,
   type MeetingBusyRegistry,
+  type ProjectContextSource,
   type TranslateFn,
   type Workspace,
 } from '@vozella/core';
@@ -36,7 +37,7 @@ import { SummariesController } from './summaries-controller';
 type SummaryRuntimeDeps = ConstructorParameters<typeof SummaryRuntime>[0];
 
 export interface ComposeSummariesDeps {
-  readonly library: Pick<LibraryRuntime, 'meetings' | 'folders' | 'settings'>;
+  readonly library: Pick<LibraryRuntime, 'meetings' | 'settings'>;
   readonly hardware: HardwareProbe;
   readonly models: SummaryRuntimeDeps['models'];
   readonly cli: CliPathProbe;
@@ -54,6 +55,8 @@ export interface ComposeSummariesDeps {
   readonly publishGpuOffload: (read: () => boolean | undefined) => void;
   readonly activeGpuOffload: () => boolean | undefined;
   readonly busy: MeetingBusyRegistry;
+  /** The instructions and files of a project, for the summary context (live proxy). */
+  readonly projectContext: ProjectContextSource;
   readonly workspace: Workspace;
   readonly broadcast: Broadcast;
   /** Already scoped to the summaries (`logger.child('summaries')`). */
@@ -111,7 +114,7 @@ export function composeSummaries(deps: ComposeSummariesDeps): ComposedSummaries 
       meetings: liveRepository(() => library.meetings),
       settings: library.settings,
       nextSessionDates: library.settings,
-      folders: liveRepository(() => library.folders),
+      projectContext: deps.projectContext,
       resolver: summaryRuntime.resolver,
       clock: new SystemClock(),
       notifyMeetingChanged: (id) => {

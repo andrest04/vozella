@@ -333,6 +333,9 @@ importers:
 
   packages/platform:
     dependencies:
+      '@vozella/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@vozella/core':
         specifier: workspace:*
         version: link:../core

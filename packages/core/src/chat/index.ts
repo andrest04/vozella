@@ -1,6 +1,7 @@
 export * from './attachments';
 export * from './chat-errors';
 export * from './chat-service';
+export * from './chat-thread';
 export * from './context-packer';
 export * from './meeting-link';
 export * from './meeting-relevance';

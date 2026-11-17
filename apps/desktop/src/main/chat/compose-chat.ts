@@ -1,22 +1,23 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { Worker } from 'node:worker_threads';
 import {
   ATTACHMENT_EXTENSIONS,
   ChatService,
+  type ChatThreadRepository,
   type EngineChoices,
   type Logger,
+  type ProjectContextSource,
   type SummaryProviderResolver,
   type TranslateFn,
 } from '@vozella/core';
 import {
   ChatAttachmentStore,
-  createThreadedDocumentExtractor,
   JsonChatPromptStore,
   LibraryChatReader,
   SystemClock,
   writeFileAtomic,
+  type DocumentExtractor,
   type LibraryRuntime,
   liveRepository,
 } from '@vozella/platform';
@@ -31,7 +32,7 @@ import { promptLogEntry, recordingProviderSource } from './chat-prompt-log';
 import { ChatPromptsController } from './chat-prompts-controller';
 
 export interface ComposeChatDeps {
-  readonly library: Pick<LibraryRuntime, 'meetings' | 'folders' | 'paths'>;
+  readonly library: Pick<LibraryRuntime, 'meetings' | 'projects' | 'paths'>;
   readonly resolver: SummaryProviderResolver;
   /** Already scoped to the chat (`logger.child('chat')`). */
   readonly logger: Logger;
@@ -44,8 +45,12 @@ export interface ComposeChatDeps {
   readonly dialogs: WindowDialogs;
   readonly tempDirectory: () => string;
   readonly documentsDirectory: () => string;
-  /** The folder of the bundled workers (`extract.js`). */
-  readonly workersDirectory: string;
+  /** The app's one threaded document extractor, shared with the project files. */
+  readonly extractor: DocumentExtractor;
+  /** The instructions and files of a project, for the chat context (read through the live proxy). */
+  readonly projectContext: ProjectContextSource;
+  /** Saved conversations (read through the live proxy). */
+  readonly threads: ChatThreadRepository;
   readonly writeClipboard: ChatControllerDeps['writeClipboard'];
   /** Opens a link in the browser; the fake native build substitutes its double. */
   readonly openExternal: ChatControllerDeps['openExternal'];
@@ -64,10 +69,11 @@ export interface ComposedChat {
 /** The chat and its saved prompts, with their IPC handlers. */
 export function composeChat(deps: ComposeChatDeps): ComposedChat {
   const { library, logger, translate, broadcast } = deps;
-  // Chat: one in-memory conversation; the engine is whichever one the summaries resolver picks.
+  // Chat: one open conversation, saved as a thread of its project; the engine is whichever one the
+  // summaries resolver picks.
   const chatReader = new LibraryChatReader({
     meetings: liveRepository(() => library.meetings),
-    folders: liveRepository(() => library.folders),
+    projects: liveRepository(() => library.projects),
   });
   // Attached files: paths stay here; the page holds ids. Image copies for one send go to temp.
   const chatAttachments = new ChatAttachmentStore({
@@ -75,9 +81,7 @@ export function composeChat(deps: ComposeChatDeps): ComposedChat {
     logger,
     tempRoot: deps.tempDirectory(),
     // PDF, Word and PowerPoint are parsed in a worker thread, never on this one.
-    extractor: createThreadedDocumentExtractor(
-      () => new Worker(path.join(deps.workersDirectory, 'extract.js')),
-    ),
+    extractor: deps.extractor,
   });
   const chatPromptLog = deps.promptLogFile;
   const chatProviders = chatPromptLog
@@ -95,6 +99,8 @@ export function composeChat(deps: ComposeChatDeps): ComposedChat {
     newId: () => randomUUID(),
     logger,
     uiLanguage: deps.uiLanguage,
+    threads: deps.threads,
+    projects: deps.projectContext,
   });
   const chat = new ChatController({
     service: chatService,

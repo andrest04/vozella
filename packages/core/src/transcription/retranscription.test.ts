@@ -18,7 +18,7 @@ const record = (patch: Partial<MeetingRecord> = {}): MeetingRecord => ({
   endedAt: '2026-11-02T14:52:00.0000000+00:00',
   audioFilePath: 'C:/audio/a.wav',
   sourcePath: null,
-  folderId: 'folder-1',
+  projectId: 'folder-1',
   summaryProvider: null,
   calendarEventId: 'ev',
   calendarId: 'cal',
@@ -76,7 +76,7 @@ describe('retranscription request', () => {
     expect(request).toMatchObject({
       meetingId: '11111111-1111-1111-1111-111111111111',
       title: 'Weekly',
-      folderId: 'folder-1',
+      projectId: 'folder-1',
       calendarEventId: 'ev',
       calendarId: 'cal',
       seriesId: 'series',

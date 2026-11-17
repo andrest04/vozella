@@ -15,8 +15,6 @@ import {
   Splitter,
   Switch,
   Tabs,
-  Tree,
-  type TreeNode,
 } from '.';
 
 describe('Button and IconButton', () => {
@@ -192,42 +190,6 @@ describe('Dialog', () => {
   });
 });
 
-describe('Tree', () => {
-  const nodes: TreeNode[] = [
-    { id: 'inbox', label: 'Inbox' },
-    { id: 'clients', label: 'Clients', children: [{ id: 'acme', label: 'Acme' }] },
-  ];
-
-  function Harness() {
-    const [selected, setSelected] = useState<string | null>(null);
-    return <Tree label="Folders" nodes={nodes} selectedId={selected} onSelect={setSelected} />;
-  }
-
-  it('has one tab stop, opens a folder with Right and selects with Enter', async () => {
-    render(<Harness />);
-    expect(screen.getByRole('tree', { name: 'Folders' })).toBeInTheDocument();
-    const items = screen.getAllByRole('treeitem');
-    expect(items.filter((item) => item.tabIndex === 0)).toHaveLength(1);
-
-    await userEvent.tab();
-    expect(screen.getByRole('treeitem', { name: 'Inbox' })).toHaveFocus();
-    await userEvent.keyboard('{ArrowDown}');
-    const clients = screen.getByRole('treeitem', { name: 'Clients' });
-    expect(clients).toHaveFocus();
-    expect(clients).toHaveAttribute('aria-expanded', 'false');
-
-    await userEvent.keyboard('{ArrowRight}');
-    expect(clients).toHaveAttribute('aria-expanded', 'true');
-    await userEvent.keyboard('{ArrowRight}');
-    const acme = screen.getByRole('treeitem', { name: 'Acme' });
-    expect(acme).toHaveFocus();
-    expect(acme).toHaveAttribute('aria-level', '2');
-
-    await userEvent.keyboard('{Enter}');
-    expect(acme).toHaveAttribute('aria-selected', 'true');
-  });
-});
-
 describe('Splitter', () => {
   // jsdom has no pointer capture; Electron does.
   HTMLElement.prototype.setPointerCapture = () => undefined;
@@ -260,140 +222,6 @@ describe('Splitter', () => {
     await userEvent.dblClick(handle);
     expect(handle).toHaveAttribute('aria-valuenow', '200');
     expect(onSizeChange).toHaveBeenLastCalledWith(200);
-  });
-});
-
-describe('Tree controlled expansion and row menus', () => {
-  const nodes: TreeNode[] = [
-    { id: 'inbox', label: 'Inbox', accent: null },
-    { id: 'clients', label: 'Clients', accent: 'red', children: [{ id: 'acme', label: 'Acme' }] },
-  ];
-
-  it('reports expansion changes and shows only what the owner expanded', async () => {
-    const onExpandedChange = vi.fn();
-    const { rerender } = render(
-      <Tree
-        label="Folders"
-        nodes={nodes}
-        selectedId={null}
-        onSelect={() => undefined}
-        expandedIds={new Set()}
-        onExpandedChange={onExpandedChange}
-      />,
-    );
-    expect(screen.queryByRole('treeitem', { name: 'Acme' })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('treeitem', { name: 'Clients' }));
-    screen.getByRole('treeitem', { name: 'Clients' }).focus();
-    await userEvent.keyboard('{ArrowRight}');
-    expect(onExpandedChange).toHaveBeenLastCalledWith(new Set(['clients']));
-    // The owner has not changed its set, so the tree stays closed.
-    expect(screen.queryByRole('treeitem', { name: 'Acme' })).not.toBeInTheDocument();
-    rerender(
-      <Tree
-        label="Folders"
-        nodes={nodes}
-        selectedId={null}
-        onSelect={() => undefined}
-        expandedIds={new Set(['clients'])}
-      />,
-    );
-    expect(screen.getByRole('treeitem', { name: 'Acme' })).toBeInTheDocument();
-  });
-
-  it('opens a menu on right click only for rows that have one', async () => {
-    const onSelect = vi.fn();
-    render(
-      <Tree
-        label="Folders"
-        nodes={nodes}
-        selectedId={null}
-        onSelect={onSelect}
-        nodeMenu={(id) =>
-          id === 'clients'
-            ? [{ id: 'rename', label: 'Rename', onSelect: () => undefined }]
-            : undefined
-        }
-      />,
-    );
-    await userEvent.pointer({
-      keys: '[MouseRight]',
-      target: screen.getByRole('treeitem', { name: 'Inbox' }),
-    });
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-    await userEvent.pointer({
-      keys: '[MouseRight]',
-      target: screen.getByRole('treeitem', { name: 'Clients' }),
-    });
-    expect(await screen.findByRole('menuitem', { name: 'Rename' })).toBeInTheDocument();
-  });
-});
-
-describe('Tree extension points', () => {
-  const nodes: TreeNode[] = [
-    { id: 'inbox', label: 'Inbox', accent: null },
-    { id: 'clients', label: 'Clients', accent: 'red' },
-  ];
-  const menu = (id: string) =>
-    id === 'clients' ? [{ id: 'rename', label: 'Rename', onSelect: () => undefined }] : undefined;
-
-  it('selects on right click by default, and not when told otherwise', async () => {
-    const onSelect = vi.fn();
-    const { rerender } = render(
-      <Tree label="Folders" nodes={nodes} selectedId={null} onSelect={onSelect} nodeMenu={menu} />,
-    );
-    await userEvent.pointer({
-      keys: '[MouseRight]',
-      target: screen.getByRole('treeitem', { name: 'Clients' }),
-    });
-    expect(onSelect).toHaveBeenCalledWith('clients');
-    await userEvent.keyboard('{Escape}');
-    onSelect.mockClear();
-    rerender(
-      <Tree
-        label="Folders"
-        nodes={nodes}
-        selectedId={null}
-        onSelect={onSelect}
-        nodeMenu={menu}
-        selectOnContextMenu={false}
-      />,
-    );
-    await userEvent.pointer({
-      keys: '[MouseRight]',
-      target: screen.getByRole('treeitem', { name: 'Clients' }),
-    });
-    expect(await screen.findByRole('menuitem', { name: 'Rename' })).toBeInTheDocument();
-    expect(onSelect).not.toHaveBeenCalled();
-  });
-
-  it('passes extra row props through and keeps its own class', () => {
-    render(
-      <Tree
-        label="Folders"
-        nodes={nodes}
-        selectedId={null}
-        onSelect={() => undefined}
-        rowProps={(id) => (id === 'inbox' ? { className: 'mb-3', title: 'drop here' } : undefined)}
-      />,
-    );
-    const row = screen.getByRole('treeitem', { name: 'Inbox' });
-    expect(row).toHaveAttribute('title', 'drop here');
-    expect(row.className).toContain('mb-3');
-    expect(row.className).toContain('rounded-control');
-    expect(row).toHaveAttribute('role', 'treeitem');
-  });
-
-  it('draws what the owner puts at the end of a row', () => {
-    render(
-      <Tree
-        label="Folders"
-        nodes={nodes}
-        selectedId={null}
-        onSelect={() => undefined}
-        trailing={(id) => (id === 'inbox' ? <span>3</span> : null)}
-      />,
-    );
-    expect(screen.getByRole('treeitem', { name: 'Inbox 3' })).toBeInTheDocument();
   });
 });
 

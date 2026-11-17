@@ -9,7 +9,7 @@ import {
   DEFAULT_CODEX_MODEL,
   DEFAULT_EFFORT,
 } from '../settings/inference-options';
-import { escapeLikeDotNet, stripBom } from './dotnet-json';
+import { stripBom } from './text-bom';
 import { LibraryFileCorruptError } from './errors';
 
 /** Spec 3.17 / 4.3. JSON names are these names. This module owns the file; others own the meaning. */
@@ -104,8 +104,8 @@ const FIELDS: readonly (readonly [keyof AppSettings, Kind])[] = [
 ];
 
 /**
- * Port additions the WinUI app does not know. They are written only once set, so a file the
- * user never changed them in keeps the WinUI property set. Every API key engine's model is one.
+ * Later additions. They are written only once set, so a file the user never changed them in keeps
+ * the property set it had. Every API key engine's model is one.
  */
 const OMITTED_WHEN_NULL: ReadonlySet<string> = new Set([
   'liveQuestions',
@@ -128,7 +128,7 @@ function coerce(kind: Kind, value: unknown): unknown {
     case 'bool-false':
       return typeof value === 'boolean' ? value : false;
     case 'number': {
-      // .NET Web defaults also read numbers written as strings.
+      // Files written earlier may hold numbers as strings; read those too.
       const n = typeof value === 'string' && value.trim() !== '' ? Number(value) : value;
       return typeof n === 'number' && Number.isFinite(n) ? n : null;
     }
@@ -192,9 +192,10 @@ export function applySettingsPatch(raw: RawSettings, patch: Partial<AppSettings>
 
 /**
  * Writes every known property in order (nulls included, except unset port additions), then any
- * unknown keys. CRLF like .NET.
+ * unknown keys. Plain UTF-8 JSON: two-space indent, LF, no escaping. The reader still accepts a
+ * BOM, CRLF, any key case and numbers written as text, because files written earlier have them.
  */
-export function serializeSettings(raw: RawSettings, newline: '\r\n' | '\n' = '\r\n'): string {
+export function serializeSettings(raw: RawSettings): string {
   const settings = readSettings(raw);
   const known = new Set(FIELDS.map(([key]) => key.toLowerCase()));
   const doc: Record<string, unknown> = { ...settings };
@@ -204,8 +205,7 @@ export function serializeSettings(raw: RawSettings, newline: '\r\n' | '\n' = '\r
   for (const [key, value] of Object.entries(raw)) {
     if (!known.has(key.toLowerCase())) doc[key] = value;
   }
-  const text = escapeLikeDotNet(JSON.stringify(doc, null, 2));
-  return newline === '\n' ? text : text.replace(/\n/g, newline);
+  return JSON.stringify(doc, null, 2);
 }
 
 // ---------------------------------------------------------------- resolvers

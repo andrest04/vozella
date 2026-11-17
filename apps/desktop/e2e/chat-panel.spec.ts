@@ -76,7 +76,7 @@ test('Record shows the launcher and a closed panel with the All meetings scope',
   await expect(launcher()).toHaveAttribute('aria-expanded', 'false');
   await expect(panel()).toBeHidden();
   await expect(chip()).toHaveText('All meetings');
-  await expect(page.getByTestId('BtnMeetingChatHistory')).toHaveCount(0);
+  await expect(page.getByTestId('BtnMeetingChatHistory')).toBeHidden();
   await shot('chat-panel-launcher-light');
 });
 
@@ -87,7 +87,8 @@ test('the launcher opens a docked panel beside the page, focused on the composer
   await expect(panel()).toHaveAttribute('data-mode', 'dock');
   const content = await page.locator('#content').boundingBox();
   const box = await panel().boundingBox();
-  const viewport = page.viewportSize() ?? { width: 1280, height: 800 };
+  // The window can be smaller than asked on a small screen, so the page says how wide it is.
+  const viewport = { width: await page.evaluate(() => window.innerWidth) };
   expect(box?.width).toBeCloseTo(380, 0);
   expect((box?.x ?? 0) + (box?.width ?? 0)).toBeCloseTo(viewport.width, 0);
   expect((content?.x ?? 0) + (content?.width ?? 0)).toBeLessThanOrEqual((box?.x ?? 0) + 0.5);
@@ -115,11 +116,14 @@ test('the handle resizes the panel within 320 to 520 and a double click restores
 test('the panel stays open across pages and its scope follows the view', async () => {
   await page.getByRole('navigation').getByRole('link', { name: 'Library' }).click();
   await expect(chip()).toHaveText('All meetings');
-  await page.getByRole('treeitem', { name: /Trabajo/ }).click();
-  await expect(chip()).toHaveText('Folder: Trabajo');
+  // A project's page puts the panel on that project.
+  await page.getByRole('navigation').getByRole('link', { name: 'Projects' }).click();
+  await page.getByRole('article').getByRole('link', { name: 'Trabajo', exact: true }).click();
+  await expect(chip()).toHaveText('Project: Trabajo');
   await expect(panel()).toBeVisible();
 
-  await page.getByRole('treeitem', { name: /Inbox/ }).first().click();
+  await page.getByRole('navigation').getByRole('link', { name: 'Library' }).click();
+  await expect(chip()).toHaveText('All meetings');
   await page
     .getByRole('grid', { name: 'Library' })
     .getByRole('row', { name: /Weekly planning/ })

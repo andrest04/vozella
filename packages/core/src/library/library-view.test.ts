@@ -1,36 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import type { FolderRecord } from './folder';
 import {
   ALL_VIEW,
-  INBOX_VIEW,
-  canDeleteFolder,
+  NO_PROJECT_VIEW,
   emptyFlags,
-  folderView,
+  projectView,
   selectMeetings,
   type LibrarySnapshot,
 } from './library-view';
 import type { MeetingListItem } from './meeting';
 
-const folder = (id: string, parentId: string | null = null): FolderRecord => ({
-  id,
-  name: id,
-  parentId,
-  note: null,
-  colorKey: null,
-  iconKey: null,
-  createdAt: '2026-09-01T12:00:00+00:00',
-});
+const project = (id: string): { id: string } => ({ id });
 const item = (
   id: string,
   title: string,
   recordedAt: string,
-  folderId: string | null = null,
+  projectId: string | null = null,
 ): MeetingListItem => ({
   id,
   title,
   recordedAt,
   endedAt: null,
-  folderId,
+  projectId,
   snippet: '',
   hasSummary: false,
   hasTranscript: false,
@@ -38,7 +28,7 @@ const item = (
 });
 
 const snapshot: LibrarySnapshot = {
-  folders: [folder('a'), folder('b', 'a')],
+  projects: [project('a'), project('b')],
   meetings: [
     item('1', 'Standup', '2026-09-01T10:00:00.0000000+00:00'),
     item('2', 'Planning', '2026-09-03T10:00:00.0000000+00:00', 'a'),
@@ -49,14 +39,14 @@ const snapshot: LibrarySnapshot = {
 };
 
 describe('selectMeetings', () => {
-  it('Inbox holds unfiled meetings and those whose folder is unknown, newest first', () => {
-    const { meetings, inFolderCount } = selectMeetings(snapshot, INBOX_VIEW, '');
+  it('No project holds unfiled meetings and those whose project is unknown, newest first', () => {
+    const { meetings, inViewCount } = selectMeetings(snapshot, NO_PROJECT_VIEW, '');
     expect(meetings.map((m) => m.id)).toEqual(['3', '1']);
-    expect(inFolderCount).toBe(2);
+    expect(inViewCount).toBe(2);
   });
 
-  it('a folder holds exactly its own meetings, sorted by instant, not by text', () => {
-    expect(selectMeetings(snapshot, folderView('a'), '').meetings.map((m) => m.id)).toEqual([
+  it('a project holds exactly its own meetings, sorted by instant, not by text', () => {
+    expect(selectMeetings(snapshot, projectView('a'), '').meetings.map((m) => m.id)).toEqual([
       '4',
       '5',
       '2',
@@ -64,9 +54,9 @@ describe('selectMeetings', () => {
   });
 
   it('searches titles only: trimmed, case-insensitive substring; count ignores the query', () => {
-    const result = selectMeetings(snapshot, folderView('a'), '  STANDUP ');
+    const result = selectMeetings(snapshot, projectView('a'), '  STANDUP ');
     expect(result.meetings.map((m) => m.id)).toEqual(['4']);
-    expect(result.inFolderCount).toBe(3);
+    expect(result.inViewCount).toBe(3);
   });
 
   it('does not search snippets', () => {
@@ -74,18 +64,18 @@ describe('selectMeetings', () => {
       ...snapshot,
       meetings: [{ ...item('9', 'Title', '2026-09-01T10:00:00+00:00'), snippet: 'needle' }],
     };
-    expect(selectMeetings(snap, INBOX_VIEW, 'needle').meetings).toEqual([]);
+    expect(selectMeetings(snap, NO_PROJECT_VIEW, 'needle').meetings).toEqual([]);
   });
 
-  it('All holds every meeting, newest first, whatever its folder', () => {
-    const { meetings, inFolderCount } = selectMeetings(snapshot, ALL_VIEW, '');
+  it('All holds every meeting, newest first, whatever its project', () => {
+    const { meetings, inViewCount } = selectMeetings(snapshot, ALL_VIEW, '');
     expect(meetings.map((m) => m.id)).toEqual(['4', '5', '2', '3', '1']);
-    expect(inFolderCount).toBe(5);
+    expect(inViewCount).toBe(5);
   });
 
   it('matches titles without regard to accents', () => {
     const snap = {
-      folders: [],
+      projects: [],
       meetings: [item('1', 'Revisión del año', '2026-09-01T10:00:00+00:00')],
     };
     expect(selectMeetings(snap, ALL_VIEW, 'REVISION').meetings).toHaveLength(1);
@@ -104,9 +94,9 @@ describe('selectMeetings', () => {
 describe('emptyFlags truth table', () => {
   const base = {
     isLoading: false,
-    isInboxSelected: true,
-    inFolderCount: 0,
-    folderCount: 0,
+    isNoProjectSelected: true,
+    inViewCount: 0,
+    projectCount: 0,
     totalMeetings: 0,
     displayedCount: 0,
     query: '',
@@ -115,32 +105,32 @@ describe('emptyFlags truth table', () => {
   it('an empty library shows only the library message', () => {
     expect(emptyFlags(base)).toEqual({
       showLibraryEmpty: true,
-      showInboxEmpty: false,
-      showFolderEmpty: false,
+      showNoProjectEmpty: false,
+      showProjectEmpty: false,
       showNoMatches: false,
       hasMeetings: false,
       isEmpty: true,
     });
   });
 
-  it('an empty Inbox in a library that has folders shows the inbox message', () => {
-    expect(emptyFlags({ ...base, folderCount: 1 })).toMatchObject({
+  it('an empty No project view in a library that has projects shows its message', () => {
+    expect(emptyFlags({ ...base, projectCount: 1 })).toMatchObject({
       showLibraryEmpty: false,
-      showInboxEmpty: true,
+      showNoProjectEmpty: true,
     });
   });
 
-  it('an empty Inbox when meetings exist elsewhere shows the inbox message', () => {
+  it('an empty No project view when meetings exist elsewhere shows its message', () => {
     expect(emptyFlags({ ...base, totalMeetings: 3 })).toMatchObject({
       showLibraryEmpty: false,
-      showInboxEmpty: true,
+      showNoProjectEmpty: true,
     });
   });
 
-  it('an empty folder shows the folder message', () => {
-    expect(emptyFlags({ ...base, isInboxSelected: false, folderCount: 2 })).toMatchObject({
-      showFolderEmpty: true,
-      showInboxEmpty: false,
+  it('an empty project shows the project message', () => {
+    expect(emptyFlags({ ...base, isNoProjectSelected: false, projectCount: 2 })).toMatchObject({
+      showProjectEmpty: true,
+      showNoProjectEmpty: false,
       showLibraryEmpty: false,
     });
   });
@@ -148,40 +138,26 @@ describe('emptyFlags truth table', () => {
   it('shows nothing while loading', () => {
     expect(emptyFlags({ ...base, isLoading: true })).toMatchObject({
       showLibraryEmpty: false,
-      showInboxEmpty: false,
-      showFolderEmpty: false,
+      showNoProjectEmpty: false,
+      showProjectEmpty: false,
       isEmpty: false,
     });
   });
 
   it('B15: a search with no matches reports it', () => {
-    const flags = emptyFlags({ ...base, inFolderCount: 4, totalMeetings: 4, query: 'zzz' });
+    const flags = emptyFlags({ ...base, inViewCount: 4, totalMeetings: 4, query: 'zzz' });
     expect(flags.showNoMatches).toBe(true);
-    expect(flags.showInboxEmpty).toBe(false);
+    expect(flags.showNoProjectEmpty).toBe(false);
     expect(
-      emptyFlags({ ...base, inFolderCount: 4, displayedCount: 1, query: 'a' }).showNoMatches,
+      emptyFlags({ ...base, inViewCount: 4, displayedCount: 1, query: 'a' }).showNoMatches,
     ).toBe(false);
-    expect(emptyFlags({ ...base, inFolderCount: 4, query: '   ' }).showNoMatches).toBe(false);
+    expect(emptyFlags({ ...base, inViewCount: 4, query: '   ' }).showNoMatches).toBe(false);
   });
 
   it('has meetings when something is displayed', () => {
-    expect(emptyFlags({ ...base, displayedCount: 2, inFolderCount: 2 })).toMatchObject({
+    expect(emptyFlags({ ...base, displayedCount: 2, inViewCount: 2 })).toMatchObject({
       hasMeetings: true,
       isEmpty: false,
     });
-  });
-});
-
-describe('canDeleteFolder', () => {
-  it('blocks folders with children or meetings', () => {
-    expect(canDeleteFolder(snapshot, 'a')).toEqual({ allowed: false, reason: 'not-empty' });
-  });
-
-  it('allows an empty leaf', () => {
-    expect(canDeleteFolder(snapshot, 'b')).toEqual({ allowed: true });
-  });
-
-  it('reports an unknown folder', () => {
-    expect(canDeleteFolder(snapshot, 'zzz')).toEqual({ allowed: false, reason: 'not-found' });
   });
 });

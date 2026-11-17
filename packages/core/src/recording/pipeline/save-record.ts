@@ -32,8 +32,7 @@ function withLiveQa(notes: string | null, block: string | null | undefined): str
   return notes.includes(text) ? notes : `${notes}\n\n${text}`;
 }
 
-const roundTrip = (ms: number): string =>
-  formatOffsetDate(offsetDateFromInstant(new Date(ms)), 'round-trip');
+const roundTrip = (ms: number): string => formatOffsetDate(offsetDateFromInstant(new Date(ms)));
 
 /** Keeps the stored text when it names the same instant, so its offset and fraction survive. */
 function dateText(stored: string | undefined, ms: number): string {
@@ -67,7 +66,7 @@ export function buildProcessedRecord(
       request.endedAtMs === null ? null : dateText(base?.endedAt ?? undefined, request.endedAtMs),
     audioFilePath: content.audioPath,
     sourcePath: base?.sourcePath ?? null,
-    folderId: request.folderId,
+    projectId: request.projectId,
     summaryProvider: content.summaryProvider,
     calendarEventId: trimmedOrNull(request.calendarEventId) ?? base?.calendarEventId ?? null,
     calendarId: trimmedOrNull(request.calendarId) ?? base?.calendarId ?? null,

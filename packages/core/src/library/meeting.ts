@@ -104,14 +104,14 @@ export interface MeetingRecord {
   /** Lowercase hyphenated GUID. */
   readonly id: string;
   readonly title: string;
-  /** Round-trip text with seven fraction digits and a numeric offset. */
+  /** ISO-8601 with milliseconds and a numeric offset, e.g. `2026-09-01T12:00:00.000-05:00`. */
   readonly recordedAt: string;
   readonly endedAt: string | null;
   /** Absolute path. Empty when there is no recording. */
   readonly audioFilePath: string;
   /** Where the record was read from. Never written. */
   readonly sourcePath: string | null;
-  readonly folderId: string | null;
+  readonly projectId: string | null;
   readonly summaryProvider: string | null;
   readonly calendarEventId: string | null;
   readonly calendarId: string | null;
@@ -136,7 +136,7 @@ export interface MeetingListItem {
   readonly title: string;
   readonly recordedAt: string;
   readonly endedAt: string | null;
-  readonly folderId: string | null;
+  readonly projectId: string | null;
   readonly snippet: string;
   readonly hasSummary: boolean;
   readonly hasTranscript: boolean;
@@ -148,6 +148,13 @@ export interface MeetingListItem {
 export interface SkippedMeetingFile {
   readonly path: string;
   readonly reason: string;
+}
+
+/** Two files hold the same meeting id. The newest one is kept; the other one is left untouched. */
+export interface ShadowedMeeting {
+  readonly id: string;
+  readonly keptPath: string;
+  readonly shadowedPath: string;
 }
 
 export class MeetingFormatError extends Error {

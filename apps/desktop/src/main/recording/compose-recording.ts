@@ -12,6 +12,7 @@ import {
   type CliPathProbe,
   type Logger,
   type LocalModelStore,
+  type ProjectContextSource,
   type OfflineTranscriber,
   type SettingsStore,
   type SummaryProviderResolver,
@@ -20,18 +21,13 @@ import {
   type Workspace,
   type CatalogLocale,
 } from '@vozella/core';
-import {
-  directoryFor,
-  liveRepository,
-  repairWavFile,
-  samePath,
-  type LibraryRuntime,
-} from '@vozella/platform';
+import { liveRepository, repairWavFile, samePath, type LibraryRuntime } from '@vozella/platform';
 import type { Broadcast } from '../ipc/library-handlers';
 import type { AudioController } from '../audio/audio-controller';
 import type { RecordingTakes } from '../audio/recording-take';
 import type { TranscriptionController } from '../transcription/transcription-controller';
 import { previousAudioKeeper } from './previous-audio';
+import { createProjectPlacement } from './project-placement';
 import { RecordingService, type LiveAskHooks } from './recording-service';
 import type { YouTubeAudioPort } from './youtube-import';
 
@@ -47,6 +43,8 @@ export interface ComposeRecordingDeps {
   /** The app's API key store: an API engine that requires a key is ready only with one saved. */
   readonly apiKeys?: Pick<ApiKeyStore, 'has'>;
   readonly settings: SettingsStore;
+  /** The instructions and files of a project, for the live copilot (live proxy). */
+  readonly projectContext: ProjectContextSource;
   readonly workspace: Workspace;
   readonly broadcast: Broadcast;
   readonly logger: Logger;
@@ -105,14 +103,15 @@ export function composeRecording(deps: ComposeRecordingDeps): RecordingService {
     takes: deps.takes,
     controller: deps.controller,
     library: {
-      audioDirectory: async (folderId) =>
-        directoryFor(library.libraryRoot, await library.folders.getAll(), folderId),
-      folderExists: async (folderId) =>
-        (await library.folders.getAll()).some((folder) => folder.id === folderId),
+      ...createProjectPlacement(
+        {
+          get: (id) => library.projects.get(id),
+          directoryOf: (id) => library.projects.directoryOf(id),
+        },
+        () => library.libraryRoot,
+      ),
       ownsMarkdown: async (meetingId, markdownPath) =>
-        (await library.meetings.locate(meetingId)).some((entry) =>
-          samePath(entry.path, markdownPath),
-        ),
+        samePath((await library.meetings.get(meetingId))?.sourcePath ?? '', markdownPath),
     },
     files: {
       remove: (file) => {

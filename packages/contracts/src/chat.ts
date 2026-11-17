@@ -1,11 +1,13 @@
 import { z } from 'zod';
 import { API_PROVIDER_IDS } from './api-providers';
 import { defineEvent, defineRequest } from './channel';
+import { guidSchema, projectIdSchema } from './ids';
 import { summaryEngineReadinessSchema } from './settings';
 import { summarySetupKindSchema } from './summaries';
 
 /**
- * Chat channels (module: chat). One in-memory conversation lives in the main process. Every
+ * Chat channels (module: chat). One live conversation lives in the main process; its turns are
+ * saved as a thread of its owner project (or of no project). Every
  * answer is a value: a missing model, a failed provider or a stopped answer come back as a
  * `status`, never as a thrown error.
  */
@@ -13,16 +15,43 @@ import { summarySetupKindSchema } from './summaries';
 const empty = z.object({}).strict();
 const requestId = z.string().min(1).max(100);
 
-export const chatScopeKindSchema = z.enum(['AllMeetings', 'Folder', 'Meeting', 'Live']);
+export const chatScopeKindSchema = z.enum(['AllMeetings', 'Project', 'Meeting', 'Live']);
 
 /** The scope the renderer resolved from the workspace state (spec 3.2). */
 export const chatScopeSchema = z.object({
   isVisible: z.boolean(),
   kind: chatScopeKindSchema,
-  folderId: z.string().max(200).nullable(),
+  projectId: projectIdSchema.nullable(),
   meetingId: z.string().max(200).nullable(),
 });
 export type ChatScopeDto = z.infer<typeof chatScopeSchema>;
+
+/**
+ * What a thread is about, as the page pins it: `projectId` is always the owner (null is no
+ * project), `meetingId` is set for the Meeting scope only.
+ */
+export const threadScopeSchema = z.object({
+  kind: chatScopeKindSchema,
+  projectId: projectIdSchema.nullable(),
+  meetingId: z.string().max(200).nullable(),
+});
+export type ThreadScopeDto = z.infer<typeof threadScopeSchema>;
+
+/** One row of a thread list, newest first. */
+export const chatThreadSummarySchema = z.object({
+  id: guidSchema,
+  ownerProjectId: projectIdSchema.nullable(),
+  scope: z.object({ kind: chatScopeKindSchema, meetingId: z.string().max(200).nullable() }),
+  title: z.string().max(200),
+  /** ISO-8601 UTC. */
+  updatedAt: z.string(),
+  messageCount: z.number().int().nonnegative(),
+});
+export type ChatThreadSummaryDto = z.infer<typeof chatThreadSummarySchema>;
+
+/** Whether a reopened thread can still be continued. */
+export const threadScopeStatusSchema = z.enum(['ok', 'meeting-missing', 'live-ended']);
+export type ThreadScopeStatusDto = z.infer<typeof threadScopeStatusSchema>;
 
 export const chatMessageSchema = z.object({
   id: z.string(),
@@ -70,6 +99,8 @@ export const chatFailureKindSchema = z.enum([
   'empty-answer',
   'send-failed',
   'provider-removed',
+  /** The thread's meeting was deleted or its Live take ended: it is read-only. */
+  'scope-gone',
 ]);
 
 export const chatSendOutcomeSchema = z.discriminatedUnion('status', [
@@ -108,6 +139,10 @@ export const chatStateSchema = z.object({
   canStartNewChat: z.boolean(),
   /** The files attached to this conversation, in the order they were added. */
   attachments: z.array(chatAttachmentSchema).max(CHAT_ATTACHMENT_MAX).default([]),
+  /** The saved thread this conversation is writing to; null until its first turn is saved. */
+  threadId: guidSchema.nullable().default(null),
+  /** False when saving the history failed or storage is read-only: the chat goes on unsaved. */
+  historySaved: z.boolean().default(true),
 });
 export type ChatStateDto = z.infer<typeof chatStateSchema>;
 
@@ -349,4 +384,51 @@ export const chatOpenExternal = defineRequest('chat.openExternal', {
     z.object({ status: z.literal('rejected') }),
     z.object({ status: z.literal('failed'), detail: z.string() }),
   ]),
+});
+
+// ----------------------------------------------------------------- chat history
+
+const owner = projectIdSchema.nullable();
+
+export const chatThreadsList = defineRequest('chat.threads.list', {
+  input: z.object({ projectId: owner }).strict(),
+  output: z.object({ threads: z.array(chatThreadSummarySchema).readonly() }),
+});
+
+export const chatThreadMessagesSchema = z.object({
+  id: guidSchema,
+  title: z.string().max(200),
+  scope: threadScopeSchema,
+  messages: z.array(chatMessageSchema).readonly(),
+  scopeStatus: threadScopeStatusSchema,
+});
+export type ChatThreadOpenedDto = z.infer<typeof chatThreadMessagesSchema>;
+
+/**
+ * Reopens a thread: the conversation continues from its messages. The page sets and pins the
+ * scope to `thread.scope`. `busy` means an answer is running.
+ */
+export const chatThreadsOpen = defineRequest('chat.threads.open', {
+  input: z.object({ projectId: owner, id: guidSchema }).strict(),
+  output: z.discriminatedUnion('ok', [
+    z.object({ ok: z.literal(true), state: chatStateSchema, thread: chatThreadMessagesSchema }),
+    z.object({ ok: z.literal(false), reason: z.enum(['busy', 'not-found', 'corrupt']) }),
+  ]),
+});
+
+export const chatThreadsRename = defineRequest('chat.threads.rename', {
+  input: z
+    .object({ projectId: owner, id: guidSchema, title: z.string().trim().min(1).max(200) })
+    .strict(),
+  output: z.object({ ok: z.boolean() }),
+});
+
+export const chatThreadsDelete = defineRequest('chat.threads.delete', {
+  input: z.object({ projectId: owner, id: guidSchema }).strict(),
+  output: z.object({ ok: z.boolean() }),
+});
+
+/** A thread of this owner was saved, renamed or deleted. */
+export const chatThreadsChanged = defineEvent('chat.threads.changed', {
+  payload: z.object({ projectId: owner }),
 });

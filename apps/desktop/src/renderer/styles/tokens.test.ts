@@ -79,24 +79,13 @@ describe('palette (item 161)', () => {
     expect(darkFollowsOs.get(name)).toBe(pair.dark);
   });
 
-  it('keeps the eight folder accents in both themes (item 166)', () => {
-    const accents = ['blue', 'teal', 'green', 'amber', 'orange', 'red', 'purple', 'neutral'];
-    for (const accent of accents) {
-      const name = `--accent-${accent}`;
-      expect(light.get(name)).toMatch(/^#[0-9a-f]{6}$/);
-      expect(darkOverride.get(name)).toMatch(/^#[0-9a-f]{6}$/);
-      expect(darkOverride.get(name)).not.toBe(light.get(name));
-    }
+  it('has no folder color tokens: projects carry no color of their own', () => {
+    expect(tokens).not.toMatch(/--accent-/);
   });
 
   it('maps every token to a system color in forced colors mode (high contrast)', () => {
     const forced = block(tokens, '@media (forced-colors: active)');
     for (const name of expected.keys()) expect(forced.get(name)).toMatch(/^[A-Z][A-Za-z]+$/);
-    // Spec 4.9: every folder accent is the system highlight, except Neutral, which is window text.
-    for (const n of ['blue', 'teal', 'green', 'amber', 'orange', 'red', 'purple']) {
-      expect(forced.get(`--accent-${n}`)).toBe('Highlight');
-    }
-    expect(forced.get('--accent-neutral')).toBe('CanvasText');
   });
 });
 

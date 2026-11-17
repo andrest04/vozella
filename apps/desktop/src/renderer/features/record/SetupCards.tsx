@@ -7,7 +7,7 @@ import { Icon, Notice } from '../../ui';
 type Card = RecordingSetupDto['live'];
 
 /**
- * Main sends the WinUI keys, whose values name the engines and come from the generated catalogs.
+ * Main sends the carried-over catalog keys, whose values name the engines and come from the generated catalogs.
  * The rows name what each step does instead, so those keys read from the hand-written ones here.
  */
 const ROW_COPY: Readonly<Partial<Record<string, StringKey>>> = {

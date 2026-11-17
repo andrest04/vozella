@@ -6,6 +6,8 @@ export type SessionPhase = 'loading' | 'error' | 'loaded' | 'empty';
 export interface SessionMeetingView {
   readonly id: string;
   readonly title: string;
+  /** The project the meeting is in; null for none (or one that no longer exists). */
+  readonly projectId: string | null;
   readonly hasTranscript: boolean;
   readonly hasAudio: boolean;
 }
@@ -72,6 +74,7 @@ export function useSession(): SessionModel {
           : {
               id,
               title: view.record.title,
+              projectId: view.record.projectId,
               hasTranscript: view.hasTranscript,
               hasAudio: view.hasAudio,
             },

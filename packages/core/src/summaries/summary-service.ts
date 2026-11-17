@@ -4,13 +4,14 @@ import type { TranslateFn } from '../i18n/translator';
 import type { ActionItem, MeetingRecord } from '../library/meeting';
 import { offsetDateFromInstant, parseOffsetDate, type OffsetDate } from '../library/offset-date';
 import type {
-  FolderRepository,
   MeetingBusyProbe,
   MeetingRepository,
   NextSessionDateStore,
   SettingsStore,
 } from '../library/ports';
 import { resolveSummaryLanguage } from '../library/settings';
+import { projectBudgetFor } from '../projects/project-context';
+import type { ProjectContextSource } from '../projects/ports';
 import { CliToolError, type CliFailureKind } from './cli-failure';
 import { formatFailure, SummaryError, type SummaryErrorCode } from './cli-failure-messages';
 import { withResolvedDeadlines } from './deadline-resolver';
@@ -30,7 +31,13 @@ import {
   resolveTitle,
 } from './suggested-title';
 import { findRelated, instantOf } from './related-meetings';
-import { buildSeriesContext, MAX_PRIOR_MEETINGS } from './series-context';
+import {
+  buildSeriesContext,
+  MAX_PRIOR_MEETINGS,
+  packProjectSummaryContext,
+  summaryProjectQuery,
+  type ProjectSummaryContext,
+} from './series-context';
 import { resolveTemplateInstructions, templateIdToStore } from './template-instructions';
 
 export interface GenerateRequest {
@@ -107,8 +114,11 @@ export interface SummaryServiceDeps {
   readonly queue?: PatchQueue;
   /** Remembered next-session dates, for `next_meeting` deadlines. None means none is filled. */
   readonly nextSessionDates?: NextSessionDateStore;
-  /** The folder tree, for the folder note of the meeting's folder. None means no note is used. */
-  readonly folders?: Pick<FolderRepository, 'getAll'>;
+  /**
+   * The instructions and files of the meeting's project. None means no project context is used.
+   * Any failure reading it leaves it out of the prompt and the summary still runs.
+   */
+  readonly projectContext?: Pick<ProjectContextSource, 'get'>;
 }
 
 export function failureFromError(error: unknown): GenerateFailure {
@@ -178,12 +188,17 @@ export class SummaryService {
   }
 
   /**
-   * The folder note and the open action items of up to three earlier related meetings. Context is
-   * a bonus: any failure reading it leaves it out and the summary still runs.
+   * The project's instructions and files and the open action items of up to three earlier related
+   * meetings. Context is a bonus: any failure reading it leaves that part out and the summary
+   * still runs.
    */
-  private async seriesContextFor(record: MeetingRecord): Promise<SeriesContextInput | null> {
+  private async seriesContextFor(
+    record: MeetingRecord,
+    providerId: ProviderId,
+    query: string,
+  ): Promise<SeriesContextInput | null> {
+    const project = await this.projectContextOf(record.projectId, providerId, query);
     try {
-      const folderNote = await this.folderNoteOf(record.folderId);
       const title = record.title.trim();
       const hasSeries = (record.seriesId ?? '').trim() !== '';
       const before = instantOf(record.recordedAt);
@@ -212,16 +227,27 @@ export class SummaryService {
           };
         }),
       );
-      return buildSeriesContext(folderNote, prior);
+      return buildSeriesContext(project, prior);
     } catch {
-      return null;
+      // The project blocks are already in hand: keep them even when the open items failed.
+      return buildSeriesContext(project, []);
     }
   }
 
-  private async folderNoteOf(folderId: string | null): Promise<string | null> {
-    if (folderId === null || this.deps.folders === undefined) return null;
-    const folder = (await this.deps.folders.getAll()).find((f) => f.id === folderId);
-    return folder?.note ?? null;
+  /** The two project blocks within the budget of the engine; null when there is none or it fails. */
+  private async projectContextOf(
+    projectId: string | null,
+    providerId: ProviderId,
+    query: string,
+  ): Promise<ProjectSummaryContext | null> {
+    if (projectId === null || this.deps.projectContext === undefined) return null;
+    try {
+      const data = await this.deps.projectContext.get(projectId);
+      if (data === null) return null;
+      return packProjectSummaryContext(data, projectBudgetFor('summary', providerId), query);
+    } catch {
+      return null;
+    }
   }
 
   private async run(request: GenerateRequest): Promise<GenerateOutcome> {
@@ -239,11 +265,16 @@ export class SummaryService {
     if (gate.status === 'unavailable') return { status: 'unavailable', reason: gate.reason };
 
     const settings = await this.deps.settings.load();
+    const notes = request.rawNotes === undefined ? record.notes : request.rawNotes;
     const requested = request.templateId === undefined ? record.noteTemplateId : request.templateId;
     const enhancement = createEnhancementContext({
-      rawNotes: request.rawNotes === undefined ? record.notes : request.rawNotes,
+      rawNotes: notes,
       liveContext: request.liveContext ?? null,
-      seriesContext: await this.seriesContextFor(record),
+      seriesContext: await this.seriesContextFor(
+        record,
+        gate.provider.id,
+        summaryProjectQuery(record.title, notes, transcript),
+      ),
       attendees: record.attendees,
       agenda: request.agenda ?? null,
       templateInstructions:

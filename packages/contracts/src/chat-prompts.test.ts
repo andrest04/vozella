@@ -17,7 +17,7 @@ import {
   requestChannels,
 } from './index';
 
-const scope = { isVisible: true, kind: 'Meeting', folderId: null, meetingId: 'm-1' } as const;
+const scope = { isVisible: true, kind: 'Meeting', projectId: null, meetingId: 'm-1' } as const;
 const draft = { name: 'Risks', prompt: 'List the risks.', availability: 'single', engine: null };
 
 describe('saved prompt contracts (Phase 5)', () => {

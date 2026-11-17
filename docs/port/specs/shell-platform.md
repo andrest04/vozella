@@ -424,7 +424,7 @@ Every writer follows load, mutate, save (`AppSettingsService`). A single static 
 | Purpose | Path |
 | --- | --- |
 | App root (config, models, credentials, logs) | `%LOCALAPPDATA%\MeetingLive` |
-| User data (visible to the user, follows OneDrive Documents) | `<Documents>\MeetingLive` |
+| User data (visible to the user, in Documents) | `<Documents>\MeetingLive` |
 | Inbox (unfiled meetings) | `<Documents>\MeetingLive\Inbox` (via `MeetingLibraryLayout.InboxDirectory`) |
 | Library folders index | `<Documents>\MeetingLive\folders.json` |
 | Legacy flat markdown | `<Documents>\MeetingLive\Meetings` |

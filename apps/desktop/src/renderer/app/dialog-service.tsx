@@ -62,8 +62,8 @@ export function useDialogs(): DialogService {
 }
 
 /**
- * The one construction point for content dialogs (spec 2.16, items 133 to 135). WinUI allows one
- * dialog at a time and a second one throws; here a second request waits its turn, so it never
+ * The one construction point for content dialogs (spec 2.16, items 133 to 135). A window shows one
+ * dialog at a time; a second request waits its turn, so it never
  * throws and never stacks two modals.
  */
 export function DialogHost({ children }: { readonly children: ReactNode }) {

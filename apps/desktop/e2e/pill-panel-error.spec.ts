@@ -35,7 +35,7 @@ test('a failing provider shows Could not answer in the panel and the take goes o
     const start = await page.evaluate(() =>
       window.vozella.invoke('recording.start', {
         title: 'Panel error',
-        folderId: null,
+        projectId: null,
         microphone: null,
         appName: null,
       }),

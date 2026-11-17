@@ -1,12 +1,15 @@
 import {
   chatChunk,
   chatStateChanged,
+  chatThreadsChanged,
   type ChatAttachmentDto,
   type ChatAttachmentListDto,
   type ChatEngineChoicesDto,
   type ChatScopeDto,
   type ChatSendOutcomeDto,
   type ChatStateDto,
+  type ChatThreadOpenedDto,
+  type ChatThreadSummaryDto,
 } from '@vozella/contracts';
 import type {
   ChatEngine,
@@ -34,7 +37,18 @@ export type ChatAttachmentsPort = Pick<
 /** The slice of `ChatService` the controller drives. */
 export type ChatServicePort = Pick<
   ChatService,
-  'send' | 'cancel' | 'newChat' | 'state' | 'onChange' | 'beginScopeRefresh' | 'applyScope'
+  | 'send'
+  | 'cancel'
+  | 'newChat'
+  | 'state'
+  | 'onChange'
+  | 'beginScopeRefresh'
+  | 'applyScope'
+  | 'listThreads'
+  | 'openThread'
+  | 'renameThread'
+  | 'deleteThread'
+  | 'onThreadsChange'
 >;
 
 export interface ChatControllerDeps {
@@ -57,6 +71,8 @@ export interface ChatControllerDeps {
     readonly digest: string | null;
     readonly title: string | null;
     readonly notes: string | null;
+    /** The project of the take, so the live chat can pack its instructions and files. */
+    readonly projectId?: string | null;
   };
   /** Files attached to the conversation. Unset: the attach requests answer an empty list. */
   readonly attachments?: ChatAttachmentsPort;
@@ -65,6 +81,11 @@ export interface ChatControllerDeps {
   /** What the model picker offers (core `readEngineChoices`). Unset: no engines. */
   readonly engineChoices?: () => Promise<EngineChoices>;
 }
+
+/** What `chat.threads.open` answers. */
+export type ChatThreadsOpenOutputDto =
+  | { readonly ok: true; readonly state: ChatStateDto; readonly thread: ChatThreadOpenedDto }
+  | { readonly ok: false; readonly reason: 'busy' | 'not-found' | 'corrupt' };
 
 const NO_ENGINE_CHOICES: ChatEngineChoicesDto = { defaultEngine: null, engines: [] };
 
@@ -127,6 +148,10 @@ export class ChatController {
     });
     deps.attachments?.onChange(() => {
       this.publishState();
+    });
+    // A thread was saved, renamed or deleted: the page refreshes that owner's list.
+    deps.service.onThreadsChange((owner) => {
+      deps.broadcast(chatThreadsChanged, { projectId: owner });
     });
   }
 
@@ -254,6 +279,58 @@ export class ChatController {
     return this.stateDto();
   }
 
+  /** The saved conversations of a project (null is no project), newest first. */
+  async threadsList(projectId: string | null): Promise<{ threads: ChatThreadSummaryDto[] }> {
+    try {
+      const threads = await this.deps.service.listThreads(projectId);
+      return { threads: threads.map((thread) => ({ ...thread, scope: { ...thread.scope } })) };
+    } catch (error) {
+      this.deps.logger.warn('chat history unavailable', { error });
+      return { threads: [] };
+    }
+  }
+
+  /** Reopens a thread: the open conversation becomes it, and the page pins its scope. */
+  async threadsOpen(projectId: string | null, id: string): Promise<ChatThreadsOpenOutputDto> {
+    try {
+      const outcome = await this.deps.service.openThread(projectId, id);
+      if (!outcome.ok) return { ok: false, reason: outcome.reason };
+      const { thread } = outcome;
+      return {
+        ok: true,
+        state: this.stateDto(),
+        thread: {
+          id: thread.id,
+          title: thread.title,
+          scope: { ...thread.scope },
+          messages: thread.messages.map(messageDto),
+          scopeStatus: thread.scopeStatus,
+        },
+      };
+    } catch (error) {
+      this.deps.logger.error('chat thread open threw', { error });
+      return { ok: false, reason: 'corrupt' };
+    }
+  }
+
+  async threadsRename(projectId: string | null, id: string, title: string): Promise<boolean> {
+    try {
+      return await this.deps.service.renameThread(projectId, id, title);
+    } catch (error) {
+      this.deps.logger.warn('chat thread rename failed', { error });
+      return false;
+    }
+  }
+
+  async threadsDelete(projectId: string | null, id: string): Promise<boolean> {
+    try {
+      return await this.deps.service.deleteThread(projectId, id);
+    } catch (error) {
+      this.deps.logger.warn('chat thread delete failed', { error });
+      return false;
+    }
+  }
+
   /** The model picker's engines. A failed read is an empty list, never an error on the page. */
   async engineChoices(): Promise<ChatEngineChoicesDto> {
     const read = this.deps.engineChoices;
@@ -351,6 +428,8 @@ export class ChatController {
       hasMessages: state.hasMessages,
       canStartNewChat: state.canStartNewChat,
       attachments: this.attachmentDtos(),
+      threadId: state.threadId,
+      historySaved: state.historySaved,
     };
   }
 
@@ -364,6 +443,8 @@ export class ChatController {
       state.hasMessages,
       state.canStartNewChat,
       state.attachments,
+      state.threadId,
+      state.historySaved,
     ]);
     if (key === this.lastStateKey) return;
     this.lastStateKey = key;

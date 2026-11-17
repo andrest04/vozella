@@ -23,27 +23,38 @@ test('the library works end to end through the typed API, on a throwaway data ro
   expect(location).toMatchObject({ libraryRoot, source: 'env', startupError: null });
   expect(fs.existsSync(path.join(libraryRoot, 'Inbox'))).toBe(true);
 
-  // A folder, its directory, and its note.
+  // A project, its directory, and its instructions.
   const created = await page.evaluate(() =>
-    window.vozella.invoke('library.createFolder', { name: 'Universidad', parentId: null }),
+    window.vozella.invoke('projects.create', { name: 'Universidad' }),
   );
   if (!created.ok) throw new Error('create failed');
   expect(fs.existsSync(path.join(libraryRoot, 'Universidad'))).toBe(true);
   const noted = await page.evaluate(
-    (id) => window.vozella.invoke('library.setFolderNote', { id, note: '  Fall term  ' }),
-    created.folder.id,
+    (id) => window.vozella.invoke('projects.setInstructions', { id, instructions: 'Fall term' }),
+    created.project.id,
   );
-  expect(noted).toMatchObject({ ok: true, folder: { note: 'Fall term' } });
+  expect(noted).toMatchObject({ ok: true, project: { instructions: 'Fall term' } });
 
   const duplicate = await page.evaluate(() =>
-    window.vozella.invoke('library.createFolder', { name: 'universidad', parentId: null }),
+    window.vozella.invoke('projects.create', { name: 'universidad' }),
   );
   expect(duplicate).toMatchObject({ ok: false, reason: 'name-taken' });
 
-  const loaded = await page.evaluate(() => window.vozella.invoke('library.load', {}));
-  expect(loaded).toMatchObject({ ok: true, folders: [{ name: 'Universidad', note: 'Fall term' }] });
-  const folderFile = fs.readFileSync(path.join(libraryRoot, 'folders.json'), 'utf8');
-  expect(folderFile.startsWith('[\r\n  {')).toBe(true);
+  const listed = await page.evaluate(() => window.vozella.invoke('projects.list', {}));
+  expect(listed.projects).toMatchObject([{ id: created.project.id, name: 'Universidad' }]);
+  // One plain JSON file per project under the library's own directory: two-space indent, LF.
+  const projectFile = fs.readFileSync(
+    path.join(libraryRoot, '.vozella', 'projects', created.project.id, 'project.json'),
+    'utf8',
+  );
+  expect(JSON.parse(projectFile)).toMatchObject({
+    name: 'Universidad',
+    instructions: 'Fall term',
+    dir: 'Universidad',
+  });
+  expect(projectFile.startsWith('{\n  "schemaVersion"')).toBe(true);
+  expect(projectFile).not.toContain('\r');
+  expect(fs.existsSync(path.join(libraryRoot, 'folders.json'))).toBe(false);
 
   // Settings: a patch changes one field and the file stays complete.
   await page.evaluate(() =>
@@ -108,13 +119,13 @@ test('search reads bodies, and bulk actions report each meeting, through the typ
   });
 
   const created = await page.evaluate(() =>
-    window.vozella.invoke('library.createFolder', { name: 'Bulk', parentId: null }),
+    window.vozella.invoke('projects.create', { name: 'Bulk' }),
   );
   if (!created.ok) throw new Error('create failed');
   const moved = await page.evaluate(
-    ([meetingIds, folderId]) =>
-      window.vozella.invoke('library.moveMeetings', { meetingIds, folderId }),
-    [ids, created.folder.id] as const,
+    ([meetingIds, projectId]) =>
+      window.vozella.invoke('library.moveMeetings', { meetingIds, projectId }),
+    [ids, created.project.id] as const,
   );
   expect(moved.results).toEqual([
     { meetingId: ids[0], ok: true },

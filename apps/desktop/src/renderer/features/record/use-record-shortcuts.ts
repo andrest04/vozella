@@ -14,7 +14,7 @@ export type RecordShortcutHandlers = Readonly<Record<RecordShortcut, ShortcutAct
 
 /**
  * The page-scoped accelerators, live while the recording controls are mounted (the Record page is
- * the only content of its window). As in the WinUI handlers, the event is marked handled before
+ * the only content of its window). The event is marked handled before
  * the enabled check, so a disabled Stop still swallows Ctrl+R and the page never reloads.
  */
 export function useRecordShortcuts(handlers: RecordShortcutHandlers | null): void {

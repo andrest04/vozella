@@ -24,7 +24,7 @@ beforeAll(() => {
 
 type Listener = (payload: unknown) => void;
 
-const ALL = { isVisible: true, kind: 'AllMeetings', folderId: null, meetingId: null } as const;
+const ALL = { isVisible: true, kind: 'AllMeetings', projectId: null, meetingId: null } as const;
 
 const CHOICES: ChatEngineChoicesDto = {
   defaultEngine: 'claude-code',
@@ -85,6 +85,8 @@ const stateOf = (over: Partial<ChatStateDto> = {}): ChatStateDto => ({
   hasMessages: false,
   canStartNewChat: true,
   attachments: [],
+  threadId: null,
+  historySaved: true,
   ...over,
 });
 

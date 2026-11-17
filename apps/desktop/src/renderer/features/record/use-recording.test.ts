@@ -7,7 +7,7 @@ import {
   importFromYouTube,
   importRecording,
   resetRecordingStore,
-  setFolderId,
+  setProjectId,
   setTitle,
   startRecording,
   useRecordingStore,
@@ -27,6 +27,7 @@ const idle: RecordingStateDto = {
   captureNotices: [],
   liveNotice: null,
   meetingId: null,
+  projectId: null,
   title: '',
   recordedAtMs: null,
   highlightCount: 0,
@@ -128,9 +129,21 @@ describe('the recording store', () => {
     expect(api.calls.filter((name) => name === 'recording.start')).toHaveLength(1);
   });
 
+  it('does not notify subscribers when the destination is set to the one it already is', () => {
+    // A page that sets the destination from an effect would otherwise render in a loop.
+    setProjectId('f1');
+    const seen = vi.fn();
+    const stop = useRecordingStore.subscribe(seen);
+    setProjectId('f1');
+    expect(seen).not.toHaveBeenCalled();
+    setProjectId(null);
+    expect(seen).toHaveBeenCalledTimes(1);
+    stop();
+  });
+
   it('sends the destination with an import and says nothing when the picker is cancelled', async () => {
     const api = install({ 'audio.import.pickFile': () => null });
-    setFolderId('f1');
+    setProjectId('f1');
     expect(await importRecording('t')).toBe(false);
     expect(api.calls).toEqual(['audio.import.pickFile']);
     expect(useRecordingStore.getState().notice).toBeNull();
@@ -144,12 +157,12 @@ describe('the recording store', () => {
         return { started: true, meetingId: 'm' };
       },
     });
-    setFolderId('f1');
+    setProjectId('f1');
     expect(await importFromYouTube('t', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')).toBe(true);
     expect(api.calls).toEqual(['recording.importUrl']);
     expect(inputs[0]).toEqual({
       title: 't',
-      folderId: 'f1',
+      projectId: 'f1',
       url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
     });
     expect(useRecordingStore.getState().busy).toBeNull();
@@ -192,7 +205,6 @@ describe('the recording store', () => {
     const api = install({
       'recording.getState': () => ({ ...idle, liveText: '' }),
       'recording.getSetup': () => ({}),
-      'library.load': () => ({ ok: true, folders: [], meetings: [], skipped: [] }),
     });
     const first = connectRecording();
     const second = connectRecording();
