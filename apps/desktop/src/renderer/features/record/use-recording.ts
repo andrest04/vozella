@@ -78,7 +78,7 @@ export function resetRecordingStore(): void {
 
 /**
  * Applies a state from main. The end of a take (back to Idle) resets the title for the next one,
- * as the WinUI run reset does (spec 2.2).
+ * as the run reset always did (spec 2.2).
  */
 export function applyRecordingState(next: RecordingStateDto): void {
   const previous = get().state;

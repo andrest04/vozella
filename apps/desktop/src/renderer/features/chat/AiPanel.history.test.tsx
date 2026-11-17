@@ -230,7 +230,7 @@ describe('AiPanel History', () => {
 
   it('a thread whose meeting is gone opens read only, and the body is told why', async () => {
     install();
-      const user = userEvent.setup();
+    const user = userEvent.setup();
     mount();
     mock.handle('chat.threads.open', ({ projectId, id }) => ({
       ok: true as const,

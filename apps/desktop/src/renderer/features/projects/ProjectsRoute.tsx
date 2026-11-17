@@ -124,6 +124,7 @@ export function ProjectsRoute() {
     <div className="flex flex-col gap-6">
       <SectionHeader
         level={1}
+        quiet
         title={t('Ui_ProjectsTitle')}
         action={nothingAtAll ? undefined : <NewProjectPopover disabled={!writable} />}
       />

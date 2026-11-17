@@ -385,7 +385,7 @@ describe('starter chips (items 39 to 41)', () => {
     ['a meeting with action items', MEETING, [ITEM], 'About this meeting'],
     ['a meeting without action items', MEETING, [], 'About this recording'],
     ['all meetings', ALL, undefined, 'Across your meetings'],
-    ['a folder', FOLDER, undefined, 'About this folder'],
+    ['a project', FOLDER, undefined, 'About this project'],
     ['a live take', LIVE, undefined, 'While you record'],
   ] as const)('%s heads the starter list with "%s"', async (_, scope, items, heading) => {
     install(items ? { actionItems: () => [...items] } : {});

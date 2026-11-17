@@ -107,7 +107,7 @@ describe('notes Markdown: empty and blank', () => {
   });
 });
 
-describe('plain text written by the WinUI app', () => {
+describe('plain text written by an earlier version', () => {
   it.each([
     ['one line', 'Follow up with Ana on Friday'],
     ['lines', 'Agenda\nBudget\nNext steps'],

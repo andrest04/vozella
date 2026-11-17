@@ -46,6 +46,7 @@ vi.mock('../ai-provider/ProviderGateDialogs', () => ({
 
 const A = '11111111-1111-4111-8111-111111111111';
 const B = '22222222-2222-4222-8222-222222222222';
+const PROJECT = '33333333-3333-4333-8333-333333333333';
 
 type Listener = (payload: unknown) => void;
 
@@ -65,6 +66,9 @@ interface Fake {
   run: { isRunning: boolean; meetingId: string | null; status: string };
   lastResults: { meetingId: string; outcome: string; message: string | null }[];
   delay: Record<string, Promise<void> | undefined>;
+  /** The project each meeting is in. */
+  projects: Record<string, string | null>;
+  moveFailure: string | null;
 }
 
 function install(init: Partial<Fake> = {}): Fake {
@@ -87,6 +91,8 @@ function install(init: Partial<Fake> = {}): Fake {
     run: { isRunning: false, meetingId: null, status: '' },
     lastResults: [],
     delay: {},
+    projects: {},
+    moveFailure: null,
     ...init,
   };
   const invoke = async (name: string, input: Record<string, unknown>): Promise<unknown> => {
@@ -106,7 +112,10 @@ function install(init: Partial<Fake> = {}): Fake {
         if (fake.failLoad) throw new Error('disk gone');
         const title = fake.titles[id];
         return {
-          record: title === undefined || title === null ? null : { id, title },
+          record:
+            title === undefined || title === null
+              ? null
+              : { id, title, projectId: fake.projects[id] ?? null },
           hasTranscript: true,
           hasAudio: fake.hasAudio,
         };
@@ -123,6 +132,29 @@ function install(init: Partial<Fake> = {}): Fake {
         return { ...fake.run, lastResults: fake.lastResults };
       case 'retranscription.dismiss':
         return { dismissed: true };
+      case 'projects.list':
+        return {
+          projects: [
+            {
+              id: PROJECT,
+              name: 'Calculo',
+              description: '',
+              pinned: false,
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              meetingCount: 1,
+              fileCount: 0,
+              lastActivityAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+          noProject: { meetingCount: 0, lastActivityAt: null },
+          skipped: [],
+          storage: { status: 'ready' },
+        };
+      case 'library.moveMeeting':
+        if (fake.moveFailure !== null) return { ok: false, reason: fake.moveFailure };
+        fake.projects[input.meetingId as string] = input.projectId as string | null;
+        return { ok: true };
       case 'session.revealFile':
         return { revealed: fake.revealed };
       case 'summaries.writeClipboard':
@@ -596,6 +628,45 @@ describe('SessionRoute', () => {
       await waitFor(() => {
         expect(screen.getByTestId('transcript-stub')).not.toBe(stub);
       });
+    });
+  });
+
+  describe('Move to project', () => {
+    it('moves the open meeting to a project from the header and reads the record again', async () => {
+      const fake = install();
+      render(
+        <I18nProvider initialLocale="en">
+          <TooltipProvider>
+            <SessionRoute />
+          </TooltipProvider>
+        </I18nProvider>,
+      );
+      const trigger = await screen.findByRole('button', { name: 'Move to project' });
+      await userEvent.click(trigger);
+      const popover = await screen.findByRole('dialog', { name: 'Move to project' });
+      await userEvent.click(await within(popover).findByRole('option', { name: 'Calculo' }));
+      await waitFor(() => {
+        expect(fake.projects[A]).toBe(PROJECT);
+      });
+      await waitFor(() => {
+        expect(
+          fake.calls.filter((call) => call.name === 'session.getView').length,
+        ).toBeGreaterThanOrEqual(2);
+      });
+    });
+
+    it('says projects are unavailable when storage refuses the move', async () => {
+      install({ moveFailure: 'storage-error' });
+      render(
+        <I18nProvider initialLocale="en">
+          <TooltipProvider>
+            <SessionRoute />
+          </TooltipProvider>
+        </I18nProvider>,
+      );
+      await userEvent.click(await screen.findByRole('button', { name: 'Move to project' }));
+      await userEvent.click(await screen.findByRole('option', { name: 'Calculo' }));
+      expect(await screen.findByText(/Projects are unavailable right now/)).toBeInTheDocument();
     });
   });
 });
