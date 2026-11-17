@@ -17,7 +17,7 @@ afterEach(() => {
 const crashed = (bytes: number): Buffer =>
   Buffer.concat([buildWavHeader(0), Buffer.alloc(bytes, 7)]);
 
-describe('recoverCrashedRecordings (C5)', () => {
+describe('recoverCrashedRecordings', () => {
   it('repairs a recording a crash left at zero sizes, so it can be opened again', async () => {
     fs.mkdirSync(path.join(dir, 'Folder', 'Sub'), { recursive: true });
     const file = path.join(dir, 'Folder', 'Sub', 'meeting.wav');

@@ -107,7 +107,7 @@ describe('LocalLlmSummaryProvider without a model file', () => {
   });
 });
 
-describe('LocalLlmSummaryProvider server lifetime (B3)', () => {
+describe('LocalLlmSummaryProvider server lifetime', () => {
   it('loads one server for concurrent first calls and reuses it afterwards', async () => {
     const { provider, created } = setup();
     await Promise.all([
@@ -293,7 +293,7 @@ describe('LocalLlmSummaryProvider requests', () => {
     expect(result.summaryMarkdown.length).toBeGreaterThan(0);
   });
 
-  it('B8: a streamed prompt that leaves no room fails with PromptTooLong and sends no chat request', async () => {
+  it('a streamed prompt that leaves no room fails with PromptTooLong and sends no chat request', async () => {
     const { provider, created } = setup();
     const error = await (async () => {
       const chunks: string[] = [];
@@ -303,7 +303,7 @@ describe('LocalLlmSummaryProvider requests', () => {
     expect((await infoOf(created[0]!)).stats.chatStarted).toBe(0);
   });
 
-  it('B9: a streamed reply cut at the cap reports truncated, a whole one does not', async () => {
+  it('a streamed reply cut at the cap reports truncated, a whole one does not', async () => {
     const seen: boolean[] = [];
     const cut = setup(['--fake-reply-tokens', '6', '--fake-finish-length']);
     for await (const chunk of cut.provider.streamPrompt('x', NEVER, {

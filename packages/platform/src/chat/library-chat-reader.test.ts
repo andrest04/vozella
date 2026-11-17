@@ -11,7 +11,7 @@ import {
 import { createLibraryFixture, type LibraryFixture } from '../library/library-test-kit';
 import { LibraryChatReader } from './library-chat-reader';
 
-/** B17: chat reads by id and by project, and never loads every transcript. */
+/** Chat reads by id and by project, and never loads every transcript. */
 const source = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
@@ -69,7 +69,7 @@ describe('LibraryChatReader on the sample library', () => {
   });
 });
 
-describe('LibraryChatReader bound (B17)', () => {
+describe('LibraryChatReader bound', () => {
   async function seed(count: number): Promise<MeetingRecord[]> {
     const base = (await fx.meetings.get(WEEKLY))!;
     const records: MeetingRecord[] = [];

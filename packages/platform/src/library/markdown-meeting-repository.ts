@@ -79,12 +79,12 @@ const probe = { fileExists: (path: string): boolean => existsSync(path) };
 const noAudioProbe = { fileExists: (): boolean => false };
 
 /**
- * Meetings as Markdown files under the Library root (spec 3.6).
+ * Meetings as Markdown files under the Library root.
  *
  * A meeting's project is the `projectId` in its frontmatter; the directory it sits in is a
  * convenience. A small in-memory index (id, title, date, snippet per file, keyed by modified
  * time and size) means a Save, Delete or lookup costs one stat per file instead of a parse of
- * every file (B19), and a Library list never re-reads a transcript it has already seen (B28).
+ * every file, and a Library list never re-reads a transcript it has already seen.
  * Indexing already parses each file, so it also keeps the folded text search reads.
  *
  * Two files can hold one id (a copied folder). The newest file wins, ties go to the path, and the
@@ -307,7 +307,7 @@ export class MarkdownMeetingRepository implements MeetingRepository {
       audio.trim() !== '' && sharedAudio.has(audioKey(audio));
     // The recording goes first: if it is locked this throws while the markdown still exists, so
     // the meeting stays listed and the delete can be retried.
-    // B25: a stored path outside the Library is never deleted, only logged.
+    // a stored path outside the Library is never deleted, only logged.
     if (storedAudio.trim() !== '' && (await exists(storedAudio)) && !shared(storedAudio)) {
       if (isUnder(storedAudio, this.root)) await remove(storedAudio);
       else this.options.logger?.warn('left a recording outside the library in place', { id });
@@ -347,7 +347,7 @@ export class MarkdownMeetingRepository implements MeetingRepository {
     return used;
   }
 
-  /** Spec 3.6 step 4 and B2: a recording the saving meeting already owns does not force " 2". */
+  /** A recording the saving meeting already owns does not force " 2". */
   private async allocateStem(
     directory: string,
     desired: string,

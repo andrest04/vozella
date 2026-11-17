@@ -28,6 +28,6 @@ export function lockKeyFor(file: string): string {
 
 /**
  * The process-wide lock table. Every user of `folders.json` or `settings.json` takes its lock
- * from here, so two repository instances over one file cannot interleave (B6, B17).
+ * from here, so two repository instances over one file cannot interleave.
  */
 export const fileLocks = new KeyedMutex();

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SummaryTabService, type MeetingRecord } from '@vozella/core';
 import { createLibraryFixture, type LibraryFixture } from '../library/library-test-kit';
 
-/** S14: tab patches on files written by an earlier version of the app keep every other field (items 98, 102). */
+/** Tab patches on files written by an earlier version of the app keep every other field. */
 const source = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',

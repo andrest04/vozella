@@ -75,7 +75,7 @@ describe('SettingsRuntime over the real settings file', () => {
     });
   });
 
-  it('B1: parallel commands from different sections all land in the file', async () => {
+  it('parallel commands from different sections all land in the file', async () => {
     const { runtime: r, store } = runtime();
     await Promise.all([
       r.commands.setSummaryProvider('ClaudeCode'),
@@ -93,7 +93,7 @@ describe('SettingsRuntime over the real settings file', () => {
     });
   });
 
-  it('B4: a damaged file gives defaults and a notice naming where it was kept', async () => {
+  it('a damaged file gives defaults and a notice naming where it was kept', async () => {
     const { runtime: r, settingsFile } = runtime();
     fs.writeFileSync(settingsFile, '{ broken');
     const snapshot = await r.page.load();

@@ -30,7 +30,7 @@ const NO_API_KEYS: Pick<ApiKeyStore, 'has' | 'get'> = {
 };
 
 export interface SummaryRuntimeDeps {
-  /** The single settings reader and writer (B2, B19). */
+  /** The single settings reader and writer. */
   readonly settings: SettingsStore;
   readonly hardware: HardwareProbe;
   /** The GGUF folder: `FileLocalModelStore` in production. */
@@ -54,8 +54,8 @@ export interface SummaryRuntimeDeps {
 
 /**
  * The summary providers wired to their adapters: one `LocalLlmHost` (so every Local provider
- * shares the one loaded server, B3), the CLI runner, and the resolver/factory that read settings
- * only through `SettingsStore.load()` (B2). The composition root creates one.
+ * shares the one loaded server), the CLI runner, and the resolver/factory that read settings
+ * only through `SettingsStore.load()`. The composition root creates one.
  */
 export class SummaryRuntime {
   readonly host: LocalLlmHost;
@@ -108,7 +108,7 @@ export class SummaryRuntime {
         cancel,
       });
       const runtime = { exe: picked.exe, gpuOffload: usesGpuOffload(picked.backend) };
-      // A failed GPU read made the profile a guess: use it now, but pick again next time (B17).
+      // A failed GPU read made the profile a guess: use it now, but pick again next time.
       if (hardware.gpuReadComplete === false) this.backend = undefined;
       return runtime;
     })().catch((error: unknown) => {

@@ -13,7 +13,7 @@ const GIB = 1024 ** 3;
 /**
  * Reads the display adapters on Windows. The registry value `HardwareInformation.qwMemorySize` is
  * 64 bit; WMI `AdapterRAM` is a 32 bit field that tops out near 4 GB, so it is only the fallback
- * (the WinUI app read only that one and misjudged any card above 4 GB).
+ * (a single adapter query misjudges any card above 4 GB, so the probe reads all adapters).
  */
 const GPU_SCRIPT = `
 $ErrorActionPreference = 'SilentlyContinue'
@@ -92,7 +92,7 @@ export interface SystemHardwareProbeOptions {
 /**
  * RAM and the largest GPU, read once per process. A GPU query that fails still gives the RAM, but
  * that answer is not kept: the next call asks again, so a transient failure does not hide the GPU
- * until the app restarts (B17). A rejected read is not kept either.
+ * until the app restarts. A rejected read is not kept either.
  */
 export class SystemHardwareProbe implements HardwareProbe {
   private cached: Promise<HardwareProfile> | undefined;
@@ -148,7 +148,7 @@ export function isUsableGpuReport(text: string): boolean {
 async function defaultQuery(): Promise<GpuInfo> {
   if (process.platform !== 'win32') return NO_GPU;
   const text = await runPowerShell(GPU_SCRIPT);
-  // B17: unusable output must reject so the probe does not cache it as "no GPU".
+  // unusable output must reject so the probe does not cache it as "no GPU".
   if (!isUsableGpuReport(text)) throw new Error('The GPU query returned no usable report.');
   return parseGpuReport(text);
 }

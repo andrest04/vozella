@@ -18,9 +18,9 @@ async function isFile(candidate: string): Promise<boolean> {
 }
 
 /**
- * Is a program on PATH. Spec 2.2: on Windows each PATHEXT extension (default `.EXE;.CMD;.BAT`) is
+ * Is a program on PATH. On Windows each PATHEXT extension (default `.EXE;.CMD;.BAT`) is
  * tried in each non blank PATH directory; elsewhere the plain name. It reads the environment on
- * every call and does not block, so installing the CLI while Settings is open is noticed (B15).
+ * every call and does not block, so installing the CLI while Settings is open is noticed.
  */
 export class PathCliProbe implements CliPathProbe {
   constructor(private readonly options: PathCliProbeOptions = {}) {}
@@ -29,7 +29,7 @@ export class PathCliProbe implements CliPathProbe {
     return (await this.resolve(executable)) !== null;
   }
 
-  /** The full path of the first match on PATH, or null. The runner launches this path (B11). */
+  /** The full path of the first match on PATH, or null. The runner launches this path. */
   async resolve(executable: string): Promise<string | null> {
     const env = this.options.env ?? process.env;
     const platform = this.options.platform ?? process.platform;

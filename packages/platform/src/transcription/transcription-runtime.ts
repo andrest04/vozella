@@ -113,7 +113,7 @@ export interface LiveTranscriptionFailure {
   readonly error: unknown;
 }
 
-/** Everything the transcription module builds from paths and an engine (spec 3.4 to 3.11). */
+/** Everything the transcription module builds from paths and an engine. */
 export class TranscriptionRuntime {
   private readonly liveFailureListeners = new Set<(failure: LiveTranscriptionFailure) => void>();
   /**

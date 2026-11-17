@@ -8,7 +8,7 @@ import {
   type CancelSignal,
 } from '@vozella/core';
 
-/** Five minutes without a byte, like the CLI timeout (spec 3.7). Callers may inject another. */
+/** Five minutes without a byte, like the CLI timeout. Callers may inject another. */
 export const API_TIMEOUT_MS = 5 * 60 * 1000;
 
 export interface ApiRequest {

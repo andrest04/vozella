@@ -59,7 +59,7 @@ describe('recording through the runtime', () => {
     expect(readWavFileInfo(target).seconds).toBeLessThan(1.9);
   }, 10_000);
 
-  it('C1: a failed start leaves no file behind', async () => {
+  it('a failed start leaves no file behind', async () => {
     const { runtime } = runtimeWith({ audio: new FakeAudioCapture({ failWith: 'no device' }) });
     const target = path.join(dir, 'rec.wav');
     await expect(
@@ -68,7 +68,7 @@ describe('recording through the runtime', () => {
     expect(fs.existsSync(target)).toBe(false);
   });
 
-  it('C7: a process capture on an old Windows says what is wrong, before any file exists', async () => {
+  it('a process capture on an old Windows says what is wrong, before any file exists', async () => {
     const { runtime } = runtimeWith({ osBuild: new FakeOsBuild(18_363) });
     const target = path.join(dir, 'rec.wav');
     await expect(
@@ -142,7 +142,7 @@ describe('import through the runtime', () => {
     expect(readWavFileInfo(path.join(dir, 'out.wav')).seconds).toBeGreaterThan(0.9);
   });
 
-  it('C2: a 6 channel source comes out mono', async () => {
+  it('a 6 channel source comes out mono', async () => {
     const { runtime } = runtimeWith();
     writeWav(path.join(dir, 'in.wav'), { rate: 48_000, channels: 6, seconds: 1 });
     await runtime.importAudio(path.join(dir, 'in.wav'), path.join(dir, 'out.wav'));

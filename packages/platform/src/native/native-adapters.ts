@@ -53,7 +53,7 @@ export class NativeAudioCapture implements AudioCapturePort {
             this.onError(error);
             return;
           }
-          // Item 78: the stop is reported once per capture, whatever the addon does.
+          // the stop is reported once per capture, whatever the addon does.
           if (stoppedReported) return;
           stoppedReported = true;
           const reason = info.error;

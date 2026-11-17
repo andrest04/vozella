@@ -3,7 +3,7 @@ import nodePath from 'node:path';
 import type { AppPaths } from '@vozella/core';
 
 /**
- * Spec 3.1 `EnsureDirectoriesExist`: Inbox and the model folders, then a best-effort removal of
+ * `EnsureDirectoriesExist`: Inbox and the model folders, then a best-effort removal of
  * the old Whisper cache. IO and permission errors are swallowed on the cleanup only; failing to
  * create a directory is a real error the caller should see.
  */

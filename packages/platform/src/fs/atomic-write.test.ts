@@ -30,7 +30,7 @@ describe('writeFileAtomic', () => {
     expect(fs.readdirSync(dir)).toEqual(['file.txt']);
   });
 
-  it('B5: a crash while writing leaves the old content intact and cleans up', async () => {
+  it('a crash while writing leaves the old content intact and cleans up', async () => {
     const target = path.join(dir, 'file.txt');
     fs.writeFileSync(target, 'old');
     const crashing: AtomicFileOps = {

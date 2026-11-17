@@ -50,8 +50,8 @@ export class NemotronModelStore implements EngineModelStore {
 
   /**
    * Downloads a catalog file. Two callers for the same file share one transfer, so a Settings
-   * download and the Record gate cannot delete each other's `.part` file (B17). The file is
-   * checked against its SHA-256 and a broken transfer continues where it stopped (B5).
+   * download and the Record gate cannot delete each other's `.part` file. The file is
+   * checked against its SHA-256 and a broken transfer continues where it stopped.
    */
   download(
     file: PinnedFile,

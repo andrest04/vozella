@@ -84,7 +84,7 @@ const STDERR_TAIL = 8192;
 
 /**
  * True when every byte was handed to the child; a closed pipe is "not delivered", not an error.
- * UTF-8 bytes with no BOM (B24), flushed and then closed.
+ * UTF-8 bytes with no BOM, flushed and then closed.
  */
 function writeAllStdin(child: ChildProcess, stdin: string | null): Promise<boolean> {
   return new Promise((resolve) => {
@@ -117,7 +117,7 @@ class LineSplitter {
   }
 }
 
-/** Spec 3.7 `CliProcessRunner`, on `child_process.spawn` with `shell: false`. */
+/** `CliProcessRunner`, on `child_process.spawn` with `shell: false`. */
 export class NodeCliProcessRunner implements CliProcessRunner, CliLineRunner {
   private readonly probe: PathCliProbe;
   private readonly platform: NodeJS.Platform;

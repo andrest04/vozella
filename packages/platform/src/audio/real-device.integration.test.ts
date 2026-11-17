@@ -157,7 +157,7 @@ describe.skipIf(!enabled)('real devices (VOZELLA_REAL_AUDIO=1)', () => {
     expect(lost).toEqual([]);
   }, 60_000);
 
-  it('S1: reports the end of a captured app instead of recording silence', async () => {
+  it('reports the end of a captured app instead of recording silence', async () => {
     const quick = spawn('powershell.exe', ['-NoProfile', '-Command', 'Start-Sleep 30'], {
       stdio: 'ignore',
     });

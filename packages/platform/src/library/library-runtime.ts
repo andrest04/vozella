@@ -230,7 +230,7 @@ export class LibraryRuntime {
     return picked === null ? { status: 'cancelled' } : this.setLocation(picked);
   }
 
-  /** Spec 2.17: ensures the directories exist, then opens the Library root in the file manager. */
+  /** Ensures the directories exist, then opens the Library root in the file manager. */
   async openFolder(): Promise<OpenFolderResult> {
     try {
       await ensureDirectoriesExist(this.paths);

@@ -46,7 +46,7 @@ async function serve(handler: Handler): Promise<{ url: string; close: () => Prom
   };
 }
 
-describe('downloader additions (B5)', () => {
+describe('downloader additions', () => {
   const body = Buffer.alloc(200_000, 3);
 
   it('continues a broken transfer with a Range request and checks the checksum', async () => {
@@ -229,7 +229,7 @@ describe('NemotronModelStore', () => {
     expect(models.isModelDownloaded()).toBe(false);
   });
 
-  it('B17: two callers for the same file share one transfer', async () => {
+  it('two callers for the same file share one transfer', async () => {
     let hits = 0;
     const server = await serve((_req, res) => {
       hits += 1;
@@ -417,7 +417,7 @@ describe('NemoSpeechRuntimeManager', () => {
       expect(m.isReady('cuda')).toBe(false);
     });
 
-    it('B17: two callers share one download per backend', async () => {
+    it('two callers share one download per backend', async () => {
       let calls = 0;
       const m = manager({
         runtimes: pins(sha('z')),

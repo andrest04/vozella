@@ -43,7 +43,7 @@ function codeOf(error: unknown): string | undefined {
 
 /**
  * Writes `data` to a temp file in the same folder, then renames it over `target`. A crash at
- * any point leaves either the old file or the new one, never a truncated one (B5).
+ * any point leaves either the old file or the new one, never a truncated one.
  *
  * On Windows the rename can fail briefly while an antivirus scan or a reader holds the target,
  * so it is retried. The temp name ends in `.tmp`, so library scans never see it as a meeting.

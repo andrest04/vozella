@@ -96,7 +96,7 @@ const request = { transcript: 'Hola a todos', title: 'Reunión', recordedAt, out
 const never = new CancelSource().signal;
 
 describe('SummaryRuntime on a real settings.json', () => {
-  it('B2: camelCase model and effort in the file reach the CLI argv', async () => {
+  it('camelCase model and effort in the file reach the CLI argv', async () => {
     const t = build();
     fs.writeFileSync(
       settingsFile,
@@ -172,7 +172,7 @@ describe('SummaryRuntime on a real settings.json', () => {
     expect(t.runner.calls[1]!.args.join(' ')).toContain('low');
   });
 
-  it('B19: two parallel patches to different fields both survive on disk', async () => {
+  it('two parallel patches to different fields both survive on disk', async () => {
     const t = build();
     await Promise.all([
       t.settings.update({ selectedSummaryModelId: ONE_B.fileName }),
@@ -187,7 +187,7 @@ describe('SummaryRuntime on a real settings.json', () => {
     });
   });
 
-  it('parity 176/183: every field round trips and summaryLanguage defaults to es', async () => {
+  it('every field round trips and summaryLanguage defaults to es', async () => {
     const t = build();
     const fresh = await t.settings.load();
     expect(fresh.summaryLanguage ?? 'es').toBe('es');
@@ -210,7 +210,7 @@ describe('SummaryRuntime on a real settings.json', () => {
     expect(reloaded).toMatchObject(patch);
   });
 
-  it('Local: saved model and file give a ready provider; two providers share one server (B3)', async () => {
+  it('Local: saved model and file give a ready provider; two providers share one server', async () => {
     const t = build();
     expect(await t.runtime.resolver.resolveSummaryProvider({ kind: 'Local' })).toMatchObject({
       status: 'needs-setup',
@@ -228,7 +228,7 @@ describe('SummaryRuntime on a real settings.json', () => {
     expect(t.created).toHaveLength(1);
   });
 
-  it('B3: dispose on quit kills a loaded server', async () => {
+  it('dispose on quit kills a loaded server', async () => {
     const t = build();
     fs.writeFileSync(path.join(t.modelDir, ONE_B.fileName), 'x');
     await t.settings.update({ selectedSummaryModelId: ONE_B.fileName });
@@ -279,7 +279,7 @@ describe('SummaryRuntime API key engines', () => {
   });
 });
 
-describe('backend choice and an incomplete GPU read (B17)', () => {
+describe('backend choice and an incomplete GPU read', () => {
   const make = (complete: boolean) => {
     const modelDir = path.join(root, 'SummaryModels');
     const runtime = new SummaryRuntime({

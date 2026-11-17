@@ -53,7 +53,7 @@ const supported = (layout: WavLayout): boolean =>
 
 /**
  * Reads a WAV as float samples, a buffer at a time. The header is repaired first when a crash
- * left the sizes at zero (spec 3.1). PCM16 and float32 are supported; the app writes PCM16.
+ * left the sizes at zero. PCM16 and float32 are supported; the app writes PCM16.
  */
 export class WavFrameReader implements AudioFrameReader {
   open(path: string): AudioFrameSource {

@@ -18,7 +18,7 @@ import { createProjectContextSource } from '../projects/project-context-source';
 import { createProjectFileStore } from '../projects/project-file-store';
 import { StorageStateHolder } from '../projects/storage-state';
 
-/** Item 112 and 4.2: a generate on files written by an earlier version of the app keeps every other field. */
+/** A generate on files written by an earlier version of the app keeps every other field. */
 const source = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
