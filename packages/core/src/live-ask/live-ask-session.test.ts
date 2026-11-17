@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { CancelSignal } from '../cancel';
 import type { SummaryProviderKind } from '../library/settings';
 import { LIVE_DIGEST_LABEL, LOCAL_CONTEXT_BUDGET } from '../chat/context-packer';
-import { CancelledError } from '../summaries/provider';
+import { CancelledError, type ProviderId } from '../summaries/provider';
+import { InMemoryProjectContextSource } from '../projects/in-memory-projects';
+import { PROJECT_INSTRUCTIONS_LABEL } from '../projects/project-context';
 import {
   LiveAskSession,
   type LiveAnswerState,
@@ -31,11 +33,15 @@ function setup(
     settingsGate?: Gate;
     committed?: string;
     context?: () => ReturnType<LiveAskDeps['sessionContext']>;
+    providerId?: ProviderId;
+    projectId?: string | null;
+    projectContext?: LiveAskDeps['projectContext'];
   } = {},
 ) {
   const published: LiveAnswerState[] = [];
   const prompts: string[] = [];
   const webFlags: boolean[] = [];
+  const warnings: { message: string; context?: unknown }[] = [];
   let now = 0;
   const deps: LiveAskDeps = {
     loadSettings: async () => {
@@ -48,6 +54,7 @@ function setup(
         options.resolution ?? {
           status: 'ready',
           provider: {
+            ...(options.providerId === undefined ? {} : { id: options.providerId }),
             streamPrompt: (prompt, cancel) => {
               prompts.push(prompt);
               return (
@@ -67,6 +74,9 @@ function setup(
     nowMs: () => now,
     formatFailure: (e) => `failed: ${(e as Error).message}`,
     setupWired: options.setupWired ?? false,
+    ...(options.projectId === undefined ? {} : { projectId: () => options.projectId ?? null }),
+    ...(options.projectContext === undefined ? {} : { projectContext: options.projectContext }),
+    logger: { warn: (message, context) => void warnings.push({ message, context }) },
   };
   const session = new LiveAskSession(deps);
   return {
@@ -74,6 +84,7 @@ function setup(
     published,
     prompts,
     webFlags,
+    warnings,
     advance: (ms: number) => {
       now += ms;
     },
@@ -369,5 +380,133 @@ describe('LiveAskSession take context (live chat parity)', () => {
     const window = t.prompts[0]?.split('Transcript window:\n')[1] ?? '';
     expect(window.length).toBeLessThanOrEqual(LOCAL_CONTEXT_BUDGET.liveChars);
     expect(window.length).toBeGreaterThan(0);
+  });
+});
+
+describe('LiveAskSession with a project', () => {
+  const doc = (name: string, text: string) =>
+    ({
+      name,
+      kind: 'text' as const,
+      pages: null,
+      truncated: false,
+      sections: [{ location: null, text }],
+    }) as const;
+  const context = (instructions: string, ...documents: ReturnType<typeof doc>[]) => {
+    const source = new InMemoryProjectContextSource();
+    source.set({ projectId: 'p1', name: 'Calculus', instructions, documents });
+    return source;
+  };
+
+  it('puts the project block between the session lines and the digest, before the transcript', async () => {
+    const t = setup({
+      projectId: 'p1',
+      projectContext: context('Answer in short sentences.'),
+      context: () => ({ title: 'Math', notes: 'Ask Ana', digest: '- Limits covered' }),
+    });
+    await t.session.ask('What is a limit?');
+    const prompt = t.prompts[0] ?? '';
+    const order = [
+      prompt.indexOf('Meeting: Math'),
+      prompt.indexOf('Project: Calculus'),
+      prompt.indexOf(PROJECT_INSTRUCTIONS_LABEL),
+      prompt.indexOf('Running summary of the recording so far'),
+      prompt.indexOf('hello there'),
+    ];
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(prompt).toContain('Answer in short sentences.');
+  });
+
+  it('asks the source for the question, so the files are ranked by it', async () => {
+    const queries: string[] = [];
+    const source = new InMemoryProjectContextSource();
+    source.set({
+      projectId: 'p1',
+      name: 'Calculus',
+      instructions: '',
+      documents: [doc('syllabus.txt', 'The exam is on Friday.')],
+    });
+    const t = setup({
+      providerId: 'claude-code',
+      projectId: 'p1',
+      projectContext: {
+        get: (id) => {
+          queries.push(id);
+          return source.get(id);
+        },
+      },
+    });
+    await t.session.ask('  When is the exam?  ');
+    expect(queries).toEqual(['p1']);
+    expect(t.prompts[0]).toContain('File: syllabus.txt');
+    expect(t.prompts[0]).toContain('The exam is on Friday.');
+  });
+
+  it('packs with the live budget of the engine: remote keeps more instructions than local', async () => {
+    const long = 'ø'.repeat(2_000);
+    const remote = setup({
+      providerId: 'claude-code',
+      projectId: 'p1',
+      projectContext: context(long),
+    });
+    await remote.session.ask('Q?');
+    const local = setup({
+      kind: 'Local',
+      providerId: 'local',
+      projectId: 'p1',
+      projectContext: context(long),
+    });
+    await local.session.ask('Q?');
+    const count = (p: string | undefined) => (p ?? '').split('ø').length - 1;
+    expect(count(remote.prompts[0])).toBe(2_000);
+    expect(count(local.prompts[0])).toBe(500);
+  });
+
+  it('uses the small budget when the engine does not say who it is', async () => {
+    const t = setup({ projectId: 'p1', projectContext: context('ø'.repeat(900)) });
+    await t.session.ask('Q?');
+    expect(((t.prompts[0] ?? '').match(/ø/g) ?? []).length).toBe(500);
+  });
+
+  it('answers without a project block when the take has no project or the project is unknown', async () => {
+    const none = setup({ projectId: null, projectContext: context('Never shown') });
+    await none.session.ask('Q?');
+    const gone = setup({ projectId: 'missing', projectContext: context('Never shown') });
+    await gone.session.ask('Q?');
+    const unwired = setup({ projectId: 'p1' });
+    await unwired.session.ask('Q?');
+    for (const t of [none, gone, unwired]) {
+      expect(t.prompts[0]).not.toContain('Project');
+      expect(t.last()).toMatchObject({ text: 'ok', error: null });
+    }
+  });
+
+  it('logs a failing source and still answers', async () => {
+    const t = setup({
+      projectId: 'p1',
+      projectContext: { get: () => Promise.reject(new Error('disk')) },
+    });
+    await t.session.ask('Q?');
+    expect(t.last()).toMatchObject({ isAnswering: false, text: 'ok', error: null });
+    expect(t.prompts[0]).not.toContain('Project');
+    expect(t.warnings).toHaveLength(1);
+  });
+
+  it('reads the project once per question, so an edit applies to the next ask', async () => {
+    const source = new InMemoryProjectContextSource();
+    source.set({ projectId: 'p1', name: 'Calculus', instructions: 'First.', documents: [] });
+    const t = setup({ projectId: 'p1', projectContext: source });
+    await t.session.ask('One?');
+    source.set({ projectId: 'p1', name: 'Calculus', instructions: 'Second.', documents: [] });
+    await t.session.ask('Two?');
+    expect(t.prompts[0]).toContain('First.');
+    expect(t.prompts[1]).toContain('Second.');
+  });
+
+  it('the preset chips see the project too', async () => {
+    const t = setup({ projectId: 'p1', projectContext: context('Be brief.') });
+    await t.session.askPreset('What did I miss?');
+    expect(t.prompts[0]).toContain('Be brief.');
   });
 });
