@@ -1,6 +1,10 @@
 import type { FolderRecord } from '@vozella/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { folderIdOfView, registerFolderNote, useLibraryStore } from './library-store';
+import {
+  folderIdOfView,
+  registerFolderNote,
+  useLibraryStore,
+} from '../meeting-list/meeting-list-store';
 
 /** Idle time after the last keystroke before the folder note is stored. */
 export const NOTE_AUTOSAVE_MS = 400;

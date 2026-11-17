@@ -4,7 +4,7 @@ import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Translate } from '../../i18n/translate';
 import { useBulkActions } from './use-bulk-actions';
-import type { LibraryModel } from './use-library';
+import type { LibraryModel } from './use-meeting-list';
 
 afterEach(() => {
   cleanup();

@@ -12,7 +12,7 @@ import {
   folderIcon,
   buildTreeNodes,
 } from './folder-visuals';
-import { folderRecord } from './library-test-kit';
+import { folderRecord } from '../meeting-list/meeting-list-test-kit';
 
 describe('folder visuals', () => {
   it('draws all 18 icon keys and all 7 accents from the spec', () => {

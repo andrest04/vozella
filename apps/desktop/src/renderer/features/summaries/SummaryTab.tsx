@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type RefObject } from 'react
 import { useI18n } from '../../i18n/I18nProvider';
 import { useChatLinks } from '../chat/use-chat-links';
 import { useCopySource } from '../session/use-copy-source';
-import { formatDueDate, formatMeetingDate } from '../library/format';
+import { formatDueDate, formatMeetingDate } from '../meeting-list/format';
 import type { ActionItemsListProps } from './ActionItemsList';
 import { DraftMessage } from './DraftMessage';
 import { RegenerateDialog } from './RegenerateDialog';

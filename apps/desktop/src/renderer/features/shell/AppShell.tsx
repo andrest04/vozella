@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import { CloseDialogs } from '../record/CloseDialogs';
 import { connectLiveAsk } from '../record/use-live-ask';
-import { connectLibrary } from '../library/library-store';
+import { connectLibrary } from '../meeting-list/meeting-list-store';
 import { LibraryFolders, type SidebarLocation } from '../library/LibraryFolders';
 import { AiPanelArea } from '../chat/AiPanel';
 import { ChatBody } from '../chat/ChatBody';

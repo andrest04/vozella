@@ -1,8 +1,8 @@
 import type { MeetingListItemDto } from '@vozella/contracts';
 import { useEffect, useRef, useState } from 'react';
 import type { StringKey, Translate } from '../../i18n/translate';
-import { clearFolderRequest, useLibraryStore, type FolderRequest } from './library-store';
-import type { StatusMessage } from './use-library';
+import { clearFolderRequest, useLibraryStore, type FolderRequest } from './meeting-list-store';
+import type { StatusMessage } from './use-meeting-list';
 
 export type DialogState =
   | { readonly kind: 'newFolder' }

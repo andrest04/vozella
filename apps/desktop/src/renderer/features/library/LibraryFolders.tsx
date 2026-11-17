@@ -14,7 +14,7 @@ import {
   setExpandedIds,
   useLibraryStore,
   type FolderRequest,
-} from './library-store';
+} from '../meeting-list/meeting-list-store';
 
 /** Where the sidebar is showing from: it only highlights the view on the screens that show it. */
 export type SidebarLocation = 'library' | 'session' | 'elsewhere';

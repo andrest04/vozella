@@ -2,7 +2,7 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Providers } from '../../app/test-providers';
-import { meetingRecord } from './library-test-kit';
+import { meetingRecord } from './meeting-list-test-kit';
 import { MeetingPreview } from './MeetingPreview';
 
 beforeEach(() => {

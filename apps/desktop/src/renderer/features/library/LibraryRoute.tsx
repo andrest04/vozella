@@ -4,9 +4,9 @@ import { useI18n } from '../../i18n/I18nProvider';
 import type { StringKey } from '../../i18n/translate';
 import { Button, ConfirmDialog, EmptyState, Notice, Skeleton, cn } from '../../ui';
 import { Breadcrumbs } from './Breadcrumbs';
-import { BulkBar } from './BulkBar';
+import { BulkBar } from '../meeting-list/BulkBar';
 import { matchLibraryShortcut } from '../../app/shortcuts';
-import { RenameDialog } from './RenameDialog';
+import { RenameDialog } from '../meeting-list/RenameDialog';
 import { MoveDialog, NameDialog, PersonalityDialog } from './dialogs';
 import {
   refreshLibrary,
@@ -14,28 +14,33 @@ import {
   setCursor,
   setFilters,
   useLibraryStore,
-} from './library-store';
-import { folderIdOfView } from './library-store';
+} from '../meeting-list/meeting-list-store';
+import { folderIdOfView } from '../meeting-list/meeting-list-store';
 import { folderMenuEntries } from './LibraryFolders';
-import { ListHeader } from './ListHeader';
-import { MeetingGrid } from './MeetingGrid';
-import { FilterButton, FilterChips } from './MeetingFilterControls';
-import { NO_FILTERS, filterKey, isFiltering, type MeetingFilters } from './meeting-filters';
-import { MeetingPreview } from './MeetingPreview';
-import { describeSkipped } from './format';
-import { HEADER_ROW_PX, MEETING_ROW_PX, nextCursor } from './logbook';
-import { tabOfHit } from './search-results';
-import { UndoOffer } from './UndoOffer';
-import { useBulkActions } from './use-bulk-actions';
+import { ListHeader } from '../meeting-list/ListHeader';
+import { MeetingGrid } from '../meeting-list/MeetingGrid';
+import { FilterButton, FilterChips } from '../meeting-list/MeetingFilterControls';
+import {
+  NO_FILTERS,
+  filterKey,
+  isFiltering,
+  type MeetingFilters,
+} from '../meeting-list/meeting-filters';
+import { MeetingPreview } from '../meeting-list/MeetingPreview';
+import { describeSkipped } from '../meeting-list/format';
+import { HEADER_ROW_PX, MEETING_ROW_PX, nextCursor } from '../meeting-list/logbook';
+import { tabOfHit } from '../meeting-list/search-results';
+import { UndoOffer } from '../meeting-list/UndoOffer';
+import { useBulkActions } from '../meeting-list/use-bulk-actions';
 import {
   confirmText,
   useLibraryDialogs,
   useMeetingRename,
   type ConfirmDialogState,
-} from './use-library-dialogs';
-import { useListFocus } from './use-list-focus';
-import { useMeetingPreview } from './use-meeting-preview';
-import { useLibrary, type StatusMessage } from './use-library';
+} from '../meeting-list/use-meeting-list-dialogs';
+import { useListFocus } from '../meeting-list/use-list-focus';
+import { useMeetingPreview } from '../meeting-list/use-meeting-preview';
+import { useLibrary, type StatusMessage } from '../meeting-list/use-meeting-list';
 
 /** From this width of the content the preview sits beside the list; below it a click opens. */
 export const PANED_LAYOUT_PX = 760;

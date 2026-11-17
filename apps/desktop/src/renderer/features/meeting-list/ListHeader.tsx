@@ -2,7 +2,7 @@ import type { FolderRecord } from '@vozella/core';
 import { Ellipsis, Search, X } from 'lucide-react';
 import type { KeyboardEvent, ReactNode, RefObject } from 'react';
 import { Button, Icon, IconButton, Input, Menu, Textarea, type MenuEntry } from '../../ui';
-import { folderAccent, folderIcon } from './folder-visuals';
+import { folderAccent, folderIcon } from '../library/folder-visuals';
 
 export interface ListHeaderProps {
   /** The name of the view: All, Inbox or the folder. */

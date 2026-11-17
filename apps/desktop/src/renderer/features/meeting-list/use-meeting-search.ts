@@ -1,6 +1,6 @@
 import { MIN_SEARCH_CHARS, type LibraryView } from '@vozella/core';
 import { useEffect, useRef, useState } from 'react';
-import { useLibraryStore } from './library-store';
+import { useLibraryStore } from './meeting-list-store';
 import type { SearchHits } from './search-results';
 
 /** Reading inside every meeting waits for the typing to stop. */

@@ -2,13 +2,13 @@
 import type { MeetingListItemDto } from '@vozella/contracts';
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { requestFolderAction, useLibraryStore } from './library-store';
+import { requestFolderAction, useLibraryStore } from './meeting-list-store';
 import {
   confirmText,
   isConfirmDialog,
   useLibraryDialogs,
   type DialogState,
-} from './use-library-dialogs';
+} from './use-meeting-list-dialogs';
 
 afterEach(() => {
   cleanup();

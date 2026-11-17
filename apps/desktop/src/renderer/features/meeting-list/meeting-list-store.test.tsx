@@ -6,8 +6,8 @@ import {
   directCounts,
   REFRESH_DEBOUNCE_MS,
   useLibraryStore,
-} from './library-store';
-import { folderRecord, installFakeApi, meetingRecord } from './library-test-kit';
+} from './meeting-list-store';
+import { folderRecord, installFakeApi, meetingRecord } from './meeting-list-test-kit';
 
 const UNI = '11111111-1111-4111-8111-111111111111';
 const CALC = '22222222-2222-4222-8222-222222222222';

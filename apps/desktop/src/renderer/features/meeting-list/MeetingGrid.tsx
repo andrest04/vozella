@@ -16,7 +16,7 @@ import { matchLibraryShortcut } from '../../app/shortcuts';
 import { ContextMenu, Icon, IconButton, Menu, cn, type MenuEntry } from '../../ui';
 import { formatDayHeader, formatMeetingDate, formatMeetingTime } from './format';
 import { gridKeyAction, type GridKeyAction } from './library-keys';
-import { MEETINGS_DRAG_TYPE, setDragged, useLibraryStore } from './library-store';
+import { MEETINGS_DRAG_TYPE, setDragged, useLibraryStore } from './meeting-list-store';
 import { groupState } from './library-selection';
 import { highlightParts, snippetAroundMatch, type SearchHits } from './search-results';
 import {

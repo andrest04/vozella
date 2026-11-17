@@ -1,7 +1,7 @@
 import type { MeetingListItemDto } from '@vozella/contracts';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Translate } from '../../i18n/translate';
-import { clearDropRequest, useLibraryStore } from './library-store';
+import { clearDropRequest, useLibraryStore } from './meeting-list-store';
 import {
   EMPTY_CHECKS,
   checkAll,
@@ -11,8 +11,8 @@ import {
   toggleCheck,
   type Checks,
 } from './library-selection';
-import type { LibraryModel } from './use-library';
-import type { DialogState } from './use-library-dialogs';
+import type { LibraryModel } from './use-meeting-list';
+import type { DialogState } from './use-meeting-list-dialogs';
 
 /** One move that can be taken back: where each meeting was, grouped by that place. */
 export interface UndoMove {

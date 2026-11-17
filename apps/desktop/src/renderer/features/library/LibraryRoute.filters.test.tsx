@@ -2,7 +2,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { connectLibrary, useLibraryStore } from './library-store';
+import { connectLibrary, useLibraryStore } from '../meeting-list/meeting-list-store';
 import { LibraryRoute } from './LibraryRoute';
 import { Providers } from '../../app/test-providers';
 import {

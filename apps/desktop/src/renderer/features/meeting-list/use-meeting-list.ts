@@ -27,13 +27,13 @@ import {
   useLibraryStore,
   type LoadProblem,
   type SkippedFile,
-} from './library-store';
+} from './meeting-list-store';
 import { filterMeetings } from './meeting-filters';
 import { mergeMatches, type SearchHits } from './search-results';
-import { useFolderNote } from './use-folder-note';
+import { useFolderNote } from '../library/use-folder-note';
 import { useMeetingSearch } from './use-meeting-search';
 
-export { NOTE_AUTOSAVE_MS } from './use-folder-note';
+export { NOTE_AUTOSAVE_MS } from '../library/use-folder-note';
 
 /** A message for the status bar: a catalog key and the values for its placeholders. */
 export interface StatusMessage {
