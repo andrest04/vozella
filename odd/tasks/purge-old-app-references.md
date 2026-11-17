@@ -26,6 +26,6 @@ Commits and check results per unit are recorded by the orchestrator.
 
 ## Result (2026-11-17)
 Workflow wf_3195d9e3-a94 (16 Sonnet agents): units U1-U8 done (6b7f080..a12b703), review 13 findings (1 major) fixed in 711c104.
-Parent check: no winui/dotnet/.NET hits in tracked source (only gitignored build outputs out/, release/).
+Parent check: no banned old-stack wording in tracked source (only gitignored build outputs out/, release/).
 Final: pnpm check pass, pnpm build pass; Playwright 202 passed, 4 failed (3 pill pixel specs, also failing before this branch; projects.spec test 9 flaky once), 29 not run.
-Side effect to confirm with user: U8 deleted 62 historical odd/tasks/*.md files (still in git history and Engram mirrors) and the 3 dotnet/skills test skills.
+Side effect to confirm with user: U8 deleted 62 historical odd/tasks/*.md files (still in git history and Engram mirrors) and the 3 third-party test skills test skills.
