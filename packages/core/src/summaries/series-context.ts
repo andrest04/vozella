@@ -1,9 +1,12 @@
+import { packAttachments, type AttachedDocument } from '../chat/attachments';
+import { neutralizeStructure } from '../chat/context-packer';
+import { cutPrefix } from '../chat/text-cut';
 import type { ActionItem } from '../library/meeting';
+import type { ProjectContextBudget } from '../projects/project-context';
 import type { SeriesContextInput } from './prompt-builders';
 
 /** At most this many earlier related meetings feed the summary prompt. */
 export const MAX_PRIOR_MEETINGS = 3;
-export const MAX_FOLDER_NOTE_CHARS = 1500;
 export const MAX_PRIOR_ITEMS_CHARS = 2000;
 const MAX_ITEM_TEXT_CHARS = 200;
 const MAX_ITEMS_PER_MEETING = 10;
@@ -24,15 +27,55 @@ function itemLine(item: ActionItem): string {
   return `- ${clip(item.text.trim(), MAX_ITEM_TEXT_CHARS)}${owner === '' ? '' : ` — Owner: ${owner}`}${due === '' ? '' : ` — Due: ${due}`}`;
 }
 
+/** How much of the transcript helps pick the project file excerpts. */
+const QUERY_TRANSCRIPT_CHARS = 2000;
+
+/** What ranks the project file excerpts: the meeting title, the notes and the start of the transcript. */
+export function summaryProjectQuery(
+  title: string,
+  notes: string | null | undefined,
+  transcript: string,
+): string {
+  return [title.trim(), (notes ?? '').trim(), cutPrefix(transcript, QUERY_TRANSCRIPT_CHARS).trim()]
+    .filter((part) => part !== '')
+    .join('\n');
+}
+
+/** The project's two prompt blocks, already capped by the engine budget. */
+export interface ProjectSummaryContext {
+  readonly instructions: string | null;
+  readonly files: string | null;
+}
+
 /**
- * The series context for a summary prompt: the folder note and the unfinished action items of the
- * earlier related meetings (newest first), each part bounded. Null when both are empty.
+ * The instructions (capped, then structure-neutralized so a forged `Id:` or `# ` line cannot pass
+ * as prompt structure) and the files (whole when they fit, otherwise the excerpts that best match
+ * `query`). Each part is null when empty.
+ */
+export function packProjectSummaryContext(
+  data: { readonly instructions: string; readonly documents: readonly AttachedDocument[] },
+  budget: ProjectContextBudget,
+  query: string,
+): ProjectSummaryContext {
+  const instructions = neutralizeStructure(
+    cutPrefix(data.instructions.trim(), budget.instructionsChars),
+  ).trim();
+  const files = packAttachments(data.documents, budget.filesChars, query).trim();
+  return {
+    instructions: instructions === '' ? null : instructions,
+    files: files === '' ? null : files,
+  };
+}
+
+/**
+ * The series context for a summary prompt: the project's instructions and files and the
+ * unfinished action items of the earlier related meetings (newest first), each part bounded. Null
+ * when all are empty.
  */
 export function buildSeriesContext(
-  folderNote: string | null | undefined,
+  project: ProjectSummaryContext | null | undefined,
   prior: readonly PriorMeetingItems[],
 ): SeriesContextInput | null {
-  const note = (folderNote ?? '').trim();
   const sections: string[] = [];
   for (const meeting of prior) {
     const lines = meeting.items
@@ -45,9 +88,8 @@ export function buildSeriesContext(
     );
   }
   const items = clip(sections.join('\n\n'), MAX_PRIOR_ITEMS_CHARS);
-  if (note === '' && items === '') return null;
-  return {
-    folderNote: note === '' ? null : clip(note, MAX_FOLDER_NOTE_CHARS),
-    priorOpenItems: items === '' ? null : items,
-  };
+  const projectInstructions = project?.instructions ?? null;
+  const projectFiles = project?.files ?? null;
+  if (projectInstructions === null && projectFiles === null && items === '') return null;
+  return { projectInstructions, projectFiles, priorOpenItems: items === '' ? null : items };
 }

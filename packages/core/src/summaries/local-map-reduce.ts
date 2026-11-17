@@ -4,6 +4,7 @@ import { throwIfCancelled } from './provider';
 import type { SummarizeRequest } from './provider';
 import {
   buildMergePrompt,
+  dropBackground,
   buildPartPrompt,
   buildSummaryPrompt,
   toEnglishLanguageName,
@@ -158,6 +159,9 @@ export async function summarizeMapReduce(
   cancel: CancelSignal,
 ): Promise<string> {
   throwIfCancelled(cancel);
+  // Background (project files and instructions, open items) is a bonus: when it leaves no room
+  // for the notes, it is dropped piece by piece before the summary is refused.
+  let enhancement = request.enhancement;
   const finalPrompt = (transcript: string): string =>
     buildSummaryPrompt({
       title: request.title,
@@ -165,7 +169,7 @@ export async function summarizeMapReduce(
       transcript,
       outputLanguage: request.outputLanguage,
       endedAt: request.endedAt,
-      enhancement: request.enhancement,
+      enhancement,
     });
 
   const direct = finalPrompt(request.transcript);
@@ -173,8 +177,11 @@ export async function summarizeMapReduce(
     return infer(direct, FINAL_MAX_OUTPUT, SUMMARY_TEMPERATURE, cancel);
   }
 
-  if ((await roomFor(counter, finalPrompt(''), FINAL_MAX_OUTPUT)) < NOTES_MAX_OUTPUT) {
-    throw new SummaryError('NotesTooLong');
+  while ((await roomFor(counter, finalPrompt(''), FINAL_MAX_OUTPUT)) < NOTES_MAX_OUTPUT) {
+    const smaller =
+      enhancement === null || enhancement === undefined ? undefined : dropBackground(enhancement);
+    if (smaller === undefined) throw new SummaryError('NotesTooLong');
+    enhancement = smaller;
   }
 
   const language = toEnglishLanguageName(request.outputLanguage);
