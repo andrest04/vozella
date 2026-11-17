@@ -5,7 +5,12 @@ export { isCancellation } from '../summaries/provider';
 
 /** Why a send produced no answer. The cancelled send has no kind: it is silent. */
 export type ChatFailureKind =
-  'setup-cancelled' | 'empty-answer' | 'send-failed' | 'provider-removed';
+  | 'setup-cancelled'
+  | 'empty-answer'
+  | 'send-failed'
+  | 'provider-removed'
+  /** The meeting of the thread was deleted or its Live take ended: the thread is read-only. */
+  | 'scope-gone';
 
 export interface ChatFailure {
   readonly kind: ChatFailureKind;
@@ -25,6 +30,15 @@ export function emptyAnswerFailure(t: TranslateFn): ChatFailure {
 /** xAI is gone: a settings file that still selects it asks the user to pick another provider. */
 export function providerRemovedFailure(t: TranslateFn): ChatFailure {
   return { kind: 'provider-removed', message: t('Ui_SummaryProviderXaiRemoved') };
+}
+
+/**
+ * A thread whose meeting is gone, or whose Live take ended, cannot take a new question. There is
+ * no string of its own yet, so the sentence is the usual "could not answer" with the meeting that
+ * was not found; the page shows its own line by `kind`.
+ */
+export function scopeGoneFailure(t: TranslateFn): ChatFailure {
+  return { kind: 'scope-gone', message: t('Chat_SendFailed', t('ChatMeetingNotFound')) };
 }
 
 /**

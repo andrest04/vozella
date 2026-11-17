@@ -19,9 +19,9 @@ function compose(overrides: Partial<ComposeChatDeps> = {}) {
   const composed = composeChat({
     library: {
       meetings: {},
-      folders: {},
+      projects: {},
       paths: { chatPromptsFilePath: 'C:/app-data/chat-prompts.json' },
-    } as unknown as Pick<LibraryRuntime, 'meetings' | 'folders' | 'paths'>,
+    } as unknown as Pick<LibraryRuntime, 'meetings' | 'projects' | 'paths'>,
     resolver: {} as SummaryProviderResolver,
     logger: silentLogger(),
     translate: (key) => key,
@@ -45,11 +45,10 @@ function compose(overrides: Partial<ComposeChatDeps> = {}) {
 describe('composeChat', () => {
   it('registers every chat and saved prompt request channel once', () => {
     const { channels } = compose();
-    // The thread channels (chat.threads.*) are served by the chat lane; it adds them here.
-    const chatChannels = requestChannelsWithPrefix('chat.').filter(
-      (name) => !name.startsWith('chat.threads.'),
+    expect([...channels].sort()).toEqual(requestChannelsWithPrefix('chat.'));
+    expect([...channels]).toEqual(
+      expect.arrayContaining(['chat.threads.list', 'chat.threads.open']),
     );
-    expect([...channels].sort()).toEqual(chatChannels);
   });
 
   it('returns the service the live ask reads', () => {

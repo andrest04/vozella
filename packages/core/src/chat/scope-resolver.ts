@@ -31,7 +31,11 @@ export function parseSurface(tag: string | null | undefined): ChatSurface {
   }
 }
 
-/** First match wins: Settings, capture active, Session with meeting, History with folder, all. */
+/**
+ * First match wins: Settings, capture active, Session with meeting, a project page, all. A
+ * project page is the Projects surface with a project id; `/projects` and `/projects/none` carry
+ * none, so they are All meetings.
+ */
 export function resolveScope(
   surface: ChatSurface,
   isCaptureActive: boolean,
@@ -45,7 +49,7 @@ export function resolveScope(
   if (surface === 'Session' && selectedMeetingId !== null) {
     return { isVisible: true, kind: 'Meeting', projectId: null, meetingId: selectedMeetingId };
   }
-  if (surface === 'History' && selectedProjectId !== null) {
+  if ((surface === 'Projects' || surface === 'History') && selectedProjectId !== null) {
     return { isVisible: true, kind: 'Project', projectId: selectedProjectId, meetingId: null };
   }
   return { isVisible: true, kind: 'AllMeetings', projectId: null, meetingId: null };
@@ -66,7 +70,7 @@ export function resolveScopeFromWorkspace(
   );
 }
 
-/** Kind, folder id and meeting id equal, with null equal to null. A mismatch never edits the thread. */
+/** Kind, project id and meeting id equal, with null equal to null. A mismatch never edits the thread. */
 export function matchesOpenThread(thread: OpenThreadScope, decision: ChatScopeDecision): boolean {
   return (
     thread.scopeKind === decision.kind &&

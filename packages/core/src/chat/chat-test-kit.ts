@@ -10,7 +10,12 @@ import {
   type ChatStreamProvider,
   type ProviderSource,
 } from './chat-service';
-import type { ContextFolder, ContextMeeting } from './context-packer';
+import {
+  InMemoryChatThreadRepository,
+  InMemoryProjectContextSource,
+  InMemoryStorageState,
+} from '../projects/in-memory-projects';
+import type { ContextMeeting, ContextProject } from './context-packer';
 import type { ChatScopeDecision } from './scope-resolver';
 import type { ChatEngine } from './user-prompts';
 
@@ -59,7 +64,7 @@ export const scopeOf = (over: Partial<ChatScopeDecision> = {}): ChatScopeDecisio
 export class FakeChatMeetingReader implements ChatMeetingReader {
   readonly calls: string[] = [];
   meetings: ContextMeeting[] = [];
-  folders: ContextFolder[] = [];
+  projects: ContextProject[] = [];
   failWith: unknown = null;
 
   private run<T>(call: string, value: () => T): Promise<T> {
@@ -73,8 +78,8 @@ export class FakeChatMeetingReader implements ChatMeetingReader {
     return this.run(`byId:${id}`, () => this.meetings.find((m) => m.id === id) ?? null);
   }
 
-  meetingsInFolder(projectId: string): Promise<readonly ContextMeeting[]> {
-    return this.run(`folder:${projectId}`, () =>
+  meetingsInProject(projectId: string): Promise<readonly ContextMeeting[]> {
+    return this.run(`project:${projectId}`, () =>
       this.meetings.filter((m) => m.projectId === projectId),
     );
   }
@@ -83,8 +88,8 @@ export class FakeChatMeetingReader implements ChatMeetingReader {
     return this.run('recent', () => this.meetings);
   }
 
-  listFolders(): Promise<readonly ContextFolder[]> {
-    return this.run('folders', () => this.folders);
+  listProjects(): Promise<readonly ContextProject[]> {
+    return this.run('projects', () => this.projects);
   }
 }
 
@@ -141,6 +146,12 @@ export interface ChatRig {
   readonly provider: ScriptedChatProvider;
   readonly source: FakeProviderSource;
   readonly clock: ManualClock;
+  /** The saved conversations the service writes to. */
+  readonly threads: InMemoryChatThreadRepository;
+  /** The instructions and files of the projects the service can read. */
+  readonly projects: InMemoryProjectContextSource;
+  /** Set it to a non-ready state to make every thread write fail. */
+  readonly storage: InMemoryStorageState;
 }
 
 /** English strings the service asks for; unknown keys echo with their arguments. */
@@ -165,6 +176,9 @@ export function createChatRig(): ChatRig {
   const provider = new ScriptedChatProvider();
   const source = new FakeProviderSource({ status: 'ready', provider });
   const clock = new ManualClock();
+  const storage = new InMemoryStorageState();
+  const threads = new InMemoryChatThreadRepository(storage);
+  const projects = new InMemoryProjectContextSource();
   let id = 0;
   const service = new ChatService({
     meetings: reader,
@@ -172,6 +186,8 @@ export function createChatRig(): ChatRig {
     clock,
     translate: testTranslate as never,
     newId: () => `id-${String((id += 1))}`,
+    threads,
+    projects,
   });
-  return { service, reader, provider, source, clock };
+  return { service, reader, provider, source, clock, threads, projects, storage };
 }
