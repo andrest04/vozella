@@ -1,6 +1,8 @@
 import {
-  MEETING_CAP,
   compactMeetingId,
+  newestFirst,
+  pickMeetingsForChat,
+  rankMeetingsForQuestion,
   type ChatMeetingReader,
   type ContextFolder,
   type ContextMeeting,
@@ -14,21 +16,7 @@ export interface LibraryChatReaderDeps {
   readonly folders: Pick<FolderRepository, 'getAll'>;
 }
 
-const recordedMs = (item: MeetingListItem): number => {
-  const ms = Date.parse(item.recordedAt);
-  return Number.isNaN(ms) ? 0 : ms;
-};
-
-/** The same order the packer uses: newest first, ties by compact id descending. */
-const newestFirst = (a: MeetingListItem, b: MeetingListItem): number => {
-  const diff = recordedMs(b) - recordedMs(a);
-  if (diff !== 0) return diff;
-  const ia = compactMeetingId(a.id);
-  const ib = compactMeetingId(b.id);
-  return ia < ib ? 1 : ia > ib ? -1 : 0;
-};
-
-/** A meeting the packer counts but never prints: older than the newest `MEETING_CAP`. */
+/** A meeting the packer counts but never prints: not among the meetings picked for the send. */
 const stub = (item: MeetingListItem): ContextMeeting => ({
   id: item.id,
   title: item.title,
@@ -42,9 +30,10 @@ const stub = (item: MeetingListItem): ContextMeeting => ({
 
 /**
  * Reads meetings for chat over the Markdown repository (B17). The list is the repository's own
- * light index, so a send never parses every transcript: only the newest `MEETING_CAP` records are
- * read in full. Older ones come back as stubs so the packer's "Showing the 12 most recent of N"
- * note still counts them.
+ * light index, so a send never parses every transcript. With a question, the library's folded
+ * search text (already cached for the Library search) ranks the candidates; only the picked
+ * `MEETING_CAP` records (best hits, then newest) are read in full. The rest come back as stubs so
+ * the packer's "Showing N of M" note still counts them.
  */
 export class LibraryChatReader implements ChatMeetingReader {
   constructor(private readonly deps: LibraryChatReaderDeps) {}
@@ -53,17 +42,18 @@ export class LibraryChatReader implements ChatMeetingReader {
     return this.deps.meetings.get(id);
   }
 
-  async meetingsInFolder(folderId: string): Promise<readonly ContextMeeting[]> {
+  async meetingsInFolder(folderId: string, question?: string): Promise<readonly ContextMeeting[]> {
     const key = compactMeetingId(folderId);
     const { items } = await this.deps.meetings.list();
     return this.load(
       items.filter((item) => item.folderId !== null && compactMeetingId(item.folderId) === key),
+      question,
     );
   }
 
-  async listRecent(): Promise<readonly ContextMeeting[]> {
+  async listRecent(question?: string): Promise<readonly ContextMeeting[]> {
     const { items } = await this.deps.meetings.list();
-    return this.load(items);
+    return this.load(items, question);
   }
 
   listFolders(): Promise<readonly ContextFolder[]> {
@@ -80,13 +70,30 @@ export class LibraryChatReader implements ChatMeetingReader {
     return items.find((item) => compactMeetingId(item.id) === key)?.id ?? null;
   }
 
-  private async load(items: readonly MeetingListItem[]): Promise<readonly ContextMeeting[]> {
-    const sorted = [...items].sort(newestFirst);
+  private async load(
+    items: readonly MeetingListItem[],
+    question: string | undefined,
+  ): Promise<readonly ContextMeeting[]> {
+    const ranked =
+      question === undefined || question.trim() === ''
+        ? []
+        : await rankMeetingsForQuestion({
+            items,
+            question,
+            bodies: (filter) => this.deps.meetings.bodies(filter),
+          });
+    const picked = pickMeetingsForChat(items, ranked);
+    const chosen = new Set(picked.map((p) => compactMeetingId(p.item.id)));
     const records = await Promise.all(
-      sorted
-        .slice(0, MEETING_CAP)
-        .map(async (item) => (await this.deps.meetings.get(item.id)) ?? stub(item)),
+      picked.map(async ({ item, rank }): Promise<ContextMeeting> => {
+        const record = (await this.deps.meetings.get(item.id)) ?? stub(item);
+        return rank === undefined ? record : { ...record, relevanceRank: rank };
+      }),
     );
-    return [...records, ...sorted.slice(MEETING_CAP).map(stub)];
+    const rest = [...items]
+      .sort(newestFirst)
+      .filter((item) => !chosen.has(compactMeetingId(item.id)))
+      .map(stub);
+    return [...records, ...rest];
   }
 }

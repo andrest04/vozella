@@ -92,6 +92,25 @@ describe('ChatContextPackerTests', () => {
     expect(out).toContain('Folder: Folder 1\nNote: (none)\n');
   });
 
+  it('Pack_FolderScope_RankedMeetingsComeFirstAndNoteSaysRelevant', () => {
+    const f = folder(1);
+    const meetings = Array.from({ length: 13 }, (_, i) =>
+      meeting(i + 1, {
+        folderId: f.id,
+        recordedAt: `2025-01-${String(i + 1).padStart(2, '0')}T08:00:00.0000000+00:00`,
+        ...(i === 0 ? { relevanceRank: 0 } : {}),
+      }),
+    );
+    const out = pack('Folder', f.id, null, null, meetings, [f]);
+    expect(out).toContain(
+      'Showing 12 of 13 meetings: the most relevant to the question first, then the most recent. The rest were omitted.\n',
+    );
+    expect(out).not.toContain('most recent of 13');
+    expect(out.indexOf(`Id: ${hex(guid(1))}`)).toBeGreaterThan(-1);
+    expect(out.indexOf(`Id: ${hex(guid(1))}`)).toBeLessThan(out.indexOf(`Id: ${hex(guid(13))}`));
+    expect(out).not.toContain(`Id: ${hex(guid(2))}`);
+  });
+
   it('Pack_FolderScope_CapsAtTwelveMostRecent', () => {
     const f = folder(1);
     const meetings = Array.from({ length: 13 }, (_, i) =>

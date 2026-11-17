@@ -93,7 +93,13 @@ const MEETING_TRANSCRIPT_MIN_SHARE = 0.3;
 export type ContextMeeting = Pick<
   MeetingRecord,
   'id' | 'title' | 'recordedAt' | 'folderId' | 'summary' | 'notes' | 'transcript' | 'actionItems'
->;
+> & {
+  /**
+   * Set by the reader on a meeting it chose for matching the question (0 is the best). Ranked
+   * meetings are packed first, in this order; the others follow, newest first.
+   */
+  readonly relevanceRank?: number;
+};
 export type ContextFolder = Pick<FolderRecord, 'id' | 'name' | 'note'>;
 
 /** String lookup injected by the caller so core stays pure (CoreStrings keys). */
@@ -205,14 +211,21 @@ function packMany(
     const ib = compactMeetingId(b.id);
     return ia < ib ? 1 : ia > ib ? -1 : 0;
   });
-  const selected = matching.slice(0, MEETING_CAP);
+  const ranked = matching
+    .filter((m) => m.relevanceRank !== undefined)
+    .sort((a, b) => (a.relevanceRank ?? 0) - (b.relevanceRank ?? 0));
+  const recent = matching.filter((m) => m.relevanceRank === undefined);
+  const selected = [...ranked, ...recent].slice(0, MEETING_CAP);
 
   if (selected.length === 0) {
     out += t(kind === 'Folder' ? 'ChatNoMeetingsInFolder' : 'ChatNoMeetingsSaved');
     return out.trimEnd();
   }
   if (selected.length < matching.length) {
-    out += `Showing the ${MEETING_CAP} most recent of ${matching.length} meetings. Older meetings were omitted.${NL}`;
+    out +=
+      ranked.length > 0
+        ? `Showing ${selected.length} of ${matching.length} meetings: the most relevant to the question first, then the most recent. The rest were omitted.${NL}`
+        : `Showing the ${MEETING_CAP} most recent of ${matching.length} meetings. Older meetings were omitted.${NL}`;
   }
   selected.forEach((m, index) => {
     if (index > 0) out += NL;
