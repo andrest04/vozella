@@ -1,10 +1,31 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import type { FolderRecord, MeetingRecord } from '@vozella/core';
+import type { MeetingPlacement, MeetingRecord } from '@vozella/core';
 import { createAppPaths } from '@vozella/core';
-import { JsonFolderRepository } from './json-folder-repository';
 import { MarkdownMeetingRepository } from './markdown-meeting-repository';
+
+/**
+ * A stand-in for the projects: each registered project id has a directory under the Library
+ * root. An unknown id or no project is the Inbox. Set `available` to false for "cannot place now".
+ */
+export class TestPlacement implements MeetingPlacement {
+  private readonly dirs = new Map<string, string>();
+  available = true;
+
+  constructor(private readonly root: string) {}
+
+  /** `relDir` uses `/` separators and is relative to the Library root. */
+  add(projectId: string, relDir: string): void {
+    this.dirs.set(projectId, path.join(this.root, ...relDir.split('/')));
+  }
+
+  directoryOf(projectId: string | null): Promise<string | null> {
+    if (!this.available) return Promise.resolve(null);
+    const dir = projectId === null ? undefined : this.dirs.get(projectId);
+    return Promise.resolve(dir ?? path.join(this.root, 'Inbox'));
+  }
+}
 
 /** Shared setup for the library adapter tests. Every test works in its own temp folder. */
 export interface LibraryFixture {
@@ -12,7 +33,7 @@ export interface LibraryFixture {
   readonly root: string;
   readonly appData: string;
   readonly paths: ReturnType<typeof createAppPaths>;
-  readonly folders: JsonFolderRepository;
+  readonly projects: TestPlacement;
   readonly meetings: MarkdownMeetingRepository;
   cleanup(): void;
 }
@@ -30,14 +51,14 @@ export function createLibraryFixture(
   fs.mkdirSync(root, { recursive: true });
   fs.mkdirSync(appData, { recursive: true });
   const paths = createAppPaths({ appData, library: root }, path);
-  const folders = new JsonFolderRepository({ foldersFilePath: paths.foldersFilePath });
-  const meetings = new MarkdownMeetingRepository({ root, folders, ...options });
+  const projects = new TestPlacement(root);
+  const meetings = new MarkdownMeetingRepository({ root, placement: projects, ...options });
   return {
     dir,
     root,
     appData,
     paths,
-    folders,
+    projects,
     meetings,
     cleanup: () => {
       fs.rmSync(dir, { recursive: true, force: true });
@@ -54,7 +75,7 @@ export function meeting(patch: Partial<MeetingRecord> = {}): MeetingRecord {
   return {
     id: ID_A,
     title: 'Standup',
-    recordedAt: '2026-09-01T12:00:00.0000000+00:00',
+    recordedAt: '2026-09-01T12:00:00.000+00:00',
     endedAt: null,
     audioFilePath: '',
     sourcePath: null,
@@ -75,18 +96,6 @@ export function meeting(patch: Partial<MeetingRecord> = {}): MeetingRecord {
     followUp: null,
     projectPlan: null,
     ...patch,
-  };
-}
-
-export function folder(id: string, name: string, parentId: string | null = null): FolderRecord {
-  return {
-    id,
-    name,
-    parentId,
-    note: null,
-    colorKey: null,
-    iconKey: null,
-    createdAt: '2026-09-01T12:00:00-05:00',
   };
 }
 

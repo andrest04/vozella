@@ -10,7 +10,6 @@ import {
   ID_A,
   ID_B,
   createLibraryFixture,
-  folder,
   meeting,
   tree,
   type LibraryFixture,
@@ -47,9 +46,9 @@ describe('save and read', () => {
     expect(await fx.meetings.get(ID_A)).toEqual(saved);
   });
 
-  it('files a meeting in its folder directory, and an unknown folder in Inbox', async () => {
-    await fx.folders.save(folder(FOLDER_1, 'Universidad'));
-    await fx.folders.save(folder(FOLDER_2, 'Calculo', FOLDER_1));
+  it('files a meeting in its project directory, and an unknown project in Inbox', async () => {
+    fx.projects.add(FOLDER_1, 'Universidad');
+    fx.projects.add(FOLDER_2, 'Universidad/Calculo');
     await fx.meetings.save(meeting({ projectId: FOLDER_2 }));
     await fx.meetings.save(
       meeting({ id: ID_B, title: 'Lost', projectId: 'deadbeef-0000-0000-0000-000000000000' }),
@@ -57,7 +56,6 @@ describe('save and read', () => {
     expect(tree(fx.root)).toEqual([
       'Inbox/2026-09-01 Lost.md',
       'Universidad/Calculo/2026-09-01 Standup.md',
-      'folders.json',
     ]);
   });
 
@@ -87,8 +85,8 @@ describe('save and read', () => {
 });
 
 describe('moving and renaming', () => {
-  it('changing the folder moves the markdown and the wav together and updates audioFilePath', async () => {
-    await fx.folders.save(folder(FOLDER_1, 'Universidad'));
+  it('changing the project moves the markdown and the wav together and updates audioFilePath', async () => {
+    fx.projects.add(FOLDER_1, 'Universidad');
     const first = await fx.meetings.save(meeting());
     const wav = first.sourcePath?.replace(/\.md$/, '.wav') ?? '';
     fs.writeFileSync(wav, 'RIFF');
@@ -99,7 +97,6 @@ describe('moving and renaming', () => {
     expect(tree(fx.root)).toEqual([
       'Universidad/2026-09-01 Standup.md',
       'Universidad/2026-09-01 Standup.wav',
-      'folders.json',
     ]);
     expect(moved.audioFilePath).toBe(path.join(fx.root, 'Universidad', '2026-09-01 Standup.wav'));
     expect(moved.projectId).toBe(FOLDER_1);
@@ -146,7 +143,7 @@ describe('moving and renaming', () => {
       rename: () => Promise.reject(Object.assign(new Error('EBUSY'), { code: 'EBUSY' })),
     });
     try {
-      await failing.folders.save(folder(FOLDER_1, 'U'));
+      failing.projects.add(FOLDER_1, 'U');
       const first = await failing.meetings.save(meeting());
       const wav = first.sourcePath?.replace(/\.md$/, '.wav') ?? '';
       fs.writeFileSync(wav, 'RIFF');
@@ -156,7 +153,6 @@ describe('moving and renaming', () => {
       expect(tree(failing.root)).toEqual([
         'Inbox/2026-09-01 Standup.md',
         'Inbox/2026-09-01 Standup.wav',
-        'folders.json',
       ]);
     } finally {
       failing.cleanup();
@@ -171,7 +167,7 @@ describe('blank audioFilePath and replacing a destination', () => {
     fs.writeFileSync(wav, 'RIFF');
     await fx.meetings.save({ ...first, audioFilePath: '', title: 'Retro' });
     expect(tree(fx.root)).toEqual(['Inbox/2026-09-01 Retro.md', 'Inbox/2026-09-01 Retro.wav']);
-    await fx.folders.save(folder(FOLDER_1, 'Universidad'));
+    fx.projects.add(FOLDER_1, 'Universidad');
     const again = (await fx.meetings.get(ID_A))!;
     await fx.meetings.save({ ...again, audioFilePath: '', projectId: FOLDER_1 });
     expect(tree(fx.root)).toContain('Universidad/2026-09-01 Retro.wav');
@@ -307,7 +303,7 @@ describe('delete', () => {
       const { f, unlinked, save } = withBin(discard);
       try {
         const saved = await save();
-        await f.folders.save(folder(FOLDER_1, 'Universidad'));
+        f.projects.add(FOLDER_1, 'Universidad');
         unlinked.length = 0;
         await f.meetings.save({ ...saved, projectId: FOLDER_1 });
         expect(discard).not.toHaveBeenCalled();
@@ -413,7 +409,7 @@ describe('bodies', () => {
   it('holds no more than its cap and still gives the text it could not keep', async () => {
     const tiny = new MarkdownMeetingRepository({
       root: fx.root,
-      folders: fx.folders,
+      placement: fx.projects,
       foldedTextBytes: 8,
     });
     await tiny.save(meeting({ notes: 'Una nota bastante larga' }));
@@ -445,7 +441,7 @@ describe('batch', () => {
   });
 
   it('sees its own saves, moves and deletes', async () => {
-    await fx.folders.save(folder(FOLDER_1, 'Universidad'));
+    fx.projects.add(FOLDER_1, 'Universidad');
     const saved = await fx.meetings.save(meeting());
     await fx.meetings.batch(async () => {
       await fx.meetings.list();
@@ -479,7 +475,7 @@ describe('batch', () => {
 
 describe('list', () => {
   it('walks every depth and returns the light items', async () => {
-    await fx.folders.save(folder(FOLDER_1, 'Universidad'));
+    fx.projects.add(FOLDER_1, 'Universidad');
     await fx.meetings.save(meeting({ projectId: FOLDER_1, summary: '# T\nBody' }));
     await fx.meetings.save(meeting({ id: ID_B, title: 'Second' }));
     const { items, skipped } = await fx.meetings.list();
@@ -494,7 +490,7 @@ describe('list', () => {
   it('carries the end time and what the meeting holds', async () => {
     await fx.meetings.save(
       meeting({
-        endedAt: '2026-09-01T12:30:00.0000000+00:00',
+        endedAt: '2026-09-01T12:30:00.000+00:00',
         summary: 'Body',
         transcript: 'Spoken',
       }),
@@ -502,7 +498,7 @@ describe('list', () => {
     await fx.meetings.save(meeting({ id: ID_B, title: 'Second' }));
     const { items } = await fx.meetings.list();
     expect(items.find((i) => i.id === ID_A)).toMatchObject({
-      endedAt: '2026-09-01T12:30:00.0000000+00:00',
+      endedAt: '2026-09-01T12:30:00.000+00:00',
       hasSummary: true,
       hasTranscript: true,
       busy: false,
@@ -525,7 +521,7 @@ describe('list', () => {
 
   it('an empty or missing root lists nothing', async () => {
     fs.rmSync(fx.root, { recursive: true });
-    expect(await fx.meetings.list()).toEqual({ items: [], skipped: [] });
+    expect(await fx.meetings.list()).toEqual({ items: [], skipped: [], shadowed: [] });
   });
 
   it('a corrupt file does not hide the readable meetings, and is reported', async () => {
@@ -598,49 +594,162 @@ describe('list', () => {
   });
 });
 
-describe('duplicate ids', () => {
-  const text = (title: string) => renderMeetingMarkdown(meeting({ title }));
+describe('duplicate ids (a copied folder)', () => {
+  const text = (title: string, extra: Partial<Parameters<typeof meeting>[0]> = {}): string =>
+    renderMeetingMarkdown(meeting({ title, ...extra }));
+  const stamp = (file: string, iso: string): void => {
+    fs.utimesSync(file, new Date(iso), new Date(iso));
+  };
 
-  it('prefers a Library file over a legacy flat dump', async () => {
-    write(`Meetings/${ID_A}.md`, text('Legacy'));
-    write('Inbox/current.md', text('Current'));
-    expect((await fx.meetings.list()).items).toHaveLength(1);
-    expect((await fx.meetings.list()).items[0]?.title).toBe('Current');
-    expect((await fx.meetings.get(ID_A))?.title).toBe('Current');
+  it('the newest file wins and the other is reported as shadowed', async () => {
+    const older = write('Trabajo/older.md', text('Older'));
+    const newer = write('Trabajo copia/newer.md', text('Newer'));
+    stamp(older, '2026-01-01');
+    stamp(newer, '2026-06-01');
+    const list = await fx.meetings.list();
+    expect(list.items.map((i) => i.title)).toEqual(['Newer']);
+    expect(list.shadowed).toEqual([{ id: ID_A, keptPath: newer, shadowedPath: older }]);
+    expect((await fx.meetings.get(ID_A))?.title).toBe('Newer');
   });
 
-  it('uses a legacy copy when it is the only one', async () => {
-    write(`Recordings/${ID_A}.md`, text('Only legacy'));
-    expect((await fx.meetings.get(ID_A))?.title).toBe('Only legacy');
-  });
-
-  it('B20: between two current files the newest wins, deterministically', async () => {
-    const older = write('Inbox/older.md', text('Older'));
-    const newer = write('Docs/newer.md', text('Newer'));
-    fs.utimesSync(older, new Date('2026-01-01'), new Date('2026-01-01'));
-    fs.utimesSync(newer, new Date('2026-06-01'), new Date('2026-06-01'));
+  it('breaks an mtime tie by path, ascending and case-folded, and stays stable', async () => {
+    const b = write('B/x.md', text('In B'));
+    const a = write('a/x.md', text('In a'));
+    stamp(a, '2026-03-03');
+    stamp(b, '2026-03-03');
     for (let i = 0; i < 3; i += 1) {
-      expect((await fx.meetings.get(ID_A))?.title).toBe('Newer');
+      const list = await fx.meetings.list();
+      expect(list.items.map((m) => m.title)).toEqual(['In a']);
+      expect(list.shadowed).toEqual([{ id: ID_A, keptPath: a, shadowedPath: b }]);
     }
   });
 
-  it('saving updates the winner and removes nothing else', async () => {
-    write(`Meetings/${ID_A}.md`, text('Legacy'));
-    await fx.meetings.save(meeting({ title: 'Fresh' }));
-    // The legacy file was the existing markdown, so it moves into the library layout.
-    expect(tree(fx.root)).toEqual(['Inbox/2026-09-01 Fresh.md']);
+  it('never rewrites, moves or deletes the shadowed copy: save, move and delete act on the winner', async () => {
+    const older = write('Trabajo/older.md', text('Older'));
+    const newer = write('Trabajo copia/newer.md', text('Newer'));
+    stamp(older, '2026-01-01');
+    stamp(newer, '2026-06-01');
+    const bytes = fs.readFileSync(older);
+    const mtime = fs.statSync(older).mtimeMs;
+    fx.projects.add(FOLDER_1, 'Universidad');
+    await fx.meetings.save({
+      ...(await fx.meetings.get(ID_A))!,
+      notes: 'edited',
+      projectId: FOLDER_1,
+    });
+    expect(fs.readFileSync(older)).toEqual(bytes);
+    expect(fs.statSync(older).mtimeMs).toBe(mtime);
+    expect(fs.existsSync(newer)).toBe(false);
+    await fx.meetings.delete(ID_A);
+    expect(fs.readFileSync(older)).toEqual(bytes);
+    expect(tree(fx.root)).toEqual(['Trabajo/older.md']);
+  });
+
+  it('a recording the shadowed copy names is not moved by a move of the winner', async () => {
+    const wav = write('Trabajo/clase.wav', 'RIFF');
+    const older = write('Trabajo/clase.md', text('Older', { audioFilePath: wav }));
+    const newer = write('Copia/clase.md', text('Newer', { audioFilePath: wav }));
+    stamp(older, '2026-01-01');
+    stamp(newer, '2026-06-01');
+    fx.projects.add(FOLDER_1, 'Universidad');
+    const moved = await fx.meetings.save({
+      ...(await fx.meetings.get(ID_A))!,
+      projectId: FOLDER_1,
+    });
+    expect(fs.readFileSync(wav, 'utf8')).toBe('RIFF');
+    expect(moved.audioFilePath).toBe(path.join(fx.root, 'Universidad', '2026-09-01 Newer.wav'));
+    expect(fs.readFileSync(moved.audioFilePath, 'utf8')).toBe('RIFF');
+    expect(fs.readFileSync(older, 'utf8')).toContain(`audioFilePath: ${wav}`);
+  });
+
+  it('a recording the shadowed copy names is not deleted with the winner', async () => {
+    const wav = write('Trabajo/clase.wav', 'RIFF');
+    const older = write('Trabajo/clase.md', text('Older', { audioFilePath: wav }));
+    const newer = write('Copia/clase.md', text('Newer', { audioFilePath: wav }));
+    write('Copia/clase.wav', 'RIFF-copy');
+    stamp(older, '2026-01-01');
+    stamp(newer, '2026-06-01');
+    await fx.meetings.delete(ID_A);
+    expect(tree(fx.root)).toEqual(['Trabajo/clase.md', 'Trabajo/clase.wav']);
+    expect(fs.existsSync(newer)).toBe(false);
+  });
+});
+
+describe('placement that cannot place now', () => {
+  it('keeps an existing meeting exactly where it is, with its project and recording', async () => {
+    fx.projects.add(FOLDER_1, 'Universidad');
+    const first = await fx.meetings.save(meeting({ projectId: FOLDER_1 }));
+    const wav = first.sourcePath?.replace(/\.md$/, '.wav') ?? '';
+    fs.writeFileSync(wav, 'RIFF');
+    const withAudio = await fx.meetings.save({ ...first, audioFilePath: wav });
+    fx.projects.available = false;
+    const before = tree(fx.root);
+    const saved = await fx.meetings.save({
+      ...withAudio,
+      notes: 'new notes',
+      title: 'Renamed',
+      projectId: null,
+    });
+    expect(tree(fx.root)).toEqual(before);
+    expect(saved.sourcePath).toBe(first.sourcePath);
+    expect(saved.projectId).toBe(FOLDER_1);
+    const back = await fx.meetings.get(ID_A);
+    expect(back).toMatchObject({ notes: 'new notes', projectId: FOLDER_1, audioFilePath: wav });
+  });
+
+  it('writes a new meeting to the Inbox', async () => {
+    fx.projects.available = false;
+    const saved = await fx.meetings.save(meeting({ projectId: FOLDER_1 }));
+    expect(saved.sourcePath).toBe(path.join(fx.root, 'Inbox', '2026-09-01 Standup.md'));
+  });
+});
+
+describe('scanning', () => {
+  it('ignores dot-directories, so the app storage and its Markdown context files are never meetings', async () => {
+    write(
+      '.vozella/projects/abc/files/def/original.md',
+      renderMeetingMarkdown(meeting({ title: 'Context file that looks like a meeting' })),
+    );
+    write('.git/notes.md', renderMeetingMarkdown(meeting({ id: ID_B, title: 'Hidden' })));
+    write('Inbox/real.md', renderMeetingMarkdown(meeting({ title: 'Real' })));
+    const list = await fx.meetings.list();
+    expect(list.items.map((i) => i.title)).toEqual(['Real']);
+    expect(list.shadowed).toEqual([]);
+    expect(list.skipped).toEqual([]);
+  });
+
+  it('finds ordinary meetings in directories that used to be special, with no flat-dump rules', async () => {
+    write('Meetings/x.md', renderMeetingMarkdown(meeting({ title: 'In Meetings' })));
+    write('Recordings/y.md', renderMeetingMarkdown(meeting({ id: ID_B, title: 'In Recordings' })));
+    expect((await fx.meetings.list()).items.map((i) => i.title).sort()).toEqual([
+      'In Meetings',
+      'In Recordings',
+    ]);
+  });
+});
+
+describe('older files round trip through the plain writer', () => {
+  it('reads a BOM, CRLF and seven-digit date and rewrites it as plain UTF-8, LF and milliseconds', async () => {
+    const old =
+      '\uFEFF---\r\nid: ' +
+      ID_A +
+      '\r\ntitle: Viejo\r\nrecordedAt: 2026-09-01T12:00:00.1234567-05:00\r\naudioFilePath: \r\n---\r\n\r\n## Summary\r\n\r\nhola\r\n';
+    const file = write('Inbox/viejo.md', old);
+    const loaded = await fx.meetings.get(ID_A);
+    expect(loaded).toMatchObject({
+      title: 'Viejo',
+      recordedAt: '2026-09-01T12:00:00.123-05:00',
+      summary: 'hola',
+    });
+    const saved = await fx.meetings.save({ ...loaded!, notes: 'x' });
+    const text = fs.readFileSync(saved.sourcePath ?? file, 'utf8');
+    expect(text.startsWith('---\n')).toBe(true);
+    expect(text).not.toContain('\r');
+    expect(text).toContain('recordedAt: 2026-09-01T12:00:00.123-05:00\n');
   });
 });
 
 describe('robustness', () => {
-  it('B5: a damaged folders.json does not stop meetings from being saved', async () => {
-    fs.writeFileSync(fx.paths.foldersFilePath, '{oops');
-    const saved = await fx.meetings.save(meeting({ projectId: FOLDER_1 }));
-    expect(saved.sourcePath).toBe(path.join(fx.root, 'Inbox', '2026-09-01 Standup.md'));
-    expect(saved.projectId).toBe(FOLDER_1);
-    expect(fs.readFileSync(fx.paths.foldersFilePath, 'utf8')).toBe('{oops');
-  });
-
   it('concurrent saves of one meeting end with one file holding the last write', async () => {
     const first = await fx.meetings.save(meeting());
     await Promise.all(
@@ -683,9 +792,9 @@ describe('robustness', () => {
   });
 });
 
-describe('the directory tree is a write-only mirror', () => {
-  it('the folder of a meeting is its frontmatter projectId, not the directory it sits in', async () => {
-    await fx.folders.save(folder(FOLDER_1, 'Universidad'));
+describe('the directory a meeting sits in is a convenience', () => {
+  it('the project of a meeting is its frontmatter projectId, not the directory it sits in', async () => {
+    fx.projects.add(FOLDER_1, 'Universidad');
     const saved = await fx.meetings.save(meeting({ projectId: FOLDER_1 }));
     // The user drags the file to another directory in the file manager.
     const elsewhere = path.join(fx.root, 'Dragged', 'moved.md');
@@ -706,15 +815,14 @@ describe('the microphone activity sidecar (<name>.mic.json) follows its recordin
     return fx.meetings.save({ ...first, audioFilePath: wav });
   };
 
-  it('moves with the wav when the meeting changes folder or title', async () => {
-    await fx.folders.save(folder(FOLDER_1, 'Universidad'));
+  it('moves with the wav when the meeting changes project or title', async () => {
+    fx.projects.add(FOLDER_1, 'Universidad');
     const saved = await withRecording();
     await fx.meetings.save({ ...saved, projectId: FOLDER_1, title: 'Retro' });
     expect(tree(fx.root)).toEqual([
       'Universidad/2026-09-01 Retro.md',
       'Universidad/2026-09-01 Retro.mic.json',
       'Universidad/2026-09-01 Retro.wav',
-      'folders.json',
     ]);
   });
 

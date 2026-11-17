@@ -2,6 +2,8 @@
 
 Spec: `docs/port/specs/library-storage.md`. Section 8 has 157 items; every one is below.
 
+> **Projects update.** Items about the folder tree, `folders.json`, folder personality and the three startup migrations are superseded by flat projects: see the section "Flat projects storage" at the end of this ledger. Those items keep their last word as history.
+
 Status words: `done`, `improved` (a section 7 fix or a recorded decision changed the behavior), `dropped`, `pending-real-validation`, and `open-ui`. No `open-ui` items remain: the screens landed and each item has a final word.
 
 ## Where things are
@@ -332,7 +334,7 @@ Not changed, on purpose: B4 (kept, now reported), B23 (same order as the WinUI a
 - The startup migration error is shown by the Library page; the shell may want a window-level notice.
 
 **Not verified**
-- A library written by the real WinUI app, and the reverse (155, 156). A real packaged build with a picked folder and a real folder dialog. The real file manager opening (stubbed in tests). Behavior on OneDrive-redirected Documents. Case-only folder rename on a case-sensitive volume. A WAV held open by a real recorder (only simulated with an injected `EBUSY`). The note save on a real window close. Spanish layout (screenshots are English; the Spanish strings are the existing translations). Screen reader behavior beyond axe.
+- A library written by the real WinUI app, and the reverse (155, 156). A real packaged build with a picked folder and a real folder dialog. The real file manager opening (stubbed in tests). Case-only folder rename on a case-sensitive volume. A WAV held open by a real recorder (only simulated with an injected `EBUSY`). The note save on a real window close. Spanish layout (screenshots are English; the Spanish strings are the existing translations). Screen reader behavior beyond axe.
 
 ## Audit round decisions
 
@@ -384,4 +386,28 @@ Rejected:
 - #155 and #156: closed as above with the C#-written fixture.
 - Rejected, no change: #110 and B16 stay pending-real-validation. The WM_CLOSE e2e skips itself in this session (no top-level window is enumerable), and a title-bar close with an invoke in flight cannot be reproduced here. Existing mitigation stays: 400 ms autosave, blur, unmount and pagehide saves, and the `before-quit` wait. No failing-before test exists, and none was invented.
 - Rejected, no change: narrow-pane overlay covering the first rows (an overlay by design) and the empty versus disabled state tone (identical on purpose).
+
+## Flat projects storage (feat/projects, storage lane)
+
+Design: `docs/design/projects.md` (sections 3 to 6 and 10). Code: `packages/core/src/projects/` (names, directories, use cases), `packages/platform/src/projects/` (repository, migrator, migration 001, storage state), `packages/platform/src/library/` (meeting repository, runtime), `apps/desktop/src/main/ipc/projects-handlers.ts` and `projects/projects-controller.ts`.
+
+| Id | Status | Item |
+| --- | --- | --- |
+| P1 | done | Every old folder, subfolders included, becomes its own project and keeps its id. Colliding names get the parent prefix ("Universidad – Cálculo"), then the whole chain, then a number, in a fixed order. Roots keep their name. Tests: `project-names.test.ts`, `001-folders-to-projects.test.ts` |
+| P2 | done | Migration step 001 is a pure plan, then a sha256-verified backup, then one `project.json` each, then the manifest, then the old list is deleted. No meeting file moves: each project freezes the directory its meetings already sit in |
+| P3 | done | Malformed lists never lose data: invalid ids are skipped and reported, duplicate ids (case-only too) keep the first entry, a loop, a self parent or a chain deeper than 32 becomes a root with a fresh directory |
+| P4 | done | A missing, unreadable or different backup aborts the step with nothing written; an identical earlier backup is reused; an existing backup is never overwritten and never pruned |
+| P5 | done | A failed delete of the old list (locked file) keeps manifest v1, makes no rerun and no second backup, and each later launch retries once, only while the file still equals the backup |
+| P6 | done | The old list is found in the Library root first, then in the app data root; the other one is reported and left alone. Older layouts (`Meetings`, `Recordings`, `meetings.json` in the app data root) are reported and not imported |
+| P7 | dropped | Import of the layouts that predate the Documents folder (app data `Meetings`/`Recordings`, `meetings.json`) and the flat dump handling in the meeting repository. Decision 3 of the design: they are detected and reported |
+| P8 | done | Storage is versioned: the manifest `schemaVersion` gates opening a library; a newer manifest writes nothing and the state is `newer`; a failing step keeps the manifest so the next launch retries; the registry test keeps `max(per-kind versions) <= STORAGE_SCHEMA_VERSION` |
+| P9 | done | Project, file and thread writes are refused unless the storage state is `ready` (`storage-migrating`, `storage-error`, `storage-newer`); unknown keys survive a read-modify-write; corrupt, newer and unsafe-dir projects are reported, never deleted |
+| P10 | done | A project directory read from disk is untrusted: schema, `isSafeProjectDir` and an `isUnder` check; an unsafe one reads as no project and refuses writes. A new project's directory is allocated against the Inbox, every entry of the Library root and every frozen directory (folded compare) and reserved with a non-recursive `mkdir` |
+| P11 | done | `LibraryRuntime.build()` builds into locals, migrates, then publishes; service getters wait for the first build; a location change migrates the new root while the old services serve; a failing build publishes in the `error` or `newer` state |
+| P12 | done | Meetings never depend on projects to stay safe: when the project cannot be placed the meeting stays where it is (same file, recording and project) and a new meeting goes to the Inbox; moving is refused with a `storage-*` reason |
+| P13 | done | Duplicate meeting ids: the newest file wins, ties go to the path (case-folded); the other copy is reported as `shadowed` in `library.load` and is never rewritten or deleted; a recording a shadowed copy names is neither moved nor deleted with the winner. Dot-directories (`.vozella`) are never scanned |
+| P14 | done | Project delete is idempotent and resumable: busy is refused first, the meetings move to no project one by one, a stop half way keeps the project and answers `partial { moved, remaining }`, and only when none remain the project's own storage is discarded (never its meeting directory, which may contain another project's) |
+| P15 | done | Meeting Markdown and `settings.json` are written as plain UTF-8, LF, no escaping, dates with milliseconds; the readers keep accepting BOM, CRLF, any key case, numbers as text and seven-digit dates. Round-trip tests |
+| P16 | improved | The library, project and workspace channels follow the contract: `library.load` returns `shadowed`, `library.search` takes `all`, `none` or `project`, `workspace.dispatch` handles `publishSelectedProject`, `projects.delete` success publishes a null selected project |
+| P17 | pending-real-validation | Real Windows Recycle Bin behavior for a deleted project's storage, a real picked Library folder, libraries above 5,000 meetings with many projects, and a library written by the old app on a real install |
 

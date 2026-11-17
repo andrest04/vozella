@@ -210,17 +210,17 @@ describe('reading and writing', () => {
     expect(() => parseSettingsJson('')).toThrow(LibraryFileCorruptError);
   });
 
-  it('writes every property in declaration order with CRLF', () => {
+  it('writes every property in declaration order, plain UTF-8 with LF', () => {
     const text = serializeSettings({});
-    expect(text.split('\r\n')[1]).toBe('  "selectedSummaryModelId": null,');
+    expect(text.split('\n')[1]).toBe('  "selectedSummaryModelId": null,');
     expect(text).toContain('  "meetingPopupEnabled": true,');
-    expect(text.split('\r\n').at(-2)).toBe('  "liveCopilotPillAlong": null');
+    expect(text.split('\n').at(-2)).toBe('  "liveCopilotPillAlong": null');
     expect(text).not.toContain('liveQuestions');
     expect(text).not.toContain('OpenAi');
     expect(text).not.toContain('Anthropic');
     expect(text).not.toContain('Gemini');
     expect(text).not.toContain('Groq');
-    expect(text.endsWith('\r\n}')).toBe(true);
+    expect(text.endsWith('\n}')).toBe(true);
   });
 
   it('BYOK: the API engine fields are written only once set and round-trip', () => {
@@ -258,7 +258,7 @@ describe('reading and writing', () => {
       applySettingsPatch({ selectedGroqModelId: 'openai/gpt-oss-120b' }, patch),
     );
     expect(parseSettingsJson(text).settings).toMatchObject(patch);
-    const lines = text.split('\r\n');
+    const lines = text.split('\n');
     expect(lines.at(-3)).toBe('  "transcriptionEngine": "Groq",');
     expect(lines.at(-2)).toBe('  "cloudTranscriptionModelId": "whisper-large-v3"');
     expect(text.indexOf('selectedGroqModelId')).toBeLessThan(text.indexOf('transcriptionEngine'));
@@ -281,6 +281,18 @@ describe('reading and writing', () => {
     expect(text.indexOf('futureThing')).toBeGreaterThan(text.indexOf('liveCopilotPillAlong'));
   });
 
+  it('reads a BOM, CRLF, escaped and mixed-case file of an older version and rewrites it plain', () => {
+    const older = `\uFEFF{\r\n  "UiLanguage": "es",\r\n  "summaryLanguage": "\\u00E9s",\r\n  "futureThing": 1\r\n}`;
+    const { settings, raw } = parseSettingsJson(older);
+    expect(settings.uiLanguage).toBe('es');
+    const text = serializeSettings(raw);
+    expect(text).not.toContain('\r');
+    expect(text.charCodeAt(0)).not.toBe(0xfeff);
+    expect(text).not.toMatch(/\\u[0-9A-Fa-f]{4}/);
+    expect(text).toContain('"summaryLanguage": "és"');
+    expect(parseSettingsJson(text).settings.uiLanguage).toBe('es');
+  });
+
   it('cd-1: a file with the dropped calendar settings, no Xai and Jev flags survives load and rewrite unchanged', () => {
     const text = serializeSettings(
       applySettingsPatch(
@@ -301,7 +313,7 @@ describe('reading and writing', () => {
     expect(settings.selectedXaiModelId).toBeNull();
     expect(serializeSettings(raw)).toBe(text);
     expect(serializeSettings(applySettingsPatch(raw, { summaryLanguage: 'en' }))).toContain(
-      '"disabledCalendarIds": [\r\n    "cal-1",\r\n    "cal-2"\r\n  ]',
+      '"disabledCalendarIds": [\n    "cal-1",\n    "cal-2"\n  ]',
     );
   });
 

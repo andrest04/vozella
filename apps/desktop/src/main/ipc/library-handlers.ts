@@ -24,17 +24,9 @@ import {
   workspaceTakeNotesRequested,
   type EventChannel,
   type PayloadInputOf,
-  type LibraryViewDto,
   type WorkspaceActionDto,
 } from '@vozella/contracts';
-import {
-  ALL_VIEW,
-  INBOX_VIEW,
-  MeetingFormatError,
-  folderView,
-  type LibraryView,
-  type Workspace,
-} from '@vozella/core';
+import { MeetingFormatError, type Workspace } from '@vozella/core';
 import type { LibraryRuntime } from '@vozella/platform';
 import { registerRequest, type IpcServerDeps } from './ipc-server';
 
@@ -51,10 +43,6 @@ export interface LibraryHandlerDeps {
    */
   readonly onSettingsSaved?: (patch: Readonly<Record<string, unknown>>) => void;
 }
-
-/** The contract's view names a project; core's view still names a folder until the storage lane. */
-const coreView = (view: LibraryViewDto): LibraryView =>
-  view.kind === 'project' ? folderView(view.id) : view.kind === 'none' ? INBOX_VIEW : ALL_VIEW;
 
 /** Pushes workspace changes to every window. Returns the unsubscribe function. */
 export function bridgeWorkspace(workspace: Workspace, broadcast: Broadcast): () => void {
@@ -153,8 +141,12 @@ export function registerLibraryHandlers(deps: LibraryHandlerDeps): LibraryWrites
   registerRequest(server, libraryLoad, async () => {
     const loaded = await runtime.service.load();
     if (!loaded.ok) return loaded;
-    // Folders are gone from the wire. `shadowed` is filled in once the meeting repository reports it.
-    return { ok: true as const, meetings: loaded.meetings, skipped: loaded.skipped, shadowed: [] };
+    return {
+      ok: true as const,
+      meetings: loaded.meetings,
+      skipped: loaded.skipped,
+      shadowed: loaded.shadowed,
+    };
   });
 
   registerRequest(server, libraryGetMeeting, async ({ id }) => {
@@ -200,9 +192,7 @@ export function registerLibraryHandlers(deps: LibraryHandlerDeps): LibraryWrites
     return { results };
   });
 
-  registerRequest(server, librarySearch, ({ scope, ...rest }) =>
-    runtime.service.search({ ...rest, scope: coreView(scope) }),
-  );
+  registerRequest(server, librarySearch, (input) => runtime.service.search(input));
 
   registerRequest(server, libraryIsMeetingBusy, ({ meetingId }) => ({
     busy: runtime.service.isMeetingBusy(meetingId),
