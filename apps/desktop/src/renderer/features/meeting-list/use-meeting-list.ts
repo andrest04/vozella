@@ -1,18 +1,3 @@
-import {
-  buildBreadcrumbs,
-  canDeleteFolder,
-  emptyFlags,
-  flattenFolderPaths,
-  ALL_VIEW,
-  folderView,
-  INBOX_VIEW,
-  selectMeetings,
-  type Breadcrumb,
-  type EmptyFlags,
-  type FolderRecord,
-  type LibraryView,
-  type MoveDestination,
-} from '@vozella/core';
 import type {
   FailureReasonDto,
   MeetingDeleteModeDto,
@@ -20,74 +5,48 @@ import type {
 } from '@vozella/contracts';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { StringKey } from '../../i18n/translate';
+import { filterMeetings } from './meeting-filters';
 import {
-  folderIdOfView,
-  refreshLibrary,
-  selectView,
-  useLibraryStore,
+  connectMeetingList,
+  refreshMeetingList,
+  useMeetingListStore,
   type LoadProblem,
   type SkippedFile,
 } from './meeting-list-store';
-import { filterMeetings } from './meeting-filters';
+import { useProjectDirectory } from './project-directory';
+import { emptyKindOf, scopeKey, selectMeetings, type EmptyKind, type MeetingScope } from './scope';
 import { mergeMatches, type SearchHits } from './search-results';
-import { useFolderNote } from '../library/use-folder-note';
 import { useMeetingSearch } from './use-meeting-search';
 
-export { NOTE_AUTOSAVE_MS } from '../library/use-folder-note';
-
-/** A message for the status bar: a catalog key and the values for its placeholders. */
+/** A message for the status line: a catalog key and the values for its placeholders. */
 export interface StatusMessage {
   readonly key: StringKey;
   readonly args: readonly string[];
 }
 
-interface FailureResult {
-  readonly ok: false;
-  readonly reason: FailureReasonDto;
-  readonly message?: string | undefined;
-}
-export type FolderResult = { readonly ok: true; readonly folder: FolderRecord } | FailureResult;
-
-export interface LibraryModel {
+export interface MeetingListModel {
   readonly isLoading: boolean;
   readonly problem: LoadProblem | null;
   readonly skipped: readonly SkippedFile[];
-  readonly folders: readonly FolderRecord[];
-  readonly view: LibraryView;
-  readonly selectedFolder: FolderRecord | null;
-  readonly breadcrumbs: readonly Breadcrumb[];
+  readonly scope: MeetingScope;
+  /** The meetings shown: the scope, the search and the filters applied. */
   readonly meetings: readonly MeetingListItemDto[];
-  /** Meetings in the view before the search filter. */
-  readonly viewCount: number;
-  /** The filters alone emptied the list: without them the view or the search has something. */
+  /** Meetings in the scope before the search text and the filters. */
+  readonly scopeCount: number;
+  /** The filters alone emptied the list: without them the scope or the search has something. */
   readonly filtersHideAll: boolean;
-  readonly flags: EmptyFlags;
+  readonly empty: EmptyKind | null;
   readonly query: string;
   /** What the second stage found inside meetings, by meeting id. */
   readonly hits: SearchHits;
   readonly searching: boolean;
   readonly searchFailed: boolean;
-  readonly noteText: string;
   readonly status: StatusMessage | null;
-  readonly destinations: readonly MoveDestination[];
+  /** The ids of the projects that exist; null until they have loaded. */
+  readonly knownProjectIds: ReadonlySet<string> | null;
   readonly setQuery: (value: string) => void;
-  readonly setNoteText: (value: string) => void;
-  readonly saveNote: () => Promise<void>;
   readonly dismissStatus: () => void;
   readonly showStatus: (message: StatusMessage) => void;
-  readonly selectFolder: (id: string | null) => void;
-  /** Widens a search to every meeting. */
-  readonly searchEverything: () => void;
-  readonly createFolder: (name: string) => Promise<FolderResult>;
-  readonly renameFolder: (id: string, name: string) => Promise<FolderResult>;
-  readonly updatePersonality: (
-    id: string,
-    colorKey: string,
-    iconKey: string,
-  ) => Promise<FolderResult>;
-  readonly deleteFolder: (id: string) => Promise<'deleted' | 'not-empty' | 'failed'>;
-  /** Checks the in-memory snapshot, like the WinUI page. */
-  readonly canDeleteFolder: (id: string) => boolean;
   readonly moveMeeting: (meetingId: string, projectId: string | null) => Promise<boolean>;
   /** Refuses a busy meeting before the dialog opens. True when the dialog may open. */
   readonly beginDelete: (meetingId: string) => Promise<boolean>;
@@ -110,141 +69,113 @@ export interface LibraryModel {
   readonly goRecord: () => void;
 }
 
-const UNAVAILABLE: FailureResult = { ok: false, reason: 'io-failed' };
-const unavailable = (): Promise<FolderResult> => Promise.resolve(UNAVAILABLE);
-
 const messageOf = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
+const isStorageReason = (reason: FailureReasonDto): boolean => reason.startsWith('storage-');
+
 /**
- * What the Library route works with: the store's last load seen through the current view and search
- * text, plus every mutation. Rules live in `@vozella/core`; storage in the main process.
+ * What a meeting list works with: the store's last load seen through its scope, the search text and
+ * the filters, plus every mutation. Rules live in `@vozella/core`; storage in the main process.
  */
-export function useLibrary(locale: string, inboxLabel: string): LibraryModel {
-  const isLoading = useLibraryStore((state) => state.isLoading);
-  const problem = useLibraryStore((state) => state.problem);
-  const skipped = useLibraryStore((state) => state.skipped);
-  const folders = useLibraryStore((state) => state.folders);
-  const allMeetings = useLibraryStore((state) => state.meetings);
-  const view = useLibraryStore((state) => state.view);
-  const filters = useLibraryStore((state) => state.filters);
+export function useMeetingList(scope: MeetingScope): MeetingListModel {
+  const isLoading = useMeetingListStore((state) => state.isLoading);
+  const problem = useMeetingListStore((state) => state.problem);
+  const skipped = useMeetingListStore((state) => state.skipped);
+  const allMeetings = useMeetingListStore((state) => state.meetings);
+  const filters = useMeetingListStore((state) => state.filters);
+  const directory = useProjectDirectory();
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<StatusMessage | null>(null);
-  const { noteText, setNoteText, saveNote } = useFolderNote();
 
-  // The store outlives the route, but opening the Library has always read the folder again, so
+  // A list keeps the store connected while it shows, so it works wherever it is mounted; the shell
+  // connects it too, and the connections are counted.
+  useEffect(() => connectMeetingList(), []);
+
+  // The store outlives the route, but opening a list has always read the library again, so
   // files that appeared without a change event still show up.
   useEffect(() => {
-    if (!useLibraryStore.getState().isLoading) void refreshLibrary();
+    if (!useMeetingListStore.getState().isLoading) void refreshMeetingList();
   }, []);
 
-  const selectedId = folderIdOfView(view);
-  const snapshot = useMemo(() => ({ folders, meetings: allMeetings }), [folders, allMeetings]);
-  const search = useMeetingSearch(query, view);
-  const inView = useMemo(() => selectMeetings(snapshot, view, ''), [snapshot, view]);
+  // Another scope is another list: the search text starts over with it.
+  const key = scopeKey(scope);
+  useEffect(() => {
+    setQuery('');
+  }, [key]);
+
+  const knownProjectIds = useMemo<ReadonlySet<string> | null>(() => {
+    // Projects that cannot be read leave every meeting under No project.
+    if (directory.storage.status !== 'ready') return new Set();
+    return directory.status === 'loading' ? null : new Set(directory.projects.map((p) => p.id));
+  }, [directory.status, directory.storage.status, directory.projects]);
+
+  const search = useMeetingSearch(query, scope);
+  const inScope = useMemo(
+    () => selectMeetings(allMeetings, scope, knownProjectIds, ''),
+    [allMeetings, scope, knownProjectIds],
+  );
   const selection = useMemo(() => {
-    const byTitle = selectMeetings(snapshot, view, query);
-    const matches = mergeMatches(inView.meetings, byTitle.meetings, search.hits);
+    const byTitle = selectMeetings(allMeetings, scope, knownProjectIds, query);
+    const matches = mergeMatches(inScope.meetings, byTitle.meetings, search.hits);
     return {
-      inFolderCount: byTitle.inFolderCount,
+      scopeCount: byTitle.inScopeCount,
       unfilteredCount: matches.length,
       meetings: filterMeetings(matches, filters, Date.now()),
     };
-  }, [snapshot, view, query, inView, search.hits, filters]);
-  const flags = useMemo(
-    () =>
-      emptyFlags({
-        isLoading,
-        // All has no copy of its own: when it is empty, nothing has been recorded.
-        isInboxSelected: view.kind !== 'folder',
-        inFolderCount: selection.inFolderCount,
-        folderCount: view.kind === 'all' ? 0 : folders.length,
-        totalMeetings: allMeetings.length,
-        displayedCount: selection.meetings.length,
-        query,
-      }),
-    [isLoading, view.kind, selection, folders.length, allMeetings.length, query],
-  );
-  const breadcrumbs = useMemo(() => buildBreadcrumbs(folders, selectedId), [folders, selectedId]);
-  const destinations = useMemo(
-    () => flattenFolderPaths(folders, inboxLabel, locale),
-    [folders, inboxLabel, locale],
-  );
-  const selectedFolder = folders.find((f) => f.id === selectedId) ?? null;
+  }, [allMeetings, scope, knownProjectIds, query, inScope, search.hits, filters]);
 
-  const folderFailed = useCallback((result: FailureResult): void => {
-    setStatus({ key: 'Ui_LibraryFolderFailed', args: [result.message ?? result.reason] });
+  const filtersHideAll =
+    !isLoading &&
+    !search.searching &&
+    selection.meetings.length === 0 &&
+    selection.unfilteredCount > 0;
+  const empty = emptyKindOf({
+    isLoading,
+    scope,
+    inScopeCount: selection.scopeCount,
+    totalMeetings: allMeetings.length,
+    displayedCount: selection.meetings.length,
+    query,
+    filtersHideAll,
+    searching: search.searching,
+  });
+
+  const failure = useCallback((reason: FailureReasonDto, message: string | undefined): void => {
+    setStatus(
+      reason === 'busy'
+        ? { key: 'HistoryDelete_Busy', args: [] }
+        : isStorageReason(reason)
+          ? { key: 'Ui_ProjectsUnavailableNow', args: [] }
+          : { key: 'Ui_LibraryMoveFailed', args: [message ?? reason] },
+    );
   }, []);
-
-  const changeFolder = useCallback(
-    async (run: () => Promise<FolderResult>): Promise<FolderResult> => {
-      await saveNote();
-      const result = await run();
-      if (result.ok) await refreshLibrary(folderView(result.folder.id));
-      else if (result.reason !== 'name-taken' && result.reason !== 'empty-name') {
-        folderFailed(result);
-      }
-      return result;
-    },
-    [saveNote, folderFailed],
-  );
 
   return {
     isLoading,
     problem,
     skipped,
-    folders,
-    view,
-    selectedFolder,
-    breadcrumbs,
+    scope,
     meetings: selection.meetings,
-    viewCount: selection.inFolderCount,
-    filtersHideAll:
-      !isLoading &&
-      !search.searching &&
-      selection.meetings.length === 0 &&
-      selection.unfilteredCount > 0,
-    flags,
+    scopeCount: selection.scopeCount,
+    filtersHideAll,
+    empty,
     query,
     hits: search.hits,
     searching: search.searching,
     searchFailed: search.failed,
-    noteText,
     status,
-    destinations,
+    knownProjectIds,
     setQuery,
-    setNoteText,
-    saveNote,
     dismissStatus: () => {
       setStatus(null);
     },
     showStatus: setStatus,
-    selectFolder: (id) => {
-      selectView(id === null ? INBOX_VIEW : folderView(id));
-    },
-    searchEverything: () => {
-      selectView(ALL_VIEW);
-    },
-    // Folders have no channels any more: the Projects UI replaces these in the UI lane.
-    createFolder: () => changeFolder(unavailable),
-    renameFolder: () => changeFolder(unavailable),
-    updatePersonality: () => changeFolder(unavailable),
-    canDeleteFolder: (id) => canDeleteFolder(snapshot, id).allowed,
-    deleteFolder: async () => {
-      await saveNote();
-      await refreshLibrary();
-      folderFailed(UNAVAILABLE);
-      return 'failed';
-    },
     moveMeeting: async (meetingId, projectId) => {
       const result = await window.vozella.invoke('library.moveMeeting', { meetingId, projectId });
-      await refreshLibrary();
+      await refreshMeetingList();
       if (result.ok) return true;
-      setStatus(
-        result.reason === 'busy'
-          ? { key: 'HistoryDelete_Busy', args: [] }
-          : { key: 'Ui_LibraryMoveFailed', args: [result.message ?? result.reason] },
-      );
+      failure(result.reason, result.message);
       return false;
     },
     beginDelete: async (meetingId) => {
@@ -261,7 +192,7 @@ export function useLibrary(locale: string, inboxLabel: string): LibraryModel {
             : { key: 'HistoryDelete_Failed', args: [result.message ?? result.reason] },
         );
       }
-      await refreshLibrary();
+      await refreshMeetingList();
       if (result.ok) return 'deleted';
       return result.reason === 'trash-failed' ? 'trash-failed' : 'failed';
     },
@@ -272,13 +203,15 @@ export function useLibrary(locale: string, inboxLabel: string): LibraryModel {
           projectId,
         });
         const failed = results.filter((r) => !r.ok).map((r) => r.meetingId);
-        if (failed.length > 0) {
+        const storage = results.some((r) => !r.ok && isStorageReason(r.reason));
+        if (storage) setStatus({ key: 'Ui_ProjectsUnavailableNow', args: [] });
+        else if (failed.length > 0) {
           setStatus({
             key: 'Ui_LibraryBulkMoveFailed',
             args: [String(failed.length), String(meetingIds.length)],
           });
         }
-        await refreshLibrary();
+        await refreshMeetingList();
         return failed;
       } catch (error) {
         setStatus({ key: 'Ui_LibraryMoveFailed', args: [messageOf(error)] });
@@ -303,7 +236,7 @@ export function useLibrary(locale: string, inboxLabel: string): LibraryModel {
             args: [String(failed.length), String(meetingIds.length)],
           });
         }
-        await refreshLibrary();
+        await refreshMeetingList();
         return { failed, refused };
       } catch (error) {
         setStatus({ key: 'HistoryDelete_Failed', args: [messageOf(error)] });

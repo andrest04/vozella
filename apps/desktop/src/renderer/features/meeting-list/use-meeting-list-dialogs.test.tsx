@@ -1,30 +1,20 @@
 // @vitest-environment jsdom
 import type { MeetingListItemDto } from '@vozella/contracts';
 import { act, cleanup, renderHook } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { requestFolderAction, useLibraryStore } from './meeting-list-store';
+import { afterEach, describe, expect, it } from 'vitest';
 import {
   confirmText,
   isConfirmDialog,
-  useLibraryDialogs,
+  useMeetingListDialogs,
   type DialogState,
 } from './use-meeting-list-dialogs';
 
-afterEach(() => {
-  cleanup();
-  useLibraryStore.setState({ folderRequest: null });
-});
+afterEach(cleanup);
 
 const meeting = { id: 'm1', title: 'Standup', projectId: null } as MeetingListItemDto;
 
 describe('confirmText', () => {
   it('words each confirmation from its own entry', () => {
-    expect(confirmText({ kind: 'deleteFolder', projectId: 'f1', name: 'Work' })).toEqual({
-      title: { key: 'LibraryDeleteFolder_Title', args: [] },
-      description: { key: 'LibraryDeleteFolder_Content', args: ['Work'] },
-      cancel: 'LibraryDeleteFolder_Cancel',
-      primary: 'LibraryDeleteFolder_Primary',
-    });
     expect(confirmText({ kind: 'deleteMany', meetingIds: ['a', 'b'] })).toEqual({
       title: { key: 'Ui_LibraryDeleteManyTitle', args: ['2'] },
       description: { key: 'Ui_LibraryDeleteManyContent', args: [] },
@@ -52,55 +42,21 @@ describe('confirmText', () => {
   });
 
   it('counts only the yes-or-no dialogs as confirmations', () => {
-    const asks: DialogState[] = [
-      { kind: 'newFolder' },
-      { kind: 'move', meeting },
-      { kind: 'renameMeeting', meeting },
-    ];
+    const asks: DialogState[] = [{ kind: 'renameMeeting', meeting }];
     expect(asks.some(isConfirmDialog)).toBe(false);
     expect(isConfirmDialog({ kind: 'deleteMany', meetingIds: [] })).toBe(true);
   });
 });
 
-const mountDialogs = (deletable = true) => {
-  const showStatus = vi.fn();
-  const view = renderHook(() =>
-    useLibraryDialogs({
-      folderName: (id) => (id === 'f1' ? 'Work' : ''),
-      canDeleteFolder: () => deletable,
-      showStatus,
-    }),
-  );
-  return { ...view, showStatus };
-};
-
-describe('useLibraryDialogs', () => {
-  it('opens the dialog a sidebar folder request asks for, and clears the request', () => {
-    const { result } = mountDialogs();
-    act(() => {
-      requestFolderAction({ kind: 'rename', projectId: 'f1' });
-    });
-    expect(result.current.dialog).toEqual({ kind: 'rename', projectId: 'f1', name: 'Work' });
-    expect(useLibraryStore.getState().folderRequest).toBeNull();
-  });
-
-  it('reports a folder that cannot be deleted instead of asking', () => {
-    const { result, showStatus } = mountDialogs(false);
-    act(() => {
-      result.current.runFolderAction({ kind: 'delete', projectId: 'f1' });
-    });
-    expect(result.current.dialog).toBeNull();
-    expect(showStatus).toHaveBeenCalledWith({ key: 'LibraryDeleteFolder_NotEmpty', args: [] });
-  });
-
+describe('useMeetingListDialogs', () => {
   it('keeps the closed dialog and the last confirmation for their fade-out', () => {
-    const { result } = mountDialogs();
+    const { result } = renderHook(() => useMeetingListDialogs());
     act(() => {
       result.current.openDialog({ kind: 'deleteMeeting', meeting });
     });
     expect(result.current.confirmOpen).toBe(true);
     act(() => {
-      result.current.openDialog({ kind: 'move', meeting });
+      result.current.openDialog({ kind: 'renameMeeting', meeting });
     });
     expect(result.current.confirmOpen).toBe(false);
     expect(result.current.confirm).toEqual({ kind: 'deleteMeeting', meeting });
@@ -108,6 +64,6 @@ describe('useLibraryDialogs', () => {
       result.current.closeDialog();
     });
     expect(result.current.dialog).toBeNull();
-    expect(result.current.shown).toEqual({ kind: 'move', meeting });
+    expect(result.current.shown).toEqual({ kind: 'renameMeeting', meeting });
   });
 });

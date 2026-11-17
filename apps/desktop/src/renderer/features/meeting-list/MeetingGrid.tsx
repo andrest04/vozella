@@ -1,13 +1,12 @@
 import type { MeetingListItemDto } from '@vozella/contracts';
 import { defaultRangeExtractor, useVirtualizer, type Range } from '@tanstack/react-virtual';
-import { Check, Ellipsis, FileText, FolderInput, Minus, Trash } from 'lucide-react';
+import { ArrowRightLeft, Check, Ellipsis, FileText, Minus, Trash } from 'lucide-react';
 import {
   useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
-  type DragEvent,
   type KeyboardEvent,
   type MouseEvent,
   type Ref,
@@ -16,7 +15,6 @@ import { matchLibraryShortcut } from '../../app/shortcuts';
 import { ContextMenu, Icon, IconButton, Menu, cn, type MenuEntry } from '../../ui';
 import { formatDayHeader, formatMeetingDate, formatMeetingTime } from './format';
 import { gridKeyAction, type GridKeyAction } from './library-keys';
-import { MEETINGS_DRAG_TYPE, setDragged, useLibraryStore } from './meeting-list-store';
 import { groupState } from './library-selection';
 import { highlightParts, snippetAroundMatch, type SearchHits } from './search-results';
 import {
@@ -45,7 +43,6 @@ export interface MeetingGridLabels {
   readonly duration: (minutes: number) => string;
   readonly checkMeeting: (title: string) => string;
   readonly checkDay: (day: string) => string;
-  readonly dragCount: (count: number) => string;
 }
 
 export interface MeetingGridHandle {
@@ -129,31 +126,15 @@ export function MeetingGrid({
   // The tab stop is the cursor row, else the first row of the list.
   const tabStopIndex = cursorIndex ?? (items[0]?.kind === 'header' ? 1 : 0);
 
-  const draggedIds = useLibraryStore((state) => state.draggedIds);
-  const draggedIndexes = useMemo(() => {
-    if (draggedIds.length === 0) return [];
-    const dragged = new Set(draggedIds);
-    const indexes: number[] = [];
-    items.forEach((item, index) => {
-      if (item.kind === 'meeting' && dragged.has(item.meeting.id)) indexes.push(index);
-    });
-    return indexes;
-  }, [items, draggedIds]);
-
   const activeHeader = useRef<number | null>(null);
   const rangeExtractor = useCallback(
     (range: Range): number[] => {
       activeHeader.current = activeHeaderIndex(items, range.startIndex);
       // The sticky header and the focused row stay rendered, so neither focus nor context is lost
-      // when the row scrolls out of the window. A row being dragged stays too: losing the source
-      // element ends the drag.
-      return withPinned(defaultRangeExtractor(range), [
-        activeHeader.current,
-        cursorIndex,
-        ...draggedIndexes,
-      ]);
+      // when the row scrolls out of the window.
+      return withPinned(defaultRangeExtractor(range), [activeHeader.current, cursorIndex]);
     },
-    [items, cursorIndex, draggedIndexes],
+    [items, cursorIndex],
   );
 
   // Stable: the virtualizer redoes every measurement at each new identity of the key function.
@@ -298,18 +279,6 @@ export function MeetingGrid({
               clickOpens={clickOpens}
               isChecked={checked.has(item.meeting.id)}
               anyChecked={checked.size > 0}
-              onDragStart={(event) => {
-                const ids = checked.has(item.meeting.id)
-                  ? meetings.filter((m) => checked.has(m.id)).map((m) => m.id)
-                  : [item.meeting.id];
-                event.dataTransfer.effectAllowed = 'move';
-                event.dataTransfer.setData(MEETINGS_DRAG_TYPE, String(ids.length));
-                if (ids.length > 1) setCountDragImage(event, labels.dragCount(ids.length));
-                setDragged(ids);
-              }}
-              onDragEnd={() => {
-                setDragged([]);
-              }}
               onToggleCheck={onToggleCheck}
               onExtendChecks={(toId) => {
                 onExtendChecks(cursorId ?? toId, toId);
@@ -452,20 +421,6 @@ function Highlighted({ text, query }: { readonly text: string; readonly query: s
   );
 }
 
-/** Several rows drag as one small label with their count, in place of one row's picture. */
-function setCountDragImage(event: DragEvent<HTMLDivElement>, text: string): void {
-  const label = document.createElement('div');
-  label.textContent = text;
-  label.className =
-    'fixed -top-96 start-0 rounded-control border border-hairline bg-paper-raised px-2 py-1 text-ui text-ink';
-  document.body.append(label);
-  event.dataTransfer.setDragImage(label, 12, 12);
-  // The browser takes its picture right after this event.
-  setTimeout(() => {
-    label.remove();
-  }, 0);
-}
-
 interface MeetingRowProps {
   readonly meeting: MeetingListItemDto;
   readonly locale: string;
@@ -479,8 +434,6 @@ interface MeetingRowProps {
   readonly clickOpens: boolean;
   readonly isChecked: boolean;
   readonly anyChecked: boolean;
-  readonly onDragStart: (event: DragEvent<HTMLDivElement>) => void;
-  readonly onDragEnd: () => void;
   readonly onToggleCheck: (id: string) => void;
   readonly onExtendChecks: (toId: string) => void;
   readonly onCursorChange: (id: string) => void;
@@ -503,8 +456,6 @@ function MeetingRow({
   clickOpens,
   isChecked,
   anyChecked,
-  onDragStart,
-  onDragEnd,
   onToggleCheck,
   onExtendChecks,
   onCursorChange,
@@ -526,7 +477,7 @@ function MeetingRow({
     {
       id: 'move',
       label: labels.move,
-      icon: FolderInput,
+      icon: ArrowRightLeft,
       onSelect: () => {
         onMove(meeting);
       },
@@ -578,9 +529,6 @@ function MeetingRow({
           style={{ height: MEETING_ROW_PX, transform: `translateY(${String(offset)}px)` }}
           onClick={onClick}
           onDoubleClick={onDoubleClick}
-          draggable
-          onDragStart={onDragStart}
-          onDragEnd={onDragEnd}
           onFocus={(event) => {
             if (event.currentTarget.contains(event.target)) onCursorChange(meeting.id);
           }}

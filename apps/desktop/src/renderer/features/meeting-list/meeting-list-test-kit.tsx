@@ -1,4 +1,4 @@
-import type { WorkspaceActionDto } from '@vozella/contracts';
+import type { ProjectListItemDto, WorkspaceActionDto } from '@vozella/contracts';
 import {
   InMemoryFolderRepository,
   InMemoryMeetingRepository,
@@ -6,11 +6,28 @@ import {
   MeetingBusyRegistry,
   renameMeeting,
   Workspace,
-  type FolderRecord,
   type MeetingRecord,
 } from '@vozella/core';
 
 type Listener = (payload: unknown) => void;
+
+/** A project as the list of projects returns it. */
+export const projectListItem = (
+  id: string,
+  name: string,
+  extra: Partial<ProjectListItemDto> = {},
+): ProjectListItemDto => ({
+  id,
+  name,
+  description: '',
+  pinned: false,
+  createdAt: '2026-09-01T12:00:00.000Z',
+  updatedAt: '2026-09-01T12:00:00.000Z',
+  meetingCount: 0,
+  fileCount: 0,
+  lastActivityAt: '2026-09-01T12:00:00.000Z',
+  ...extra,
+});
 
 export const meetingRecord = (
   id: string,
@@ -43,29 +60,17 @@ export const meetingRecord = (
   ...extra,
 });
 
-export const folderRecord = (
-  id: string,
-  name: string,
-  parentId: string | null = null,
-  extra: Partial<FolderRecord> = {},
-): FolderRecord => ({
-  id,
-  name,
-  parentId,
-  note: null,
-  colorKey: null,
-  iconKey: null,
-  createdAt: '2026-09-01T12:00:00+00:00',
-  ...extra,
-});
-
 /**
  * A `window.vozella` backed by the real Library service over in-memory repositories and the
  * real workspace hub, so page tests exercise the same rules the main process applies.
  */
 export function installFakeApi(options: { startupError?: string | null } = {}) {
   const meetings = new InMemoryMeetingRepository();
+  // The service still takes a folder repository until the library purge removes it.
   const folders = new InMemoryFolderRepository();
+  const projects: { list: ProjectListItemDto[] } = { list: [] };
+  /** Refusals to hand out: the next moves fail with this reason. */
+  const failures: { move: string | null } = { move: null };
   const busy = new MeetingBusyRegistry();
   const workspace = new Workspace();
   let counter = 0;
@@ -96,38 +101,20 @@ export function installFakeApi(options: { startupError?: string | null } = {}) {
         return service.load();
       case 'library.getLocation':
         return { startupError: options.startupError ?? null };
-      case 'library.createFolder': {
-        const result = await service.createFolder(input as never);
-        if (result.ok) emit('library.changed', { reason: 'folder' });
-        return result;
-      }
-      case 'library.renameFolder': {
-        const result = await service.renameFolder(input as never);
-        if (result.ok) emit('library.changed', { reason: 'folder' });
-        return result;
-      }
-      case 'library.updateFolderPersonality': {
-        const result = await service.updatePersonality(input as never);
-        if (result.ok) emit('library.changed', { reason: 'folder' });
-        return result;
-      }
-      case 'library.setFolderNote': {
-        const result = await service.setFolderNote(input as never);
-        if (result.ok) emit('library.changed', { reason: 'folder' });
-        return result;
-      }
-      case 'library.deleteFolder': {
-        const result = await service.deleteFolder(input.id as string);
-        if (result.ok) {
-          workspace.publishSelectedProject(null);
-          emit('library.changed', { reason: 'folder' });
-        }
-        return result;
-      }
+      case 'projects.list':
+        return {
+          projects: projects.list,
+          noProject: { meetingCount: 0, lastActivityAt: null },
+          skipped: [],
+          storage: { status: 'ready' },
+        };
       case 'library.moveMeeting': {
-        const result = await service.moveMeeting(input as never);
-        if (result.ok) emit('library.changed', { reason: 'meeting' });
-        return result;
+        if (failures.move !== null) return { ok: false, reason: failures.move };
+        const record = meetings.records.get(input.meetingId as string);
+        if (!record) return { ok: false, reason: 'not-found' };
+        meetings.records.set(record.id, { ...record, projectId: input.projectId as string | null });
+        emit('library.changed', { reason: 'meeting' });
+        return { ok: true };
       }
       case 'library.deleteMeeting': {
         const result = await service.deleteMeeting(
@@ -138,7 +125,16 @@ export function installFakeApi(options: { startupError?: string | null } = {}) {
         return result;
       }
       case 'library.moveMeetings': {
-        const results = await service.moveMeetings(input as never);
+        const results = (input.meetingIds as string[]).map((meetingId) => {
+          if (failures.move !== null) return { meetingId, ok: false, reason: failures.move };
+          const record = meetings.records.get(meetingId);
+          if (!record) return { meetingId, ok: false, reason: 'not-found' };
+          meetings.records.set(meetingId, {
+            ...record,
+            projectId: input.projectId as string | null,
+          });
+          return { meetingId, ok: true };
+        });
         if (results.some((r) => r.ok)) emit('library.changed', { reason: 'meeting' });
         return { results };
       }
@@ -192,7 +188,7 @@ export function installFakeApi(options: { startupError?: string | null } = {}) {
   };
   Object.defineProperty(window, 'vozella', { value: api, configurable: true, writable: true });
 
-  return { meetings, folders, busy, workspace, calls, actions, emit, service, runner };
+  return { meetings, projects, failures, busy, workspace, calls, actions, emit, service, runner };
 }
 
 /** jsdom has no layout: the grid needs a height to decide which rows to render. */

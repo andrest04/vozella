@@ -1,7 +1,6 @@
 import type { MeetingListItemDto } from '@vozella/contracts';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Translate } from '../../i18n/translate';
-import { clearDropRequest, useLibraryStore } from './meeting-list-store';
 import {
   EMPTY_CHECKS,
   checkAll,
@@ -11,7 +10,7 @@ import {
   toggleCheck,
   type Checks,
 } from './library-selection';
-import type { LibraryModel } from './use-meeting-list';
+import type { MeetingListModel } from './use-meeting-list';
 import type { DialogState } from './use-meeting-list-dialogs';
 
 /** One move that can be taken back: where each meeting was, grouped by that place. */
@@ -26,14 +25,8 @@ export interface UndoMove {
 export type BulkWork = { readonly kind: 'moving' | 'deleting'; readonly count: number } | null;
 
 type BulkLibrary = Pick<
-  LibraryModel,
-  | 'meetings'
-  | 'folders'
-  | 'destinations'
-  | 'searching'
-  | 'beginDelete'
-  | 'moveMeetings'
-  | 'deleteMeetings'
+  MeetingListModel,
+  'meetings' | 'knownProjectIds' | 'searching' | 'beginDelete' | 'moveMeetings' | 'deleteMeetings'
 >;
 
 interface BulkOptions {
@@ -41,20 +34,22 @@ interface BulkOptions {
   /** The ids of `library.meetings`, in list order. */
   readonly listedIds: readonly string[];
   readonly t: Translate;
-  /** Changes when the list is another one: another view, search or filter. Checks start over. */
+  /** What a project is called in a message; null is No project. */
+  readonly placeName: (projectId: string | null) => string;
+  /** Changes when the list is another one: another scope, search or filter. Checks start over. */
   readonly listKey: string;
   readonly openDialog: (dialog: DialogState) => void;
   readonly afterWork: () => void;
 }
 
 /**
- * The checked meetings and what runs on several at once: move, delete, the undo of a move and the
- * meetings dropped on a sidebar folder.
+ * The checked meetings and what runs on several at once: move, delete and the undo of a move.
  */
 export function useBulkActions({
   library,
   listedIds,
   t,
+  placeName,
   listKey,
   openDialog,
   afterWork,
@@ -95,13 +90,6 @@ export function useBulkActions({
   const targetsOf = (meeting: MeetingListItemDto): readonly MeetingListItemDto[] =>
     checks.checked.has(meeting.id) ? checkedMeetings : [meeting];
 
-  const askMove = (targets: readonly MeetingListItemDto[]): void => {
-    const [only] = targets;
-    if (!only) return;
-    if (targets.length === 1) openDialog({ kind: 'move', meeting: only });
-    else openDialog({ kind: 'moveMany', meetings: targets });
-  };
-
   const askDelete = (targets: readonly MeetingListItemDto[], permanent: boolean): void => {
     const [only] = targets;
     if (!only) return;
@@ -129,17 +117,19 @@ export function useBulkActions({
     setUndoMove(null);
   }, []);
 
-  /** Offers the way back from a move that happened. A folder that is gone reads as the Inbox. */
+  /** Offers the way back from a move that happened. A project that is gone reads as No project. */
   const offerUndo = (moved: readonly MeetingListItemDto[], projectId: string | null): void => {
     const [first] = moved;
     if (!first) return;
     const groups = new Map<string | null, string[]>();
     for (const meeting of moved) {
-      const known = library.folders.some((f) => f.id === meeting.projectId);
+      const known =
+        meeting.projectId !== null &&
+        (library.knownProjectIds === null || library.knownProjectIds.has(meeting.projectId));
       const from = known ? meeting.projectId : null;
       groups.set(from, [...(groups.get(from) ?? []), meeting.id]);
     }
-    const place = library.destinations.find((d) => d.projectId === projectId)?.path ?? '';
+    const place = placeName(projectId);
     setUndoMove({
       message:
         moved.length === 1
@@ -178,21 +168,6 @@ export function useBulkActions({
     }
   };
 
-  // A drop in the sidebar leaves its request here, like its folder actions.
-  const dropRequest = useLibraryStore((state) => state.dropRequest);
-  const runDrop = useRef(runMoveMany);
-  runDrop.current = runMoveMany;
-  useEffect(() => {
-    if (!dropRequest) return;
-    clearDropRequest();
-    const { meetings } = useLibraryStore.getState();
-    const wanted = new Set(dropRequest.meetingIds);
-    void runDrop.current(
-      meetings.filter((m) => wanted.has(m.id)),
-      dropRequest.projectId,
-    );
-  }, [dropRequest]);
-
   const runDeleteMany = async (
     meetingIds: readonly string[],
     mode: 'trash' | 'permanent',
@@ -213,7 +188,6 @@ export function useBulkActions({
     bulkWork,
     undoMove,
     targetsOf,
-    askMove,
     askDelete,
     offerUndo,
     runMoveMany,

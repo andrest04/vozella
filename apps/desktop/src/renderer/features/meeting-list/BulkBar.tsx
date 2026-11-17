@@ -1,4 +1,5 @@
-import { FolderInput, Trash, X } from 'lucide-react';
+import { Trash, X } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { Button, IconButton } from '../../ui';
 
 export interface BulkBarProps {
@@ -6,10 +7,10 @@ export interface BulkBarProps {
   /** "Checked: 3", or the work under way. */
   readonly status: string;
   readonly busy: boolean;
-  readonly moveLabel: string;
+  /** The Move to project control: a popover trigger the list owns, disabled with the bar. */
+  readonly move: ReactNode;
   readonly deleteLabel: string;
   readonly clearLabel: string;
-  readonly onMove: () => void;
   readonly onDelete: () => void;
   readonly onClear: () => void;
 }
@@ -19,10 +20,9 @@ export function BulkBar({
   label,
   status,
   busy,
-  moveLabel,
+  move,
   deleteLabel,
   clearLabel,
-  onMove,
   onDelete,
   onClear,
 }: BulkBarProps) {
@@ -36,9 +36,7 @@ export function BulkBar({
       <span role="status" className="tabular min-w-0 flex-1 truncate text-ui text-ink">
         {status}
       </span>
-      <Button size="sm" variant="quiet" icon={FolderInput} disabled={busy} onClick={onMove}>
-        {moveLabel}
-      </Button>
+      {move}
       <Button size="sm" variant="quiet" icon={Trash} disabled={busy} onClick={onDelete}>
         {deleteLabel}
       </Button>

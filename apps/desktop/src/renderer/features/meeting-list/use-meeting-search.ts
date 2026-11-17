@@ -1,20 +1,13 @@
-import { MIN_SEARCH_CHARS, type LibraryView } from '@vozella/core';
+import { MIN_SEARCH_CHARS } from '@vozella/core';
 import { useEffect, useRef, useState } from 'react';
-import { useLibraryStore } from './meeting-list-store';
+import { useMeetingListStore } from './meeting-list-store';
+import type { MeetingScope } from './scope';
 import type { SearchHits } from './search-results';
 
 /** Reading inside every meeting waits for the typing to stop. */
 export const SEARCH_DEBOUNCE_MS = 200;
 
 const NO_HITS: SearchHits = new Map();
-
-/** The wire names a project and no project; the page's view still names a folder and the Inbox. */
-const searchScope = (view: LibraryView) =>
-  view.kind === 'folder'
-    ? ({ kind: 'project', id: view.id } as const)
-    : view.kind === 'inbox'
-      ? ({ kind: 'none' } as const)
-      : ({ kind: 'all' } as const);
 
 export interface MeetingSearch {
   readonly hits: SearchHits;
@@ -34,15 +27,15 @@ interface Answer {
  * The second stage of a search. Titles filter at once in memory; this adds what is inside the
  * meetings. Only the newest request counts, and a change in the library asks again.
  */
-export function useMeetingSearch(query: string, view: LibraryView): MeetingSearch {
-  const listed = useLibraryStore((state) => state.meetings);
+export function useMeetingSearch(query: string, scope: MeetingScope): MeetingSearch {
+  const listed = useMeetingListStore((state) => state.meetings);
   const [answer, setAnswer] = useState<Answer | null>(null);
   const sequence = useRef(0);
   const text = query.trim();
   const applies = text.length >= MIN_SEARCH_CHARS;
-  const key = JSON.stringify([text, view]);
-  const scope = useRef(view);
-  scope.current = view;
+  const key = JSON.stringify([text, scope]);
+  const scopeRef = useRef(scope);
+  scopeRef.current = scope;
 
   useEffect(() => {
     sequence.current += 1;
@@ -50,7 +43,7 @@ export function useMeetingSearch(query: string, view: LibraryView): MeetingSearc
     const requestId = sequence.current;
     const timer = setTimeout(() => {
       void window.vozella
-        .invoke('library.search', { query: text, scope: searchScope(scope.current), requestId })
+        .invoke('library.search', { query: text, scope: scopeRef.current, requestId })
         .then((result) => {
           if (requestId !== sequence.current || result.stale) return;
           setAnswer({

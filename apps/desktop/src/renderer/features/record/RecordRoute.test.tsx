@@ -159,7 +159,7 @@ describe('RecordRoute idle zone (spec 2.1, 2.2)', () => {
     await userEvent.click(screen.getByRole('combobox', { name: 'Save to' }));
     const options = (await screen.findAllByRole('option')).map((option) => option.textContent);
     // Folders are gone from the wire; the projects destinations arrive with the UI lane.
-    expect(options).toEqual(['Inbox']);
+    expect(options).toEqual(['No project']);
   });
 
   it('starts with the typed title and the chosen sources', async () => {

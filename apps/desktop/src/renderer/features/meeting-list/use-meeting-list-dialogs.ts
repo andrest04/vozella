@@ -1,15 +1,9 @@
 import type { MeetingListItemDto } from '@vozella/contracts';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { StringKey, Translate } from '../../i18n/translate';
-import { clearFolderRequest, useLibraryStore, type FolderRequest } from './meeting-list-store';
 import type { StatusMessage } from './use-meeting-list';
 
 export type DialogState =
-  | { readonly kind: 'newFolder' }
-  | { readonly kind: 'rename'; readonly projectId: string; readonly name: string }
-  | { readonly kind: 'personality'; readonly projectId: string }
-  | { readonly kind: 'deleteFolder'; readonly projectId: string; readonly name: string }
-  | { readonly kind: 'move'; readonly meeting: MeetingListItemDto }
   | { readonly kind: 'deleteMeeting'; readonly meeting: MeetingListItemDto }
   /** `refused`: the Recycle Bin said no. Otherwise it was asked for directly, with Shift+Delete. */
   | {
@@ -17,7 +11,6 @@ export type DialogState =
       readonly meeting: MeetingListItemDto;
       readonly refused: boolean;
     }
-  | { readonly kind: 'moveMany'; readonly meetings: readonly MeetingListItemDto[] }
   | { readonly kind: 'deleteMany'; readonly meetingIds: readonly string[] }
   | {
       readonly kind: 'deleteManyPermanently';
@@ -27,11 +20,7 @@ export type DialogState =
   | { readonly kind: 'renameMeeting'; readonly meeting: MeetingListItemDto };
 
 type ConfirmKind =
-  | 'deleteFolder'
-  | 'deleteMany'
-  | 'deleteManyPermanently'
-  | 'deleteMeeting'
-  | 'deleteMeetingPermanently';
+  'deleteMany' | 'deleteManyPermanently' | 'deleteMeeting' | 'deleteMeetingPermanently';
 
 /** The dialogs that only ask yes or no: one `ConfirmDialog` shows each of them. */
 export type ConfirmDialogState = Extract<DialogState, { readonly kind: ConfirmKind }>;
@@ -49,12 +38,6 @@ const message = (key: StringKey, ...args: string[]): StatusMessage => ({ key, ar
 const CONFIRM_TEXT: {
   readonly [K in ConfirmKind]: (dialog: Extract<DialogState, { readonly kind: K }>) => ConfirmText;
 } = {
-  deleteFolder: (dialog) => ({
-    title: message('LibraryDeleteFolder_Title'),
-    description: message('LibraryDeleteFolder_Content', dialog.name),
-    cancel: 'LibraryDeleteFolder_Cancel',
-    primary: 'LibraryDeleteFolder_Primary',
-  }),
   deleteMany: (dialog) => ({
     title: message('Ui_LibraryDeleteManyTitle', String(dialog.meetingIds.length)),
     description: message('Ui_LibraryDeleteManyContent'),
@@ -96,49 +79,12 @@ export function confirmText(dialog: ConfirmDialogState): ConfirmText {
   return describe(dialog);
 }
 
-interface FolderLookup {
-  readonly folderName: (id: string) => string;
-  readonly canDeleteFolder: (id: string) => boolean;
-  readonly showStatus: (message: StatusMessage) => void;
-}
-
 /**
- * Which Library dialog is open, plus the last one shown so a closing dialog keeps its text while it
- * fades. Folder actions the sidebar leaves in the store open here, also from another screen.
+ * Which list dialog is open, plus the last one shown so a closing dialog keeps its text while it
+ * fades.
  */
-export function useLibraryDialogs({ folderName, canDeleteFolder, showStatus }: FolderLookup) {
+export function useMeetingListDialogs() {
   const [dialog, setDialog] = useState<DialogState | null>(null);
-
-  const runFolderAction = (request: FolderRequest): void => {
-    if (request.kind === 'new') setDialog({ kind: 'newFolder' });
-    else if (request.kind === 'rename') {
-      setDialog({
-        kind: 'rename',
-        projectId: request.projectId,
-        name: folderName(request.projectId),
-      });
-    } else if (request.kind === 'personality') {
-      setDialog({ kind: 'personality', projectId: request.projectId });
-    } else if (canDeleteFolder(request.projectId)) {
-      setDialog({
-        kind: 'deleteFolder',
-        projectId: request.projectId,
-        name: folderName(request.projectId),
-      });
-    } else {
-      showStatus({ key: 'LibraryDeleteFolder_NotEmpty', args: [] });
-    }
-  };
-
-  // The sidebar cannot open dialogs: it leaves the request here, also from another screen.
-  const folderRequest = useLibraryStore((state) => state.folderRequest);
-  const runRequest = useRef(runFolderAction);
-  runRequest.current = runFolderAction;
-  useEffect(() => {
-    if (!folderRequest) return;
-    clearFolderRequest();
-    runRequest.current(folderRequest);
-  }, [folderRequest]);
 
   // Keep the last dialog's data while it fades out, so its text does not blank first.
   const lastDialog = useRef(dialog);
@@ -157,7 +103,6 @@ export function useLibraryDialogs({ folderName, canDeleteFolder, showStatus }: F
     closeDialog: (): void => {
       setDialog(null);
     },
-    runFolderAction,
   };
 }
 

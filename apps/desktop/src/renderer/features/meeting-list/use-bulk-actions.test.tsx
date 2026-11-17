@@ -4,7 +4,6 @@ import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Translate } from '../../i18n/translate';
 import { useBulkActions } from './use-bulk-actions';
-import type { LibraryModel } from './use-meeting-list';
 
 afterEach(() => {
   cleanup();
@@ -21,11 +20,7 @@ type Library = Parameters<typeof useBulkActions>[0]['library'];
 const fakeLibrary = (meetings: readonly MeetingListItemDto[], extra: Partial<Library> = {}) =>
   ({
     meetings,
-    folders: [{ id: 'f1', name: 'Work' }] as unknown as LibraryModel['folders'],
-    destinations: [
-      { projectId: null, path: 'Inbox' },
-      { projectId: 'f1', path: 'Work' },
-    ] as unknown as LibraryModel['destinations'],
+    knownProjectIds: new Set(['f1']),
     searching: false,
     beginDelete: vi.fn(() => Promise.resolve(true)),
     moveMeetings: vi.fn(() => Promise.resolve([] as readonly string[])),
@@ -42,6 +37,7 @@ const mount = (library: Library, listKey = 'all') => {
         library: props.library,
         listedIds: props.library.meetings.map((m) => m.id),
         t,
+        placeName: (id: string | null) => (id === 'f1' ? 'Work' : 'No project'),
         listKey: props.listKey,
         openDialog,
         afterWork,
@@ -70,7 +66,7 @@ describe('useBulkActions', () => {
       result.current.toggleCheck('a');
     });
     expect(result.current.checks.checked.size).toBe(1);
-    rerender({ library, listKey: 'inbox' });
+    rerender({ library, listKey: 'none' });
     expect(result.current.checks.checked.size).toBe(0);
   });
 
@@ -112,7 +108,7 @@ describe('useBulkActions', () => {
       await result.current.runMoveMany(meetings, 'f1');
     });
     expect(library.moveMeetings).toHaveBeenCalledWith(['a', 'c'], 'f1');
-    // A folder that is gone reads as the Inbox.
+    // A project that is gone reads as No project.
     expect(result.current.undoMove).toEqual({
       message: 'Ui_LibraryMovedMany|2|Work',
       restore: [{ projectId: null, meetingIds: ['a', 'c'] }],

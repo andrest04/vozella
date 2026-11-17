@@ -3,8 +3,8 @@ import { useEffect } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import { CloseDialogs } from '../record/CloseDialogs';
 import { connectLiveAsk } from '../record/use-live-ask';
-import { connectLibrary } from '../meeting-list/meeting-list-store';
-import { LibraryFolders, type SidebarLocation } from '../library/LibraryFolders';
+import { connectMeetingList } from '../meeting-list/meeting-list-store';
+import { connectProjectDirectory } from '../meeting-list/project-directory';
 import { AiPanelArea } from '../chat/AiPanel';
 import { ChatBody } from '../chat/ChatBody';
 import { CallPromptBar } from './CallPromptBar';
@@ -13,6 +13,7 @@ import { NavRail } from './NavRail';
 import { StartupNotice } from './StartupNotice';
 import { UpdateToast } from '../updates/UpdateToast';
 import { routeOfTag, tagOfPath } from './navigation';
+import { useSelectedProjectPublisher } from './use-selected-project';
 
 /** The shell is the only listener of navigation requests, and tells the workspace where it is. */
 function useWorkspaceNavigation(): void {
@@ -52,8 +53,11 @@ export function AppShell() {
   useWorkspaceNavigation();
   // The live answer and the close dialogs belong to the window, not to one page.
   useEffect(() => connectLiveAsk(), []);
-  // The sidebar shows the folders on every route, so the library store belongs to the window too.
-  useEffect(() => connectLibrary(), []);
+  // The meetings and the projects are read on every route (the rail, the record destination, the
+  // chat scope), so their stores belong to the window.
+  useEffect(() => connectMeetingList(), []);
+  useEffect(() => connectProjectDirectory(), []);
+  useSelectedProjectPublisher();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const paned = pathname === '/library';
   return (
@@ -101,21 +105,15 @@ export function AppShell() {
   );
 }
 
-function sidebarLocation(pathname: string): SidebarLocation {
-  if (pathname === '/library') return 'library';
-  return pathname === '/session' ? 'session' : 'elsewhere';
-}
-
 function Sidebar() {
   const t = useT();
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
   return (
     <aside className="flex h-full flex-col bg-paper-raised">
       <div className="app-drag flex h-10 shrink-0 items-center gap-2 px-4">
         <Mark size={20} />
         <span className="text-ui-lg font-medium tracking-[-0.01em]">{t('AppTitleBar.Title')}</span>
       </div>
-      <NavRail librarySlot={<LibraryFolders location={sidebarLocation(pathname)} />} />
+      <NavRail />
     </aside>
   );
 }

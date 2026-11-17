@@ -1,16 +1,17 @@
 // @vitest-environment jsdom
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { ALL_SCOPE } from '../meeting-list/scope';
+import { setLibraryScope } from './library-scope-store';
 import { formatMeetingTime } from '../meeting-list/format';
-import { useLibraryStore } from '../meeting-list/meeting-list-store';
 import { Providers } from '../../app/test-providers';
 import {
   LibraryScreen,
   stubLayout,
-  folderRecord,
   installFakeApi,
   meetingRecord,
+  projectListItem,
 } from './library-test-kit';
 
 beforeAll(() => {
@@ -37,6 +38,8 @@ beforeAll(() => {
 let pageWidth = 900;
 afterEach(() => {
   pageWidth = 900;
+  // The chosen project is the session's memory, so each test starts from all projects.
+  setLibraryScope(ALL_SCOPE);
 });
 
 function rowOf(name: RegExp): HTMLElement {
@@ -60,11 +63,8 @@ async function mount(setup?: (api: ReturnType<typeof installFakeApi>) => void) {
   return { api, user };
 }
 
-const seed = ({ meetings, folders }: ReturnType<typeof installFakeApi>): void => {
-  folders.folders = [
-    folderRecord(UNI, 'Universidad', null, { note: 'Fall term', colorKey: 'teal' }),
-    folderRecord(CALC, 'Calculo', UNI),
-  ];
+const seed = ({ meetings, projects }: ReturnType<typeof installFakeApi>): void => {
+  projects.list = [projectListItem(UNI, 'Universidad'), projectListItem(CALC, 'Calculo')];
   meetings.records.set(
     'a',
     meetingRecord('a', 'Standup', '2026-09-01T09:00:00.0000000+00:00', {
@@ -201,29 +201,20 @@ describe('moving and deleting a meeting', () => {
   });
 });
 
-describe('the All view', () => {
-  it('opens on All with every meeting', async () => {
+describe('the Library', () => {
+  it('opens on every meeting', async () => {
     await mount(seed);
     expect(rowOf(/Planning/)).toBeInTheDocument();
     expect(rowOf(/Standup/)).toBeInTheDocument();
     expect(rowOf(/Review/)).toBeInTheDocument();
   });
 
-  it('asks to record when nothing is recorded, even with folders', async () => {
+  it('asks to record when nothing is recorded, even with projects', async () => {
     await mount((api) => {
-      api.folders.folders = [folderRecord(UNI, 'Universidad')];
+      api.projects.list = [projectListItem(UNI, 'Universidad')];
     });
     expect(screen.getByText('No meetings recorded yet.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Record a meeting' })).toBeInTheDocument();
-  });
-
-  it('carries out a folder action asked for from the sidebar', async () => {
-    const { user } = await mount(seed);
-    await user.click(screen.getByRole('button', { name: 'New folder' }));
-    expect(await screen.findByRole('dialog', { name: 'New folder' })).toBeInTheDocument();
-    await waitFor(() => {
-      expect(useLibraryStore.getState().folderRequest).toBeNull();
-    });
   });
 });
 
@@ -310,8 +301,8 @@ describe('the grid', () => {
   it('a click on a menu entry of a row does not open the meeting', async () => {
     const { api, user } = await mount(seed);
     await user.click(within(rowOf(/Standup/)).getByRole('button', { name: 'More actions' }));
-    await user.click(await screen.findByRole('menuitem', { name: 'Move' }));
-    await screen.findByRole('dialog', { name: 'Move meeting' });
+    await user.click(await screen.findByRole('menuitem', { name: 'Move to project' }));
+    await screen.findByRole('dialog', { name: 'Move to project' });
     expect(api.actions).not.toContainEqual({ type: 'openSession', tab: 'Transcript' });
   });
 });
@@ -522,8 +513,8 @@ describe('the preview', () => {
 describe('searching inside meetings', () => {
   const searches = (api: ReturnType<typeof installFakeApi>) =>
     api.calls.filter((c) => c.name === 'library.search');
-  const seedBodies = ({ meetings, folders }: ReturnType<typeof installFakeApi>): void => {
-    folders.folders = [folderRecord(UNI, 'Universidad')];
+  const seedBodies = ({ meetings, projects }: ReturnType<typeof installFakeApi>): void => {
+    projects.list = [projectListItem(UNI, 'Universidad')];
     meetings.records.set(
       'heard',
       meetingRecord('heard', 'Standup', '2026-09-03T09:00:00.0000000+00:00', {
@@ -688,8 +679,8 @@ describe('checking several meetings', () => {
   const check = (name: RegExp): HTMLElement =>
     within(rowOf(name)).getByRole('checkbox', { name: /Select/ });
   const bar = (): HTMLElement => screen.getByRole('toolbar', { name: 'Checked meetings' });
-  const seedMany = ({ meetings, folders }: ReturnType<typeof installFakeApi>): void => {
-    folders.folders = [folderRecord(UNI, 'Universidad')];
+  const seedMany = ({ meetings, projects }: ReturnType<typeof installFakeApi>): void => {
+    projects.list = [projectListItem(UNI, 'Universidad')];
     for (const [id, title, day] of [
       ['a', 'First', '03'],
       ['b', 'Second', '03'],
@@ -760,7 +751,7 @@ describe('checking several meetings', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Delete' }));
     expect(await within(bar()).findByText('Deleting 2 meetings')).toBeInTheDocument();
     expect(within(bar()).getByRole('button', { name: 'Delete' })).toBeDisabled();
-    expect(within(bar()).getByRole('button', { name: 'Move' })).toBeDisabled();
+    expect(within(bar()).getByRole('button', { name: 'Move to project' })).toBeDisabled();
     release();
     await waitFor(() => {
       expect(screen.queryByRole('toolbar')).not.toBeInTheDocument();
@@ -828,7 +819,8 @@ describe('checking several meetings', () => {
     expect(screen.queryByRole('toolbar')).not.toBeInTheDocument();
     await user.clear(screen.getByRole('searchbox'));
     await user.click(check(/First/));
-    await user.click(screen.getByRole('treeitem', { name: /Inbox/ }));
+    await user.click(screen.getByRole('combobox', { name: 'Project' }));
+    await user.click(await screen.findByRole('option', { name: 'No project' }));
     expect(screen.queryByRole('toolbar')).not.toBeInTheDocument();
   });
 
@@ -948,7 +940,13 @@ describe('the keyboard', () => {
       expect(api.calls.some((c) => c.name === 'library.search')).toBe(true);
     });
     release();
-    expect(await within(await screen.findByRole('toolbar')).findByText('Checked: 2')).toBeVisible();
+    expect(
+      await within(await screen.findByRole('toolbar', {}, { timeout: 3000 })).findByText(
+        'Checked: 2',
+        {},
+        { timeout: 3000 },
+      ),
+    ).toBeVisible();
   });
 
   it('Ctrl+F goes to the search with its text selected, and Ctrl+A stays its own there', async () => {
@@ -1106,7 +1104,7 @@ describe('the keyboard', () => {
   it('keys typed in a dialog or a menu do not reach the rows', async () => {
     const { api, user } = await mount(seedMany);
     await user.click(within(rowOf(/First/)).getByRole('button', { name: 'More actions' }));
-    await screen.findByRole('menuitem', { name: 'Move' });
+    await screen.findByRole('menuitem', { name: 'Move to project' });
     await user.keyboard('{Delete}');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await user.keyboard('{Escape}');
@@ -1120,55 +1118,131 @@ describe('the keyboard', () => {
   });
 });
 
-describe('dragging meetings to a folder', () => {
-  const dataTransfer = () => {
-    const data = new Map<string, string>();
-    return {
-      data,
-      get types() {
-        return [...data.keys()];
-      },
-      effectAllowed: 'none',
-      dropEffect: 'none',
-      setData: (type: string, value: string) => {
-        data.set(type, value);
-      },
-      getData: (type: string) => data.get(type) ?? '',
-      setDragImage: vi.fn(),
-    };
+describe('the project filter', () => {
+  const pick = async (user: ReturnType<typeof userEvent.setup>, name: string): Promise<void> => {
+    await user.click(screen.getByRole('combobox', { name: 'Project' }));
+    await user.click(await screen.findByRole('option', { name }));
   };
-  const tree = (name: RegExp): HTMLElement => screen.getByRole('treeitem', { name });
-  const seedDrag = ({ meetings, folders }: ReturnType<typeof installFakeApi>): void => {
-    folders.folders = [folderRecord(UNI, 'Universidad'), folderRecord(CALC, 'Calculo', UNI)];
-    for (const [id, title, day] of [
-      ['a', 'First', '04'],
-      ['b', 'Second', '03'],
-      ['c', 'Third', '02'],
-    ] as const) {
-      meetings.records.set(id, meetingRecord(id, title, `2026-09-${day}T09:00:00.0000000+00:00`));
-    }
-  };
-  it('Inbox is a target and All is not, and only meetings can land', async () => {
-    const { api } = await mount(({ meetings, folders }) => {
-      seedDrag({ meetings, folders } as never);
-      const record = meetings.records.get('a');
-      if (record) meetings.records.set('a', { ...record, projectId: UNI });
+
+  it('lists All projects, No project and every project, and starts on all meetings', async () => {
+    const { user } = await mount(seed);
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Project' })).toHaveTextContent('All projects');
     });
-    const transfer = dataTransfer();
-    fireEvent.dragStart(rowOf(/First/), { dataTransfer: transfer });
-    // fireEvent says false when the handler called preventDefault, which is what allows a drop.
-    expect(fireEvent.dragOver(tree(/^All/), { dataTransfer: transfer })).toBe(true);
-    expect(fireEvent.dragOver(tree(/Inbox/), { dataTransfer: transfer })).toBe(false);
-    expect(transfer.dropEffect).toBe('move');
-    expect(tree(/Inbox/)).toHaveAttribute('data-drop-target', 'true');
-    fireEvent.dragLeave(tree(/Inbox/), { dataTransfer: transfer });
-    expect(tree(/Inbox/)).not.toHaveAttribute('data-drop-target');
-    expect(fireEvent.dragOver(tree(/Inbox/), { dataTransfer: { types: ['text/plain'] } })).toBe(
-      true,
-    );
-    fireEvent.drop(tree(/Inbox/), { dataTransfer: transfer });
+    await user.click(screen.getByRole('combobox', { name: 'Project' }));
+    expect((await screen.findAllByRole('option')).map((o) => o.textContent)).toEqual([
+      'All projects',
+      'No project',
+      'Calculo',
+      'Universidad',
+    ]);
+  });
+
+  it('shows the meetings of one project, and of no project', async () => {
+    const { user } = await mount(seed);
+    await pick(user, 'Universidad');
+    expect(rowOf(/Planning/)).toBeInTheDocument();
+    expect(screen.queryByRole('row', { name: /Standup/ })).not.toBeInTheDocument();
+    await pick(user, 'No project');
+    // A meeting whose project is not a project reads as no project.
+    expect(rowOf(/Standup/)).toBeInTheDocument();
+    expect(rowOf(/Review/)).toBeInTheDocument();
+    expect(screen.queryByRole('row', { name: /Planning/ })).not.toBeInTheDocument();
+  });
+
+  it('names an empty project and clears the filter from the message', async () => {
+    const { user } = await mount(seed);
+    await pick(user, 'Calculo');
+    expect(screen.getByText('No meetings in Calculo.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Clear filter' }));
+    expect(rowOf(/Planning/)).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Project' })).toHaveTextContent('All projects');
+  });
+
+  it('says every meeting is in a project when none is left without one', async () => {
+    const { user } = await mount(({ meetings, projects }) => {
+      projects.list = [projectListItem(UNI, 'Universidad')];
+      meetings.records.set(
+        'b',
+        meetingRecord('b', 'Planning', '2026-09-03T09:00:00.0000000+00:00', { projectId: UNI }),
+      );
+    });
+    await pick(user, 'No project');
+    expect(screen.getByText('Every meeting is in a project.')).toBeInTheDocument();
+  });
+
+  it('searches inside the chosen project only, and can widen to everything', async () => {
+    const { api, user } = await mount(seed);
+    await pick(user, 'Universidad');
+    await user.type(screen.getByRole('searchbox'), 'plan');
+    await waitFor(() => {
+      expect(
+        api.calls.some(
+          (c) =>
+            c.name === 'library.search' &&
+            JSON.stringify((c.input as { scope: unknown }).scope) ===
+              JSON.stringify({ kind: 'project', id: UNI }),
+        ),
+      ).toBe(true);
+    });
+    await user.click(screen.getByRole('button', { name: 'Search all meetings' }));
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Project' })).toHaveTextContent('All projects');
+    });
+  });
+});
+
+describe('Move to project', () => {
+  it('moves a meeting from its row menu, and offers to undo', async () => {
+    const { api, user } = await mount(seed);
+    await user.click(within(rowOf(/Standup/)).getByRole('button', { name: 'More actions' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Move to project' }));
+    const popover = await screen.findByRole('dialog', { name: 'Move to project' });
+    // A meeting with no project is offered the projects, and not No project.
+    expect(within(popover).queryByRole('option', { name: 'No project' })).not.toBeInTheDocument();
+    await user.click(within(popover).getByRole('option', { name: 'Universidad' }));
+    await waitFor(() => {
+      expect(api.meetings.records.get('a')?.projectId).toBe(UNI);
+    });
+    expect(await screen.findByText('Moved "Standup" to Universidad.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
     await waitFor(() => {
       expect(api.meetings.records.get('a')?.projectId).toBeNull();
     });
+  });
+
+  it('moves the checked meetings from the bar and returns the focus to its button', async () => {
+    const { api, user } = await mount(seed);
+    await user.click(within(rowOf(/Standup/)).getByRole('checkbox', { name: /Select/ }));
+    await user.click(within(rowOf(/Planning/)).getByRole('checkbox', { name: /Select/ }));
+    const bar = screen.getByRole('toolbar', { name: 'Checked meetings' });
+    const trigger = within(bar).getByRole('button', { name: 'Move to project' });
+    await user.click(trigger);
+    const popover = await screen.findByRole('dialog', { name: 'Move to project' });
+    // The meetings are in different places: No project is offered, and so is every project.
+    expect(within(popover).getByRole('option', { name: 'No project' })).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Move to project' })).not.toBeInTheDocument();
+    });
+    expect(trigger).toHaveFocus();
+    await user.click(trigger);
+    await user.type(
+      await screen.findByRole('combobox', { name: 'Search projects' }),
+      'calc{Enter}',
+    );
+    await waitFor(() => {
+      expect(api.meetings.records.get('a')?.projectId).toBe(CALC);
+      expect(api.meetings.records.get('b')?.projectId).toBe(CALC);
+    });
+  });
+
+  it('says projects are unavailable when storage refuses the move', async () => {
+    const { api, user } = await mount(seed);
+    api.failures.move = 'storage-error';
+    await user.click(within(rowOf(/Standup/)).getByRole('button', { name: 'More actions' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Move to project' }));
+    await user.click(await screen.findByRole('option', { name: 'Universidad' }));
+    expect(await screen.findByText(/Projects are unavailable right now/)).toBeInTheDocument();
   });
 });

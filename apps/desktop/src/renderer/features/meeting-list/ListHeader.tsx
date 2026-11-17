@@ -1,12 +1,12 @@
-import type { FolderRecord } from '@vozella/core';
-import { Ellipsis, Search, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import type { KeyboardEvent, ReactNode, RefObject } from 'react';
-import { Button, Icon, IconButton, Input, Menu, Textarea, type MenuEntry } from '../../ui';
-import { folderAccent, folderIcon } from '../library/folder-visuals';
+import { Button, Icon, IconButton, Input } from '../../ui';
 
 export interface ListHeaderProps {
-  /** The name of the view: All, Inbox or the folder. */
-  readonly title: string;
+  /** The name of the list. Null where the page above already names it (a project's meetings). */
+  readonly title: string | null;
+  /** Beside the search: the control that picks the scope, where the list has one. */
+  readonly scopeControl?: ReactNode;
   readonly count: number;
   /** What the count reads: the number alone, or the filtered number of it. */
   readonly countText: string;
@@ -16,16 +16,6 @@ export interface ListHeaderProps {
   /** Said to a screen reader when the filters change the list; empty with none on. */
   readonly filterResults: string;
   readonly filterResultsLabel: string;
-  /** Only a real folder has an icon, a path, a menu and a note. */
-  readonly folder: FolderRecord | null;
-  readonly breadcrumbs: ReactNode;
-  readonly menuEntries: readonly MenuEntry[];
-  readonly menuLabel: string;
-  readonly note: string;
-  readonly noteLabel: string;
-  readonly notePlaceholder: string;
-  readonly onNoteChange: (value: string) => void;
-  readonly onNoteBlur: () => void;
   readonly query: string;
   readonly searchLabel: string;
   readonly searchRef: RefObject<HTMLInputElement | null>;
@@ -38,24 +28,16 @@ export interface ListHeaderProps {
   readonly searchAll: { readonly label: string; readonly onSelect: () => void } | null;
 }
 
-/** The head of the list pane. There is no page title: the view's own name says where you are. */
+/** The head of the list pane: its name when it has one, the search, the filters and their chips. */
 export function ListHeader({
   title,
+  scopeControl,
   count,
   countText,
   filterButton,
   filterChips,
   filterResults,
   filterResultsLabel,
-  folder,
-  breadcrumbs,
-  menuEntries,
-  menuLabel,
-  note,
-  noteLabel,
-  notePlaceholder,
-  onNoteChange,
-  onNoteBlur,
   query,
   searchLabel,
   searchRef,
@@ -67,12 +49,10 @@ export function ListHeader({
 }: ListHeaderProps) {
   return (
     <header className="flex shrink-0 flex-col gap-1.5 px-4 pb-3">
-      {folder ? breadcrumbs : null}
       <div className="flex min-h-8 min-w-0 items-center gap-2">
-        {folder ? (
-          <Icon icon={folderIcon(folder)} size={16} style={{ color: folderAccent(folder) }} />
-        ) : null}
-        <h1 className="truncate text-heading font-semibold tracking-[-0.01em]">{title}</h1>
+        {title === null ? null : (
+          <h1 className="truncate text-heading font-semibold tracking-[-0.01em]">{title}</h1>
+        )}
         {/* While loading it is not yet known, and with nothing listed the list says so itself. */}
         {count === 0 ? null : (
           <span
@@ -86,29 +66,10 @@ export function ListHeader({
         <span role="status" aria-label={filterResultsLabel} className="sr-only">
           {filterResults}
         </span>
-        {folder ? (
-          <span className="ms-auto shrink-0">
-            <Menu
-              align="end"
-              entries={menuEntries}
-              trigger={<IconButton label={menuLabel} icon={Ellipsis} size="sm" />}
-            />
-          </span>
-        ) : null}
+        {scopeControl === undefined ? null : (
+          <span className="ms-auto shrink-0">{scopeControl}</span>
+        )}
       </div>
-      {folder ? (
-        <Textarea
-          rows={1}
-          aria-label={noteLabel}
-          value={note}
-          placeholder={notePlaceholder}
-          onChange={(event) => {
-            onNoteChange(event.target.value);
-          }}
-          onBlur={onNoteBlur}
-          className="field-sizing-content max-h-30 min-h-0! w-full resize-none! border-transparent bg-transparent px-0! hover:not-data-disabled:not-disabled:bg-transparent focus:border-border-control focus:px-2.5!"
-        />
-      ) : null}
       <div className="mt-1.5 flex min-w-0 items-center gap-1.5">
         <div className="relative min-w-0 flex-1">
           <Icon

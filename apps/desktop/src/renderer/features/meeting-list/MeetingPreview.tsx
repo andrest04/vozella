@@ -1,6 +1,6 @@
 import { spokenTranscript } from '@vozella/core';
 import type { MeetingRecordDto } from '@vozella/contracts';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
 import { Button, Skeleton, Tabs } from '../../ui';
 import { MarkdownView } from '../markdown/MarkdownView';
@@ -77,11 +77,13 @@ function PreviewBody({
   record,
   preferredTab,
   onOpen,
+  moveControl,
 }: {
   readonly record: MeetingRecordDto;
   /** The tab a search hit points at; otherwise the summary when there is one. */
   readonly preferredTab: MeetingTab | null;
   readonly onOpen: (tab: MeetingTab) => void;
+  readonly moveControl?: ReactNode;
 }) {
   const { t, locale } = useI18n();
   const span = formatMeetingSpan(record.recordedAt, record.endedAt, Date.now(), locale);
@@ -119,7 +121,7 @@ function PreviewBody({
           </p>
         ) : null}
       </header>
-      <div>
+      <div className="flex items-center gap-2">
         <Button
           size="sm"
           onClick={() => {
@@ -128,6 +130,7 @@ function PreviewBody({
         >
           {t('Ui_LibraryOpenMeeting')}
         </Button>
+        {moveControl}
       </div>
       {showsSummary && showsTranscript ? (
         <Tabs
@@ -172,10 +175,13 @@ export function MeetingPreview({
   state,
   preferredTab,
   onOpen,
+  moveControl,
 }: {
   readonly state: MeetingPreviewState;
   readonly preferredTab: MeetingTab | null;
   readonly onOpen: (meetingId: string, tab: MeetingTab) => void;
+  /** The Move to project control, a popover trigger the list owns. */
+  readonly moveControl?: ReactNode;
 }) {
   const { t } = useI18n();
   const { record, phase } = state;
@@ -204,6 +210,7 @@ export function MeetingPreview({
         onOpen={(tab) => {
           onOpen(record.id, tab);
         }}
+        {...(moveControl === undefined ? {} : { moveControl })}
       />
     </div>
   );

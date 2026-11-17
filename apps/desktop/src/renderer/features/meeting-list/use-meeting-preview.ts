@@ -1,6 +1,6 @@
 import type { MeetingRecordDto } from '@vozella/contracts';
 import { useEffect, useRef, useState } from 'react';
-import { useLibraryStore } from './meeting-list-store';
+import { useMeetingListStore } from './meeting-list-store';
 
 /** Arrow keys pass over rows faster than a file should be read. */
 export const PREVIEW_DEBOUNCE_MS = 120;
@@ -22,7 +22,7 @@ const IDLE: MeetingPreviewState = { record: null, phase: 'idle' };
  */
 export function useMeetingPreview(meetingId: string | null): MeetingPreviewState {
   // A finished load is how a change arrives here: every list read replaces this array.
-  const listed = useLibraryStore((state) => state.meetings);
+  const listed = useMeetingListStore((state) => state.meetings);
   const [state, setState] = useState<MeetingPreviewState>(IDLE);
   const cache = useRef(new Map<string, MeetingRecordDto>());
   const lastListed = useRef(listed);
