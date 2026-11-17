@@ -42,6 +42,12 @@ describe('feature boundaries', () => {
     expect([...(importedFeatures('projects').get('library') ?? [])]).toEqual([]);
   });
 
+  it('the shared meeting list imports neither the library nor the projects', () => {
+    const imported = importedFeatures('meeting-list');
+    expect(imported.get('library') ?? []).toEqual([]);
+    expect(imported.get('projects') ?? []).toEqual([]);
+  });
+
   it('the scan sees imports: the library reads the shared meeting list', () => {
     expect(importedFeatures('library').has('meeting-list')).toBe(true);
   });
