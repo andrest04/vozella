@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { API_PROVIDER_KINDS, readSettings } from '../library/settings';
+import { API_PROVIDER_KINDS } from '../library/settings';
 import { API_ENGINES } from './api-providers';
 import {
   TRANSCRIPTION_PROVIDERS,

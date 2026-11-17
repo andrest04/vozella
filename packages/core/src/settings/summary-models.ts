@@ -1,5 +1,3 @@
-import { formatTemplate, type CatalogLocale } from '../i18n/format';
-
 /** What the machine can run. From the hardware probe (spec contract `HardwareProfile`). */
 export interface HardwareProfile {
   readonly totalRamGb: number;

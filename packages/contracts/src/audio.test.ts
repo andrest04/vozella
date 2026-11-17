@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  audioMicrophonesLoad,
-  audioPreviewLevel,
-  sourcePickerStateSchema,
-} from './audio';
+import { audioMicrophonesLoad, audioPreviewLevel, sourcePickerStateSchema } from './audio';
 import { eventChannels, requestChannels } from './channels';
 import { audioRpcCallSchema, audioWorkerCommandSchema, audioWorkerEventSchema } from './workers';
 

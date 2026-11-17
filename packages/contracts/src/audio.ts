@@ -93,7 +93,7 @@ export const audioPreviewStop = defineRequest('audio.preview.stop', {
   output: z.object({ stopped: z.literal(true) }),
 });
 
-const recordingNoticeSchema = z.discriminatedUnion('kind', [
+export const recordingNoticeSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('source-lost'),
     source: z.enum(['Microphone', 'Output']),

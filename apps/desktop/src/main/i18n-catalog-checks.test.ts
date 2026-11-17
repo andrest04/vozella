@@ -70,7 +70,6 @@ describe('the en/es string catalogs (item 105 to 113)', () => {
 
 describe('format specifiers (item 109, 110)', () => {
   const when = new Date(2026, 10, 3, 15, 4);
-  const later = new Date(2026, 10, 4, 9, 30);
 
   it('Model_SpeedQuality renders the size per locale', () => {
     expect(formatTemplate(en.Model_SpeedQuality, ['Fast', 'Very good', 3.11], 'en')).toBe(

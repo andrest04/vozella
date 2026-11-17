@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { defineEvent, defineRequest } from './channel';
+import { defineRequest } from './channel';
 import * as audio from './audio';
 import * as chat from './chat';
 import * as library from './library';
