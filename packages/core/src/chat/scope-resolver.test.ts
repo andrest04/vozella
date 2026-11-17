@@ -37,7 +37,7 @@ describe('ChatScopeResolverTests', () => {
       meetingId: M,
     });
   });
-  it('Resolve_HistoryWithFolder_IsExactFolder', () => {
+  it('Resolve_HistoryWithProject_IsExactProject', () => {
     expect(resolveScope('History', false, F, M)).toEqual({
       isVisible: true,
       kind: 'Project',
@@ -45,7 +45,7 @@ describe('ChatScopeResolverTests', () => {
       meetingId: null,
     });
   });
-  it('Resolve_HistoryInbox_IsAllMeetings', () => {
+  it('Resolve_HistoryNoProject_IsAllMeetings', () => {
     expect(resolveScope('History', false, null, M).kind).toBe('AllMeetings');
   });
   it('Resolve_RecordingIdle_IsAllMeetings', () => {
@@ -115,6 +115,29 @@ describe('ChatScopeResolverTests', () => {
 });
 
 describe('the Projects surface', () => {
+  it('with a selected project is that project', () => {
+    expect(resolveScope('Projects', false, F, null)).toEqual({
+      isVisible: true,
+      kind: 'Project',
+      projectId: F,
+      meetingId: null,
+    });
+  });
+  it('without a project id (the grid and No project) is All meetings', () => {
+    expect(resolveScope('Projects', false, null, null)).toEqual({
+      isVisible: true,
+      kind: 'AllMeetings',
+      projectId: null,
+      meetingId: null,
+    });
+  });
+  it('is Live while a take is recording, whatever the project page shows', () => {
+    expect(resolveScope('Projects', true, F, null).kind).toBe('Live');
+  });
+  it('is hidden on Settings and ignores the project there', () => {
+    expect(resolveScope('Settings', false, F, null).isVisible).toBe(false);
+  });
+
   it('is a known surface, not Unknown', () => {
     expect(parseSurface('Projects')).toBe('Projects');
     expect(parseSurface('Folders')).toBe('Unknown');
