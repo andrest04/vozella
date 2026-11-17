@@ -33,9 +33,7 @@ export interface AppSettings {
   readonly liveTranscriptionEnabled: boolean;
   readonly speakerDiarizationEnabled: boolean;
   readonly typeSafeEnabled: boolean;
-  readonly calendarNotificationsEnabled: boolean;
   readonly meetingPopupEnabled: boolean;
-  readonly disabledCalendarIds: readonly string[];
   readonly uiLanguage: string | null;
   readonly navigationPaneLength: number | null;
   readonly liveCopilotPillX: number | null;
@@ -62,7 +60,7 @@ export interface AppSettings {
   readonly cloudTranscriptionModelId: string | null;
 }
 
-type Kind = 'string' | 'bool-true' | 'bool-false' | 'strings' | 'number';
+type Kind = 'string' | 'bool-true' | 'bool-false' | 'number';
 
 /**
  * Declaration order is the order in the file, so a new field goes last. The model field of an API
@@ -89,9 +87,7 @@ const FIELDS: readonly (readonly [keyof AppSettings, Kind])[] = [
   ['liveTranscriptionEnabled', 'bool-true'],
   ['speakerDiarizationEnabled', 'bool-false'],
   ['typeSafeEnabled', 'bool-true'],
-  ['calendarNotificationsEnabled', 'bool-true'],
   ['meetingPopupEnabled', 'bool-true'],
-  ['disabledCalendarIds', 'strings'],
   ['uiLanguage', 'string'],
   ['navigationPaneLength', 'number'],
   ['liveCopilotPillX', 'number'],
@@ -132,8 +128,6 @@ function coerce(kind: Kind, value: unknown): unknown {
       return typeof value === 'boolean' ? value : true;
     case 'bool-false':
       return typeof value === 'boolean' ? value : false;
-    case 'strings':
-      return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
     case 'number': {
       // .NET Web defaults also read numbers written as strings.
       const n = typeof value === 'string' && value.trim() !== '' ? Number(value) : value;
@@ -327,8 +321,4 @@ export function resolveLiveQuestionsMode(
   const chosen = LIVE_QUESTIONS_MODES.find((mode) => mode === s.liveQuestions);
   if (chosen !== undefined) return chosen;
   return isRemoteProvider(s.selectedSummaryProvider) ? 'rules+ai' : 'rules';
-}
-
-export function disabledCalendarIdsAsSet(s: AppSettings): ReadonlySet<string> {
-  return new Set(s.disabledCalendarIds.filter((id) => id.trim() !== ''));
 }

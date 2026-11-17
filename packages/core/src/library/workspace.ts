@@ -48,7 +48,6 @@ export class Workspace {
     isCaptureActive: false,
   };
   private takeNotesPending = false;
-  private takeNotesEventId: string | null = null;
   private readonly listeners = new Map<keyof WorkspaceEvents, Set<Listener<never>>>();
 
   get state(): WorkspaceState {
@@ -140,9 +139,7 @@ export class Workspace {
     this.emit('scopeChanged', undefined);
   }
 
-  requestTakeNotes(calendarEventId?: string | null): void {
-    this.takeNotesEventId =
-      calendarEventId && calendarEventId.trim() !== '' ? calendarEventId : null;
+  requestTakeNotes(): void {
     this.takeNotesPending = true;
     this.emit('takeNotesRequested', undefined);
     this.navigateTo('Recording');
@@ -157,9 +154,8 @@ export class Workspace {
     this.emit('takeNotesRequested', undefined);
   }
 
-  consumeTakeNotes(): { pending: boolean; calendarEventId: string | null } {
-    const result = { pending: this.takeNotesPending, calendarEventId: this.takeNotesEventId };
-    this.takeNotesEventId = null;
+  consumeTakeNotes(): { pending: boolean } {
+    const result = { pending: this.takeNotesPending };
     this.takeNotesPending = false;
     return result;
   }

@@ -7,7 +7,6 @@ export * from './clock/system-clock';
 export * from './data-root/resolve-data-root';
 export * from './fakes/fake-audio-capture';
 export * from './fakes/fake-audio-devices';
-export * from './fakes/fake-calendar-probe';
 export * from './fakes/fake-clock';
 export * from './fakes/fake-legacy-secret';
 export * from './logging/rotating-file-logger';

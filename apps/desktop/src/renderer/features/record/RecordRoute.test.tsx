@@ -1080,7 +1080,7 @@ describe('RecordRoute take notes request', () => {
     const api = installApi({
       'workspace.dispatch': () => ({
         state: {},
-        takeNotes: { pending: true, calendarEventId: null },
+        takeNotes: { pending: true },
       }),
     });
     mount();

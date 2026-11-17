@@ -314,9 +314,7 @@ export const appSettingsSchema = z.object({
   liveTranscriptionEnabled: z.boolean(),
   speakerDiarizationEnabled: z.boolean(),
   typeSafeEnabled: z.boolean(),
-  calendarNotificationsEnabled: z.boolean(),
   meetingPopupEnabled: z.boolean(),
-  disabledCalendarIds: z.array(z.string()).readonly(),
   uiLanguage: z.string().nullable(),
   navigationPaneLength: z.number().nullable(),
   liveCopilotPillX: z.number().nullable(),
@@ -379,10 +377,7 @@ export const workspaceActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('publishSelectedFolder'), folderId: z.string().nullable() }),
   z.object({ type: z.literal('setLiveTranscript'), text: z.string() }),
   z.object({ type: z.literal('setCaptureActive'), active: z.boolean() }),
-  z.object({
-    type: z.literal('requestTakeNotes'),
-    calendarEventId: z.string().nullable().optional(),
-  }),
+  z.object({ type: z.literal('requestTakeNotes') }),
   z.object({ type: z.literal('consumeTakeNotes') }),
   z.object({ type: z.literal('notifyMeetingChanged'), id: guid }),
 ]);
@@ -398,9 +393,7 @@ export const workspaceDispatch = defineRequest('workspace.dispatch', {
   output: z.object({
     state: workspaceStateSchema,
     /** Only for `consumeTakeNotes`. */
-    takeNotes: z
-      .object({ pending: z.boolean(), calendarEventId: z.string().nullable() })
-      .optional(),
+    takeNotes: z.object({ pending: z.boolean() }).optional(),
   }),
 });
 

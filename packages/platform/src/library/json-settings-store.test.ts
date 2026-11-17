@@ -29,8 +29,8 @@ describe('JsonSettingsStore', () => {
     await store().update({ uiLanguage: 'en' });
     const doc = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>;
     expect(doc.uiLanguage).toBe('en');
-    expect(Object.keys(doc)).toHaveLength(28);
-    expect(doc.disabledCalendarIds).toEqual([]);
+    expect(Object.keys(doc)).toHaveLength(26);
+    expect(doc.meetingPopupEnabled).toBe(true);
   });
 
   it('bug 24: a legacy pill position in the file survives an update and is written back unchanged', async () => {
@@ -153,12 +153,11 @@ describe('JsonSettingsStore', () => {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(
       file,
-      '{\r\n  "selectedSummaryProvider": "ClaudeCode",\r\n  "navigationPaneLength": "310",\r\n  "disabledCalendarIds": ["a", ""]\r\n}',
+      '{\r\n  "selectedSummaryProvider": "ClaudeCode",\r\n  "navigationPaneLength": "310"\r\n}',
     );
     expect(await store().load()).toMatchObject({
       selectedSummaryProvider: 'ClaudeCode',
       navigationPaneLength: 310,
-      disabledCalendarIds: ['a', ''],
     });
   });
 });

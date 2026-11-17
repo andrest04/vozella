@@ -25,12 +25,14 @@ function section2(): string {
   return spec.slice(start, end);
 }
 
-/** The catalog keys named in backticks: a resource key has an underscore or a control suffix. */
+/** The catalog keys named in backticks (the cut Coming up strings stay in the spec only): a resource key has an underscore or a control suffix. */
 function section2Keys(): string[] {
   const found = section2().match(/`[A-Za-z][A-Za-z0-9_.]*`/g) ?? [];
   const keys = found.map((entry) => entry.slice(1, -1));
   return [...new Set(keys)].filter(
-    (key) => key.includes('_') || /\.(Text|Content|Header|Title|PlaceholderText)$/.test(key),
+    (key) =>
+      !key.startsWith('ComingUp_') &&
+      (key.includes('_') || /\.(Text|Content|Header|Title|PlaceholderText)$/.test(key)),
   );
 }
 

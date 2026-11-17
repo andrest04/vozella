@@ -388,12 +388,12 @@ describe('workspace channels', () => {
   it('take-notes request and consume', async () => {
     const t = await setup();
     await t.call('workspace.dispatch', {
-      action: { type: 'requestTakeNotes', calendarEventId: 'evt' },
+      action: { type: 'requestTakeNotes' },
     });
     const first = await t.call('workspace.dispatch', { action: { type: 'consumeTakeNotes' } });
-    expect(first.value).toMatchObject({ takeNotes: { pending: true, calendarEventId: 'evt' } });
+    expect(first.value).toMatchObject({ takeNotes: { pending: true } });
     const second = await t.call('workspace.dispatch', { action: { type: 'consumeTakeNotes' } });
-    expect(second.value).toMatchObject({ takeNotes: { pending: false, calendarEventId: null } });
+    expect(second.value).toMatchObject({ takeNotes: { pending: false } });
   });
 
   it('applyWorkspaceAction covers every action type', () => {

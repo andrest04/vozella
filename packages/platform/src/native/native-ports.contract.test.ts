@@ -34,13 +34,6 @@ function stubAddon(overrides: Partial<NativeAddon> = {}): NativeAddon {
         }),
       };
     },
-    probeCalendarsAsync: () =>
-      Promise.resolve({
-        hasIdentity: false,
-        status: 'ok',
-        calendarCount: 2,
-        upcomingEventCount: 0,
-      }),
     listTopLevelWindows: () => Promise.resolve([]),
     dpapiUnprotect: (data) => data,
     assignToKillOnCloseJob: () => undefined,
@@ -127,11 +120,6 @@ describe('createNativePorts', () => {
     const ports = createNativePorts({ fake: false, addonPath: 'x.node', load });
     expect(load).toHaveBeenCalledWith('x.node');
     expect(ports.backend).toBe('native');
-    expect(await ports.calendar.probe()).toMatchObject({
-      status: 'ok',
-      calendarCount: 2,
-      packageFullName: null,
-    });
   });
 
   it('rejects an addon with the wrong shape', () => {

@@ -5,11 +5,7 @@ import { useTakeNotesRequest } from './use-take-notes';
 
 type Listener = (payload: unknown) => void;
 
-function install(options: {
-  pending: boolean;
-  calendarEventId?: string | null;
-  recordingPhase?: string;
-}) {
+function install(options: { pending: boolean; recordingPhase?: string }) {
   const consumed = vi.fn();
   // Like main: a request is remembered once and cleared when consumed.
   let pending = options.pending;
@@ -21,7 +17,7 @@ function install(options: {
       pending = false;
       return Promise.resolve({
         state: {},
-        takeNotes: { pending: wasPending, calendarEventId: options.calendarEventId ?? null },
+        takeNotes: { pending: wasPending },
       });
     }
     if (name === 'recording.getState') {
@@ -135,14 +131,6 @@ describe('useTakeNotesRequest (items 93, 94, 96)', () => {
 
   it('R20: no take starts when main says one is already running', async () => {
     install({ pending: true, recordingPhase: 'Recording' });
-    const start = vi.fn();
-    renderHook(() => useTakeNotesRequest(true, start));
-    await flush();
-    expect(start).not.toHaveBeenCalled();
-  });
-
-  it('R19 stays dropped: a request that carries an event id is ignored', async () => {
-    install({ pending: true, calendarEventId: 'evt-1' });
     const start = vi.fn();
     renderHook(() => useTakeNotesRequest(true, start));
     await flush();

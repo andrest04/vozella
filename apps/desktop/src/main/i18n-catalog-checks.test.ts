@@ -86,18 +86,6 @@ describe('format specifiers (item 109, 110)', () => {
     expect(formatTemplate(es.Download_ModelProgress, ['Gemma', 99.6], 'es')).toContain('100');
   });
 
-  it('ComingUp_TimeRange renders short times per locale', () => {
-    expect(formatTemplate(en.ComingUp_TimeRange, [when, later], 'en')).toMatch(/3:04\s?PM/);
-    expect(formatTemplate(es.ComingUp_TimeRange, [when, later], 'es')).toContain('15:04');
-    expect(formatTemplate(es.ComingUp_TimeRange, [when, later], 'es')).toContain('9:30');
-  });
-
-  it('ComingUp_TimeRangeOtherDay renders the day and two times', () => {
-    const text = formatTemplate(en.ComingUp_TimeRangeOtherDay, [later, when, later], 'en');
-    expect(text).toContain('Wed, Nov 4');
-    expect(text).toMatch(/9:30\s?AM/);
-  });
-
   it('MeetingTitleDateFormat composes into MeetingTitleFormat per locale', () => {
     expect(en.MeetingTitleDateFormat).toBe('d MMM, HH:mm');
     expect(es.MeetingTitleDateFormat).toBe('d MMM, HH:mm');

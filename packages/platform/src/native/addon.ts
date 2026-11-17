@@ -17,16 +17,6 @@ export interface NativeCaptureStats {
   discontinuities: number;
 }
 
-export interface NativeCalendarProbeResult {
-  hasIdentity: boolean;
-  packageFullName?: string | null;
-  status: string;
-  hresult?: string | null;
-  error?: string | null;
-  calendarCount?: number | null;
-  upcomingEventCount?: number | null;
-}
-
 export interface NativeProcessDetails {
   processId: number;
   parentProcessId: number;
@@ -70,7 +60,6 @@ export interface NativeAddon {
   } | null;
   windowsBuild(): number;
   openAudioDecoder(path: string): NativeAudioDecoder;
-  probeCalendarsAsync(): Promise<NativeCalendarProbeResult>;
   listTopLevelWindows(): Promise<{ processName: string; title: string }[]>;
   dpapiUnprotect(data: Uint8Array): Uint8Array;
   /** Puts the process in a Job Object that kills it when this process dies. Throws on failure. */
@@ -93,7 +82,6 @@ export function loadNativeAddon(addonPath: string, load: (path: string) => unkno
     typeof addon.getVersionDetails !== 'function' ||
     typeof addon.windowsBuild !== 'function' ||
     typeof addon.openAudioDecoder !== 'function' ||
-    typeof addon.probeCalendarsAsync !== 'function' ||
     typeof addon.listTopLevelWindows !== 'function' ||
     typeof addon.dpapiUnprotect !== 'function' ||
     typeof addon.assignToKillOnCloseJob !== 'function'

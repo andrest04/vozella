@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { LibraryFileCorruptError } from './errors';
 import {
   applySettingsPatch,
-  disabledCalendarIdsAsSet,
   parseSettingsJson,
   readSettings,
   resolveClaudeEffort,
@@ -47,9 +46,7 @@ describe('defaults', () => {
       liveTranscriptionEnabled: true,
       speakerDiarizationEnabled: false,
       typeSafeEnabled: true,
-      calendarNotificationsEnabled: true,
       meetingPopupEnabled: true,
-      disabledCalendarIds: [],
       uiLanguage: null,
       navigationPaneLength: null,
       liveCopilotPillX: null,
@@ -71,7 +68,6 @@ describe('defaults', () => {
   it('keeps true booleans true and false booleans false when the JSON omits them', () => {
     const read = readSettings({ uiLanguage: 'es' });
     expect(read.typeSafeEnabled).toBe(true);
-    expect(read.calendarNotificationsEnabled).toBe(true);
     expect(read.meetingPopupEnabled).toBe(true);
     expect(read.liveTranscriptionEnabled).toBe(true);
     expect(read.speakerDiarizationEnabled).toBe(false);
@@ -85,7 +81,6 @@ describe('defaults', () => {
             {},
             {
               typeSafeEnabled: false,
-              calendarNotificationsEnabled: false,
               meetingPopupEnabled: false,
             },
           ),
@@ -93,7 +88,6 @@ describe('defaults', () => {
       ),
     );
     expect(read.typeSafeEnabled).toBe(false);
-    expect(read.calendarNotificationsEnabled).toBe(false);
     expect(read.meetingPopupEnabled).toBe(false);
   });
 });
@@ -216,22 +210,6 @@ describe('resolvers', () => {
     expect(along(0.25)).toBe(0.25);
   });
 
-  it('disabled calendar ids drop blanks and compare ordinally', () => {
-    const set = disabledCalendarIdsAsSet({ ...defaults, disabledCalendarIds: ['a', ' ', '', 'A'] });
-    expect([...set]).toEqual(['a', 'A']);
-    expect(disabledCalendarIdsAsSet(defaults).size).toBe(0);
-  });
-
-  it('disabled calendar ids drop true duplicates and round-trip through a write', () => {
-    const set = disabledCalendarIdsAsSet({
-      ...defaults,
-      disabledCalendarIds: ['a', 'a', ' ', 'b'],
-    });
-    expect([...set]).toEqual(['a', 'b']);
-    const text = serializeSettings(applySettingsPatch({}, { disabledCalendarIds: ['x', 'y'] }));
-    expect(parseSettingsJson(text).settings.disabledCalendarIds).toEqual(['x', 'y']);
-  });
-
   it('pill dock round-trips through a write, and unset reads as Right and 0.5', () => {
     const text = serializeSettings(
       applySettingsPatch({}, { liveCopilotPillEdge: 'Top', liveCopilotPillAlong: 0.25 }),
@@ -279,7 +257,7 @@ describe('reading and writing', () => {
   it('writes every property in declaration order with CRLF', () => {
     const text = serializeSettings({});
     expect(text.split('\r\n')[1]).toBe('  "selectedSummaryModelId": null,');
-    expect(text).toContain('  "disabledCalendarIds": [],');
+    expect(text).toContain('  "meetingPopupEnabled": true,');
     expect(text.split('\r\n').at(-2)).toBe('  "liveCopilotPillAlong": null');
     expect(text).not.toContain('liveQuestions');
     expect(text).not.toContain('OpenAi');
@@ -347,15 +325,17 @@ describe('reading and writing', () => {
     expect(text.indexOf('futureThing')).toBeGreaterThan(text.indexOf('liveCopilotPillAlong'));
   });
 
-  it('cd-1: a file with calendar settings, no Xai and Jev flags survives load and rewrite unchanged', () => {
+  it('cd-1: a file with the dropped calendar settings, no Xai and Jev flags survives load and rewrite unchanged', () => {
     const text = serializeSettings(
       applySettingsPatch(
-        { futureThing: { a: 1 } },
+        {
+          futureThing: { a: 1 },
+          calendarNotificationsEnabled: false,
+          disabledCalendarIds: ['cal-1', 'cal-2'],
+        },
         {
           typeSafeEnabled: false,
-          calendarNotificationsEnabled: false,
           meetingPopupEnabled: false,
-          disabledCalendarIds: ['cal-1', 'cal-2'],
           selectedSummaryProvider: 'Codex',
           uiLanguage: 'en',
         },
@@ -363,9 +343,7 @@ describe('reading and writing', () => {
     );
     const { settings, raw } = parseSettingsJson(text);
     expect(settings.typeSafeEnabled).toBe(false);
-    expect(settings.calendarNotificationsEnabled).toBe(false);
     expect(settings.meetingPopupEnabled).toBe(false);
-    expect(settings.disabledCalendarIds).toEqual(['cal-1', 'cal-2']);
     expect(settings.selectedXaiModelId).toBeNull();
     expect(serializeSettings(raw)).toBe(text);
     expect(serializeSettings(applySettingsPatch(raw, { summaryLanguage: 'en' }))).toContain(

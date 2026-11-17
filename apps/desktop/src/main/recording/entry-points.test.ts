@@ -79,12 +79,12 @@ describe('recording entry points', () => {
 });
 
 describe('take-notes request (180)', () => {
-  it('starts a blank recording once, and an event id does not change that', async () => {
+  it('starts a blank recording once', async () => {
     const service = fakeService();
     const workspace = new Workspace();
     const entry = createRecordingEntryPoints(service as unknown as RecordingService, workspace);
     startTakeNotesRequests(workspace, entry, logger);
-    workspace.requestTakeNotes('event-1');
+    workspace.requestTakeNotes();
     await vi.waitFor(() => {
       expect(service.start).toHaveBeenCalledTimes(1);
     });
