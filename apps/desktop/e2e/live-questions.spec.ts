@@ -8,9 +8,9 @@ import { installEngine, launchApp, readyEnv, type LaunchedApp } from './launch';
 // its second phrase (VOZELLA_FAKE_ASR_QUESTION=1, 3 to 6 s of audio). The card shows on the Record
 // page; Answer asks it through the live ask against the fake summary provider (no real CLI, no
 // account); Dismiss puts it away and the same question said again does not bring it back.
-// Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/port/screens/recording.
+// Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/screenshots/recording.
 
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/recording');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/recording');
 const shots = process.env.VOZELLA_SCREENSHOTS === '1';
 const MODEL = 'Llama-3.2-1B-Instruct-Q4_K_M.gguf';
 const QUESTION = '¿Cuál es el tercer principio del manifiesto ágil?';

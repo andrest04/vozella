@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { matchRecordShortcut, type RecordShortcut } from '../../app/shortcuts';
 
 export type { RecordShortcut };
-/** Ctrl+R, Ctrl+P and Ctrl+Shift+D (spec 2.6); the chords live in app/shortcuts.ts. */
+/** Ctrl+R, Ctrl+P and Ctrl+Shift+D; the chords live in app/shortcuts.ts. */
 export const matchShortcut = matchRecordShortcut;
 
 export interface ShortcutAction {

@@ -3,10 +3,10 @@ import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { launchApp, openSettingsTab } from './launch';
 
-// Regenerates docs/port/screens/transcription/*.png. Opt in with VOZELLA_SCREENSHOTS=1.
+// Regenerates docs/screenshots/transcription/*.png. Opt in with VOZELLA_SCREENSHOTS=1.
 test.skip(process.env.VOZELLA_SCREENSHOTS !== '1', 'set VOZELLA_SCREENSHOTS=1 to capture');
 
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/transcription');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/transcription');
 const MEETING_ID = '0c6d1b8a-33a4-4f6e-9f7e-5a1d2c3b4e55';
 
 function silentWav(seconds: number): Buffer {

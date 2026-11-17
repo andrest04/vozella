@@ -7,7 +7,7 @@ import { buildDestinations, fromOptionValue, toOptionValue } from './destination
 /**
  * The top of the page: the title, where the take is saved, and whatever the page puts below
  * (sources, the setup panel). The title is editable while a take is processed and locked while it
- * records; the destination (a project, or no project) is locked while it records (spec 2.2). Before a take the title is the
+ * records; the destination (a project, or no project) is locked while it records. Before a take the title is the
  * page's heading, as on a blank document; while a take is processed they are two labeled fields.
  */
 export function RecordIdle({

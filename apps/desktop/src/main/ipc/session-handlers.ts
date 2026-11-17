@@ -16,9 +16,9 @@ export interface SessionHandlerDeps {
   readonly server: IpcServerDeps;
   readonly meetings: Pick<MeetingRepository, 'get' | 'save'>;
   readonly workspace: Pick<Workspace, 'notifyMeetingChanged'>;
-  /** The re-transcription runner state; a rename during a run for that meeting is blocked (B4). */
+  /** The re-transcription runner state; a rename during a run for that meeting is blocked. */
   readonly runnerState: () => RunnerStateLike;
-  /** True for a readable file with at least one byte (B20). */
+  /** True for a readable file with at least one byte. */
   readonly fileExists: (path: string) => boolean;
   readonly reveal: RevealPort;
 }

@@ -91,7 +91,7 @@ describe('analyzeWav', () => {
     });
   });
 
-  it('S10, known limit: a chunk after a zero-size data chunk is counted as audio', () => {
+  it('a chunk after a zero-size data chunk is counted as audio', () => {
     // Repair cannot tell where audio ends when the size is lost. The app writes no trailing
     // chunks; a foreign WAV with one is repaired as if the chunk were audio.
     const trailing = cat(ascii('LIST'), u32(4), ascii('abcd'));
@@ -140,7 +140,7 @@ describe('analyzeWav', () => {
     expect(analyzeWav(source(file)).status).toBe('Unsupported');
   });
 
-  it('repairs IEEE float and refuses a block align of 0 (item 153)', () => {
+  it('repairs IEEE float and refuses a block align of 0', () => {
     const body = audio(100);
     const float = plain(0, 0, body);
     new DataView(float.buffer).setUint16(20, 3, true); // IEEE float, align 2 from the helper
@@ -150,7 +150,7 @@ describe('analyzeWav', () => {
     expect(analyzeWav(source(noAlign)).status).toBe('Unsupported');
   });
 
-  it('does not call a data size of 0 broken when less than one frame follows (item 154)', () => {
+  it('does not call a data size of 0 broken when less than one frame follows', () => {
     const file = plain(36, 0, new Uint8Array(0));
     expect(analyzeWav(source(file)).status).toBe('Valid');
   });

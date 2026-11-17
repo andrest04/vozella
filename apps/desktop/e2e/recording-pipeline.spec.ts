@@ -8,9 +8,9 @@ import { installEngine, launchApp, readyEnv, type LaunchedApp } from './launch';
 // R12: the whole pipeline from Record to the saved summary in the real window on the fake native
 // build. The fake microphone plays a tone, the fake speech engine "hears" a fixed script and the
 // fake summary provider answers with a fixed reply, so nothing real is read and no account is used.
-// Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/port/screens/recording.
+// Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/screenshots/recording.
 
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/recording');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/recording');
 const shots = process.env.VOZELLA_SCREENSHOTS === '1';
 const MODEL = 'Llama-3.2-1B-Instruct-Q4_K_M.gguf';
 
@@ -375,7 +375,7 @@ test('a capture failure mid-take ends as a typed error and keeps the audio', asy
   const { launched, page } = await open({ VOZELLA_FAKE_CAPTURE_LOST_MS: '3000' });
   try {
     await record(page, 'Capture fail');
-    // The lost source is reported as a typed notice and the take waits for Stop (spec 3.9).
+    // The lost source is reported as a typed notice and the take waits for Stop.
     await expect(page.getByText(/Nothing is being captured/)).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId('BtnStop')).toBeEnabled();
     await page.getByTestId('BtnStop').click();

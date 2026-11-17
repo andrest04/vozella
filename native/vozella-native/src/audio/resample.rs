@@ -102,7 +102,7 @@ mod tests {
 
     #[test]
     fn averages_any_channel_count_to_mono() {
-        // C2 and C3: a 6 channel source must come out as one channel of the same level as
+        // A 6 channel source must come out as one channel of the same level as
         // the same tone on every channel, not as six interleaved ones.
         let mut six = Downsampler48to16::new(6);
         let mut mono = Downsampler48to16::new(1);

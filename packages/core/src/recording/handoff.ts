@@ -1,4 +1,4 @@
-/** How long the "Recording started" hint stays on the floating pill (spec 2.15). */
+/** How long the "Recording started" hint stays on the floating pill. */
 export const STARTED_HINT_DURATION_MS = 2500;
 
 export interface RecordingHandoffDecision {
@@ -8,7 +8,7 @@ export interface RecordingHandoffDecision {
 
 /**
  * The start handoff: only the false to true transition of `isRecording` minimizes the main window
- * and shows the hint. Pause, resume, import, discard and stop never do (182).
+ * and shows the hint. Pause, resume, import, discard and stop never do.
  */
 export function decideRecordingHandoff(
   wasRecording: boolean,

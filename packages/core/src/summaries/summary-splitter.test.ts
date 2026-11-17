@@ -88,7 +88,7 @@ describe('splitSummaryResponse', () => {
     expect(r.actionItems).toEqual([{ text: 'A', isDone: false }]);
   });
 
-  describe('B25 tolerance', () => {
+  describe('tolerance', () => {
     it('strips a wrapping code fence', () => {
       const r = splitSummaryResponse(
         '```markdown\n## Summary\nBody\n\n## Action Items\n- [ ] A\n```',
@@ -145,7 +145,7 @@ describe('parseActionItems', () => {
     expect(parseActionItems('prose\n- [] a\n- [ ]\n- [ ]   \n1. [ ] n')).toEqual([]);
   });
 
-  it('B26: accepts * and + bullets and flexible spacing', () => {
+  it('accepts * and + bullets and flexible spacing', () => {
     expect(parseActionItems('* [ ] a\n+ [x] b\n  -   [ ]   c\n-[ ] d')).toEqual([
       { text: 'a', isDone: false },
       { text: 'b', isDone: true },
@@ -154,7 +154,7 @@ describe('parseActionItems', () => {
     ]);
   });
 
-  it('B26: ignores numbered lists', () => {
+  it('ignores numbered lists', () => {
     expect(parseActionItems('1. [ ] a\n2) [x] b')).toEqual([]);
   });
 

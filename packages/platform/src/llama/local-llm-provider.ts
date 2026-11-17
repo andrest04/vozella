@@ -17,7 +17,7 @@ import {
 import { LlamaSidecarError, type ChatOptions } from './llama-sidecar';
 import type { LocalLlmHost, LocalLlmServer } from './local-llm-host';
 
-/** Every call uses this seed, so the same prompt gives the same answer (item 54). */
+/** Every call uses this seed, so the same prompt gives the same answer. */
 export const LOCAL_SEED = 1337;
 
 export interface LocalLlmProviderOptions {
@@ -40,7 +40,7 @@ interface Generation {
   readonly truncated: boolean;
 }
 
-/** `SummaryProvider` for the local engine, on top of a lazily loaded llama-server (spec 3.5). */
+/** `SummaryProvider` for the local engine, on top of a lazily loaded llama-server. */
 export class LocalLlmSummaryProvider implements SummaryProvider {
   readonly id = 'local' as const;
   private readonly fileExists: (path: string) => Promise<boolean>;
@@ -111,7 +111,7 @@ export class LocalLlmSummaryProvider implements SummaryProvider {
     return this.options.host.dispose();
   }
 
-  /** The missing-file check comes first, then the lazy single load (items 36 and 37). */
+  /** The missing-file check comes first, then the lazy single load. */
   private async ready(cancel: CancelSignal): Promise<LocalLlmServer> {
     if (cancel.cancelled) throw new CancelledError();
     const path = this.options.modelPath();
@@ -119,7 +119,7 @@ export class LocalLlmSummaryProvider implements SummaryProvider {
     return this.options.host.acquire(path, cancel);
   }
 
-  /** Token counts as the server sees them: BOS added, special tokens parsed (item 39). */
+  /** Token counts as the server sees them: BOS added, special tokens parsed. */
   private counter(server: LocalLlmServer, cancel: CancelSignal): TokenCounter {
     return {
       count: (text) => server.tokenize(text, cancel, { addSpecial: true, parseSpecial: true }),

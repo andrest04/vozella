@@ -173,7 +173,7 @@ describe('openWavFileDecoder', () => {
     expect(decodeAll(file('m.wav')).length).toBe(32_000);
   });
 
-  it('downmixes every channel of a 6 channel file (fixes C2)', () => {
+  it('downmixes every channel of a 6 channel file', () => {
     writeWav(file('six.wav'), { rate: 16_000, channels: 6, seconds: 1 });
     const out = decodeAll(file('six.wav'));
     expect(out.length).toBe(32_000);

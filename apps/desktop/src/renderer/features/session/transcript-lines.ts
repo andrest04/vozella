@@ -32,7 +32,7 @@ export function splitTranscript(text: string): string[] {
   return text.split(/\r\n|\n|\r/);
 }
 
-/** Non-whitespace test of the empty state (parity 68, 69). */
+/** Non-whitespace test of the empty state. */
 export function hasTranscriptContent(text: string | null | undefined): text is string {
   return text !== null && text !== undefined && text.trim().length > 0;
 }

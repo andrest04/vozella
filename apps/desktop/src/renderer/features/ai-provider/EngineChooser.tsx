@@ -5,7 +5,7 @@ import { ProviderMark } from './ProviderMark';
 import { API_KINDS, API_NAME_KEYS } from './api-engines';
 import type { WizardEngine } from './wizard-state';
 
-/** Rows in the order the spec fixes (item 127). Grok is not offered: owner decision 2026-11-03. */
+/** Rows in a fixed order. Grok is not offered: owner decision 2026-11-03. */
 const ENGINES = [
   { engine: 'ClaudeCode', name: 'Setup_ClaudeName.Text', hint: 'Setup_ClaudeHint.Text' },
   { engine: 'Codex', name: 'Setup_CodexName.Text', hint: 'Setup_CodexHint.Text' },

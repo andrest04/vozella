@@ -19,12 +19,12 @@ import { useElapsed } from './use-elapsed';
 import { useRecordShortcuts, type RecordShortcutHandlers } from './use-record-shortcuts';
 import { useTimedValue } from './use-timed-value';
 
-/** Spec 2.6: the highlight feedback clears after 2 s, the "Copied" bar after 2.5 s. */
+/** The highlight feedback clears after 2 s, the "Copied" bar after 2.5 s. */
 export const HIGHLIGHT_FEEDBACK_MS = 2000;
 export const COPIED_BAR_MS = 2500;
 
 /**
- * Copy of the canvas text with the "Copied" bar (item 70). One restartable timer; a failed copy
+ * Copy of the canvas text with the "Copied" bar. One restartable timer; a failed copy
  * shows nothing. Used by the recording bar and by the finished transcript's Copy button.
  */
 export function useCanvasCopy(text: string): { copied: boolean; copy: () => void } {
@@ -51,7 +51,7 @@ export interface RecordingSessionProps {
   readonly statusText: string;
   /** The placeholder of an empty canvas. */
   readonly emptyText: string;
-  /** The notes block, beside the canvas when there is room (spec 2.1). */
+  /** The notes block, beside the canvas when there is room. */
   readonly side: ReactNode;
   /** The typed question box under the canvas. */
   readonly dock?: ReactNode;
@@ -62,7 +62,7 @@ const countLines = (text: string): number =>
   text.split(/\r\n|\n|\r/).filter((l) => l.trim() !== '').length;
 
 /**
- * The recording bar and the live canvas with their commands (spec 2.6 and 2.7). Rendered while a
+ * The recording bar and the live canvas with their commands. Rendered while a
  * take records; the processing states have their own bar. Main owns the take: each command is a
  * request and the next state push is what the page draws.
  */

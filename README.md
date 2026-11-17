@@ -28,9 +28,7 @@ Every meeting, written down.
 
 ## State
 
-The app lives in `apps/desktop`, `packages/*` and `native/*`. Automated tests pass. It is not yet validated with real meetings, real accounts or the installer. The verified and pending items are in [`odd/tasks/electron-port.md`](odd/tasks/electron-port.md), under "Final state".
-
-It began as a port of an earlier WinUI 3 app named MeetingLive, which is no longer in this repo.
+The app lives in `apps/desktop`, `packages/*` and `native/*`. Automated tests pass. It is not yet validated with real meetings, real accounts or the installer.
 
 ## Where your data goes
 
@@ -40,8 +38,6 @@ It began as a port of an earlier WinUI 3 app named MeetingLive, which is no long
 | Summaries and chat | Go to the engine you choose. Local stays on this PC; Claude Code, Codex and API key engines send the text to the provider you set up. An OpenAI-compatible server running on this PC keeps it local. With Claude Code or Codex, live answers can also search the web. |
 | TypeSafe (optional) | Sends the transcript to TypeSafe. Off until you save a key. |
 | Meetings and recordings | Markdown files with their recordings in `Documents\Vozella`. |
-
-The earlier MeetingLive app used `Documents\MeetingLive`; Vozella detects that folder but does not share it by default.
 
 ## Build and run
 
@@ -83,18 +79,20 @@ Every push to `main` that touches the app builds the installer on GitHub Actions
 | `packages/platform/` | Node adapters for the ports, plus fakes |
 | `native/vozella-native/` | Rust addon: audio, calendar, DPAPI, sessions, windows |
 | `website/` | Landing page |
-| `docs/port/` | Electron port: stack, specs, parity ledgers, research, screenshots |
+| `docs/stack.md` | Stack and conventions |
+| `docs/design-system.md` | Design system |
+| `docs/design/projects.md` | Projects design |
 | `docs/brand/` | Logo files |
-| `docs/screenshots/` | README screenshots |
+| `docs/screenshots/` | README and e2e screenshots |
 | `scripts/` | Icon generation |
 | `odd/tasks/` | Feature task notes |
 | `.agents/`, `.claude/` | Coding agent skills and settings |
 
-The Electron stack and its conventions are in [`docs/port/stack.md`](docs/port/stack.md). Agent and contributor guidance is in [AGENTS.md](AGENTS.md).
+The Electron stack and its conventions are in [`docs/stack.md`](docs/stack.md). Agent and contributor guidance is in [AGENTS.md](AGENTS.md).
 
 ## Naming
 
-The product is Vozella and the app uses that name throughout. A few `MeetingLive` names remain on purpose: the legacy data folder Vozella detects, and the internal `https://meetinglive.local/meeting/` link scheme stored in chats and notes.
+The product is Vozella and the app uses that name throughout. The internal `https://meetinglive.local/meeting/` link scheme is stored in chats and notes and does not change.
 
 ## License
 

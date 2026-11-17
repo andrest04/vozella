@@ -2,7 +2,7 @@
   "name": "vozella-workspace",
   "version": "0.0.0",
   "private": true,
-  "description": "Vozella, Electron port. Workspace root: orchestration scripts only.",
+  "description": "Vozella, desktop app. Workspace root: orchestration scripts only.",
   "packageManager": "pnpm@12.16.1",
   "engines": {
     "node": ">=24"

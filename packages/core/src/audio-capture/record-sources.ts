@@ -12,7 +12,7 @@ import {
   type MicrophoneChoice,
 } from './source-picker';
 
-/** State behind the Record page "Sources" card (spec 2.1 and 2.4). Pure, no I/O. */
+/** State behind the Record page "Sources" card. Pure, no I/O. */
 
 export interface MicrophoneDevice {
   readonly id: string;
@@ -162,7 +162,7 @@ export class RecordSourcePicker {
     return true;
   }
 
-  /** Spec 2.4. A gone app falls back to all system audio with a message. */
+  /** A gone app falls back to all system audio with a message. */
   resolveRecordingTarget(processes: ProcessInfoProvider): number | null {
     const app = this.selected;
     if (!app) return null;

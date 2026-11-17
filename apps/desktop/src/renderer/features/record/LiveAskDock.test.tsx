@@ -73,7 +73,7 @@ describe('LiveAskDock', () => {
     expect(screen.getByRole('textbox', { name: 'Type a question' })).toHaveValue('');
   });
 
-  it('Ctrl+Enter here is handled here: nothing above the box (chat, page) sees it (item 139)', async () => {
+  it('Ctrl+Enter here is handled here: nothing above the box (chat, page) sees it', async () => {
     const seen: string[] = [];
     render(
       <Providers>

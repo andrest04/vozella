@@ -1,5 +1,5 @@
 /**
- * Picks the transcript parts a question is about when the whole transcript does not fit (T2).
+ * Picks the transcript parts a question is about when the whole transcript does not fit.
  * Pure: the transcript is cut into ~90 s windows, the windows are ranked with BM25 against the
  * question, and the best ones are returned in time order, followed by the recent tail.
  */

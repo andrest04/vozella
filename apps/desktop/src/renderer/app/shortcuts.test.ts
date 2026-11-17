@@ -17,7 +17,7 @@ const key = (init: Partial<KeyLike> & { key: string }): KeyLike => ({
   ...init,
 });
 
-describe('shortcut table (items 138, 139, _gaps section 3)', () => {
+describe('shortcut table', () => {
   it('lists every chord once, with its scope', () => {
     expect(
       Object.entries(SHORTCUTS).map(([id, s]) => [id, s.scope, chordLabel(id as never)]),
@@ -62,7 +62,7 @@ describe('shortcut table (items 138, 139, _gaps section 3)', () => {
   });
 });
 
-describe('composerIntent (item 123)', () => {
+describe('composerIntent', () => {
   const base = {
     key: 'Enter',
     shiftKey: false,

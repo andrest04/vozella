@@ -43,18 +43,18 @@ describe('isMeeting', () => {
     expect(isMeeting(proc, title)).toBe(false);
   });
 
-  // B8: C# matched the substring "Call", so a Teams "Calls" tab counted as a call.
-  it('B8: a Teams window titled Calls or Meetings is not a call', () => {
+  // The detector does not match the substring "Call", so a Teams "Calls" tab counted as a call.
+  it('a Teams window titled Calls or Meetings is not a call', () => {
     expect(isMeeting('ms-teams', 'Calls | Microsoft Teams')).toBe(false);
     expect(isMeeting('Teams', 'Meetings | Microsoft Teams')).toBe(false);
   });
 
-  it('B8: a Teams window with the word Call or Meeting still counts', () => {
+  it('a Teams window with the word Call or Meeting still counts', () => {
     expect(isMeeting('ms-teams', 'Call with Ana | Microsoft Teams')).toBe(true);
     expect(isMeeting('teams', 'Weekly MEETING | Microsoft Teams')).toBe(true);
   });
 
-  it('B8 kept: webex, slack, discord and skype are never detected', () => {
+  it('webex, slack, discord and skype are never detected', () => {
     for (const p of ['webex', 'slack', 'discord', 'skype']) {
       expect(isMeeting(p, 'Meeting call')).toBe(false);
     }

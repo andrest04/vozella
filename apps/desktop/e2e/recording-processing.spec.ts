@@ -6,9 +6,9 @@ import { installEngine, launchApp, readyEnv, type LaunchedApp } from './launch';
 
 // R11 in the real window on the fake native build: the processing bar and its Cancel, the quiet
 // Cancel summary after the hand-off, the retry action, the typed live ask with its answer card and
-// the app close dialogs. Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/port/screens/recording.
+// the app close dialogs. Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/screenshots/recording.
 
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/recording');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/recording');
 const shots = process.env.VOZELLA_SCREENSHOTS === '1';
 const MODEL = 'Llama-3.2-1B-Instruct-Q4_K_M.gguf';
 

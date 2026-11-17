@@ -12,16 +12,16 @@ export interface DownloadOptions {
   readonly cancel?: CancelSignal;
   /** Tests replace it; production uses the global `fetch`. */
   readonly fetch?: typeof fetch;
-  /** The size the finished file must have. A different size removes the file (B18). */
+  /** The size the finished file must have. A different size removes the file. */
   readonly expectedBytes?: number;
   /** Lowercase hex SHA-256 the finished file must have. A mismatch removes the file. */
   readonly sha256?: string;
   /**
-   * Keeps the `.part` file after a failure and continues it with a Range request next time (B5).
+   * Keeps the `.part` file after a failure and continues it with a Range request next time.
    * A cancel, a checksum mismatch or an HTTP error still removes it.
    */
   readonly resume?: boolean;
-  /** Aborts when no byte arrives for this long (B5). Off by default. */
+  /** Aborts when no byte arrives for this long. Off by default. */
   readonly stallTimeoutMs?: number;
 }
 

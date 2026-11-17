@@ -33,7 +33,7 @@ export interface ChatPromptMessage {
   readonly text: string | null | undefined;
 }
 
-/** English only, never localized (spec 3.4). */
+/** English only, never localized. */
 export function scopeLabel(kind: ChatScopeKind): string {
   switch (kind) {
     case 'AllMeetings':
@@ -62,7 +62,7 @@ const INSTRUCTIONS = [
 ];
 
 /**
- * B12 (prompt side): the prompt's own section headings. A line of user or prior-turn text that
+ * The prompt's own section headings. A line of user or prior-turn text that
  * begins (after optional spaces or tabs) with one of them gets a `> ` prefix, so the model cannot
  * be shown a forged `# Context` or `# User message` section. The fixed prompt lines stay verbatim.
  */
@@ -75,13 +75,13 @@ export function neutralizePromptSections(text: string): string {
     .join('\n');
 }
 
-/** T3: Meeting scope cites transcript moments; the renderer opens the transcript there. */
+/** Meeting scope cites transcript moments; the renderer opens the transcript there. */
 export const TIME_CITATION_RULE = `When a claim comes from a transcript line, cite that moment right after the claim as a Markdown link: [mm:ss](${MEETING_LINK_PREFIX}<Id>?t=<seconds>), where <seconds> is the start of the cited line in whole seconds (for example, [12:05](${MEETING_LINK_PREFIX}<Id>?t=725)).`;
 
-/** T3: several meetings; a citation may still point at a moment of one of them. */
+/** Several meetings; a citation may still point at a moment of one of them. */
 export const MULTI_MEETING_TIME_RULE = `When a claim comes from a transcript line of one meeting, you may add ?t=<seconds> (the start of the line in whole seconds) to that meeting's link.`;
 
-/** T3: a live recording has no Id yet, so its moments are written as plain text. */
+/** A live recording has no Id yet, so its moments are written as plain text. */
 export const LIVE_TIME_RULE =
   'When a claim comes from a line of the live transcript, give its time right after the claim as plain text (mm:ss), without a link.';
 
@@ -156,7 +156,7 @@ export interface PromptOptions {
   readonly priorTurns?: PriorTurnLimits;
 }
 
-/** The single string sent to the model (spec 3.4). No system/user split, no trailing newline. */
+/** The single string sent to the model. No system/user split, no trailing newline. */
 export function buildPrompt(
   scopeKind: ChatScopeKind,
   packedContext: string,

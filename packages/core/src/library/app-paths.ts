@@ -4,14 +4,14 @@ export interface PathJoiner {
 }
 
 export interface AppPathRoots {
-  /** Spec "app data root": settings, models, caches. */
+  /** The app data root: settings, models, caches. */
   readonly appData: string;
-  /** Spec "Library root": meetings, Inbox and the project directories. */
+  /** The Library root: meetings, Inbox and the project directories. */
   readonly library: string;
 }
 
 /**
- * Spec 3.1. The names of the files other modules own are fixed here. The roots themselves are
+ * The names of the files other modules own are fixed here. The roots themselves are
  * chosen by the data-root guard. The storage of projects lives under `.vozella` in the Library
  * root (see `createStorageLayout`).
  */

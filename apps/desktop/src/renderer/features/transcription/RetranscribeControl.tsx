@@ -7,7 +7,7 @@ import type { StringKey } from '../../i18n/translate';
 import { Button, Dialog, Notice, Progress } from '../../ui';
 import type { RetranscriptionModel } from './use-retranscription';
 
-/** The words for how a run ended (spec 2.5), or null when there is nothing to say. */
+/** The words for how a run ended, or null when there is nothing to say. */
 function resultMessage(
   result: RetranscriptionResultDto,
   t: (key: StringKey, ...args: (string | number)[]) => string,
@@ -36,9 +36,9 @@ function resultMessage(
 }
 
 /**
- * The Re-transcribe button of the session header (spec 2.7): drawn only when the meeting has saved
- * audio, enabled only when `canRetranscribe` says so, with a line that says why when it is greyed
- * (B16). A click asks again before the confirmation, and the confirmation names the meeting.
+ * The Re-transcribe button of the session header: drawn only when the meeting has saved
+ * audio, enabled only when `canRetranscribe` says so, with a line that says why when it is greyed.
+ * A click asks again before the confirmation, and the confirmation names the meeting.
  */
 export function RetranscribeButton({
   model,
@@ -83,7 +83,7 @@ export function RetranscribeButton({
         aria-label={t('SessionPage_Retranscribe.AutomationProperties.Name')}
         title={t('SessionPage_Retranscribe.ToolTipService.ToolTip')}
         onClick={() => {
-          // Item 96: the answer on screen may be old.
+          // the answer on screen may be old.
           void model.recheck().then((ok) => {
             if (ok) setConfirming(true);
           });
@@ -130,7 +130,7 @@ export function RetranscribeButton({
 }
 
 /**
- * The rows under the header (spec 2.8): progress with Cancel while this meeting is the one running,
+ * The rows under the header: progress with Cancel while this meeting is the one running,
  * and the bar that tells how the last run ended. Bars stay until dismissed or the next run starts.
  */
 export function RetranscribeStatus({ model }: { readonly model: RetranscriptionModel }) {

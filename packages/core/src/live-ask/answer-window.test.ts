@@ -96,7 +96,7 @@ describe('LiveAnswerWindow', () => {
     expect(takeRecentWindow('[zz] [1:2-3:4] nope')).toBe('[zz] [1:2-3:4] nope');
   });
 
-  // Bug 17: the C# output newline followed the input. The port always answers with \n.
+  // The output newline never follows the input: it is always \n.
   it('accepts CRLF, LF and lone CR in one input and always joins with LF', () => {
     const text = `${line(0, 10, 'a')}\r\n${line(10, 20, 'b')}\n${line(20, 30, 'c')}\r${line(30, 40, 'd')}`;
     expect(takeRecentWindow(text)).toBe(
@@ -113,7 +113,7 @@ describe('LiveAnswerWindow', () => {
     expect(takeRecentWindow('one\r\ntwo\rthree')).toBe('one\ntwo\nthree');
   });
 
-  // C# parity: the header test applies to every unstamped line, so these stay dropped.
+  // The header test applies to every unstamped line, so these stay dropped.
   it('an unstamped line that starts with Recorded or Ended stays dropped, even inside the span', () => {
     const text = [
       line(100, 150, 'a'),
@@ -148,7 +148,7 @@ describe('LiveAnswerWindow', () => {
     expect(parseCommittedLineEnd('[100:00.00-123:04.50] x')).toBe((123 * 60 + 4) * 1000 + 500);
   });
 
-  // Bug 16: the C# cut could leave half of a surrogate pair at the start.
+  // A cut could leave half of a surrogate pair at the start.
   it('the 2500 character fallback never starts inside a surrogate pair', () => {
     const text = `${'x'.repeat(10)}😀${'y'.repeat(2499)}`;
     expect(takeRecentWindow(text)).toBe('y'.repeat(2499));

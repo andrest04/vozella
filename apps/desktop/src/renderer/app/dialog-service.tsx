@@ -13,7 +13,7 @@ import { Button, Dialog } from '../ui';
 
 export interface ConfirmRequest {
   readonly title: string;
-  /** Text or any controls (item 135). */
+  /** Text or any controls. */
   readonly content?: ReactNode;
   readonly primaryText: string;
   readonly closeText: string;
@@ -62,7 +62,7 @@ export function useDialogs(): DialogService {
 }
 
 /**
- * The one construction point for content dialogs (spec 2.16, items 133 to 135). A window shows one
+ * The one construction point for content dialogs. A window shows one
  * dialog at a time; a second request waits its turn, so it never
  * throws and never stacks two modals.
  */

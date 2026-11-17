@@ -29,7 +29,7 @@ const withKeys = (label: string, id: keyof typeof SHORTCUTS) => (
 );
 
 /**
- * The row that stays put during a take (spec 2.6): the live dot, the elapsed time, what is being
+ * The row that stays put during a take: the live dot, the elapsed time, what is being
  * recorded, the level, and the five controls in tab order Stop, Pause, Highlight, Copy, Discard.
  * Presentational: the container owns the clock, the commands and the feedback timers.
  */

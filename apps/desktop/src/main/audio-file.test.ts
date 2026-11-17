@@ -4,7 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { hasAudioBytes } from './audio-file';
 
-describe('hasAudioBytes (B20)', () => {
+describe('hasAudioBytes', () => {
   it('is false for a missing or zero-byte file and true when the file has bytes', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vozella-audio-'));
     try {

@@ -151,7 +151,7 @@ describe('SummaryProviderResolver', () => {
     expect(t.localPaths).toEqual([]);
   });
 
-  it('B35: unknown, numeric or blank saved provider names resolve to Local', async () => {
+  it('unknown, numeric or blank saved provider names resolve to Local', async () => {
     const t = setup();
     for (const name of ['Grok', '7', '', 'claudecode', null]) {
       await t.settings.update({ selectedSummaryProvider: name });
@@ -208,7 +208,7 @@ describe('SummaryProviderFactory', () => {
     expect(a).not.toBe(b);
   });
 
-  it('B2: model and effort from a camelCase settings snapshot reach the CLI argv', async () => {
+  it('model and effort from a camelCase settings snapshot reach the CLI argv', async () => {
     const t = setup();
     await t.settings.update({
       selectedClaudeModelId: 'opus',

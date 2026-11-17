@@ -50,7 +50,7 @@ export type CliStatus = 'detected' | 'missing';
 export interface ProviderOptions {
   readonly model: string;
   readonly effort: string;
-  /** The list, plus the stored value when it is not on it (B13). */
+  /** The list, plus the stored value when it is not on it. */
   readonly modelOptions: readonly string[];
   readonly effortOptions: readonly string[];
 }
@@ -60,7 +60,7 @@ export interface ApiEngineOptions {
   readonly keySet: boolean;
   /** The saved model, else the default; empty when the engine has none. */
   readonly model: string;
-  /** Suggestions, plus the saved model when it is not on the list (B13). */
+  /** Suggestions, plus the saved model when it is not on the list. */
   readonly modelOptions: readonly string[];
   /** Readable names of the options the engine knows, by id. An id without one shows as itself. */
   readonly modelLabels: Readonly<Record<string, string>>;
@@ -119,7 +119,7 @@ export class SettingsPageService {
 
   /**
    * The local phase. Settings and the hardware are read together. A settings file that cannot be
-   * read rejects, so the page can say so (B18); a machine that cannot be read is only a missing
+   * read rejects, so the page can say so; a machine that cannot be read is only a missing
    * fit rating.
    */
   async load(): Promise<SettingsPageSnapshot> {
@@ -211,7 +211,7 @@ export class SettingsPageService {
     return Object.fromEntries(entries) as Record<CloudTranscriptionKind, boolean>;
   }
 
-  /** Looks for the program again, so installing it while Settings is open is noticed (B15). */
+  /** Looks for the program again, so installing it while Settings is open is noticed. */
   async detectCli(kind: SummaryProviderKind): Promise<CliStatus | null> {
     if (!isCliProvider(kind)) return null;
     return cliStatusOf(await this.isCliFound(kind));

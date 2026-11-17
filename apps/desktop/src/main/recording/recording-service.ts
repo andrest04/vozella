@@ -160,9 +160,9 @@ export interface RecordingServiceDeps {
 export interface StartRequest {
   readonly title: string;
   readonly projectId: string | null;
-  /** Null: the page never loaded the list, so the remembered choice is used (B-23). */
+  /** Null: the page never loaded the list, so the remembered choice is used. */
   readonly microphone: MicrophoneChoiceDto | null;
-  /** Undefined: restore the remembered app (B-23). Null: all system audio. */
+  /** Undefined: restore the remembered app. Null: all system audio. */
   readonly processId?: number | null;
   readonly appName: string | null;
 }
@@ -202,7 +202,7 @@ interface Take {
 }
 
 /**
- * The main-process owner of a take from Record to the saved summary (spec 2.5 to 2.10). It builds
+ * The main-process owner of a take from Record to the saved summary. It builds
  * on the session gate, the run host and the pipeline of the core, and on `RecordingTakes` for the
  * capture. The page draws the state it publishes and never holds the clock, the notes or the
  * highlights.
@@ -223,7 +223,7 @@ export class RecordingService {
   private offNotices: (() => void) | null = null;
   private previewToRestore: { owner: PreviewOwner; deviceId: string | null } | null = null;
   private retry: PipelineRequest | null = null;
-  /** The notes of the take whose first save failed: the release clears the live ones (B-11). */
+  /** The notes of the take whose first save failed: the release clears the live ones. */
   private retryNotes = '';
   /** The file and YouTube imports, on the same session gate as a take (one take at a time). */
   private readonly imports: ImportRun;
@@ -256,7 +256,7 @@ export class RecordingService {
           this.title = '';
         },
         onProcessingFinished: () => {
-          // B-10: the notes belong to the take that just ended. The run keeps its own snapshot.
+          // The notes belong to the take that just ended. The run keeps its own snapshot.
           this.notes = '';
           this.take = null;
           this.restorePreview();
@@ -322,7 +322,7 @@ export class RecordingService {
         this.onLiveFailure(reason);
       }) ?? (() => undefined),
       deps.controller.onRecordingLevel((level) => {
-        // B-15: no frames arrive while paused, so the bar must not freeze on the last value.
+        // No frames arrive while paused, so the bar must not freeze on the last value.
         this.micLevel = this.take?.pausedAtMs === null ? level : 0;
       }),
     );
@@ -341,7 +341,7 @@ export class RecordingService {
     return { ...this.buildState(), liveText: this.canvasText() };
   }
 
-  /** The setup checklist (spec 2.4), read from the same facts the Start gate uses. */
+  /** The setup checklist, read from the same facts the Start gate uses. */
   async getSetup(): Promise<RecordingSetupDto> {
     const { facts, readiness } = await evaluateSetup(this.deps.setup);
     return { ...buildSetupSnapshot(facts, readiness), provider: facts.provider };
@@ -468,7 +468,7 @@ export class RecordingService {
 
   // -- start ------------------------------------------------------------------------------------
 
-  /** Spec 2.5, steps 1 to 14. */
+  /** The start steps, in order. */
   async start(request: StartRequest, options: StartOptions = {}): Promise<StartResult> {
     const { deps } = this;
     if (!this.gate.tryBeginPreparing()) return { started: false, reason: 'busy', message: null };
@@ -479,7 +479,7 @@ export class RecordingService {
       const { readiness } = await evaluateSetup(deps.setup);
       if (!readiness.canRecord) return { started: false, reason: 'not-ready', message: null };
 
-      // 4 to 5. Sources: the page's choice, or the remembered one when it never loaded them (B-23).
+      // 4 to 5. Sources: the page's choice, or the remembered one when it never loaded them.
       const microphone =
         request.microphone ?? (await deps.controller.loadMicrophones(null)).selected;
       if (request.processId === undefined) {
@@ -488,7 +488,7 @@ export class RecordingService {
         await deps.controller.select(request.processId);
       }
 
-      // 6 to 8. A fresh take: nothing of the last one survives (B-10, B-26).
+      // 6 to 8. A fresh take: nothing of the last one survives.
       const settings = await deps.settings.load();
       const meetingId = options.meetingId ?? deps.newId();
       this.runs.beginTake({ meetingId: options.meetingId ?? null });
@@ -516,7 +516,7 @@ export class RecordingService {
         this.onCaptureEvent(notice);
       });
 
-      // 7, 9, 10. The WAV path, the live session and the capture, in the order of the C# app.
+      // 7, 9, 10. The WAV path, the live session and the capture, in order.
       const outcome = await deps.takes.start(title, microphone, {
         allocate: (name, atMs) =>
           allocateAudioPath({
@@ -564,7 +564,7 @@ export class RecordingService {
       return { started: true, meetingId, recordedAtMs: outcome.recordedAtMs };
     } catch (error) {
       // 13 to 14. Cleanup: events off, the half-started live session and the partial WAV were
-      // handled by the take (B-2, B-29). The meter comes back.
+      // handled by the take. The meter comes back.
       this.offNotices?.();
       this.offNotices = null;
       this.take = null;
@@ -650,7 +650,7 @@ export class RecordingService {
 
   // -- stop and discard --------------------------------------------------------------------------
 
-  /** Spec 2.10. User stop and capture failure share it; a second caller joins the first. */
+  /** User stop and capture failure share it; a second caller joins the first. */
   stop(): Promise<boolean> {
     if (this.stopping !== null) return this.stopping;
     if (!this.gate.tryBeginStopping()) return Promise.resolve(false);
@@ -740,7 +740,7 @@ export class RecordingService {
     notes = this.notes,
   ): Promise<void> {
     const outcome: PipelineOutcome = await run.start(this.deps.pipeline, request);
-    // B-11: a take whose first save failed can be processed again from the same audio.
+    // A take whose first save failed can be processed again from the same audio.
     this.retry = outcome.kind === 'first-save-failed' ? request : null;
     this.retryNotes = this.retry === null ? '' : notes;
     this.publish();
@@ -756,7 +756,7 @@ export class RecordingService {
     }
   }
 
-  /** Spec 2.6, steps 1 to 6. The page confirmed first. A linked meeting is never touched. */
+  /** The page confirmed first. A linked meeting is never touched. */
   async discard(): Promise<boolean> {
     const { deps } = this;
     if (!this.gate.tryBeginStopping()) return false;
@@ -820,7 +820,7 @@ export class RecordingService {
 
   // -- processing --------------------------------------------------------------------------------
 
-  /** The processing bar's Cancel. With a meeting id it stops the background summary (B-21). */
+  /** The processing bar's Cancel. With a meeting id it stops the background summary. */
   cancelProcessing(meetingId: string | null): boolean {
     if (meetingId === null && this.imports.cancel()) return true;
     if (meetingId !== null) return this.deps.pipeline.cancelBackgroundSummary(meetingId);
@@ -829,7 +829,7 @@ export class RecordingService {
 
   // -- import (2.12) ----------------------------------------------------------------------------
 
-  /** Spec 2.12: a picked audio file, through the same pipeline as a take (ImportRun). */
+  /** A picked audio file, through the same pipeline as a take (ImportRun). */
   importAudio(request: ImportRequest, options: StartOptions = {}): Promise<ImportResult> {
     return this.imports.importAudio(request, options);
   }
@@ -860,14 +860,14 @@ export class RecordingService {
     return { started: true, meetingId: id };
   }
 
-  /** Runs the pipeline again on the audio of a take whose first save failed (B-11). */
+  /** Runs the pipeline again on the audio of a take whose first save failed. */
   retryProcessing(): boolean {
     const request = this.retry;
     if (request === null || !this.gate.tryBeginPreparing()) return false;
     this.retry = null;
     this.runs.beginTake({ meetingId: request.meetingId });
     this.gate.markProcessing();
-    // B-11: the first run released the page and cleared its notes; restore them for the new run.
+    // The first run released the page and cleared its notes; restore them for the new run.
     this.notes = this.retryNotes;
     const run = this.runs.startRun({ meetingId: request.meetingId });
     void this.runPipeline(run, request, this.retryNotes);

@@ -5,7 +5,7 @@ import {
   ProcessLoopbackUnsupportedError,
 } from './ports';
 
-describe('assertProcessLoopbackSupported (C7)', () => {
+describe('assertProcessLoopbackSupported', () => {
   it('lets Windows 10 version 2004 and later through, and an unknown build', () => {
     expect(() => assertProcessLoopbackSupported(19_041)).not.toThrow();
     expect(() => assertProcessLoopbackSupported(19_045)).not.toThrow();

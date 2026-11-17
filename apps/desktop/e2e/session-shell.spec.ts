@@ -6,7 +6,7 @@ import { writeMeeting } from './library-data';
 
 // The session page shell (header, tabs, rename, copy, open location, empty state), in the real
 // app with fake native adapters and a seeded throwaway library. Screenshots go to
-// docs/port/screens/session-views and are rewritten only with VOZELLA_SCREENSHOTS=1.
+// docs/screenshots/session-views and are rewritten only with VOZELLA_SCREENSHOTS=1.
 
 test.describe.configure({ timeout: 150_000, mode: 'serial' });
 
@@ -200,7 +200,7 @@ test('a meeting that is deleted while open leaves the empty state', async () => 
 
 test.describe('screenshots', () => {
   test.skip(process.env.VOZELLA_SCREENSHOTS !== '1', 'set VOZELLA_SCREENSHOTS=1 to capture');
-  const outDir = path.resolve(__dirname, '../../../docs/port/screens/session-views');
+  const outDir = path.resolve(__dirname, '../../../docs/screenshots/session-views');
 
   const shot = async (name: string): Promise<void> => {
     await page.waitForTimeout(350);

@@ -78,7 +78,7 @@ describe('StreamingTranscriptAccumulator', () => {
     expect(acc.committedText).toBe(header + NL + line(0, 3.2, 'Hi'));
   });
 
-  it('has no clock skew: stamps are elapsed time only (B1)', () => {
+  it('has no clock skew: stamps are elapsed time only', () => {
     const acc = make();
     acc.apply(final('after break', 300, 330));
     expect(acc.committedText).toBe(header + NL + line(300, 330, 'after break'));
@@ -171,7 +171,7 @@ describe('StreamingTranscriptAccumulator', () => {
     expect(acc.displayText).toBe(expected);
   });
 
-  it('parity 25: a multi-line interim is committed line by line', () => {
+  it('a multi-line interim is committed line by line', () => {
     const acc = make();
     acc.apply(result(false, 'one two', 40, [word(0, 3, 1), word(3, 5, 2)]));
     const shown = acc.displayText.split(NL).slice(1);
@@ -180,14 +180,14 @@ describe('StreamingTranscriptAccumulator', () => {
     expect(acc.committedText.split(NL)).toEqual([header, ...shown]);
   });
 
-  it('parity 27: a no-word result never ends before the last committed end', () => {
+  it('a no-word result never ends before the last committed end', () => {
     const acc = make();
     acc.apply(final('first', 0, 5));
     acc.apply(result(true, 'late', 2, []));
     expect(acc.committedText).toBe([header, line(0, 5, 'first'), line(5, 5, 'late')].join(NL));
   });
 
-  it('parity 24: an interim alone shows without a header when the time is unknown', () => {
+  it('an interim alone shows without a header when the time is unknown', () => {
     const acc = make(null);
     acc.apply(interim('hello'));
     expect(acc.displayText).toBe('hello');
@@ -317,7 +317,7 @@ describe('StreamingTranscriptAccumulator', () => {
     expect(acc.committedText.split('\r\n')).toHaveLength(3);
   });
 
-  describe('B10: text without spaces (Japanese, Chinese)', () => {
+  describe('text without spaces (Japanese, Chinese)', () => {
     it('still splits at speaker changes using the engine word texts', () => {
       const acc = make();
       const words = [word(0, 1, 1, 'こん'), word(1, 2, 1, 'にちは'), word(2, 3, 2, '世界')];
@@ -328,7 +328,7 @@ describe('StreamingTranscriptAccumulator', () => {
     });
   });
 
-  describe('B18: committing a bare interim', () => {
+  describe('committing a bare interim', () => {
     it('stamps a bare interim line instead of leaving it unstamped', () => {
       const acc = make();
       acc.apply(final('first', 0, 2));

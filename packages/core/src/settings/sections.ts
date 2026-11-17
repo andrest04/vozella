@@ -39,15 +39,15 @@ export interface SettingsSection {
   readonly tab: SettingsTabId;
   /** Catalog key of the heading, or null when the block is a single row with its own header. */
   readonly headingKey: string | null;
-  /** The module spec that owns the content and the fields it writes. */
+  /** The module that owns the content and the fields it writes. */
   readonly owner: string;
   /** `built`: the services behind it exist. `slot`: waiting for its module. */
   readonly status: 'built' | 'slot';
 }
 
 export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
-  // The meeting lifecycle (owner decision 2026-11-05, not the WinUI order): what is captured, what is
-  // made of it, then the app itself. The theme is a shell setting with no WinUI equivalent.
+  // The meeting lifecycle (owner decision 2026-11-05): what is captured, what is
+  // made of it, then the app itself. The theme is a shell setting of its own.
   {
     id: 'microphone',
     tab: 'recording',
@@ -121,7 +121,7 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
 ];
 
 /**
- * Catalog keys the Settings page uses that have no WinUI equivalent, so the page names them from
+ * Catalog keys the Settings page uses that are not part of the base catalog, so the page names them from
  * one place. All are in `locales/ui.{en,es}.json`.
  */
 export const SETTINGS_MESSAGE_KEYS = {
@@ -139,7 +139,7 @@ export const SETTINGS_MESSAGE_KEYS = {
   xaiRetry: 'Ui_XaiRetry',
   providerXaiRemoved: 'Ui_SummaryProviderXaiRemoved',
   tabsLabel: 'Ui_SettingsTabsLabel',
-  /** Accessible names the WinUI page wrote in English only (B16). The owning modules use them. */
+  /** Accessible names written in English only. The owning modules use them. */
   micLevelName: 'Ui_MicLevelName',
   engineDownloadProgressName: 'Ui_EngineDownloadProgressName',
   speakerDownloadProgressName: 'Ui_SpeakerDownloadProgressName',

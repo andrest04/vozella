@@ -293,7 +293,7 @@ describe('settings', () => {
     expect((await settings.load()).speakerDiarizationEnabled).toBe(true);
   });
 
-  it('B7: a failed model download leaves the labels off and says why', async () => {
+  it('a failed model download leaves the labels off and says why', async () => {
     const { controller, settings, models } = setup();
     models.download = () => Promise.reject(new Error('HTTP 503'));
     expect(await controller.setSpeakerLabels(true)).toEqual({
@@ -303,7 +303,7 @@ describe('settings', () => {
     expect((await settings.load()).speakerDiarizationEnabled).toBe(false);
   });
 
-  it('B7: deleting the speaker model turns the labels off', async () => {
+  it('deleting the speaker model turns the labels off', async () => {
     const { controller, settings, models } = setup();
     await controller.setSpeakerLabels(true);
     expect(await controller.deleteSpeakerModel()).toEqual({ status: 'deleted' });
@@ -311,7 +311,7 @@ describe('settings', () => {
     expect((await settings.load()).speakerDiarizationEnabled).toBe(false);
   });
 
-  it('B7: deleting the engine also turns the speaker labels off', async () => {
+  it('deleting the engine also turns the speaker labels off', async () => {
     const { controller, settings, models } = setup();
     await controller.setSpeakerLabels(true);
     expect(await controller.deleteEngine()).toBe('Deleted');
@@ -319,7 +319,7 @@ describe('settings', () => {
     expect((await settings.load()).speakerDiarizationEnabled).toBe(false);
   });
 
-  it('B17: a speaker model download is not mistaken for an engine install', async () => {
+  it('a speaker model download is not mistaken for an engine install', async () => {
     const { controller, models, runtimes } = setup({ ready: false });
     let finish: () => void = () => undefined;
     models.download = (file) => {
@@ -341,7 +341,7 @@ describe('settings', () => {
     expect(runtimes.ready.size).toBeGreaterThan(0);
   });
 
-  it('B22: a locked speaker model is a message, not a crash', async () => {
+  it('a locked speaker model is a message, not a crash', async () => {
     const { controller, models } = setup();
     models.deleteDiarError = new Error('EBUSY: resource busy or locked');
     expect(await controller.deleteSpeakerModel()).toEqual({
@@ -380,7 +380,7 @@ describe('live pass', () => {
     expect(push?.sampleRate).toBe(16_000);
   });
 
-  it('item 19: if stopping fails, the text on screen is the draft', async () => {
+  it('if stopping fails, the text on screen is the draft', async () => {
     const { controller, engine, frameListeners, runtime } = setup();
     engine.script = { afterPush: [[final('en pantalla', 1)]] };
     await controller.startLive(null);
@@ -390,7 +390,7 @@ describe('live pass', () => {
     expect(await controller.stopLive()).toBe('[00:00.00-00:01.00] en pantalla');
   });
 
-  it('item 19: a blank on-screen text becomes null when stopping fails', async () => {
+  it('a blank on-screen text becomes null when stopping fails', async () => {
     const { controller, engine, frameListeners, runtime } = setup();
     engine.script = { afterPush: [[final('   ', 1)]] };
     await controller.startLive(null);
@@ -425,7 +425,7 @@ describe('offline pass', () => {
     expect(progress.at(-1)).toBe(100);
   });
 
-  it('107: the offline pass asks for the speaker model only when the setting is on', async () => {
+  it('the offline pass asks for the speaker model only when the setting is on', async () => {
     const run = async (enabled: boolean) => {
       const { controller, engine, settings, models } = setup();
       models.diarization = true;
@@ -501,7 +501,7 @@ describe('re-transcription', () => {
   const finishedWith = (events: { channel: string; payload: unknown }[]) =>
     events.find((e) => e.channel === 'retranscription.finished')?.payload;
 
-  it('S15: a plugged summary stage makes the run Completed and tells the workspace', async () => {
+  it('a plugged summary stage makes the run Completed and tells the workspace', async () => {
     const summarize = vi.fn<SummarizeHook>(() => Promise.resolve({ status: 'completed' as const }));
     const { controller, engine, meetings, events, changed } = setup({ summarize });
     await meetings.save(record());
@@ -516,7 +516,7 @@ describe('re-transcription', () => {
     expect(changed).toEqual(['m1', 'm1']);
   });
 
-  it('113: a blank summary provider ends as TranscriptOnly without calling summarize', async () => {
+  it('a blank summary provider ends as TranscriptOnly without calling summarize', async () => {
     const summarize = vi.fn<SummarizeHook>(() => Promise.resolve({ status: 'completed' as const }));
     const { controller, engine, meetings, events } = setup({ summarize, provider: null });
     await meetings.save(record());
@@ -533,7 +533,7 @@ describe('re-transcription', () => {
     });
   });
 
-  it('121: a throwing summary stage keeps the new transcript and ends as SummaryFailed', async () => {
+  it('a throwing summary stage keeps the new transcript and ends as SummaryFailed', async () => {
     const summarize = vi.fn<SummarizeHook>(() => Promise.reject(new Error('boom')));
     const { controller, engine, meetings, events } = setup({ summarize });
     await meetings.save(record());
@@ -550,7 +550,7 @@ describe('re-transcription', () => {
     expect((await meetings.get('m1'))?.transcript).toContain('nuevo texto');
   });
 
-  it('keeps the calendar, brief, jev, notes and plan fields on disk across a run (bug 3, 103, 118)', async () => {
+  it('keeps the calendar, brief, jev, notes and plan fields on disk across a run', async () => {
     const kept = {
       calendarEventId: 'ev1',
       calendarId: 'cal1',
@@ -572,7 +572,7 @@ describe('re-transcription', () => {
     expect(await meetings.get('m1')).toMatchObject(kept);
   });
 
-  it('S15: a failed summary stage keeps the new transcript and ends as SummaryFailed', async () => {
+  it('a failed summary stage keeps the new transcript and ends as SummaryFailed', async () => {
     const summarize = vi.fn<SummarizeHook>(() =>
       Promise.resolve({ status: 'failed' as const, message: 'not signed in' }),
     );
@@ -591,7 +591,7 @@ describe('re-transcription', () => {
     expect((await meetings.get('m1'))?.transcript).toContain('nuevo texto');
   });
 
-  it('S15: no summary stage runs when the transcript was not replaced', async () => {
+  it('no summary stage runs when the transcript was not replaced', async () => {
     const summarize = vi.fn<SummarizeHook>(() => Promise.resolve({ status: 'completed' as const }));
     const { controller, engine, meetings, events } = setup({ summarize });
     await meetings.save(record());
@@ -603,7 +603,7 @@ describe('re-transcription', () => {
     expect(summarize).not.toHaveBeenCalled();
   });
 
-  it('B8: the old stars survive the new transcript', async () => {
+  it('the old stars survive the new transcript', async () => {
     const { controller, engine, meetings, events } = setup();
     await meetings.save(record({ transcript: '[00:00.00-00:01.00] a\n* [00:00.00-00:01.00] b' }));
     engine.script = { afterPush: [[final('x', 1)]] };
@@ -659,7 +659,7 @@ describe('re-transcription', () => {
     expect(payload.message).toContain('Transcription failed: boom');
   });
 
-  it('108: a re-transcription run shows whole-number percent status text', async () => {
+  it('a re-transcription run shows whole-number percent status text', async () => {
     const { controller, engine, meetings, events } = setup();
     await meetings.save(record());
     engine.script = { afterPush: [[final('nuevo', 1)]] };
@@ -676,7 +676,7 @@ describe('re-transcription', () => {
     expect(statuses.at(-1)).toBe(t('Status_TranscribingPercent', 100));
   });
 
-  it('113: an unsatisfied provider gate (skipped) ends as TranscriptOnly', async () => {
+  it('an unsatisfied provider gate (skipped) ends as TranscriptOnly', async () => {
     const summarize = vi.fn<SummarizeHook>(() => Promise.resolve({ status: 'skipped' as const }));
     const { controller, engine, meetings, events } = setup({ summarize });
     await meetings.save(record());
@@ -693,7 +693,7 @@ describe('re-transcription', () => {
     expect((await meetings.get('m1'))?.transcript).toContain('nuevo texto');
   });
 
-  it('120: cancelling during the summary stage keeps the new transcript and writes no summary', async () => {
+  it('cancelling during the summary stage keeps the new transcript and writes no summary', async () => {
     let controllerRef: { cancelRetranscription(): void } | null = null;
     const summarize = vi.fn<SummarizeHook>(() => {
       controllerRef?.cancelRetranscription();
@@ -713,7 +713,7 @@ describe('re-transcription', () => {
     expect(saved?.summary).toBe('kept summary');
   });
 
-  it('121: an error before the transcript is saved is wrapped as Error_ProcessRecording', async () => {
+  it('an error before the transcript is saved is wrapped as Error_ProcessRecording', async () => {
     const { controller, engine, meetings, events } = setup();
     await meetings.save(record());
     engine.script = { afterPush: [[final('nuevo texto', 1)]] };
@@ -729,7 +729,7 @@ describe('re-transcription', () => {
     });
   });
 
-  it('bug 4: the transcript is written inside the per-meeting queue', async () => {
+  it('the transcript is written inside the per-meeting queue', async () => {
     const keys: string[] = [];
     const queue = {
       run: <T>(key: string, task: () => Promise<T>): Promise<T> => {
@@ -747,7 +747,7 @@ describe('re-transcription', () => {
     expect(keys).toEqual(['m1']);
   });
 
-  it('129: progress queued before the end still arrives before the idle state and Finished', async () => {
+  it('progress queued before the end still arrives before the idle state and Finished', async () => {
     const queued: (() => void)[] = [];
     const { controller, engine, meetings, events } = setup({
       defer: (task) => {
@@ -827,7 +827,7 @@ describe('re-transcription', () => {
     });
   });
 
-  it('parity 91: a take in progress makes availability Busy and start refuses', async () => {
+  it('a take in progress makes availability Busy and start refuses', async () => {
     let capturing = true;
     const { controller, meetings } = setup({ captureActive: () => capturing });
     await meetings.save(record());
@@ -840,7 +840,7 @@ describe('re-transcription', () => {
     expect(await controller.retranscriptionAvailability('m1')).toBe('Available');
   });
 
-  it('B7: a run that ended while nobody watched is still in the snapshot until dismissed', async () => {
+  it('a run that ended while nobody watched is still in the snapshot until dismissed', async () => {
     const { controller, engine, meetings, events } = setup();
     await meetings.save(record());
     engine.script = { afterPush: [[final('nuevo texto', 1)]] };
@@ -855,7 +855,7 @@ describe('re-transcription', () => {
     expect(controller.retranscriptionSnapshot().lastResults).toEqual([]);
   });
 
-  it('B17: every runner event goes through the one broadcast, state before finished', async () => {
+  it('every runner event goes through the one broadcast, state before finished', async () => {
     const { controller, engine, meetings, events } = setup();
     await meetings.save(record());
     engine.script = { afterPush: [[final('nuevo texto', 1)]] };

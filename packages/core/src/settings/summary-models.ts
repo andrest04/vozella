@@ -1,9 +1,9 @@
-/** What the machine can run. From the hardware probe (spec contract `HardwareProfile`). */
+/** What the machine can run. From the hardware probe (`HardwareProfile`). */
 export interface HardwareProfile {
   readonly totalRamGb: number;
   readonly gpuName: string | null;
   readonly gpuVramGb: number | null;
-  /** False when the GPU query failed, so "no GPU" is a guess and must not be kept (B17). */
+  /** False when the GPU query failed, so "no GPU" is a guess and must not be kept. */
   readonly gpuReadComplete?: boolean;
 }
 
@@ -18,7 +18,7 @@ export interface SummaryModelInfo {
   /** Pinned to a repository commit (`/resolve/<sha>/`), so the bytes behind the hash cannot move. */
   readonly downloadUrl: string;
   readonly fileSizeGb: number;
-  /** The exact size the host reports. "Downloaded" means the file has it (B18). */
+  /** The exact size the host reports. "Downloaded" means the file has it. */
   readonly sizeBytes: number;
   /**
    * Lowercase hex SHA-256 of the file, checked after the download. Every catalog entry pins one;
@@ -38,7 +38,7 @@ export interface SummaryModelInfo {
    * deleted, and is never offered for download or recommended.
    */
   readonly legacy?: boolean;
-  /** Catalog keys. The text is looked up when it is drawn, so a language change relabels them (B9). */
+  /** Catalog keys. The text is looked up when it is drawn, so a language change relabels them. */
   readonly speedKey: string;
   readonly qualityKey: string;
   readonly useCaseKey: string;
@@ -48,7 +48,7 @@ const hf = (repo: string, commit: string, file: string): string =>
   `https://huggingface.co/${repo}/resolve/${commit}/${file}`;
 
 /**
- * Curated Q4_K_M GGUF models (spec 2.4), ascending by minimum RAM, lighter quality first within
+ * Curated Q4_K_M GGUF models, ascending by minimum RAM, lighter quality first within
  * the same RAM. Sizes and hashes verified against the Hugging Face tree API on 2026-11-06.
  */
 export const SUMMARY_MODELS: readonly SummaryModelInfo[] = [
@@ -233,12 +233,12 @@ const hasDedicatedGpu = (hardware: HardwareProfile): boolean =>
 export interface RateOptions {
   /**
    * Whether the llama runtime in use can offload to the GPU. When false (the CPU build) the VRAM
-   * cannot stand in for RAM (B17). Defaults to true, the behavior before the runtime choice existed.
+   * cannot stand in for RAM. Defaults to true, the behavior before the runtime choice existed.
    */
   readonly gpuOffload?: boolean;
 }
 
-/** Spec 2.4: enough RAM, or a usable GPU holding half of it; else slow from 75 % of the RAM. */
+/** Enough RAM, or a usable GPU holding half of it; else slow from 75 % of the RAM. */
 export function rateFor(
   model: SummaryModelInfo,
   hardware: HardwareProfile,
@@ -271,7 +271,7 @@ export function recommendedFor(
 
 /**
  * The rating is hardware fit, not a pick: every model can fit a large PC. The labels say so in
- * plain words (settings polish 2026-11-05); the WinUI `Fit_` strings read as recommendations.
+ * plain words (settings polish 2026-11-05); they do not read as recommendations.
  */
 export const FIT_LABEL_KEYS: Readonly<Record<FitRating, string>> = {
   Recommended: 'Ui_FitRunsWell',

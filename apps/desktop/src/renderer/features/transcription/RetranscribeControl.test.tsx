@@ -48,7 +48,7 @@ describe('Re-transcribe in the session header', () => {
   it.each([
     ['recording.state', { phase: 'Idle' }],
     ['summaries.progress', { meetingId: 'm1', running: false }],
-  ])('enables again when %s says the busy work ended (B16)', async (event, payload) => {
+  ])('enables again when %s says the busy work ended', async (event, payload) => {
     let answer = 'Busy';
     const api = installTranscriptionApi({
       'retranscription.availability': () => ({ availability: answer }),
@@ -63,7 +63,7 @@ describe('Re-transcribe in the session header', () => {
     });
   });
 
-  it('is not drawn when the meeting has no saved audio (item 89)', async () => {
+  it('is not drawn when the meeting has no saved audio', async () => {
     installTranscriptionApi(available);
     mount({ hasAudio: false });
     await waitFor(() => {
@@ -167,7 +167,7 @@ describe('Re-transcribe in the session header', () => {
     });
   });
 
-  it('is disabled with the reason when another run or a recording is busy (90, 91, B16)', async () => {
+  it('is disabled with the reason when another run or a recording is busy', async () => {
     installTranscriptionApi({
       'retranscription.availability': () => ({ availability: 'Busy' }),
       'retranscription.getState': () => idle,
@@ -298,7 +298,7 @@ describe('progress and outcome rows', () => {
     expect(api.calls.filter((c) => c.name === 'retranscription.dismiss').length).toBeGreaterThan(0);
   });
 
-  it('shows the result kept from a run that ended while the page was elsewhere (B7)', async () => {
+  it('shows the result kept from a run that ended while the page was elsewhere', async () => {
     const api = installTranscriptionApi({
       ...available,
       'retranscription.getState': () => ({

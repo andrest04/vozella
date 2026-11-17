@@ -150,7 +150,7 @@ describe('settings handlers', () => {
     expect(again.value).toEqual({ status: 'ignored', reason: 'unchanged' });
   });
 
-  it('B11: a language that is not saved does not switch anything', async () => {
+  it('a language that is not saved does not switch anything', async () => {
     const t = await setup();
     const bad = await t.call('settings.setUiLanguage', { tag: 'fr' });
     expect(bad.value).toEqual({ status: 'ignored', reason: 'invalid' });
@@ -164,7 +164,7 @@ describe('settings handlers', () => {
     expect(t.events).toEqual([]);
   });
 
-  it('item 23: the startup language is the saved one, the OS one, or English', async () => {
+  it('the startup language is the saved one, the OS one, or English', async () => {
     const saved = await setup({ os: ['en-US'] });
     await saved.call('settings.setUiLanguage', { tag: 'es' });
     const load = () => saved.store.load();
@@ -262,7 +262,7 @@ describe('settings handlers', () => {
     ).toBeNull();
   });
 
-  it('B5: a failed download comes back as a value and an event', async () => {
+  it('a failed download comes back as a value and an event', async () => {
     const models = new FakeLocalModelStore();
     models.failWith = new Error('HTTP 503');
     const t = await setup({ models });

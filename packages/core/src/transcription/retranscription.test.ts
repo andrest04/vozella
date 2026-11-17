@@ -91,7 +91,7 @@ describe('retranscription request', () => {
   it('CreateRequest_MissingEndedAt_KeepsItUnknown', () => {
     expect(createRetranscriptionRequest(record({ endedAt: null }), null).endedAt).toBeNull();
   });
-  it('B8: the starred lines of the old transcript come back as highlights', () => {
+  it('the starred lines of the old transcript come back as highlights', () => {
     expect(createRetranscriptionRequest(record(), null).highlightsMs).toEqual([5000]);
     expect(createRetranscriptionRequest(record({ transcript: null }), null).highlightsMs).toEqual(
       [],
@@ -305,7 +305,7 @@ describe('MeetingRetranscriptionRunner last result and cancel precedence', () =>
     return { runner, events };
   };
 
-  it('B7: keeps the last result per meeting until the next run or a dismiss', async () => {
+  it('keeps the last result per meeting until the next run or a dismiss', async () => {
     let fail = true;
     const { runner } = make((cb) => {
       if (fail) cb.onFinished('boom');
@@ -328,7 +328,7 @@ describe('MeetingRetranscriptionRunner last result and cancel precedence', () =>
     expect(runner.lastResults.map((r) => r.meetingId)).toEqual(['other']);
   });
 
-  it('B7: the old result is cleared as soon as the next run starts', async () => {
+  it('the old result is cleared as soon as the next run starts', async () => {
     let first = true;
     const { runner } = make((cb) => {
       if (first) cb.onFinished('first');
@@ -343,7 +343,7 @@ describe('MeetingRetranscriptionRunner last result and cancel precedence', () =>
     expect(seen[0]).toBe(0);
   });
 
-  it('B18: a failure recorded before the cancel stays a failure', async () => {
+  it('a failure recorded before the cancel stays a failure', async () => {
     const { runner } = make((cb, r) => {
       cb.onFinished('real failure');
       r.cancel();
@@ -354,7 +354,7 @@ describe('MeetingRetranscriptionRunner last result and cancel precedence', () =>
     expect(results[0]).toMatchObject({ outcome: 'Failed', message: 'real failure' });
   });
 
-  it('B18: a failure reported after the cancel is ignored (parity 130 to 132)', async () => {
+  it('a failure reported after the cancel is ignored', async () => {
     const { runner } = make((cb, r) => {
       r.cancel();
       cb.onFinished('late failure');
@@ -376,7 +376,7 @@ describe('MeetingRetranscriptionRunner last result and cancel precedence', () =>
     expect(results[0]).toMatchObject({ outcome: 'SummaryFailed' });
   });
 
-  it('B17: the state change to idle is raised before finished', async () => {
+  it('the state change to idle is raised before finished', async () => {
     const { runner, events } = make(() => undefined);
     await runner.start(record());
     expect(events).toEqual(['state:running', 'state:idle', 'finished:TranscriptOnly']);

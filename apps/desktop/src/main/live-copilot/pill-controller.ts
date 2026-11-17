@@ -33,17 +33,17 @@ import type { PillMoveEvent, PillWindowPort } from '../windows/pill-window';
 /**
  * Decision (DIP versus physical): Electron window bounds, `screen` work areas and display bounds
  * are all device independent, and the OS converts to physical pixels per monitor. The geometry of
- * the WinUI window ran in physical pixels with a fresh scale; here every rectangle stays in DIP
+ * a window sized in physical pixels would need a fresh scale; here every rectangle stays in DIP
  * and the core geometry runs with scale 1. The sizes are the DIP constants (64, 240, 272, 16, 8)
  * and nothing is converted twice. At a fractional scale the OS rounds the final position to a
- * physical pixel once, which is the one rounding the WinUI app also did.
+ * physical pixel once, which is the only rounding.
  */
 const SCALE = 1;
 
 /**
  * Transparent margin around the capsule inside the window, in DIP (the gutter the window spike
  * proved, so a shadow is not clipped). Decision on hit testing: the gutter is part of the window
- * and takes input like the rest of it. The pill is not click-through anywhere (spec section 5),
+ * and takes input like the rest of it. The pill is not click-through anywhere (see the window options),
  * so a stray click next to the capsule lands on the pill and not on the app underneath, and
  * `setIgnoreMouseEvents` is never used.
  */
@@ -144,7 +144,7 @@ export class PillController {
   private window: PillWindowPort | null = null;
   private unsubscribeScreen: (() => void) | null = null;
 
-  // The rule inputs (spec 2.1). `mainWindowActive` starts true.
+  // The rule inputs. `mainWindowActive` starts true.
   private isRecording = false;
   private mainWindowActive = true;
   private handingOff = false;
@@ -221,7 +221,7 @@ export class PillController {
       this.expanded = expanded;
       return this.state;
     }
-    // A press during the entrance, exit, snap or drag is ignored like the drag is (bug 18).
+    // A press during the entrance, exit, snap or drag is ignored like the drag is.
     if (this.phase !== 'idle') return this.state;
     this.expanded = expanded;
     this.dock();
@@ -281,7 +281,7 @@ export class PillController {
     } finally {
       this.handingOff = false;
     }
-    // Bug 14: without a minimize nothing would re-evaluate, and the pill would sit over the
+    // Without a minimize nothing would re-evaluate, and the pill would sit over the
     // active main window. Ask again now that the handoff is over.
     if (!minimized) this.update();
   }
@@ -289,7 +289,7 @@ export class PillController {
   private update(): void {
     const show = shouldShowRecordingPill(this.isRecording, this.mainWindowActive, this.handingOff);
     this.setVisible(show, !this.isRecording).catch((error: unknown) => {
-      // Bug 13: the call is fire-and-forget, so nothing else would ever see the failure.
+      // The call is fire-and-forget, so nothing else would ever see the failure.
       this.deps.logger.warn('pill visibility failed', { error: errorText(error) });
     });
   }
@@ -416,7 +416,7 @@ export class PillController {
   }
 
   /**
-   * Where the slide starts and ends: the docked rectangle pushed past its edge. Bug 11: when that
+   * Where the slide starts and ends: the docked rectangle pushed past its edge. When that
    * would land on a neighbouring monitor, the slide stops at the edge of this display and the
    * fade does the rest.
    */
@@ -467,7 +467,7 @@ export class PillController {
   /**
    * Instant dock (also the recovery path): fresh work area, one `setBounds` with the full size.
    * The first time, the window is moved to the work-area origin first, while hidden, so the
-   * display scale in force is the target monitor's (spec 2.4).
+   * display scale in force is the target monitor's.
    */
   private dock(): Rect {
     const win = this.ensureWindow();
@@ -594,7 +594,7 @@ export class PillController {
   private onWillMove(event: PillMoveEvent): void {
     const win = this.live();
     if (!win) return;
-    // Presses during the entrance, the exit and a snap are ignored (bug 18 keeps the rule, spec 2.7).
+    // Presses during the entrance, the exit and a snap are ignored.
     if ((this.phase !== 'idle' && this.phase !== 'dragging') || !win.isVisible()) {
       event.preventDefault();
       return;
@@ -632,7 +632,7 @@ export class PillController {
     this.startSnap(win);
   }
 
-  /** Spec 2.7 `SnapToNearestEdge`: nearest edge by the window center, then a 240 ms tween. */
+  /** Snaps to the nearest edge by the window center, then a 240 ms tween. */
   private startSnap(win: PillWindowPort): void {
     const from = win.getBounds();
     const area = this.deps.screen.displayAt(this.centerOf(from)).workArea;

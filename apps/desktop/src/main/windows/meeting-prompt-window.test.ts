@@ -97,7 +97,7 @@ describe('MeetingPromptWindow', () => {
     expect(created[0]!.win.showInactive).toHaveBeenCalledTimes(2);
   });
 
-  it('places on the display of the main window (S7)', () => {
+  it('places on the display of the main window', () => {
     const main = { x: 2000, y: 100, width: 800, height: 600 };
     const { controller, created, getDisplayMatching } = setup(main);
     controller.show();

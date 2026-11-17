@@ -36,7 +36,7 @@ The team reviewed the budget.
 `;
 
 /**
- * The behavior every `SummaryProvider` shares (spec 2.1): the prompt is the shared builder's, the
+ * The behavior every `SummaryProvider` shares: the prompt is the shared builder's, the
  * reply goes through the shared splitter, the title comes from the same reply, and streaming
  * concatenates to the complete answer. Reused by the Claude Code, Codex and local provider tests.
  */

@@ -32,7 +32,7 @@ describe('installGlobalErrorHandling', () => {
     expect(exit).not.toHaveBeenCalled();
   });
 
-  it('151: a dialog that throws is logged and the app still exits', () => {
+  it('a dialog that throws is logged and the app still exits', () => {
     const { emitter, showFatal, exit } = setup();
     showFatal.mockImplementation(() => {
       throw new Error('no dialog');
@@ -41,7 +41,7 @@ describe('installGlobalErrorHandling', () => {
     expect(exit).toHaveBeenCalledWith(1);
   });
 
-  it('148: a rejection with a non-error reason is logged too', () => {
+  it('a rejection with a non-error reason is logged too', () => {
     const { emitter, logger } = setup();
     emitter.emit('unhandledRejection', 'plain text');
     expect(logger.error).toHaveBeenCalledWith('unhandled promise rejection', {

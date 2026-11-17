@@ -55,7 +55,7 @@ export interface SummaryTabViewProps {
   readonly draft?: ReactNode;
 }
 
-/** The layout of spec 2.2: toolbar, related meetings, a message, then the content. */
+/** The layout: toolbar, related meetings, a message, then the content. */
 export function SummaryTabView(props: SummaryTabViewProps) {
   const { labels, mode } = props;
   if (props.loading) return <LoadingLayout label={labels.loading} />;

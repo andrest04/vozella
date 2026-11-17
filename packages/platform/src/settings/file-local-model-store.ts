@@ -9,7 +9,7 @@ import {
 import { downloadToFile } from './download-to-file';
 
 export interface FileLocalModelStoreOptions {
-  /** `<app data>\SummaryModels`, the folder the WinUI app uses. */
+  /** `<app data>\SummaryModels`, the folder where downloaded models are kept. */
   readonly directory: string;
   /** Tests point the download at a local server. Production uses the catalog URL. */
   readonly urlFor?: (model: SummaryModelInfo) => string;

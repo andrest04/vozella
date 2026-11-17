@@ -31,7 +31,7 @@ export interface HandoffEvent {
 
 export interface RecordingHandoffDeps {
   readonly getMainWindow: () => HandoffWindow | null | undefined;
-  /** Hides the "Meeting detected" popup, whose offer is moot once recording starts (item 77). */
+  /** Hides the "Meeting detected" popup, whose offer is moot once recording starts. */
   readonly dismissPopup: () => void;
 }
 
@@ -39,7 +39,7 @@ export interface RecordingHandoffDeps {
 export type HandoffListener = (event: HandoffEvent) => void;
 
 /**
- * The shell side of the recording start (spec 2.8, items 76 to 78, 89). It follows the main-side
+ * The shell side of the recording start. It follows the main-side
  * recording state and acts on the false to true change only: dismiss the popup, minimize the main
  * window, treat it as inactive at once, and tell the pill. Pause, resume, import, discard and stop
  * never minimize.
@@ -67,14 +67,14 @@ export class RecordingHandoff {
       const main = this.deps.getMainWindow();
       if (main && !main.isDestroyed()) main.minimize();
       // After minimizing, so a focus event raised by the minimize cannot leave this true and hide
-      // the pill (item 78).
+      // the pill.
       this.active = false;
     }
     this.emit(decision.showStartedHint);
     return decision;
   }
 
-  /** The main window gained or lost focus (the Activated event of the WinUI window). */
+  /** The main window gained or lost focus (window focus event). */
   setMainWindowActive(active: boolean): void {
     if (this.active === active) return;
     this.active = active;
@@ -89,7 +89,7 @@ export class RecordingHandoff {
     };
   }
 
-  /** A window that closes when the main window closes (item 89). Returns the unregister. */
+  /** A window that closes when the main window closes. Returns the unregister. */
   registerSecondary(window: SecondaryWindow): () => void {
     this.secondary.add(window);
     return () => {

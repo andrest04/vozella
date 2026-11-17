@@ -6,7 +6,7 @@ import { launchApp, type LaunchedApp } from './launch';
 // Re-transcribe from the session header, in the real app on the fake native build: the fake speech
 // engine "hears" a fixed script, the fake summary provider answers after a delay the environment
 // sets, and the library is a throwaway folder. No model, no CLI, no account.
-// Screenshots (docs/port/screens/session-views) are rewritten only with VOZELLA_SCREENSHOTS=1.
+// Screenshots (docs/screenshots/session-views) are rewritten only with VOZELLA_SCREENSHOTS=1.
 
 test.describe.configure({ timeout: 150_000, mode: 'serial' });
 
@@ -241,16 +241,7 @@ test.describe('a meeting without audio', () => {
 
 test.describe('screenshots', () => {
   test.skip(process.env.VOZELLA_SCREENSHOTS !== '1', 'set VOZELLA_SCREENSHOTS=1 to capture');
-  const outDir = path.resolve(
-    __dirname,
-    '..',
-    '..',
-    '..',
-    'docs',
-    'port',
-    'screens',
-    'session-views',
-  );
+  const outDir = path.resolve(__dirname, '..', '..', '..', 'docs', 'screenshots', 'session-views');
 
   for (const theme of ['light', 'dark'] as const) {
     test(`header, progress and outcome in ${theme}`, async () => {

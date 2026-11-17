@@ -11,7 +11,7 @@ export interface YouTubeImportDialogProps {
 }
 
 /**
- * Asks for a YouTube video link (spec 2.12.1). Import waits for a link the parser accepts. The
+ * Asks for a YouTube video link. Import waits for a link the parser accepts. The
  * error shows once the user leaves the field or presses Enter on a link that is not a video, so
  * a link being typed is not called wrong halfway through; a paste is judged at once.
  */

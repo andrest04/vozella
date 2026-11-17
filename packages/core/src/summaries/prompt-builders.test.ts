@@ -117,7 +117,7 @@ const summarySection = (text: string): string =>
   text.slice(text.indexOf('\n## Summary\n'), text.indexOf('\n## Action Items\n'));
 
 describe('buildSummaryPrompt snapshot', () => {
-  it('matches spec 3.1 for English with no end time', () => {
+  it('matches the expected prompt for English with no end time', () => {
     expect(base()).toBe(SUMMARY_EN);
   });
 
@@ -254,7 +254,7 @@ describe('language mapping', () => {
     }
   });
 
-  it('B27: every code the Settings picker offers names its language for the headings', () => {
+  it('every code the Settings picker offers names its language for the headings', () => {
     for (const { code } of SUMMARY_LANGUAGES) {
       const name = toEnglishLanguageName(code);
       expect(base({ outputLanguage: code })).toContain(`with headings written in ${name}.`);
@@ -459,7 +459,7 @@ describe('series context', () => {
 });
 
 describe('map-reduce prompts', () => {
-  it('buildPartPrompt matches spec 3.5', () => {
+  it('buildPartPrompt matches the expected prompt', () => {
     expect(buildPartPrompt('PART', 2, 5, 'English'))
       .toBe(`You take notes on part 2 of 5 of an automatic-speech-recognition transcript.
 Another step combines the notes from all parts, so anything you leave out is lost.
@@ -500,7 +500,7 @@ PART
     expect(text).not.toContain('\r');
   });
 
-  it('buildMergePrompt matches spec 3.5', () => {
+  it('buildMergePrompt matches the expected prompt', () => {
     expect(buildMergePrompt('NOTES', 'Spanish'))
       .toBe(`These are consecutive notes on a recording, in time order. Combine them into one shorter set.
 

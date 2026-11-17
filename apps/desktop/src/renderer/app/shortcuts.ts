@@ -1,5 +1,5 @@
 /**
- * The one shortcut table (items 138 and 139, _gaps.md section 3). Every chord the app owns is
+ * The one shortcut table. Every chord the app owns is
  * listed here with the region it belongs to; the hooks and components below read it instead of
  * comparing keys themselves, and tooltips take the chord from it. No chord is global to the OS,
  * and Ctrl+Enter exists in two regions that never see each other's events (the live ask box and
@@ -72,7 +72,7 @@ function matches(id: ShortcutId, event: KeyLike): boolean {
 export type RecordShortcut = Extract<ShortcutId, 'stop' | 'pause' | 'discard'>;
 const RECORD_IDS: readonly RecordShortcut[] = ['stop', 'pause', 'discard'];
 
-/** Ctrl+R stops or starts, Ctrl+P pauses or resumes, Ctrl+Shift+D discards (spec 2.6). */
+/** Ctrl+R stops or starts, Ctrl+P pauses or resumes, Ctrl+Shift+D discards. */
 export function matchRecordShortcut(event: KeyLike): RecordShortcut | null {
   return RECORD_IDS.find((id) => matches(id, event)) ?? null;
 }
@@ -99,7 +99,7 @@ export function isAnswerQuestionShortcut(
   return !target.closest('input, textarea, select, [contenteditable="true"], [role="textbox"]');
 }
 
-/** What Enter and Ctrl+Enter do in the chat composer (spec 2.3, S1). */
+/** What Enter and Ctrl+Enter do in the chat composer. */
 export type ComposerIntent = 'send' | 'newline' | 'ignore' | 'swallow';
 
 export interface ComposerKeyInput {

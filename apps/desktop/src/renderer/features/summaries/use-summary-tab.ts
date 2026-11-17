@@ -36,7 +36,7 @@ const errorText = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
 /**
- * The Summary tab of one meeting (spec 2.2). Main owns the data; this hook loads it, keeps the
+ * The Summary tab of one meeting. Main owns the data; this hook loads it, keeps the
  * raw notes and the action item ticks as local state so typing and clicking feel instant, and
  * sends each change back. A save that fails puts the old value back and says so.
  */
@@ -151,7 +151,7 @@ export function useSummaryTab(
     return () => {
       stopListening();
       flags.alive = false;
-      // Leaving the page or the meeting saves what was typed (item 101).
+      // Leaving the page or the meeting saves what was typed.
       flushNotes();
       idRef.current = null;
     };

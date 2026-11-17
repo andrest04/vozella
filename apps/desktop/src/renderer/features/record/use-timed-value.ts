@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
  * A value that clears itself `ms` after it was last set. Setting it again restarts the single
- * timer (items 68 and 70), and the timer dies with the component.
+ * timer, and the timer dies with the component.
  */
 export function useTimedValue<T>(ms: number): {
   readonly value: T | null;

@@ -13,13 +13,13 @@ export interface SessionView {
   readonly title: string;
   readonly hasMeeting: boolean;
   readonly hasTranscript: boolean;
-  /** True when the recorded audio file exists (spec 8 item 7). */
+  /** True when the recorded audio file exists. */
   readonly hasAudio: boolean;
 }
 
 export type SessionRecord = Pick<MeetingRecord, 'title' | 'transcript' | 'audioFilePath'>;
 
-/** Items 5 to 7: what the header and tabs need from the record. A missing record is an empty view. */
+/** What the header and tabs need from the record. A missing record is an empty view. */
 export function deriveSessionView(
   record: SessionRecord | null,
   fileExists: (path: string) => boolean,
@@ -44,7 +44,7 @@ export function busyReason(
   return null;
 }
 
-/** B4: rename is blocked only while a run targets this meeting. */
+/** Rename is blocked only while a run targets this meeting. */
 export function canRename(
   view: Pick<SessionView, 'hasMeeting'>,
   meetingId: string | null,
@@ -55,7 +55,7 @@ export function canRename(
   );
 }
 
-/** Items 90 and 91: busy is any run or an active capture (B16: `busyReason` explains it). */
+/** Busy is any run or an active capture (`busyReason` explains it). */
 export function canRetranscribe(
   view: Pick<SessionView, 'hasMeeting' | 'hasAudio'>,
   reason: BusyReason,

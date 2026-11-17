@@ -25,7 +25,7 @@ export function instantOf(text: string): number {
 /**
  * Other meetings sharing the record's series id or its exact trimmed title (case-sensitive),
  * newest first, at most five. A blank series never matches a blank series, and
- * a blank title never matches a blank title (B11, a fix over RelatedMeetings.Find).
+ * a blank title never matches a blank title.
  */
 export function findRelated(
   current: RelatedCandidate,

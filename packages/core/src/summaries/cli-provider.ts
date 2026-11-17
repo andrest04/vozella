@@ -29,7 +29,7 @@ import {
   type SummaryResult,
 } from './provider';
 
-/** Spec 3.7 and B31: five minutes, kept for parity. Callers may inject another value. */
+/** Five minutes. Callers may inject another value. */
 export const CLI_TIMEOUT_MS = 5 * 60 * 1000;
 
 /** Per-run process options. `cwd` unset keeps the app's own working directory. */
@@ -109,7 +109,7 @@ const isPlainLine = (line: string): boolean => !line.trimStart().startsWith('{')
 /**
  * The base of the CLI providers (`CliToolProviderBase`): four values (executable, timeout, argv,
  * display name) and one way to run. The prompt goes to stdin, the answer is the trimmed stdout.
- * Prompts are sent whole; there is no chunking for CLI providers (B31, recorded in the ledger).
+ * Prompts are sent whole; there is no chunking for CLI providers.
  */
 export abstract class CliToolProvider implements SummaryProvider {
   abstract readonly id: ProviderId;

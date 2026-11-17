@@ -76,12 +76,12 @@ export interface TranscriptionControllerDeps {
     | { readonly status: 'skipped' }
     | { readonly status: 'failed'; readonly message: string }
   >;
-  /** Serializes record writes per meeting with the summary and tab writes (bug 4). */
+  /** Serializes record writes per meeting with the summary and tab writes. */
   readonly queue?: { run<T>(key: string, task: () => Promise<T>): Promise<T> };
   readonly defer?: (task: () => void) => void;
   /**
    * Port: true while a take is being recorded. The recording module supplies it (it sets
-   * `isCaptureActive` on the workspace); re-transcription is refused meanwhile (parity 91).
+   * `isCaptureActive` on the workspace); re-transcription is refused meanwhile.
    */
   readonly isCaptureActive?: () => boolean;
 }
@@ -238,7 +238,7 @@ export class TranscriptionController {
 
   /**
    * Downloads what is missing and checks the engine is ready afterwards. A second call while one
-   * runs shares the first (B17). Cancelling is not an error. A cloud engine has nothing to
+   * runs shares the first. Cancelling is not an error. A cloud engine has nothing to
    * download: it is ready, or it fails saying which key is missing.
    *
    * `local` asks for the engine on this device whatever the settings select: Settings offers the
@@ -312,7 +312,7 @@ export class TranscriptionController {
   async deleteEngine(): Promise<'Deleted' | 'RuntimeInUse' | 'Incomplete'> {
     if (this.install) return 'Incomplete';
     const outcome = await this.deps.runtime.installer.deleteEngine();
-    // The engine delete removes the speaker model too, so the labels go off with it (B7).
+    // The engine delete removes the speaker model too, so the labels go off with it.
     if (
       !this.deps.runtime.models.isDiarizationModelDownloaded() &&
       (await this.deps.settings.load()).speakerDiarizationEnabled
@@ -335,7 +335,7 @@ export class TranscriptionController {
 
   /**
    * Turning the labels on without the model downloads it first. If that fails the setting stays
-   * off and the failure is returned (B7).
+   * off and the failure is returned.
    */
   async setSpeakerLabels(
     enabled: boolean,
@@ -501,7 +501,7 @@ export class TranscriptionController {
     return this.runner.current;
   }
 
-  /** The run state plus the kept results of finished runs (B7). */
+  /** The run state plus the kept results of finished runs. */
   retranscriptionSnapshot(): MeetingRetranscriptionRunner['current'] & {
     readonly lastResults: RetranscriptionResult[];
   } {
@@ -550,7 +550,7 @@ export class TranscriptionController {
   /**
    * The part of the recording pipeline this module can run alone: the offline pass replaces the
    * transcript of the saved meeting, with the Ended header and the old stars. Until the offline
-   * pass has text the saved transcript is untouched (spec 2.5). Summaries are the summary
+   * pass has text the saved transcript is untouched. Summaries are the summary
    * module's, so a run ends as `TranscriptOnly`.
    */
   private pipeline(): RetranscriptionPipeline {
@@ -566,7 +566,7 @@ export class TranscriptionController {
           return;
         }
         if (!saved || cancel.cancelled || this.deps.summarize === undefined) return;
-        // No summary provider chosen: the run ends with the transcript only (spec 113).
+        // No summary provider chosen: the run ends with the transcript only.
         const provider = (await this.deps.settings.load()).selectedSummaryProvider;
         if (provider === null || provider.trim() === '') return;
         callbacks.onStatus(this.deps.t('Status_GeneratingSummary'));
@@ -632,7 +632,7 @@ export class TranscriptionController {
       ensureEndedHeader(text, recordedAt, endedAt),
       request.highlightsMs,
     );
-    // Read and write inside the per-meeting queue so a notes save cannot slip in between (bug 4).
+    // Read and write inside the per-meeting queue so a notes save cannot slip in between.
     const write = async (): Promise<boolean> => {
       const current = await this.deps.meetings.get(request.meetingId);
       if (current === null) return false;

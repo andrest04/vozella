@@ -11,7 +11,7 @@ import { projectIdSchema } from './ids';
 
 const empty = z.object({}).strict();
 
-/** A catalog key with its values and a typed severity (B-12): the page never parses text. */
+/** A catalog key with its values and a typed severity: the page never parses text. */
 export const recordingMessageSchema = z.object({
   key: z.string(),
   args: z.array(z.string()),
@@ -43,9 +43,9 @@ export const recordingStateSchema = z.object({
   isTicking: z.boolean(),
   /** The status line: shown in order, joined with a space. */
   status: z.array(recordingMessageSchema),
-  /** 0..100. Zero while paused (B-15). */
+  /** 0..100. Zero while paused. */
   micLevel: z.number(),
-  /** The take records a microphone; only then does the level meter show anything (B-13). */
+  /** The take records a microphone; only then does the level meter show anything. */
   microphoneActive: z.boolean(),
   /** The hard failure of the take first, then the soft warning. */
   captureNotices: z.array(recordingMessageSchema),
@@ -85,7 +85,7 @@ const setupCardSchema = z.object({
 });
 
 /**
- * What the setup checklist shows (spec 2.4): the three cards and the idle status, from the same
+ * What the setup checklist shows: the three cards and the idle status, from the same
  * facts the Start gate reads. `provider` is the chosen summary engine, null when none is chosen.
  */
 export const recordingSetupSchema = z.object({
@@ -113,7 +113,7 @@ export const recordingGetState = defineRequest('recording.getState', {
 
 /**
  * Starts a take. `microphone` null and `processId` left out mean "the page never loaded the
- * sources": main restores the remembered microphone and app (B-23), so a pill or toast start
+ * sources": main restores the remembered microphone and app, so a pill or toast start
  * records what the user chose last. `processId` null is all system audio.
  */
 export const recordingStart = defineRequest('recording.start', {
@@ -168,20 +168,20 @@ export const recordingSetNotes = defineRequest('recording.setNotes', {
 });
 /**
  * Cancels the foreground run. With a meeting id it cancels the summary that runs in the
- * background after the hand-off instead (B-21).
+ * background after the hand-off instead.
  */
 export const recordingCancelProcessing = defineRequest('recording.cancelProcessing', {
   input: z.object({ meetingId: z.string().nullable() }),
   output: z.object({ cancelled: z.boolean() }),
 });
-/** Runs the pipeline again on the audio of a take whose first save failed (B-11). */
+/** Runs the pipeline again on the audio of a take whose first save failed. */
 export const recordingRetryProcessing = defineRequest('recording.retryProcessing', {
   input: empty,
   output: z.object({ started: z.boolean() }),
 });
 
 /**
- * Imports an audio file through the same pipeline as a take (spec 2.12). The page picked the file
+ * Imports an audio file through the same pipeline as a take. The page picked the file
  * with `audio.import.pickFile`; main reads its time, converts it and runs the pipeline.
  */
 const recordingImportResultSchema = z.discriminatedUnion('started', [
@@ -203,7 +203,7 @@ export const recordingImport = defineRequest('recording.import', {
 });
 
 /**
- * Imports the audio of a YouTube video (spec 2.12): main downloads it with yt-dlp into a temp
+ * Imports the audio of a YouTube video: main downloads it with yt-dlp into a temp
  * folder, then converts it and runs the pipeline like `recording.import`. Cancel is
  * `recording.cancelProcessing` with a null meeting id.
  */
@@ -217,7 +217,7 @@ export const recordingImportUrl = defineRequest('recording.importUrl', {
 });
 
 /**
- * Close protection (165). Main asks the shell for one dialog at a time; the shell answers
+ * Close protection. Main asks the shell for one dialog at a time; the shell answers
  * `recording.closeAnswer` for `confirm-stop` and `save-failed`. `saving` is shown until `done`.
  */
 export const recordingCloseDialogSchema = z.enum(['confirm-stop', 'saving', 'save-failed', 'done']);
@@ -240,7 +240,7 @@ export const recordingLiveText = defineEvent('recording.liveText', {
 });
 
 /**
- * Live ask (spec 2.8): a typed question during a take, answered from the recent transcript.
+ * Live ask: a typed question during a take, answered from the recent transcript.
  * `webSearch` is the toggle; main keeps it between takes. `preset` marks a chip prompt.
  */
 export const recordingAsk = defineRequest('recording.ask', {

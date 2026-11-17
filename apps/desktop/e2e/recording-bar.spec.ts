@@ -5,9 +5,9 @@ import { expect, test, type Page } from '@playwright/test';
 import { installEngine, launchApp, readyEnv, seedReadySettings, type LaunchedApp } from './launch';
 
 // The recording bar and the live canvas in the real window on the fake native build (R10).
-// Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/port/screens/recording.
+// Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/screenshots/recording.
 
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/recording');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/recording');
 const shots = process.env.VOZELLA_SCREENSHOTS === '1';
 
 let launched: LaunchedApp;

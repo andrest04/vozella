@@ -2,11 +2,11 @@ import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { launchApp, type LaunchedApp } from './launch';
 
-// Regenerates docs/port/screens/foundation/*.png. Opt in with VOZELLA_SCREENSHOTS=1 so a
+// Regenerates docs/screenshots/foundation/*.png. Opt in with VOZELLA_SCREENSHOTS=1 so a
 // normal run does not rewrite tracked images. The window is shown, real pixels are captured.
 test.skip(process.env.VOZELLA_SCREENSHOTS !== '1', 'set VOZELLA_SCREENSHOTS=1 to capture');
 
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/foundation');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/foundation');
 
 let launched: LaunchedApp;
 let page: Page;

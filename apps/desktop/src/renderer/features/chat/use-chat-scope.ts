@@ -69,7 +69,7 @@ function same(a: ChatScopeDecision | null, b: ChatScopeDecision): boolean {
 }
 
 /**
- * The scope the AI panel shows, from the workspace state main pushes (parity 1 to 11, 18). Each
+ * The scope the AI panel shows, from the workspace state main pushes. Each
  * refresh starts a new generation, so a name lookup that finishes late is discarded.
  *
  * A reopened thread pins its own scope over the page's. Main still hears the page's scope, so its

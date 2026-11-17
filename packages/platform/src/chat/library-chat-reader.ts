@@ -29,7 +29,7 @@ const stub = (item: MeetingListItem): ContextMeeting => ({
 });
 
 /**
- * Reads meetings for chat over the Markdown repository (B17). The list is the repository's own
+ * Reads meetings for chat over the Markdown repository. The list is the repository's own
  * light index, so a send never parses every transcript. With a question, the library's folded
  * search text (already cached for the Library search) ranks the candidates; only the picked
  * `MEETING_CAP` records (best hits, then newest) are read in full. The rest come back as stubs so
@@ -66,7 +66,7 @@ export class LibraryChatReader implements ChatMeetingReader {
   }
 
   /**
-   * Citation check (B21): the id may be hex without hyphens. Answers the stored id so the page
+   * Citation check: the id may be hex without hyphens. Answers the stored id so the page
    * can select the meeting. Reads the light list only.
    */
   async findMeetingId(id: string): Promise<string | null> {

@@ -53,8 +53,8 @@ export function sanitizeDirName(name: string): string {
 
 /**
  * The directory of a new project, always exactly one segment. `taken` is every name that must
- * not be reused: entries of the Library root read at allocation time (user folders, a legacy
- * `Meetings` or `Recordings`) and the frozen directory of every project. Each entry counts with
+ * not be reused: entries of the Library root read at allocation time (user folders, a Library folder
+ * with loose meetings) and the frozen directory of every project. Each entry counts with
  * its first segment too, so a new project can never be a prefix or a child of another project's
  * directory. `Inbox` is always taken. Comparison is folded (case and accents), which also matches
  * NTFS case-insensitivity. A taken name gets ` 2`, ` 3` and so on.

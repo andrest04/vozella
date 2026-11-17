@@ -6,9 +6,9 @@ import { launchApp, type LaunchedApp } from './launch';
 
 // The session notes of the Record page in the real window on the fake native build. The take is
 // started through the recording service (`recording.start`), because main owns the notes.
-// Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/port/screens/recording.
+// Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/screenshots/recording.
 
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/recording');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/recording');
 const shots = process.env.VOZELLA_SCREENSHOTS === '1';
 
 const MODEL = 'Llama-3.2-1B-Instruct-Q4_K_M.gguf';
@@ -143,7 +143,7 @@ for (const theme of ['light', 'dark'] as const) {
   });
 }
 
-test('discard clears the notes and the next take starts empty (B-10)', async () => {
+test('discard clears the notes and the next take starts empty', async () => {
   const discarded = await page.evaluate(
     async () => (await window.vozella.invoke('recording.discard', {})).discarded,
   );

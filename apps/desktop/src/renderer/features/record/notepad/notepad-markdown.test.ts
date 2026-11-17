@@ -120,7 +120,7 @@ describe('plain text written by an earlier version', () => {
 
 describe('accepted lossy cases', () => {
   // The editor stores Markdown, so text only changes where several Markdown spellings mean the
-  // same document. The meaning stays; the spelling is the editor's. Documented in the ledger.
+  // same document. The meaning stays; the spelling is the editor's.
   it.each([
     ['star bullets become dashes', '* a\n* b', '- a\n- b'],
     ['underscore emphasis becomes asterisks', '_a_ and __b__', '*a* and **b**'],

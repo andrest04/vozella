@@ -201,7 +201,10 @@ describe('mic activity sidecar', () => {
       }),
     ],
     ['a non-number', JSON.stringify({ version: 1, ranges: [['0', 10]] })],
-  ])('rejects %s (the recording is then read as a legacy one)', (_name, text) => {
-    expect(parseMicActivity(text)).toBeNull();
-  });
+  ])(
+    'rejects %s (the recording is then read as one made before the sidecar existed)',
+    (_name, text) => {
+      expect(parseMicActivity(text)).toBeNull();
+    },
+  );
 });

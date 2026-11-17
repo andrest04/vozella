@@ -1,6 +1,6 @@
 export const COPY_FEEDBACK_MS = 2500;
 
-/** Items 56 and 57: the text to put on the clipboard, or null when nothing should be copied. */
+/** The text to put on the clipboard, or null when nothing should be copied. */
 export function copyCommand(text: string | null | undefined): string | null {
   return text === null || text === undefined || text.trim() === '' ? null : text;
 }
@@ -12,9 +12,9 @@ export interface TimerPort {
 
 export interface CopyFeedback {
   readonly visible: boolean;
-  /** Shows the bar and restarts the 2.5 s timer (item 59). */
+  /** Shows the bar and restarts the 2.5 s timer. */
   show(): void;
-  /** Manual dismiss (item 60). */
+  /** Manual dismiss. */
   dismiss(): void;
   subscribe(listener: (visible: boolean) => void): () => void;
 }

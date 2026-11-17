@@ -27,7 +27,7 @@ function builtAppArgs(): string[] {
 /**
  * Launches the built app (out/main/index.js, run `pnpm build` first), or the packaged e2e
  * variant when VOZELLA_E2E_EXECUTABLE is set, with fake native
- * adapters and a throwaway data root. The real MeetingLive folders are never involved.
+ * adapters and a throwaway data root. The real data folders are never involved.
  */
 export async function launchApp(
   extraEnv: Record<string, string> = {},
@@ -119,7 +119,7 @@ export const NO_TEST_HOOKS =
 
 /**
  * Screenshots of the packaged app, taken only when the run targets a packaged build
- * (VOZELLA_E2E_EXECUTABLE) and VOZELLA_PACKAGED_SHOTS=1. They go to docs/port/screens/packaged.
+ * (VOZELLA_E2E_EXECUTABLE) and VOZELLA_PACKAGED_SHOTS=1. They go to docs/screenshots/packaged.
  */
 export const packagedShots =
   process.env.VOZELLA_PACKAGED_SHOTS === '1' && Boolean(process.env.VOZELLA_E2E_EXECUTABLE);
@@ -144,7 +144,7 @@ export async function packagedShot(
 ): Promise<void> {
   if (!packagedShots) return;
   if (app) await restoreMain(app);
-  const dir = path.resolve(__dirname, '../../../docs/port/screens/packaged');
+  const dir = path.resolve(__dirname, '../../../docs/screenshots/packaged');
   fs.mkdirSync(dir, { recursive: true });
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(400);

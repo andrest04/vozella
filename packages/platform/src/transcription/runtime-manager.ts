@@ -46,7 +46,7 @@ function defaultProbe(file: string): void {
 }
 
 /**
- * The extracted NeMo-Speech runtimes on disk (spec 3.8): `cpu` and `cuda` folders, a negative
+ * The extracted NeMo-Speech runtimes on disk: `cpu` and `cuda` folders, a negative
  * `.incomplete` marker while a folder is being promoted or removed, and a delete that refuses
  * while a file is held open.
  */
@@ -80,7 +80,7 @@ export class NemoSpeechRuntimeManager implements RuntimeStore {
     return found;
   }
 
-  /** One download per backend at a time; a second caller shares the first (B17). */
+  /** One download per backend at a time; a second caller shares the first. */
   download(
     backend: AsrBackend,
     onProgress: (percent: number) => void,

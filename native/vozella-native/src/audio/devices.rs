@@ -1,4 +1,4 @@
-//! Microphone list and render-session snapshots (spec 3.1.5 and 3.4.1).
+//! Microphone list and render-session snapshots.
 
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
@@ -22,7 +22,7 @@ pub struct SessionSnapshot {
 }
 
 /// Active capture endpoints. One endpoint that cannot be read is skipped, so it cannot
-/// hide the rest (suspected bug S12).
+/// hide the rest.
 #[napi]
 pub fn list_microphones() -> Result<Vec<MicrophoneInfo>> {
     let _ = initialize_mta();
@@ -49,7 +49,7 @@ pub(crate) struct EndpointProbe {
     pub name: Option<String>,
 }
 
-/// Spec item 82 and S12: only active endpoints with a readable id and name are listed, and
+/// Only active endpoints with a readable id and name are listed, and
 /// one endpoint that cannot be read (`None`) never hides the rest.
 pub(crate) fn keep_active(
     probes: impl IntoIterator<Item = Option<EndpointProbe>>,
@@ -73,7 +73,7 @@ struct CachedSession {
 }
 
 /// Polls the sessions of the default render endpoint. Not thread-safe by design: one
-/// polling loop owns it, like the C# source.
+/// polling loop owns it.
 #[napi]
 pub struct SessionMonitor {
     cached: Vec<CachedSession>,

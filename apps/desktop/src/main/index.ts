@@ -172,7 +172,7 @@ function main(): void {
     exit: (code) => app.exit(code),
   });
 
-  // Startup steps are named, logged and shown once when one fails (bug 21). The language is only
+  // Startup steps are named, logged and shown once when one fails. The language is only
   // known after its own step, so a failure before that is worded in English.
   let startupLocale: { t: (key: string, ...args: string[]) => string } | undefined;
   const startup = new StartupSequence({
@@ -267,7 +267,7 @@ function main(): void {
   });
 
   // A second launch brings the first window forward. Its arguments are accepted and ignored
-  // (item 10): nothing in the app acts on a command line.
+  // Nothing in the app acts on a command line.
   app.on('second-instance', () => {
     activateMainWindow(mainWindow);
   });
@@ -309,7 +309,7 @@ function main(): void {
     app.quit();
   });
 
-  // Set once the handlers exist; a quit waits for the writes they hold (B16).
+  // Set once the handlers exist; a quit waits for the writes they hold.
   let libraryWrites: { settled: () => Promise<void> } | undefined;
   let quitting = false;
   // Close protection (165): the exit gates (recording first) decide before anything shuts down.
@@ -556,7 +556,7 @@ function main(): void {
   void app
     .whenReady()
     .then(async () => {
-      // No menu bar (spec 2.14, item 140). The default menu would bind Ctrl+R to a page reload and
+      // No menu bar. The default menu would bind Ctrl+R to a page reload and
       // open the dev tools, which collides with Ctrl+R on the Record page.
       Menu.setApplicationMenu(null);
       serveRendererFromAppScheme(async (id) => {
@@ -592,7 +592,7 @@ function main(): void {
           logger.warn('could not scan for crashed recordings', { error: String(error) });
         });
 
-      // The language of the app is applied before any window exists (spec 2.1, 4.5).
+      // The language of the app is applied before any window exists.
       const language = await startup.run('language', () =>
         resolveStartupLanguage(
           () => library.settings.load(),
@@ -672,7 +672,7 @@ function main(): void {
         nowMs: () => Date.now(),
         wavDurationSeconds: readWavDurationSeconds,
         logger: logger.child('recording'),
-        // The call popup stays away while a take runs (spec 2.6, item 106).
+        // The call popup stays away while a take runs.
         onCaptureActive: (active) => {
           workspace.setCaptureActive(active);
         },
@@ -903,7 +903,7 @@ function main(): void {
         liveAsk,
       });
 
-      // Live copilot pill (spec 2.1): created on first need, driven by the main window's focus and
+      // Live copilot pill: created on first need, driven by the main window's focus and
       // the recording state, closed with the main window. The start handoff itself (dismiss the
       // popup, minimize the main window) is the shell's RecordingHandoff below; the pill's own
       // minimize is the same idempotent call.
@@ -953,8 +953,8 @@ function main(): void {
       const id = mainWindow.webContents.id;
       windowIds.add(id);
 
-      // Recording start handoff (items 76 to 78) and the secondary windows that close with the main
-      // window (item 89). The live copilot pill subscribes with `handoff.onHandoff` and registers
+      // Recording start handoff and the secondary windows that close with the main
+      // window. The live copilot pill subscribes with `handoff.onHandoff` and registers
       // itself with `handoff.registerSecondary`.
       const handoff = new RecordingHandoff({
         getMainWindow: () => mainWindow ?? null,
@@ -1034,7 +1034,7 @@ function main(): void {
         abandonCloseDialogs();
       });
       mainWindow.on('closed', () => {
-        // The call watcher goes with the window (item 12).
+        // The call watcher goes with the window.
         detection?.dispose();
         windowIds.delete(id);
         mainWindow = undefined;

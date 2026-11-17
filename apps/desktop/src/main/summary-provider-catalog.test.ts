@@ -4,7 +4,7 @@ import es from '../renderer/i18n/locales/es.json';
 import uiEn from '../renderer/i18n/locales/ui.en.json';
 import uiEs from '../renderer/i18n/locales/ui.es.json';
 
-// Parity item 187: every key the summaries module uses (spec 2.9) exists in both languages, and the
+// Every key the summaries module uses exists in both languages, and the
 // copy added by this port follows the house rules.
 
 const english: Record<string, string> = { ...en, ...uiEn };
@@ -33,7 +33,7 @@ const SETTINGS_KEYS = [
   'Settings_Delete.Content',
   'Status_CliOnPath',
   'Status_CliMissing',
-  // The xAI-named key is reused for the Claude and Codex toast (spec 2.9).
+  // The xAI-named key is reused for the Claude and Codex toast.
   'Xai_FeedbackModel',
   'Ui_CliCheckAgain',
   'Ui_ModelDownloading',
@@ -69,7 +69,7 @@ const FAMILIES = [
 const placeholders = (text: string): string[] =>
   [...text.matchAll(/\{(\d+)/g)].map((m) => m[1] ?? '').sort();
 
-describe('summary provider and settings keys (187)', () => {
+describe('summary provider and settings keys', () => {
   it.each(SETTINGS_KEYS)('%s exists in English and Spanish and is not empty', (key) => {
     expect(english[key], `${key} in English`).toBeTruthy();
     expect(spanish[key], `${key} in Spanish`).toBeTruthy();

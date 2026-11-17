@@ -1,5 +1,5 @@
 /**
- * Runs async tasks one at a time per key, in the order they were queued (B5). A failing task
+ * Runs async tasks one at a time per key, in the order they were queued. A failing task
  * rejects only its own promise; the next one still runs.
  */
 export class PatchQueue {

@@ -12,7 +12,7 @@ const none = {
   selectedMicrophoneDeviceId: null,
 };
 
-describe('resolveMicrophoneChoice (items 20-23)', () => {
+describe('resolveMicrophoneChoice', () => {
   it('orders None, System default, then devices with non-empty ids', () => {
     const { options } = resolveMicrophoneChoice(devices, none);
     expect(options.map((o) => `${o.kind}:${o.deviceId ?? ''}`)).toEqual([

@@ -65,7 +65,7 @@ describe('offline pass with microphone activity', () => {
     expect(await transcribe(false, true)).toEqual({ text: PLAIN_LINE, asked: [] });
   });
 
-  it('keeps today’s output for a recording without activity (legacy)', async () => {
+  it('keeps today’s output for a recording without activity (made before the sidecar existed)', async () => {
     expect((await transcribe(true, true, false)).text).toBe(PLAIN_LINE);
   });
 

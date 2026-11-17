@@ -89,7 +89,7 @@ export type GenerateOutcome =
   | { readonly status: 'no-transcript' }
   | { readonly status: 'not-found' }
   | { readonly status: 'busy' }
-  /** The gate value (B34). The UI opens the dialogs; this is not an error. */
+  /** The gate value. The UI opens the dialogs; this is not an error. */
   | {
       readonly status: 'needs-setup';
       readonly kind: SetupKind;
@@ -104,13 +104,13 @@ export interface SummaryServiceDeps {
   readonly settings: SettingsStore;
   readonly resolver: Pick<SummaryProviderResolver, 'resolveSummaryProvider'>;
   readonly clock: Clock;
-  /** `MeetingChanged`: called when the title changed (items 31 and 32). */
+  /** `MeetingChanged`: called when the title changed. */
   readonly notifyMeetingChanged: (meetingId: string) => void;
   /** Other modules' busy probe (recording or re-transcription of the same meeting). */
   readonly busy?: MeetingBusyProbe;
   /** Both locales' `MeetingTitleFormat` values, so an auto title in either language is replaced. */
   readonly placeholderFormats?: readonly string[];
-  /** Shared with the tab service so a generate save and a tab save never interleave (B4, B5). */
+  /** Shared with the tab service so a generate save and a tab save never interleave. */
   readonly queue?: PatchQueue;
   /** Remembered next-session dates, for `next_meeting` deadlines. None means none is filled. */
   readonly nextSessionDates?: NextSessionDateStore;
@@ -137,7 +137,7 @@ export function failureFromError(error: unknown): GenerateFailure {
   };
 }
 
-/** The sentence for a failed outcome, in the locale of `translate` (spec 2.5, B28). */
+/** The sentence for a failed outcome, in the locale of `translate`. */
 export function describeFailed(failure: GenerateFailure, translate: TranslateFn): string {
   if (failure.code.startsWith('Cli')) {
     const kind = failure.code.slice(3) as CliFailureKind;
@@ -150,7 +150,7 @@ export function describeFailed(failure: GenerateFailure, translate: TranslateFn)
   return formatFailure(new SummaryError(failure.code as SummaryErrorCode, failure.args), translate);
 }
 
-/** Spec 2.2 Generate. One run per meeting at a time; every result is a value. */
+/** Generate. One run per meeting at a time; every result is a value. */
 export class SummaryService {
   private readonly inFlight = new Set<string>();
   private readonly patterns: RegExp[];
@@ -298,7 +298,7 @@ export class SummaryService {
     );
     if (cancel.cancelled) return { status: 'cancelled' };
 
-    // B4: the run can take minutes. Lay the result over the record as it is now.
+    // The run can take minutes. Lay the result over the record as it is now.
     const outcome = await this.queue.run(meetingId, async () => {
       const fresh = await this.deps.meetings.get(meetingId);
       if (fresh === null) return null;

@@ -17,7 +17,7 @@ export interface OpenThreadScope {
   readonly meetingId?: string | null;
 }
 
-/** Exact, case-sensitive; anything else, including null, is Unknown (spec 3.2). */
+/** Exact, case-sensitive; anything else, including null, is Unknown. */
 export function parseSurface(tag: string | null | undefined): ChatSurface {
   switch (tag) {
     case 'Recording':

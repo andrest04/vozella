@@ -54,7 +54,7 @@ export function registerSettingsHandlers(deps: SettingsHandlerDeps): void {
 
   registerRequest(server, settingsSetUiLanguage, async ({ tag }) => {
     const result = await runtime.commands.setUiLanguage(tag);
-    // Save first, then switch: a save that fails leaves both languages as they were (B11).
+    // Save first, then switch: a save that fails leaves both languages as they were.
     if (result.status === 'saved' && (tag === 'en-US' || tag === 'es')) {
       locale.set(tag);
       broadcast(i18nLocaleChanged, { tag: locale.tag, locale: locale.locale });

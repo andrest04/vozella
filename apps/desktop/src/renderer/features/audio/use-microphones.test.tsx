@@ -33,7 +33,7 @@ afterEach(() => {
 const answer = (selected: unknown, options: readonly unknown[] = list) => ({ options, selected });
 
 describe('useMicrophones', () => {
-  it('drops the answer of a reload that a newer reload replaced (item 102)', async () => {
+  it('drops the answer of a reload that a newer reload replaced', async () => {
     const pending = install();
     const { result } = renderHook(() => useMicrophones());
     act(() => {
@@ -51,7 +51,7 @@ describe('useMicrophones', () => {
     expect(result.current.selected).toEqual({ kind: 'Device', deviceId: 'b' });
   });
 
-  it('keeps the same array when a reload brings the same list (item 100)', async () => {
+  it('keeps the same array when a reload brings the same list', async () => {
     const pending = install();
     const { result } = renderHook(() => useMicrophones());
     await act(async () => {

@@ -18,7 +18,7 @@ import {
 
 const flagDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vozella-call-flag-'));
 const flag = path.join(flagDir, 'call.flag');
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/calendar-detection');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/calendar-detection');
 const TICK_WAIT = 20_000;
 
 let launched: LaunchedApp;

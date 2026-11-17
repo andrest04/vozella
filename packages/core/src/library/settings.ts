@@ -12,7 +12,7 @@ import {
 import { stripBom } from './text-bom';
 import { LibraryFileCorruptError } from './errors';
 
-/** Spec 3.17 / 4.3. JSON names are these names. This module owns the file; others own the meaning. */
+/** JSON names are these names. This module owns the file; others own the meaning. */
 export interface AppSettings {
   readonly selectedSummaryModelId: string | null;
   readonly selectedSummaryProvider: string | null;
@@ -36,26 +36,26 @@ export interface AppSettings {
   readonly uiLanguage: string | null;
   readonly liveCopilotPillEdge: string | null;
   readonly liveCopilotPillAlong: number | null;
-  /** Port addition: live question detection, `off`, `rules` or `rules+ai`. Null is the default. */
+  /** Live question detection, `off`, `rules` or `rules+ai`. Null is the default. */
   readonly liveQuestions: string | null;
-  /** Port additions (BYOK): the model per API key engine, and the compatible endpoint URL. */
+  /** The model per API key engine, and the compatible endpoint URL. */
   readonly selectedOpenAiModelId: string | null;
   readonly selectedAnthropicModelId: string | null;
   readonly selectedGeminiModelId: string | null;
   readonly selectedOpenAiCompatibleModelId: string | null;
   readonly openAiCompatibleBaseUrl: string | null;
-  /** Port addition (BYOK): the Groq chat model. Declared last so older files keep their order. */
+  /** The Groq chat model. Declared last so existing files keep their order. */
   readonly selectedGroqModelId: string | null;
   /**
-   * Port addition: the engine that transcribes. `Local` (also the meaning of null and of any
+   * The engine that transcribes. `Local` (also the meaning of null and of any
    * unknown value) or a cloud transcription kind (`Groq`, `OpenAi`). Read it through
    * `resolveTranscriptionEngine`.
    */
   readonly transcriptionEngine: string | null;
-  /** Port addition: the model of the cloud transcription engine; null is the provider's default. */
+  /** The model of the cloud transcription engine; null is the provider's default. */
   readonly cloudTranscriptionModelId: string | null;
   /**
-   * Port addition: the user's own note template, the text sent as the template instructions when
+   * The user's own note template, the text sent as the template instructions when
    * the `custom` template is picked. Null or blank means there is no custom template.
    */
   readonly customNoteTemplate: string | null;
@@ -128,7 +128,7 @@ function coerce(kind: Kind, value: unknown): unknown {
     case 'bool-false':
       return typeof value === 'boolean' ? value : false;
     case 'number': {
-      // Files written earlier may hold numbers as strings; read those too.
+      // Files written by earlier versions may hold numbers as strings; read those too.
       const n = typeof value === 'string' && value.trim() !== '' ? Number(value) : value;
       return typeof n === 'number' && Number.isFinite(n) ? n : null;
     }
@@ -169,7 +169,7 @@ export function parseSettingsJson(text: string): ParsedSettings {
 
 /**
  * Returns a new raw document with the patched fields replaced. Keys this version does not
- * know are kept (B17), so a newer file survives an older writer.
+ * know are kept, so a newer file survives an older writer.
  */
 export function applySettingsPatch(raw: RawSettings, patch: Partial<AppSettings>): RawSettings {
   const known = new Set(FIELDS.map(([key]) => key.toLowerCase()));
@@ -191,9 +191,9 @@ export function applySettingsPatch(raw: RawSettings, patch: Partial<AppSettings>
 }
 
 /**
- * Writes every known property in order (nulls included, except unset port additions), then any
- * unknown keys. Plain UTF-8 JSON: two-space indent, LF, no escaping. The reader still accepts a
- * BOM, CRLF, any key case and numbers written as text, because files written earlier have them.
+ * Writes every known property in order (nulls included, except unset optional additions), then any
+ * unknown keys. Plain UTF-8 JSON: two-space indent, LF, no escaping. The reader also accepts a BOM,
+ * CRLF, any key case and numbers written as text, because files written by earlier versions have them.
  */
 export function serializeSettings(raw: RawSettings): string {
   const settings = readSettings(raw);
@@ -266,10 +266,10 @@ export const isProviderAvailable = (
 export const PILL_EDGES = ['Left', 'Right', 'Top', 'Bottom'] as const;
 export type PillEdge = (typeof PILL_EDGES)[number];
 
-/** Case and spaces are ignored; a code the catalog does not know is `auto` (B6). */
+/** Case and spaces are ignored; a code the catalog does not know is `auto`. */
 export const resolveTranscriptionLanguage = (s: AppSettings): string =>
   resolveMeetingLanguageCode(s.transcriptionLanguage);
-/** Case and spaces are ignored; a code the catalog does not know is `es` (B6). */
+/** Case and spaces are ignored; a code the catalog does not know is `es`. */
 export const resolveSummaryLanguage = (s: AppSettings): string =>
   resolveSummaryLanguageCode(s.summaryLanguage);
 export const resolveClaudeModelId = (s: AppSettings): string =>
@@ -285,7 +285,7 @@ export const resolveCodexModelId = (s: AppSettings): string =>
 export const resolveCodexEffort = (s: AppSettings): string =>
   blank(s.selectedCodexEffort) ? DEFAULT_EFFORT : (s.selectedCodexEffort ?? DEFAULT_EFFORT);
 
-/** Case-sensitive name match only; numeric text no longer maps to an undefined value (B18). */
+/** Case-sensitive name match only; numeric text no longer maps to an undefined value. */
 export function resolveSummaryProviderKind(s: AppSettings): SummaryProviderKind {
   return SUMMARY_PROVIDERS.find((kind) => kind === s.selectedSummaryProvider) ?? 'Local';
 }

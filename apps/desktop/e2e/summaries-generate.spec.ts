@@ -8,7 +8,7 @@ import { writeMeeting } from './library-data';
 // Generate, regenerate, cancel, templates, status and copy on the Summary tab, in the real app
 // with the fake native build: the FakeSummaryProvider answers for every engine, with a delay and
 // a failure that the environment controls. Files on disk are the truth.
-// Screenshots (docs/port/screens/summaries) are rewritten only with VOZELLA_SCREENSHOTS=1.
+// Screenshots (docs/screenshots/summaries) are rewritten only with VOZELLA_SCREENSHOTS=1.
 
 test.describe.configure({ timeout: 150_000 });
 
@@ -376,7 +376,7 @@ test.describe('accessibility and screenshots', () => {
       }));
   };
 
-  const outDir = path.resolve(__dirname, '../../../docs/port/screens/summaries');
+  const outDir = path.resolve(__dirname, '../../../docs/screenshots/summaries');
   const shoot = async (name: string): Promise<void> => {
     if (process.env.VOZELLA_SCREENSHOTS !== '1') return;
     await session.page.waitForTimeout(350);

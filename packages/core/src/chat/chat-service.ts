@@ -51,7 +51,7 @@ import { cutPrefix } from './text-cut';
 import type { ChatEngine } from './user-prompts';
 
 /**
- * Core ports for chat. Each query is scoped by id or project (B17), so a send never loads every
+ * Core ports for chat. Each query is scoped by id or project, so a send never loads every
  * meeting just to answer about one.
  */
 export interface ChatMeetingReader {
@@ -71,7 +71,7 @@ export type ChatPromptOptions = CliPromptOptions;
 
 /** The slice of `SummaryProvider` chat uses. */
 export interface ChatStreamProvider {
-  /** Sizes the packed context (T2). Unset is treated as the local engine, the smallest budget. */
+  /** Sizes the packed context. Unset is treated as the local engine, the smallest budget. */
   readonly id?: ProviderId;
   /** Engines that cannot take images ignore `options.images`; chat only sends them to CLIs. */
   streamPrompt(
@@ -130,7 +130,7 @@ interface Conversation {
   readonly historySaved: boolean;
 }
 
-/** The turn being answered: the user row and the pending assistant row (spec 2.4 step 3). */
+/** The turn being answered: the user row and the pending assistant row. */
 export interface PendingTurn {
   readonly userText: string;
   readonly assistantText: string;
@@ -140,10 +140,10 @@ export interface ChatState {
   readonly messages: readonly ChatMessage[];
   readonly isSending: boolean;
   readonly pending: PendingTurn | null;
-  /** Recomputed from the current scope, also while sending (B24). */
+  /** Recomputed from the current scope, also while sending. */
   readonly showScopeMismatch: boolean;
   readonly hasMessages: boolean;
-  /** New chat is off while sending (B1). */
+  /** New chat is off while sending. */
   readonly canStartNewChat: boolean;
   /** The saved thread this conversation writes to; null until its first turn is saved. */
   readonly threadId: string | null;
@@ -214,7 +214,7 @@ export interface ChatServiceDeps {
   readonly newId: () => string;
   /** Optional: gets one timing line per answer (time to first chunk, total). */
   readonly logger?: Logger;
-  /** UI language tag (`es`, `en-US`), read on every send: the fallback answer language (T2). */
+  /** UI language tag (`es`, `en-US`), read on every send: the fallback answer language. */
   readonly uiLanguage?: () => string;
   /** Files attached to the conversation. Unset: sends never carry files. */
   readonly attachments?: ChatAttachmentSource;
@@ -338,7 +338,7 @@ export class ChatService {
     };
   }
 
-  /** Clears the open conversation, never a saved thread. Refused while sending (B1). */
+  /** Clears the open conversation, never a saved thread. Refused while sending. */
   newChat(): boolean {
     if (this.sending) return false;
     this.conversation = null;
@@ -354,7 +354,7 @@ export class ChatService {
     return this.localStreaming;
   }
 
-  /** The stop button (B19). Does nothing when no send is running. */
+  /** The stop button. Does nothing when no send is running. */
   cancel(): void {
     this.cancelSource?.cancel();
   }
@@ -362,14 +362,14 @@ export class ChatService {
   async send(
     draft: string,
     decision: ChatScopeDecision,
-    /** Live scope: the transcript alone, or with the digest and session context (T2). */
+    /** Live scope: the transcript alone, or with the digest and session context. */
     liveTranscriptSnapshot: string | LiveContextSnapshot | null,
     options: SendOptions = {},
   ): Promise<ChatSendOutcome> {
     const userText = draft.trim();
     if (this.sending || !decision.isVisible || userText === '') return { status: 'ignored' };
 
-    // B5: the scope and the live snapshot are fixed here, not read again later.
+    // The scope and the live snapshot are fixed here, not read again later.
     const scope = { ...decision };
     const live =
       liveTranscriptSnapshot !== null && typeof liveTranscriptSnapshot === 'object'
@@ -401,7 +401,7 @@ export class ChatService {
       if (open !== null && open.scopeStatus !== 'ok') return fail(scopeGoneFailure(t));
       const prior = open?.messages ?? [];
 
-      // T2: the engine decides the context size, so it is resolved before packing.
+      // The engine decides the context size, so it is resolved before packing.
       const choice = choiceOf(options);
       const resolution =
         options.engine === undefined
@@ -474,13 +474,13 @@ export class ChatService {
           ? undefined
           : { images: { directory: staged.directory, paths: staged.paths } },
       );
-      // B20: a stopped answer is dropped, even when the provider returned text before it noticed.
+      // A stopped answer is dropped, even when the provider returned text before it noticed.
       if (wasStopped()) return cancelled();
 
       const text = answer.trim();
       if (text === '') return fail(emptyAnswerFailure(t));
 
-      // B7: the two messages get their own timestamps.
+      // The two messages get their own timestamps.
       const user: ChatMessage = {
         id: this.deps.newId(),
         role: 'user',
@@ -799,7 +799,7 @@ export class ChatService {
     let firstChunkMs: number | null = null;
     let chunks = 0;
     try {
-      // S8: a send without images passes no options at all.
+      // A send without images passes no options at all.
       const pieces =
         options === undefined
           ? provider.streamPrompt(prompt, cancelSource.signal)

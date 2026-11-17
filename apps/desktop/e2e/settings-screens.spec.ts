@@ -2,10 +2,10 @@ import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { launchApp, openSettingsTab, type LaunchedApp } from './launch';
 
-// Regenerates docs/port/screens/settings-i18n/*.png. Opt in with VOZELLA_SCREENSHOTS=1.
+// Regenerates docs/screenshots/settings-i18n/*.png. Opt in with VOZELLA_SCREENSHOTS=1.
 test.skip(process.env.VOZELLA_SCREENSHOTS !== '1', 'set VOZELLA_SCREENSHOTS=1 to capture');
 
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/settings-i18n');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/settings-i18n');
 
 let launched: LaunchedApp;
 let page: Page;

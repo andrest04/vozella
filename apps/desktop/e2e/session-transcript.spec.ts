@@ -5,7 +5,7 @@ import { launchApp, type LaunchedApp } from './launch';
 import { writeMeeting } from './library-data';
 
 // The Transcript tab of the session page, in the real app with fake native adapters and a seeded
-// throwaway library. Screenshots go to docs/port/screens/session-views and are rewritten only
+// throwaway library. Screenshots go to docs/screenshots/session-views and are rewritten only
 // with VOZELLA_SCREENSHOTS=1.
 
 test.describe.configure({ timeout: 150_000, mode: 'serial' });
@@ -143,7 +143,7 @@ test('a long transcript scrolls vertically only and is keyboard scrollable', asy
 
 test.describe('screenshots', () => {
   test.skip(process.env.VOZELLA_SCREENSHOTS !== '1', 'set VOZELLA_SCREENSHOTS=1 to capture');
-  const outDir = path.resolve(__dirname, '../../../docs/port/screens/session-views');
+  const outDir = path.resolve(__dirname, '../../../docs/screenshots/session-views');
 
   const shot = async (name: string): Promise<void> => {
     await page.waitForTimeout(350);

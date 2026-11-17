@@ -22,12 +22,12 @@ describe('resolveCulture', () => {
     expect(resolveCulture('xx-99-INVALID!')).toBeNull();
   });
 
-  it('B20: a well formed tag for no real language is null on every platform', () => {
+  it('a well formed tag for no real language is null on every platform', () => {
     expect(resolveCulture('xx')).toBeNull();
     expect(resolveCulture('qqq-US')).toBeNull();
   });
 
-  it('B20: an underscore tag is read like the hyphen form', () => {
+  it('an underscore tag is read like the hyphen form', () => {
     expect(resolveCulture('es_ES')).toBe('es-ES');
     expect(resolveCulture('ES-es')).toBe('es-ES');
   });
@@ -56,7 +56,7 @@ describe('matchPrimarySubtag', () => {
     expect(matchPrimarySubtag('fr-FR', available)).toBeNull();
   });
 
-  it('B20: an underscore candidate matches by primary subtag', () => {
+  it('an underscore candidate matches by primary subtag', () => {
     expect(matchPrimarySubtag('es_ES', available)).toBe('es');
   });
 
@@ -101,7 +101,7 @@ describe('locale of a tag', () => {
   });
 });
 
-describe('UI_LANGUAGE_OPTIONS (item 13)', () => {
+describe('UI_LANGUAGE_OPTIONS', () => {
   it('has exactly en-US then es, with the same label key in both locales', () => {
     expect(UI_LANGUAGE_OPTIONS.map((o) => [o.tag, o.locale, o.labelKey])).toEqual([
       ['en-US', 'en', 'Settings_LanguageEnglish'],

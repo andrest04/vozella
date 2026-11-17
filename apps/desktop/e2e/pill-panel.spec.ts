@@ -4,14 +4,14 @@ import { expect, test, type Page } from '@playwright/test';
 import { installEngine, launchApp, readyEnv, type LaunchedApp } from './launch';
 import { os, pixels, sleep } from './os/os';
 
-// The chat panel of the pill window (spec 2.8) on the fake native build: a fake take, the panel
+// The chat panel of the pill window on the fake native build: a fake take, the panel
 // growing toward the screen center, asks through the chips and the typed box against the fake
 // summary provider (no real CLI, no real account), the web badge, the error path, collapse on
 // drag and close on stop. The panel surface, its 28 DIP corner and the transparent gutter are
 // measured on real composed screen pixels over a magenta backdrop, as the window spike did.
-// Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/port/screens/live-copilot. Windows only.
+// Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/screenshots/live-copilot. Windows only.
 
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/live-copilot');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/live-copilot');
 const shots = process.env.VOZELLA_SCREENSHOTS === '1';
 const MODEL = 'Llama-3.2-1B-Instruct-Q4_K_M.gguf';
 const ANSWER = 'The team went over the plan';

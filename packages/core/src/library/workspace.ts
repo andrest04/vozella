@@ -34,7 +34,7 @@ function isSessionTab(value: string): value is SessionTab {
 }
 
 /**
- * App-lifetime hub (spec 4.6): selected meeting, selected project, shell tag, and
+ * App-lifetime hub: selected meeting, selected project, shell tag, and
  * navigation requests. Pages ask for navigation; only the shell acts on it.
  */
 export class Workspace {

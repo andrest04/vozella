@@ -2,7 +2,7 @@ import type { ChatScopeDecision, ChatScopeKind } from '@vozella/core';
 import { Briefcase, FileText, Layers, Radio, type LucideIcon } from 'lucide-react';
 import type { Translate } from '../../i18n/translate';
 
-/** Four distinct glyphs, one for each scope (spec 2.1, item 7). */
+/** Four distinct glyphs, one for each scope. */
 export const SCOPE_ICON: Readonly<Record<ChatScopeKind, LucideIcon>> = {
   Live: Radio,
   Meeting: FileText,

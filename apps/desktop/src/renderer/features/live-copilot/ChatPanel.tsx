@@ -71,7 +71,7 @@ const OFFSET: Record<ChatPanelProps['edge'], string> = {
 const NO_DRAG = 'pill-no-drag';
 
 /**
- * The expanded copilot (spec 2.8): header, answer area, two preset chips and the typed ask, in
+ * The expanded copilot: header, answer area, two preset chips and the typed ask, in
  * rows with 12 DIP padding and 8 gap. Presentational: the container owns the ask and the links.
  * The detected-question card comes in through `question` (live question detection, 2026-11-05).
  */

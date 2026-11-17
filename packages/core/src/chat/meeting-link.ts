@@ -1,6 +1,9 @@
 import { compactMeetingId } from './context-packer';
 
-/** Citation prefix (spec 3.4, 4.2). The host is fake on purpose: the renderer intercepts these links. */
+/**
+ * The stored internal link scheme of meeting citations. It is saved in chats and notes, so it
+ * must not change. The host is fake on purpose: the renderer intercepts these links.
+ */
 export const MEETING_LINK_PREFIX = 'https://meetinglive.local/meeting/';
 
 /** `prefix` plus the id as 32 lowercase hex digits. */
@@ -27,7 +30,7 @@ export function hasMeetingPrefix(link: string | null | undefined): link is strin
 /** Upper bound of a cited moment: one day of audio. */
 export const MAX_CITATION_SECONDS = 86_400;
 
-/** A meeting citation, optionally pointing at a moment of its transcript (T3). */
+/** A meeting citation, optionally pointing at a moment of its transcript. */
 export interface MeetingCitation {
   /** 32 lowercase hex. */
   readonly meetingId: string;

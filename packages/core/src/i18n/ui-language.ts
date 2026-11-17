@@ -6,7 +6,7 @@ export type UiLanguageTag = (typeof UI_LANGUAGE_TAGS)[number];
 
 /**
  * The picker options, in order. Labels are endonyms: they never change with the UI language, so
- * each `labelKey` names a catalog key whose text is the same in every locale (spec 2.1).
+ * each `labelKey` names a catalog key whose text is the same in every locale.
  */
 export const UI_LANGUAGE_OPTIONS: readonly {
   readonly tag: UiLanguageTag;
@@ -20,7 +20,7 @@ export const UI_LANGUAGE_OPTIONS: readonly {
 const isBlank = (value: string | null | undefined): value is null | undefined | '' =>
   value === null || value === undefined || value.trim() === '';
 
-/** A tag may be written with an underscore (`es_ES`); treat it like the hyphen form (B20). */
+/** A tag may be written with an underscore (`es_ES`); treat it like the hyphen form. */
 const hyphenated = (tag: string): string => tag.trim().replaceAll('_', '-');
 
 const primarySubtag = (tag: string): string => hyphenated(tag).split('-')[0] ?? '';
@@ -30,7 +30,7 @@ const languageNames = new Intl.DisplayNames(['en'], { type: 'language', fallback
 /**
  * The canonical locale tag for a user or OS supplied tag, or `null` when the tag is blank, not
  * well formed, or names a language that does not exist. `null` means leave the current locale
- * alone. Unknown but well formed tags such as `xx` give `null` on every platform (B20).
+ * alone. Unknown but well formed tags such as `xx` give `null` on every platform.
  */
 export function resolveCulture(tag: string | null | undefined): string | null {
   if (isBlank(tag)) return null;
@@ -62,7 +62,7 @@ export function matchPrimarySubtag(
 
 /**
  * The language of the screens: the saved choice when there is one, else the first OS language we
- * ship (matched by primary subtag), else English (spec 4.5). Never writes anything.
+ * ship (matched by primary subtag), else English. Never writes anything.
  */
 export function resolveUiLanguage(
   uiLanguage: string | null | undefined,

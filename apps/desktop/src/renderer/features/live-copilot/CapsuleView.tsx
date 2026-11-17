@@ -7,7 +7,7 @@ import { useReducedMotion } from '../../ui/use-reduced-motion';
 
 export type HintSide = 'left' | 'right' | 'top' | 'bottom';
 
-/** The started hint opens away from the docked edge (spec 2.5). */
+/** The started hint opens away from the docked edge. */
 export function hintSide(edge: PillEdgeDto): HintSide {
   switch (edge) {
     case 'Right':
@@ -58,7 +58,7 @@ export interface CapsuleViewProps {
   readonly paused: boolean;
   /** 0..100. */
   readonly level: number;
-  /** The bars animate only while the pill is on screen (item 59). */
+  /** The bars animate only while the pill is on screen. */
   readonly running: boolean;
   /** `mm:ss`, minutes unbounded. */
   readonly elapsed: string;
@@ -75,7 +75,7 @@ const BUTTON =
   'transition-colors duration-150 ease-out-quick motion-reduce:transition-none';
 
 /**
- * The pill capsule (spec 2.6): logo tile, level bars, elapsed time, pause, stop, chat toggle.
+ * The pill capsule: logo tile, level bars, elapsed time, pause, stop, chat toggle.
  * Presentational: the container owns events and calls. The whole capsule drags the window; every
  * clickable element opts out with `pill-no-drag`. Always drawn on the dark tokens.
  */

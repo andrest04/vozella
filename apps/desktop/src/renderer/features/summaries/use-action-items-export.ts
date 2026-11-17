@@ -3,7 +3,7 @@ import type { Translate } from '../../i18n/translate';
 import { DRAFT_SUCCESS_MS, type DraftMessageState } from './use-summary-generation';
 
 export interface ActionItemsExport {
-  /** The result of the last export, shown like "Copy action items" (B16). */
+  /** The result of the last export, shown like "Copy action items". */
   readonly message: DraftMessageState | null;
   readonly exporting: boolean;
   readonly exportIcs: (indexes: readonly number[]) => void;

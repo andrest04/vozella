@@ -55,7 +55,7 @@ describe('SummaryTab reading view', () => {
     expect(within(list).getByRole('checkbox', { name: 'Book the room' })).toBeChecked();
   });
 
-  it('never turns the reply into markup or a script link (item 85)', async () => {
+  it('never turns the reply into markup or a script link', async () => {
     const hostile = [
       '<script>window.__pwned = 1</script>',
       '<img src=x onerror="window.__pwned = 2">',
@@ -269,7 +269,7 @@ describe('SummaryTab related meetings', () => {
     });
   });
 
-  it('each related row shows the title and the local short date and time (item 133)', async () => {
+  it('each related row shows the title and the local short date and time', async () => {
     installSummariesApi({ ...loaded(withSummary(SUMMARY, { related })) });
     mount();
     const nav = await screen.findByRole('navigation', { name: 'Related meetings' });
@@ -282,7 +282,7 @@ describe('SummaryTab related meetings', () => {
     expect(first?.textContent).toContain(expected);
   });
 
-  it('B21: a related meeting that no longer exists shows the missing-meeting message and does not navigate', async () => {
+  it('a related meeting that no longer exists shows the missing-meeting message and does not navigate', async () => {
     const api = installSummariesApi({
       ...loaded(withSummary(SUMMARY, { related })),
       'chat.meetingExists': () => ({ exists: false, meetingId: null }),

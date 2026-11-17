@@ -6,9 +6,9 @@ import { launchApp, type LaunchedApp } from './launch';
 
 // The Record screen in the real window on the fake native build: the setup gate, the destination,
 // a take from Record to the result card, and the removed provider message. Screenshots
-// (VOZELLA_SCREENSHOTS=1) go to docs/port/screens/recording.
+// (VOZELLA_SCREENSHOTS=1) go to docs/screenshots/recording.
 
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/recording');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/recording');
 const shots = process.env.VOZELLA_SCREENSHOTS === '1';
 const MODEL = 'Llama-3.2-1B-Instruct-Q4_K_M.gguf';
 

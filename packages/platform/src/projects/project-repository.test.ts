@@ -59,7 +59,7 @@ describe('create', () => {
     });
   });
 
-  it('avoids directories that already exist: Inbox, user folders, legacy dumps and trailing dots', async () => {
+  it('avoids directories that already exist: Inbox, user folders, loose meeting folders and trailing dots', async () => {
     fx = createProjectsFixture();
     for (const name of ['Meetings', 'Recordings', 'Mi carpeta'])
       fs.mkdirSync(path.join(fx.root, name));

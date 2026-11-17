@@ -46,7 +46,7 @@ interface Loaded {
 }
 
 /**
- * B3: one running llama-server per model path. The first call loads it, concurrent calls wait
+ * one running llama-server per model path. The first call loads it, concurrent calls wait
  * for that load, later calls reuse it. Choosing another model stops the old server first.
  * `dispose` (provider disposal, app exit) stops it; calling it with nothing loaded is a no-op.
  * Idle shutdown belongs to the sidecar, which restarts itself on the next request.

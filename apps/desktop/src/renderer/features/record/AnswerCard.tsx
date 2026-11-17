@@ -3,7 +3,7 @@ import { useT } from '../../i18n/I18nProvider';
 import { Badge } from '../../ui';
 
 /**
- * The answer of the live ask, in the side panel (spec 2.8 item 4). It stays up after the take so
+ * The answer of the live ask, in the side panel. It stays up after the take so
  * the user can still read and copy it; the text is plain and selectable, and scrolls past 160 px.
  */
 export function AnswerCard({ answer }: { readonly answer: RecordingAnswerDto }) {

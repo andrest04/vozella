@@ -12,8 +12,8 @@ export interface CliSetupDialogProps {
 }
 
 /**
- * "Set up the Claude Code CLI" (spec 2.7): the selected CLI is not on PATH. Retry looks again;
- * a miss keeps the dialog open with the "still not found" line (item 140).
+ * "Set up the Claude Code CLI": the selected CLI is not on PATH. Retry looks again;
+ * a miss keeps the dialog open with the "still not found" line.
  */
 export function CliSetupDialog(props: CliSetupDialogProps) {
   return props.open ? <OpenCliSetup {...props} /> : null;

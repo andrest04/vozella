@@ -54,7 +54,7 @@ const seedLocal = (root: string): void => {
   );
 };
 
-/** Set up to record, then Set up in the checklist: the engine dialog opens (spec 2.4). */
+/** Set up to record, then Set up in the checklist: the engine dialog opens. */
 async function openEngineSetup(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Set up to record' }).click();
   const checklist = page.getByRole('dialog', { name: 'Set up recording' });
@@ -237,7 +237,7 @@ test('Session: re-transcribe a saved meeting after a confirmation', async () => 
       .click();
     await expect(
       // With no summary model downloaded the gate is not satisfied and the run ends with the
-      // transcript only (spec 113), so the session page shows the no-summary outcome.
+      // transcript only, so the session page shows the no-summary outcome.
       page.getByText('Re-transcribed. The transcript was updated, but no summary was generated.'),
     ).toBeVisible({ timeout: 30_000 });
     await expect.poll(() => fs.readFileSync(file, 'utf8')).toContain('Buenos días a todos');
@@ -271,7 +271,7 @@ test('Session: a meeting without audio offers no Re-transcribe button', async ()
       .getByRole('grid', { name: 'Library' })
       .getByRole('row', { name: /Imported/ })
       .dblclick();
-    // No saved audio: the header does not offer Re-transcribe at all (item 89).
+    // No saved audio: the header does not offer Re-transcribe at all.
     await expect(page.getByRole('heading', { level: 1, name: 'Imported' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Re-transcribe', exact: true })).toHaveCount(0);
   } finally {

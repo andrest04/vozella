@@ -83,12 +83,12 @@ export const audioSourcesCloseFallback = defineRequest('audio.sources.closeFallb
 export const previewOwnerSchema = z.enum(['record', 'settings']);
 
 export const audioPreviewStart = defineRequest('audio.preview.start', {
-  /** The page that starts the meter owns it; the default is Settings (B-32). */
+  /** The page that starts the meter owns it; the default is Settings. */
   input: z.object({ deviceId: z.string().nullable(), owner: previewOwnerSchema.optional() }),
   output: z.object({ started: z.literal(true) }),
 });
 export const audioPreviewStop = defineRequest('audio.preview.stop', {
-  /** A stop from a page that does not own the meter does nothing (B-32). */
+  /** A stop from a page that does not own the meter does nothing. */
   input: z.object({ owner: previewOwnerSchema.optional() }),
   output: z.object({ stopped: z.literal(true) }),
 });
@@ -105,7 +105,7 @@ export const recordingNoticeSchema = z.discriminatedUnion('kind', [
 
 export type RecordingNoticeDto = z.infer<typeof recordingNoticeSchema>;
 
-/** The icon of an application's executable as a data URL, or null (spec 131). */
+/** The icon of an application's executable as a data URL, or null. */
 export const audioAppIcon = defineRequest('audio.apps.icon', {
   input: z.object({ exePath: z.string().min(1) }),
   output: z.object({ dataUrl: z.string().nullable() }),

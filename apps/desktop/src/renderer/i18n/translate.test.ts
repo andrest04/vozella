@@ -78,7 +78,7 @@ describe('detectLocale', () => {
 });
 
 describe('missing strings', () => {
-  it('B8: are reported with the fallback used, and never come back empty', () => {
+  it('are reported with the fallback used, and never come back empty', () => {
     const misses: string[] = [];
     const t = createTranslator('es', (key, locale, fallback) => {
       misses.push(`${key}|${locale}|${fallback}`);

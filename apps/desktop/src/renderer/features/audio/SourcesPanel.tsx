@@ -41,7 +41,7 @@ export interface SourcesPanelProps {
 }
 
 /**
- * The Record page "Sources" block (spec 2.1 and 2.4): the microphone, the meeting audio cards,
+ * The Record page "Sources" block: the microphone, the meeting audio cards,
  * the summary line, and the two bars that offer a change. Main owns the picker and the remembered
  * choices; this container shows the state and sends the user's picks.
  */
@@ -243,7 +243,7 @@ function cardOption(card: SourceCardDto, tr: Translate, locked: boolean): RadioO
 }
 
 /**
- * The executable's own icon (spec 131). Main reads and caches it; the generic glyph shows while it
+ * The executable's own icon. Main reads and caches it; the generic glyph shows while it
  * loads and when the app has none.
  */
 function AppGlyph({ exePath }: { readonly exePath: string | null }) {

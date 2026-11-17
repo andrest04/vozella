@@ -31,7 +31,7 @@ export interface TranscriptionServiceDeps {
   readonly micActivity?: MicActivityReader;
 }
 
-/** The offline pass over a finished WAV, for Stop, import and re-transcription (spec 3.11). */
+/** The offline pass over a finished WAV, for Stop, import and re-transcription. */
 export class TranscriptionService {
   constructor(private readonly deps: TranscriptionServiceDeps) {}
 

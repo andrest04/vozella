@@ -220,8 +220,6 @@ export const locationSchema = z.object({
   libraryRoot: z.string(),
   appDataRoot: z.string(),
   source: z.enum(['env', 'default', 'dev-fallback', 'chosen']),
-  /** The Library root sits inside a folder named MeetingLive (the WinUI app's data). */
-  sharesMeetingLive: z.boolean(),
   version: z.string(),
   startupError: z.string().nullable(),
 });

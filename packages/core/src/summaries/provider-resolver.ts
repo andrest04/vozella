@@ -22,7 +22,7 @@ export type SetupKind = 'Local' | CliProviderKind | ApiProviderKind;
 export type SetupReason = 'model-missing' | 'cli-missing' | 'key-missing' | 'base-url-missing';
 
 /**
- * The answer of the readiness gate (spec 2.7). It is a value, never a dialog: the caller decides
+ * The answer of the readiness gate. It is a value, never a dialog: the caller decides
  * whether to open the wizard or the CLI setup dialog for a `needs-setup`.
  */
 export type ProviderResolution =
@@ -41,9 +41,9 @@ export type ProviderResolution =
   | { readonly status: 'unavailable'; readonly kind: 'Xai'; readonly reason: 'xai-removed' };
 
 export interface ResolveRequest {
-  /** Defaults to the provider the settings select (unknown names are Local, B35). */
+  /** Defaults to the provider the settings select (unknown names are Local). */
   readonly kind?: SummaryProviderKind;
-  /** The live-answer path only (item 143). */
+  /** The live-answer path only. */
   readonly webSearch?: boolean;
   /**
    * Chat's model picker: a model and effort for this request only, never saved. A CLI value the

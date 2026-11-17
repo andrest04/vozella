@@ -81,7 +81,7 @@ describe('built-in recipe catalog', () => {
     }
   });
 
-  it('B8: prompts follow the language at call time, so a Spanish UI gets Spanish prompts', () => {
+  it('prompts follow the language at call time, so a Spanish UI gets Spanish prompts', () => {
     let table = enT;
     const live = (k: string): string => table[k] ?? k;
     expect(builtInRecipes(live)[2]!.prompt).toBe(
@@ -99,7 +99,7 @@ describe('built-in recipe catalog', () => {
     ]);
   });
 
-  it('B8: names follow the language at call time, not at load time', () => {
+  it('names follow the language at call time, not at load time', () => {
     let table = enT;
     const live = (k: string): string => table[k] ?? k;
     expect(builtInRecipes(live)[1]!.name).toBe('Action items');
@@ -183,7 +183,7 @@ describe('recipe scope lists', () => {
   });
 });
 
-describe('live recipes (T2)', () => {
+describe('live recipes', () => {
   it('only the Live scope gets them, first, so they are the starter chips', () => {
     expect(suffix(recipesForScope('Live', t).slice(0, 4))).toEqual(LIVE);
     expect(

@@ -18,8 +18,8 @@ import { launchApp, packagedShot, packagedShots, type LaunchedApp } from './laun
 //
 // Needs: a Windows build with process loopback (20348 or newer), a default output device, the
 // model and CPU runtime under VOZELLA_ASR_DL (default C:\Code\vozella-spikes\asr\dl) and the speech
-// sample under <dl>\..\audio. Without them the spec skips; the ledger marks the row
-// pending-real-validation in that case.
+// sample under <dl>\..\audio. Without them the spec skips; this run is reported
+// as pending real validation.
 
 const dl = process.env.VOZELLA_ASR_DL ?? 'C:\\Code\\vozella-spikes\\asr\\dl';
 const sampleWav = path.resolve(dl, '..', 'audio', 'es-sabina-16k.wav');

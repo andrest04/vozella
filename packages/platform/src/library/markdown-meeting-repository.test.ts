@@ -109,7 +109,7 @@ describe('moving and renaming', () => {
     expect(tree(fx.root)).toEqual(['Inbox/2026-09-01 Retro.md']);
   });
 
-  it('B2: a recording already sitting at the stem does not force a " 2" suffix', async () => {
+  it('a recording already sitting at the stem does not force a " 2" suffix', async () => {
     // The recorder creates the wav first, then the first save writes the markdown.
     const wav = path.join(fx.root, 'Inbox', '2026-09-01 Standup.wav');
     fs.mkdirSync(path.dirname(wav), { recursive: true });
@@ -119,7 +119,7 @@ describe('moving and renaming', () => {
     expect(saved.audioFilePath).toBe(wav);
   });
 
-  it('B2: a recording that belongs to someone else still forces a new stem', async () => {
+  it('a recording that belongs to someone else still forces a new stem', async () => {
     const wav = path.join(fx.root, 'Inbox', '2026-09-01 Standup.wav');
     fs.mkdirSync(path.dirname(wav), { recursive: true });
     fs.writeFileSync(wav, 'RIFF');
@@ -161,7 +161,7 @@ describe('moving and renaming', () => {
 });
 
 describe('blank audioFilePath and replacing a destination', () => {
-  it('item 53: a blank audioFilePath takes the sibling wav of the existing markdown along', async () => {
+  it('a blank audioFilePath takes the sibling wav of the existing markdown along', async () => {
     const first = await fx.meetings.save(meeting());
     const wav = (first.sourcePath ?? '').replace(/\.md$/, '.wav');
     fs.writeFileSync(wav, 'RIFF');
@@ -174,7 +174,7 @@ describe('blank audioFilePath and replacing a destination', () => {
     expect(tree(fx.root)).not.toContain('Inbox/2026-09-01 Retro.wav');
   });
 
-  it('item 54: a file already at the destination is replaced by the moved recording', async () => {
+  it('a file already at the destination is replaced by the moved recording', async () => {
     const source = path.join(fx.dir, 'elsewhere.wav');
     fs.writeFileSync(source, 'NEW');
     const destination = path.join(fx.root, 'Inbox', '2026-09-01 Standup.wav');
@@ -324,7 +324,7 @@ describe('delete', () => {
     expect(fs.existsSync(a.sourcePath ?? '')).toBe(false);
   });
 
-  it('B25: a recording outside the library is left in place', async () => {
+  it('a recording outside the library is left in place', async () => {
     const outside = path.join(fx.dir, 'precious.wav');
     fs.writeFileSync(outside, 'RIFF');
     const saved = await fx.meetings.save(meeting());
@@ -511,7 +511,7 @@ describe('list', () => {
     });
   });
 
-  it('computes the snippet once per file version and reuses it while mtime and size match (item 142)', async () => {
+  it('computes the snippet once per file version and reuses it while mtime and size match', async () => {
     await fx.meetings.save(meeting({ summary: '# T\nBody' }));
     const first = (await fx.meetings.list()).items[0];
     const second = (await fx.meetings.list()).items[0];
@@ -536,7 +536,7 @@ describe('list', () => {
     expect(skipped.map((s) => path.basename(s.path)).sort()).toEqual(['bad-jev.md', 'broken.md']);
   });
 
-  it('item 47: a file that cannot be read right now is skipped with its code, the rest still list', async () => {
+  it('a file that cannot be read right now is skipped with its code, the rest still list', async () => {
     await fx.meetings.save(meeting());
     write(
       'Inbox/locked.md',
@@ -558,7 +558,7 @@ describe('list', () => {
     expect((await fx.meetings.list()).items.map((i) => i.id).sort()).toEqual([ID_A, ID_B]);
   });
 
-  it('B19 and B28: a second list re-reads no unchanged file and no transcript', async () => {
+  it('a second list re-reads no unchanged file and no transcript', async () => {
     await fx.meetings.save(meeting({ transcript: 'T'.repeat(500) }));
     await fx.meetings.save(meeting({ id: ID_B, title: 'Second', summary: 'S' }));
     await fx.meetings.list();
@@ -786,7 +786,7 @@ describe('robustness', () => {
     expect(path.basename(saved.sourcePath ?? '')).toBe('2026-09-01 Q3 plan review.md');
   });
 
-  it('a title holding a newline and --- survives (B3)', async () => {
+  it('a title holding a newline and --- survives', async () => {
     await fx.meetings.save(meeting({ title: 'one\n---\ntwo' }));
     expect((await fx.meetings.list()).items[0]?.title).toBe('one --- two');
   });

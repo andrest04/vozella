@@ -110,7 +110,7 @@ async function startSend(text: string): Promise<void> {
   await within(await screen.findByTestId('ListMeetingChat')).findByText('Thinking…');
 }
 
-describe('a send survives the panel closing or the scope changing (items 33, 42, 43, 45)', () => {
+describe('a send survives the panel closing or the scope changing', () => {
   it('keeps the pending rows while closed and shows the failure and draft after reopening', async () => {
     const open = deferred();
     install(() => open.promise);

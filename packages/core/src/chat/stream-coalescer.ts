@@ -1,10 +1,10 @@
 import type { Clock } from '../clock';
 
-/** Spec 3.5: the most often a streamed answer reaches the screen. */
+/** The most often a streamed answer reaches the screen. */
 export const STREAM_FLUSH_INTERVAL_MS = 80;
 
 /**
- * Turns a fast chunk stream into a slow stream of pushes (spec 3.5). Nothing is pushed until a
+ * Turns a fast chunk stream into a slow stream of pushes. Nothing is pushed until a
  * chunk with visible text has arrived. The first visible chunk is pushed at once, later chunks at
  * most once per interval, and `flush` pushes what the last push left out. Pushed text never has
  * leading whitespace. Time comes from the injected clock, so tests move it by hand.

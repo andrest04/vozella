@@ -18,7 +18,7 @@ export interface ChatFailure {
   readonly message: string;
 }
 
-/** `Status_SetupCancelled` has no "Could not answer" prefix (spec 2.4 step 8). */
+/** `Status_SetupCancelled` has no "Could not answer" prefix. */
 export function setupCancelledFailure(t: TranslateFn): ChatFailure {
   return { kind: 'setup-cancelled', message: t('Status_SetupCancelled') };
 }
@@ -42,7 +42,7 @@ export function scopeGoneFailure(t: TranslateFn): ChatFailure {
 }
 
 /**
- * B14: the detail comes from the shared mapper, never from the raw error. A CLI failure, a local
+ * The detail comes from the shared mapper, never from the raw error. A CLI failure, a local
  * budget failure (`PromptTooLong`) and a plain error all end up as `Chat_SendFailed` plus a
  * mapped sentence in the right language.
  */

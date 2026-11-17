@@ -6,7 +6,7 @@ import { Button, Dialog, Notice, SectionHeader, Select, SettingRow } from '../..
 
 /**
  * The language of Vozella's own screens. The choice is saved first and the windows switch at once;
- * the prompt offers a restart for the parts that read the language only at start (spec 2.1).
+ * the prompt offers a restart for the parts that read the language only at start.
  */
 export function LanguageSection({
   current,

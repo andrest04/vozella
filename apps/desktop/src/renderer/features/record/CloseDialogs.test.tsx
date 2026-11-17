@@ -47,7 +47,7 @@ afterEach(() => {
   Reflect.deleteProperty(window, 'vozella');
 });
 
-describe('CloseDialogs (spec 2.16, item 165)', () => {
+describe('CloseDialogs', () => {
   it('asks to stop first, with Keep recording as the default, and answers Stop and save', async () => {
     send('r1', 'confirm-stop');
     const dialog = await screen.findByRole('dialog', { name: 'Stop recording before closing?' });

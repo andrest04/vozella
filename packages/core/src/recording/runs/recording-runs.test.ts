@@ -219,7 +219,7 @@ describe('hand-off and late callbacks', () => {
 });
 
 describe('capture failure prefix and soft warnings', () => {
-  it('prefixes the capture failure of the take to every status (161)', () => {
+  it('prefixes the capture failure of the take to every status', () => {
     const ctx = setup();
     ctx.runs.beginTake();
     ctx.gate.tryBeginPreparing();
@@ -232,7 +232,7 @@ describe('capture failure prefix and soft warnings', () => {
     expect(keys(ctx.runs.status)).toEqual(['Error_CaptureFaulted', 'Status_Transcribing']);
   });
 
-  it('keeps the soft warning in the post-stop status of that take (B-24)', () => {
+  it('keeps the soft warning in the post-stop status of that take', () => {
     const ctx = setup();
     ctx.runs.beginTake();
     ctx.gate.tryBeginPreparing();
@@ -273,7 +273,7 @@ describe('capture failure prefix and soft warnings', () => {
     expect(ctx.runs.takeCaptureFailure?.args).toEqual(['a']);
   });
 
-  it('B-30: a stop error after a notified failure keeps the failure first', () => {
+  it('a stop error after a notified failure keeps the failure first', () => {
     const ctx = setup();
     ctx.runs.beginTake();
     ctx.gate.tryBeginPreparing();
@@ -284,7 +284,7 @@ describe('capture failure prefix and soft warnings', () => {
     expect(keys(ctx.runs.status)).toEqual(['Error_CaptureFaulted', 'Error_StopRecording']);
   });
 
-  it('B-30: a failure arriving after the stop error still ends up first', () => {
+  it('a failure arriving after the stop error still ends up first', () => {
     const ctx = setup();
     ctx.runs.beginTake();
     ctx.gate.tryBeginPreparing();
@@ -297,7 +297,7 @@ describe('capture failure prefix and soft warnings', () => {
   });
 });
 
-describe('link state (B-26) and queries', () => {
+describe('link state and queries', () => {
   it('an error end clears the link, so the next unrelated take never reuses the meeting id', () => {
     const ctx = setup();
     ctx.runs.beginTake({ meetingId: OTHER_ID });
@@ -330,7 +330,7 @@ describe('link state (B-26) and queries', () => {
     });
   });
 
-  it('isCaptureActive mirrors recording or processing and pushes it to the workspace (166)', () => {
+  it('isCaptureActive mirrors recording or processing and pushes it to the workspace', () => {
     const ctx = setup();
     expect(ctx.runs.isCaptureActive).toBe(false);
     ctx.gate.tryBeginPreparing();
@@ -345,7 +345,7 @@ describe('link state (B-26) and queries', () => {
     expect(ctx.spies.captureActive.mock.calls.map((c) => c[0])).toEqual([true, false, true, false]);
   });
 
-  it('clears the last meeting when it is deleted (162)', () => {
+  it('clears the last meeting when it is deleted', () => {
     const ctx = setup();
     const run = recordAndStop(ctx);
     run.onMeetingSaved(makeMeeting());

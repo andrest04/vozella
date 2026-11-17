@@ -10,13 +10,13 @@ export function tabIndex(tab: SessionTab): number {
   return SESSION_TABS.indexOf(tab);
 }
 
-/** Item 21: a higher index slides in from the right, anything else from the left. */
+/** A higher index slides in from the right, anything else from the left. */
 export function slideDirection(prevIndex: number, nextIndex: number): SlideDirection {
   return nextIndex > prevIndex ? 'FromRight' : 'FromLeft';
 }
 
 /**
- * B15: the previous index is updated on every navigation, including same-tab reloads, and
+ * The previous index is updated on every navigation, including same-tab reloads, and
  * starts at the opened tab, so a first reload never slides from the wrong side.
  */
 export function createSlideTracker(initialTab: SessionTab): {

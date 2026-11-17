@@ -5,7 +5,7 @@ export interface RevealPort {
   reveal(path: string): void | Promise<void>;
 }
 
-/** Item 62: the markdown path to reveal, or null when the record, path or file is missing. */
+/** The markdown path to reveal, or null when the record, path or file is missing. */
 export function resolveRevealTarget(
   record: Pick<MeetingRecord, 'sourcePath'> | null,
   fileExists: (path: string) => boolean,

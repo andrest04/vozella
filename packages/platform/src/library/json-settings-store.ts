@@ -19,11 +19,11 @@ import { errorCode, exists } from './library-layout';
 
 export interface JsonSettingsStoreOptions {
   readonly settingsFilePath: string;
-  /** Called before every write (spec 3.17: Save runs EnsureDirectoriesExist first). */
+  /** Called before every write (Save runs EnsureDirectoriesExist first). */
   readonly ensureDirectories?: () => Promise<void>;
   readonly logger?: Logger;
   readonly locks?: KeyedMutex;
-  /** Called when a damaged file was set aside, so the user can be told (B5). */
+  /** Called when a damaged file was set aside, so the user can be told. */
   readonly onDamaged?: (info: { readonly keptAs: string; readonly message: string }) => void;
 }
 
@@ -31,7 +31,7 @@ export interface JsonSettingsStoreOptions {
  * `settings.json` in the app data root. Reads never throw on a damaged file: the app starts
  * with defaults, and the damaged file is moved aside (not overwritten) on the next write.
  * `update` is read-modify-write under one lock and changes only the fields in the patch, so two
- * callers cannot overwrite each other's fields (B17), and keys it does not know are kept.
+ * callers cannot overwrite each other's fields, and keys it does not know are kept.
  */
 export class JsonSettingsStore implements SettingsStore, NextSessionDateStore {
   private readonly locks: KeyedMutex;

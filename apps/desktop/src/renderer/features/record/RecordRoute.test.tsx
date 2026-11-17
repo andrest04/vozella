@@ -152,7 +152,7 @@ afterEach(() => {
 const mount = (initial = '/record') =>
   renderRouted(initial, [{ path: '/record', component: RecordRoute }]);
 
-describe('RecordRoute idle zone (spec 2.1, 2.2)', () => {
+describe('RecordRoute idle zone', () => {
   it('shows the default title, the destination list and the hero when ready', async () => {
     installApi();
     await mount();
@@ -186,7 +186,7 @@ describe('RecordRoute idle zone (spec 2.1, 2.2)', () => {
       processId: null,
       appName: null,
     });
-    // The readiness was read again before the start (item 18).
+    // The readiness was read again before the start.
     expect(api.named('recording.getSetup').length).toBeGreaterThanOrEqual(2);
   });
 
@@ -242,7 +242,7 @@ describe('RecordRoute idle zone (spec 2.1, 2.2)', () => {
     expect(screen.getByRole('textbox', { name: 'Title' })).toBeEnabled();
   });
 
-  it('draws a new default title when the take ends (spec 2.2)', async () => {
+  it('draws a new default title when the take ends', async () => {
     const api = installApi();
     await mount();
     const title = await screen.findByRole('textbox', { name: 'Title' });
@@ -365,7 +365,7 @@ describe('RecordRoute action row', () => {
   });
 });
 
-describe('RecordRoute setup (spec 2.4, items 14 to 18)', () => {
+describe('RecordRoute setup', () => {
   it('shows the inline panel with the three cards instead of the hero', async () => {
     installApi({ 'recording.getSetup': () => needsSetup });
     await mount();
@@ -438,7 +438,7 @@ describe('RecordRoute setup (spec 2.4, items 14 to 18)', () => {
     );
   });
 
-  it('item 16: a refused Record opens the dialog, and Cancel leaves everything as it was', async () => {
+  it('a refused Record opens the dialog, and Cancel leaves everything as it was', async () => {
     let setup = readySetup;
     const api = installApi({ 'recording.getSetup': () => setup });
     await mount();
@@ -455,7 +455,7 @@ describe('RecordRoute setup (spec 2.4, items 14 to 18)', () => {
     expect(await screen.findByText('Setup cancelled.')).toBeInTheDocument();
   });
 
-  it('item 17: Set up runs the engine step first, then the loop reads the snapshot again and records', async () => {
+  it('Set up runs the engine step first, then the loop reads the snapshot again and records', async () => {
     let setup = needsSetup;
     const api = installApi({
       'recording.getSetup': () => setup,
@@ -535,7 +535,7 @@ describe('RecordRoute idle repeats', () => {
 });
 
 describe('RecordRoute accelerator and missing steps', () => {
-  it('item 62: Ctrl+R starts a take on the idle page', async () => {
+  it('Ctrl+R starts a take on the idle page', async () => {
     const api = installApi();
     await mount();
     await screen.findByRole('button', { name: 'Record' });
@@ -545,7 +545,7 @@ describe('RecordRoute accelerator and missing steps', () => {
     });
   });
 
-  it('item 17: with the engine ready, the summary chooser is the next step and cancelling it loops back to the checklist', async () => {
+  it('with the engine ready, the summary chooser is the next step and cancelling it loops back to the checklist', async () => {
     const needsSummary: RecordingSetupDto = {
       ...readySetup,
       canRecord: false,
@@ -767,7 +767,7 @@ describe('RecordRoute with a cloud transcription engine', () => {
   });
 });
 
-describe('RecordRoute status bars (spec 2.18, B-12)', () => {
+describe('RecordRoute status bars', () => {
   it('shows the start refusal as an error bar by its typed severity', async () => {
     installApi({
       'recording.start': () => ({
@@ -796,7 +796,7 @@ describe('RecordRoute status bars (spec 2.18, B-12)', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  it('97, B-24: the idle column shows the soft warning after a take, as a caption', async () => {
+  it('the idle column shows the soft warning after a take, as a caption', async () => {
     const api = installApi();
     await mount();
     await screen.findByRole('button', { name: 'Record' });
@@ -830,7 +830,7 @@ describe('RecordRoute status bars (spec 2.18, B-12)', () => {
   });
 });
 
-describe('RecordRoute result card (spec 2.13, item 183)', () => {
+describe('RecordRoute result card', () => {
   const saved = { ...idleState, lastMeeting: { id: 'm-9', title: 'Weekly sync' } };
 
   it('opens the Summary tab when the meeting has a summary', async () => {
@@ -886,7 +886,7 @@ describe('RecordRoute result card (spec 2.13, item 183)', () => {
   });
 });
 
-describe('RecordRoute import (spec 2.12)', () => {
+describe('RecordRoute import', () => {
   it('picks a file, then imports it into the chosen destination', async () => {
     const api = installApi({
       'audio.import.pickFile': () => ({ path: 'C:\\in\\call.mp3', recordedAtMs: 5 }),
@@ -1069,7 +1069,7 @@ describe('RecordRoute take notes request', () => {
   });
 });
 
-describe('RecordRoute processing (spec 2.10, 2.11, items 163 and 154)', () => {
+describe('RecordRoute processing', () => {
   const processing = {
     ...idleState,
     phase: 'Processing' as const,
@@ -1094,7 +1094,7 @@ describe('RecordRoute processing (spec 2.10, 2.11, items 163 and 154)', () => {
     expect(api.named('recording.cancelProcessing')[0]?.input).toEqual({ meetingId: null });
   });
 
-  it('B-21: a quiet Cancel summary appears on the result card only while the summary runs', async () => {
+  it('a quiet Cancel summary appears on the result card only while the summary runs', async () => {
     const api = installApi({
       'recording.getState': () => ({
         ...idleState,
@@ -1125,7 +1125,7 @@ describe('RecordRoute processing (spec 2.10, 2.11, items 163 and 154)', () => {
     expect(screen.queryByRole('button', { name: 'Cancel summary' })).toBeNull();
   });
 
-  it('B-11: a failed first save offers Try saving again, which runs retryProcessing', async () => {
+  it('a failed first save offers Try saving again, which runs retryProcessing', async () => {
     const api = installApi({
       'recording.getState': () => ({
         ...idleState,
@@ -1148,7 +1148,7 @@ describe('RecordRoute processing (spec 2.10, 2.11, items 163 and 154)', () => {
   });
 });
 
-describe('RecordRoute live ask (spec 2.8, items 113 and 128)', () => {
+describe('RecordRoute live ask', () => {
   const recording = {
     ...idleState,
     phase: 'Recording' as const,

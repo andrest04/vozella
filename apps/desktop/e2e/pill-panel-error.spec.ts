@@ -6,9 +6,9 @@ import { installEngine, launchApp, readyEnv } from './launch';
 // The error path of the pill chat panel: a provider that fails (the fake summary provider, no real
 // CLI and no real account) shows "Could not answer" inside the panel and the take goes on. Its own
 // file because the app allows one instance. Fake native build. Windows only.
-// Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/port/screens/live-copilot.
+// Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/screenshots/live-copilot.
 
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/live-copilot');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/live-copilot');
 const shots = process.env.VOZELLA_SCREENSHOTS === '1';
 const MODEL = 'Llama-3.2-1B-Instruct-Q4_K_M.gguf';
 

@@ -109,7 +109,7 @@ describe('summaries contracts', () => {
   });
 });
 
-describe('summaries.replaceSummary (T4)', () => {
+describe('summaries.replaceSummary', () => {
   it('is registered and accepts an answer or a restore', () => {
     expect(Object.keys(requestChannels)).toContain('summaries.replaceSummary');
     const input = summariesReplaceSummary.input;
@@ -138,7 +138,7 @@ describe('summaries.replaceSummary (T4)', () => {
   });
 });
 
-describe('action item deadlines (T4)', () => {
+describe('action item deadlines', () => {
   it('registers the date and export channels', () => {
     for (const name of [
       'summaries.setActionItemDate',

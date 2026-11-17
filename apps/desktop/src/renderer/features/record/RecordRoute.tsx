@@ -79,7 +79,7 @@ const useWindowWidth = (): number => {
   return width;
 };
 
-/** Opens the saved meeting in the Session page on the Summary tab if it has one (spec 2.13). */
+/** Opens the saved meeting in the Session page on the Summary tab if it has one. */
 async function openMeeting(id: string): Promise<void> {
   try {
     const { record } = await window.vozella.invoke('library.getMeeting', { id });
@@ -122,7 +122,7 @@ export function RecordRoute() {
       ? state.lastMeeting
       : null;
 
-  // After the hand-off the summary runs on its own; main's status says so (B-21).
+  // After the hand-off the summary runs on its own; main's status says so.
   const summarizing =
     !active && (state?.status ?? []).some((message) => message.key === 'Status_GeneratingSummary');
 

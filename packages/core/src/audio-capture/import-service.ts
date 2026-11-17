@@ -1,7 +1,7 @@
 import type { CancelSignal } from '../cancel';
 import type { WavWriter } from './recording-service';
 
-/** Importing an audio file as the 16 kHz mono PCM16 WAV recording produces (spec 2.8). */
+/** Importing an audio file as the 16 kHz mono PCM16 WAV recording produces. */
 
 export const IMPORT_EXTENSIONS = [
   '.wav',

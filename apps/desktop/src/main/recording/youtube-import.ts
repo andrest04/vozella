@@ -3,7 +3,7 @@ import nodePath from 'node:path';
 import { isCancellation, type CancelSignal, type Logger, type Message } from '@vozella/core';
 import { YtDlpDownloader, YtDlpError, YtDlpInstallError, YtDlpManager } from '@vozella/platform';
 
-/** What the YouTube import needs from yt-dlp and the temp folder (spec 2.12, from a link). */
+/** What the YouTube import needs from yt-dlp and the temp folder (from a link). */
 export interface YouTubeAudioPort {
   /** Installs yt-dlp on first use; resolves once it can run. */
   ensure(cancel: CancelSignal): Promise<unknown>;

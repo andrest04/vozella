@@ -46,7 +46,7 @@ describe('initialWizardState', () => {
     expect(initialWizardState('choose').phase).toBe('ChoosingEngine');
   });
 
-  it('local-only mode opens directly on hardware detection, never on the chooser (B33)', () => {
+  it('local-only mode opens directly on hardware detection, never on the chooser', () => {
     const state = initialWizardState('local-only');
     expect(state.phase).toBe('DetectingHardware');
     expect(state.attempt).toBe(1);
@@ -89,7 +89,7 @@ describe('wizardReducer', () => {
     expect(state.phase).toBe('ChoosingEngine');
   });
 
-  it('loaded hardware selects the default file (item 128)', () => {
+  it('loaded hardware selects the default file', () => {
     expect(selecting()).toMatchObject({ phase: 'SelectingModel', selected: 'b.gguf', error: null });
   });
 
@@ -154,7 +154,7 @@ describe('wizardReducer', () => {
     });
   });
 
-  it('a failed download returns to the model list with the error and the same selection (B7)', () => {
+  it('a failed download returns to the model list with the error and the same selection', () => {
     const state = run(
       selecting(),
       { type: 'startDownload', fileName: 'a.gguf' },
@@ -167,7 +167,7 @@ describe('wizardReducer', () => {
     });
   });
 
-  it('cancelling the download returns to the list at once with no error (B6)', () => {
+  it('cancelling the download returns to the list at once with no error', () => {
     const state = run(
       selecting(),
       { type: 'startDownload', fileName: 'a.gguf' },
@@ -212,7 +212,7 @@ describe('wizardReducer', () => {
     expect(run(closed, loaded(1))).toBe(closed);
   });
 
-  it('a saved download completes with the Local result (item 133)', () => {
+  it('a saved download completes with the Local result', () => {
     const state = run(
       selecting(),
       { type: 'startDownload', fileName: 'a.gguf' },
@@ -224,7 +224,7 @@ describe('wizardReducer', () => {
     });
   });
 
-  it('choosing an already downloaded file completes after the save answer (item 131)', () => {
+  it('choosing an already downloaded file completes after the save answer', () => {
     const saving = run(selecting(), { type: 'startSave', fileName: 'b.gguf' });
     expect(saving).toMatchObject({ phase: 'SelectingModel', busy: true });
     const done = run(saving, {

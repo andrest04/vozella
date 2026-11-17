@@ -1,14 +1,14 @@
 import { compareNames, type ActiveAudioApp, type ProcessInfoProvider } from './active-audio-apps';
 import type { AppSettings } from '../library/settings';
 
-/** The meeting-audio picker: merge, still-running check, memory (spec 2.4, 2.6). */
+/** The meeting-audio picker: merge, still-running check, memory. */
 
 export interface ActiveAppEntry {
   readonly app: ActiveAudioApp;
   readonly isAvailable: boolean;
 }
 
-/** Spec 3.4.4. Keeps a selected app visible after it stops playing, dimmed, in name order. */
+/** Keeps a selected app visible after it stops playing, dimmed, in name order. */
 export function mergeActiveApps(
   active: readonly ActiveAudioApp[],
   selected: ActiveAudioApp | null,
@@ -33,7 +33,7 @@ export function isAppStillRunning(app: ActiveAudioApp, processes: ProcessInfoPro
   return app.exePath.toLowerCase() === process.exePath.toLowerCase();
 }
 
-// Remembered choices (spec 2.6) -----------------------------------------------------------
+// Remembered choices -----------------------------------------------------------
 
 export type MicrophoneChoiceKind = 'None' | 'SystemDefault' | 'Device';
 
@@ -89,7 +89,7 @@ function deviceOrDefault(id: string | null, available: ReadonlySet<string>): Mic
     : SYSTEM_DEFAULT_MICROPHONE;
 }
 
-/** Spec 2.6. An unplugged remembered device falls back to the system default, never None. */
+/** An unplugged remembered device falls back to the system default, never None. */
 export function restoreMicrophone(
   settings: RememberedFields,
   availableDeviceIds: readonly string[],

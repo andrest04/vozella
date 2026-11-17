@@ -1,4 +1,4 @@
-/** Mixing of the 16 kHz mono sources into one stream (spec 2.2.3, 3.1.1). */
+/** Mixing of the 16 kHz mono sources into one stream. */
 
 export const SOURCE_BUFFER_SECONDS = 5;
 export const SOURCE_BUFFER_SAMPLES = 16_000 * SOURCE_BUFFER_SECONDS;

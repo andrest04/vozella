@@ -19,7 +19,7 @@ afterEach(() => {
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-describe('PathCliProbe (spec 2.2)', () => {
+describe('PathCliProbe', () => {
   const touch = (...parts: string[]) => {
     const file = path.join(dir, ...parts);
     fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -45,7 +45,7 @@ describe('PathCliProbe (spec 2.2)', () => {
     expect(await probe.isOnPath('claude')).toBe(false);
   });
 
-  it('Windows: an empty PATHEXT or a trailing ; also tries the plain name, as C# does (item 36)', async () => {
+  it('Windows: an empty PATHEXT or a trailing ; also tries the plain name, as the shell does', async () => {
     touch('bin', 'claude');
     const bin = path.join(dir, 'bin');
     expect(
@@ -94,7 +94,7 @@ describe('PathCliProbe (spec 2.2)', () => {
     expect(await probe.isOnPath('claude')).toBe(false);
   });
 
-  it('reads the environment each time, so a later install is seen (B15)', async () => {
+  it('reads the environment each time, so a later install is seen', async () => {
     const env: Record<string, string> = { PATH: path.join(dir, 'bin') };
     const probe = new PathCliProbe({ platform: 'win32', env });
     expect(await probe.isOnPath('claude')).toBe(false);
@@ -161,7 +161,7 @@ describe('downloadToFile', () => {
     }
   });
 
-  it('B5: a server error rejects and leaves nothing behind', async () => {
+  it('a server error rejects and leaves nothing behind', async () => {
     const server = await serve((_req, res) => {
       res.writeHead(503);
       res.end('busy');
@@ -217,7 +217,7 @@ describe('downloadToFile', () => {
     }
   });
 
-  it('item 121: while the transfer is in flight the .part exists and the target does not', async () => {
+  it('while the transfer is in flight the .part exists and the target does not', async () => {
     let release: (() => void) | undefined;
     const server = await serve((_req, res) => {
       res.writeHead(200, { 'content-length': 10 });
@@ -246,7 +246,7 @@ describe('downloadToFile', () => {
     }
   });
 
-  it('item 121: a 416 on resume restarts from byte zero', async () => {
+  it('a 416 on resume restarts from byte zero', async () => {
     const full = Buffer.from('GGUFDATA');
     const ranges: (string | undefined)[] = [];
     const server = await serve((req, res) => {
@@ -270,7 +270,7 @@ describe('downloadToFile', () => {
     }
   });
 
-  it('item 121: a server that ignores Range and sends 200 overwrites the old part', async () => {
+  it('a server that ignores Range and sends 200 overwrites the old part', async () => {
     const full = Buffer.from('GGUFDATA');
     const server = await serve((_req, res) => {
       res.writeHead(200, { 'content-length': full.length });
@@ -286,7 +286,7 @@ describe('downloadToFile', () => {
     }
   });
 
-  it('item 121: cancel under resume:true still removes the .part', async () => {
+  it('cancel under resume:true still removes the .part', async () => {
     const server = await serve((_req, res) => {
       res.writeHead(200, { 'content-length': 10_000_000 });
       res.write(Buffer.alloc(10_000));
@@ -311,7 +311,7 @@ describe('downloadToFile', () => {
     }
   });
 
-  it('item 122: a slow transfer is not cut by any default timeout', async () => {
+  it('a slow transfer is not cut by any default timeout', async () => {
     const server = await serve((_req, res) => {
       res.writeHead(200, { 'content-length': 4 });
       res.write('GG');
@@ -362,7 +362,7 @@ describe('downloadToFile', () => {
   });
 });
 
-describe('downloadToFile verification (B18)', () => {
+describe('downloadToFile verification', () => {
   it('a size mismatch removes the part and never creates the target', async () => {
     const server = await serve((_req, res) => {
       res.writeHead(200, { 'content-length': 3 });
@@ -434,7 +434,7 @@ describe('FileLocalModelStore', () => {
     }
   });
 
-  it('B18: a download of the wrong size leaves no final file and no part', async () => {
+  it('a download of the wrong size leaves no final file and no part', async () => {
     const server = await serve((_req, res) => {
       res.writeHead(200, { 'content-length': 3 });
       res.end('GGU');
@@ -452,7 +452,7 @@ describe('FileLocalModelStore', () => {
     }
   });
 
-  it('B18: a dropped transfer keeps the .part and the next call resumes with a Range request', async () => {
+  it('a dropped transfer keeps the .part and the next call resumes with a Range request', async () => {
     const full = Buffer.from('GGUF');
     const ranges: (string | undefined)[] = [];
     const directory = path.join(dir, 'SummaryModels');
@@ -549,7 +549,7 @@ describe('hardware probe', () => {
     expect(parseGpuReport('')).toEqual({ name: null, vramGb: null });
   });
 
-  it('B17: unusable script output is a failed read, an empty adapter list is not', () => {
+  it('unusable script output is a failed read, an empty adapter list is not', () => {
     expect(isUsableGpuReport('')).toBe(false);
     expect(isUsableGpuReport('not json')).toBe(false);
     expect(isUsableGpuReport('null')).toBe(false);
@@ -570,7 +570,7 @@ describe('hardware probe', () => {
     expect(queries).toBe(1);
   });
 
-  it('B17: a failed GPU query is not cached, so the next call can find the GPU', async () => {
+  it('a failed GPU query is not cached, so the next call can find the GPU', async () => {
     let calls = 0;
     const probe = new SystemHardwareProbe({
       totalMemoryBytes: () => 8 * 1024 ** 3,
@@ -592,7 +592,7 @@ describe('hardware probe', () => {
     expect(calls).toBe(2);
   });
 
-  it('B17: a rejected read is not cached either', async () => {
+  it('a rejected read is not cached either', async () => {
     let memory = 0;
     const probe = new SystemHardwareProbe({
       totalMemoryBytes: () => {
@@ -634,7 +634,7 @@ describe('hardware probe', () => {
   });
 });
 
-describe('JsonSettingsStore damage notice (item 101)', () => {
+describe('JsonSettingsStore damage notice', () => {
   it('tells the caller where the damaged file was kept', async () => {
     const file = path.join(dir, 'settings.json');
     fs.writeFileSync(file, '{ not json');
@@ -653,7 +653,7 @@ describe('JsonSettingsStore damage notice (item 101)', () => {
 
 // The 1B file the spikes folder holds. Skipped on a machine without it.
 const SPIKE_1B = 'C:/Code/vozella-spikes/llm/work/Llama-3.2-1B-Instruct-Q4_K_M.gguf';
-describe.skipIf(!fs.existsSync(SPIKE_1B))('catalog pins match the real 1B file (B18)', () => {
+describe.skipIf(!fs.existsSync(SPIKE_1B))('catalog pins match the real 1B file', () => {
   it('has the pinned size and SHA-256', async () => {
     const model = SUMMARY_MODELS[0]!;
     expect(fs.statSync(SPIKE_1B).size).toBe(model.sizeBytes);

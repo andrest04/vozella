@@ -1,4 +1,4 @@
-/** What one recording captures (spec 2.2.1): an optional microphone and exactly one output. */
+/** What one recording captures: an optional microphone and exactly one output. */
 
 export type OutputKind = 'SystemLoopback' | 'ProcessTree';
 
@@ -90,12 +90,12 @@ export function effectiveMicrophoneId(sources: RecordingCaptureSources): string 
     : null;
 }
 
-/** Spec 2.3.3. A failure counts as a lost source only if it is an error and not a user stop. */
+/** A failure counts as a lost source only if it is an error and not a user stop. */
 export function isSourceLost(error: Error | null | undefined, userStop: boolean): boolean {
   return error != null && !userStop;
 }
 
-/** Spec 2.3.3. Only a process capture ends the recording on its own failure. */
+/** Only a process capture ends the recording on its own failure. */
 export function shouldSurfaceOutputFailure(
   error: Error | null | undefined,
   userStop: boolean,

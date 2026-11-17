@@ -10,7 +10,7 @@ export interface PipelineLiveTake {
 }
 
 /**
- * What one take hands the pipeline (spec 3.7). It is built before the first await at Stop, so
+ * What one take hands the pipeline. It is built before the first await at Stop, so
  * nothing the user does next can leak into the take. Times are epoch milliseconds.
  */
 export interface PipelineRequest {
@@ -40,8 +40,7 @@ export interface PipelineRequest {
   readonly noteTemplateId?: string | null;
   readonly templateInstructions?: string | null;
   /**
-   * Kept only so frontmatter that already exists on disk survives a save (owner decision
-   * 2026-11-03: the calendar features are not ported, the keys are still read and written).
+   * Kept only so frontmatter that already exists on disk survives a save (the calendar features do not exist; the keys are still read and written).
    */
   readonly calendarEventId?: string | null;
   readonly calendarId?: string | null;

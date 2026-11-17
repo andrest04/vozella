@@ -253,7 +253,7 @@ describe('SourcesPanel microphone', () => {
 });
 
 describe('SourcesPanel microphone preview on the Record page', () => {
-  it('item 28: choosing a device restarts the preview on that device', async () => {
+  it('choosing a device restarts the preview on that device', async () => {
     const api = installApi();
     render(
       <Providers>
@@ -315,7 +315,7 @@ describe('SourcesPanel meeting audio', () => {
     expect(screen.getByTestId('sources-summary')).toHaveTextContent('Audio: Zoom');
   });
 
-  it('items 31 and 33: the system card has a tooltip and no meter, an unavailable app card is dimmed to 0.55', async () => {
+  it('the system card has a tooltip and no meter, an unavailable app card is dimmed to 0.55', async () => {
     installApi({ state: playing });
     render(
       <Providers>
@@ -338,7 +338,7 @@ describe('SourcesPanel meeting audio', () => {
     expect(dimmed?.className).toContain('opacity-[0.55]');
   });
 
-  it('draws the icon of each app executable and keeps the glyph where there is none (item 131)', async () => {
+  it('draws the icon of each app executable and keeps the glyph where there is none', async () => {
     const api = installApi({ state: playing, icons: { Zoom: 'data:image/png;base64,AAAA' } });
     const { container } = render(
       <Providers>

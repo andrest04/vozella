@@ -148,7 +148,7 @@ interface Options {
   transcript?: string;
   liveStartFails?: boolean;
   liveDraft?: string | null;
-  /** What the transcription module says of the last live draft; absent: the port has no answer. */
+  /** What the transcription module says of the last live draft; absent: there is no answer. */
   draftIsFinal?: boolean;
   liveSnapshot?: { digest: string | null; qa: { question: string; answer?: string }[] };
   providerReady?: boolean;
@@ -404,7 +404,7 @@ describe('RecordingService start', () => {
     expect(t.service.gate.phase).toBe('Idle');
   });
 
-  it('B-4: recordedAt is the instant the capture started, after the model loaded', async () => {
+  it('recordedAt is the instant the capture started, after the model loaded', async () => {
     const t = build();
     t.live.start.mockImplementation(() => {
       now += 4000; // the model takes four seconds to load
@@ -437,7 +437,7 @@ describe('RecordingService start', () => {
     });
   });
 
-  it('48, 49: an app that is gone falls back to system audio with a notice', async () => {
+  it('an app that is gone falls back to system audio with a notice', async () => {
     const t = build();
     await t.controller.startSources();
     await t.controller.select(7);
@@ -450,7 +450,7 @@ describe('RecordingService start', () => {
     ]);
   });
 
-  it('B-23: a start that never loaded the sources restores the remembered microphone and app', async () => {
+  it('a start that never loaded the sources restores the remembered microphone and app', async () => {
     const t = build();
     await t.settings.update({
       ...rememberMicrophonePatch({ kind: 'Device', deviceId: 'mic-1' }),
@@ -472,7 +472,7 @@ describe('RecordingService start', () => {
 });
 
 describe('RecordingService start failure', () => {
-  it('59, B-2: deletes the partial WAV, says so, and leaves the gate idle', async () => {
+  it('deletes the partial WAV, says so, and leaves the gate idle', async () => {
     const t = build();
     t.host.failStart = new Error('device busy');
     const result = await t.service.start(sources);
@@ -486,7 +486,7 @@ describe('RecordingService start failure', () => {
     expect(t.service.getState().status[0]?.key).toBe('Error_StartRecording');
   });
 
-  it('B-29: a live session that failed midway is stopped', async () => {
+  it('a live session that failed midway is stopped', async () => {
     const t = build({ liveStartFails: true });
     const result = await t.service.start(sources);
     expect(result).toMatchObject({ started: false, reason: 'failed' });
@@ -494,7 +494,7 @@ describe('RecordingService start failure', () => {
     expect(t.host.methods()).not.toContain('recordStart');
   });
 
-  it('57: the idle preview stops before the capture and comes back after a failed start', async () => {
+  it('the idle preview stops before the capture and comes back after a failed start', async () => {
     const t = build();
     t.controller.startPreview('mic-1', 'record');
     t.host.failStart = new Error('nope');
@@ -505,7 +505,7 @@ describe('RecordingService start failure', () => {
     expect(t.controller.previewState).toEqual({ owner: 'record', deviceId: 'mic-1' });
   });
 
-  it('58: the capture event subscription is removed after a failed start', async () => {
+  it('the capture event subscription is removed after a failed start', async () => {
     const t = build();
     t.host.failStart = new Error('nope');
     await t.service.start(sources);
@@ -513,7 +513,7 @@ describe('RecordingService start failure', () => {
     expect(t.service.getState().captureNotices).toEqual([]);
   });
 
-  it('52: the start steps run in the order of the C# sequence', async () => {
+  it('the start steps run in order', async () => {
     const t = build();
     const spy = <T extends object>(target: T, key: keyof T & string, label: string): void => {
       const original = (target as Record<string, (...a: unknown[]) => unknown>)[key]!;
@@ -547,12 +547,12 @@ describe('RecordingService start failure', () => {
     expect(at('sources')).toBeLessThan(steps.lastIndexOf('settings.load'));
     expect(steps.lastIndexOf('settings.load')).toBeLessThan(at('liveAsk.reset'));
     expect(at('liveAsk.reset')).toBeLessThan(at('live.start(loading)'));
-    // The port stops the idle meter before the live model loads (spec step 10 comes after 9).
+    // The idle meter stops before the live model loads.
     expect(at('live.start(loading)')).toBeGreaterThan(at('preview.stop'));
     expect(at('live.start(loading)')).toBeLessThan(at('capture.start'));
   });
 
-  it('53: a linked meeting id is the id of the take and of the saved record', async () => {
+  it('a linked meeting id is the id of the take and of the saved record', async () => {
     const t = build();
     const result = await t.service.start(sources, { meetingId: 'linked' });
     expect(result).toMatchObject({ started: true, meetingId: 'linked' });
@@ -563,7 +563,7 @@ describe('RecordingService start failure', () => {
     expect(t.store.saves.every((r) => r.id === 'linked')).toBe(true);
   });
 
-  it('B-9: the path allocator asks the library about the take own meeting id', async () => {
+  it('the path allocator asks the library about the take own meeting id', async () => {
     const owned: string[] = [];
     const t = build({
       ownsMarkdown: (id, p) => {
@@ -578,7 +578,7 @@ describe('RecordingService start failure', () => {
     expect(fs.existsSync(path.join(t.inbox, '2026-11-03 Standup.wav'))).toBe(true);
   });
 
-  it('58: no capture event reaches the state after a stop or a discard', async () => {
+  it('no capture event reaches the state after a stop or a discard', async () => {
     const stopped = build();
     await stopped.service.start(sources);
     await stopped.service.stop();
@@ -594,7 +594,7 @@ describe('RecordingService start failure', () => {
     expect(discarded.service.getState().captureNotices).toEqual([]);
   });
 
-  it('97, B-24: a soft warning raised during the take is a warning status entry after Done', async () => {
+  it('a soft warning raised during the take is a warning status entry after Done', async () => {
     const t = build();
     await t.service.start(sources);
     t.host.push({ type: 'source-lost', source: 'Microphone', remaining: 1, message: 'gone' });
@@ -608,7 +608,7 @@ describe('RecordingService start failure', () => {
     });
   });
 
-  it('182: the main window is handed off once, when the recording starts, not on pause or stop', async () => {
+  it('the main window is handed off once, when the recording starts, not on pause or stop', async () => {
     const started = vi.fn();
     const t = build({ onRecordingStarted: started });
     await t.service.start(sources);
@@ -620,7 +620,7 @@ describe('RecordingService start failure', () => {
     expect(started).toHaveBeenCalledTimes(1);
   });
 
-  it('182: a failed start does not hand the window off', async () => {
+  it('a failed start does not hand the window off', async () => {
     const started = vi.fn();
     const t = build({ onRecordingStarted: started });
     t.host.failStart = new Error('nope');
@@ -628,7 +628,7 @@ describe('RecordingService start failure', () => {
     expect(started).not.toHaveBeenCalled();
   });
 
-  it('108: a late live update outside a take does not change the transcript text', async () => {
+  it('a late live update outside a take does not change the transcript text', async () => {
     const t = build();
     await t.service.start(sources);
     await t.service.stop();
@@ -639,7 +639,7 @@ describe('RecordingService start failure', () => {
     expect(t.liveAskCalls).not.toContain('committed:too late');
   });
 
-  it('60: a failure between capture start and the recording mark stops the take at once', async () => {
+  it('a failure between capture start and the recording mark stops the take at once', async () => {
     const t = build();
     t.host.duringStart = () => {
       t.host.push({ type: 'faulted', message: 'device lost' });
@@ -660,7 +660,7 @@ describe('RecordingService start failure', () => {
 });
 
 describe('RecordingService pause and highlights', () => {
-  it('65 to 67, 69: highlights are in WAV time, the pause is not counted', async () => {
+  it('highlights are in WAV time, the pause is not counted', async () => {
     const t = build();
     await t.service.start(sources);
     now += 5000;
@@ -694,7 +694,7 @@ describe('RecordingService pause and highlights', () => {
     expect(t.service.highlight().marked).toBe(false);
   });
 
-  it('B-15: the level meter reads zero while paused', async () => {
+  it('the level meter reads zero while paused', async () => {
     const t = build();
     await t.service.start(sources);
     t.host.push({ type: 'recording-level', level: 60 });
@@ -704,7 +704,7 @@ describe('RecordingService pause and highlights', () => {
     expect(t.service.getState().micLevel).toBe(0);
   });
 
-  it('B-22, 110: the canvas stars the live text; the chat gets the plain transcript', async () => {
+  it('the canvas stars the live text; the chat gets the plain transcript', async () => {
     const t = build();
     await t.service.start(sources);
     for (const listener of t.liveListeners) listener(TRANSCRIPT, TRANSCRIPT);
@@ -718,7 +718,7 @@ describe('RecordingService pause and highlights', () => {
   });
 });
 
-describe('RecordingService live ask hooks (127)', () => {
+describe('RecordingService live ask hooks', () => {
   it('resets at Start, forwards committed text, and cancels on Stop and on Discard', async () => {
     const t = build();
     await t.service.start(sources);
@@ -774,7 +774,7 @@ describe('RecordingService live take output', () => {
 });
 
 describe('RecordingService stop', () => {
-  it('74, 77, 78: saves the meeting with the title, folder and audio of the take', async () => {
+  it('saves the meeting with the title, folder and audio of the take', async () => {
     const t = build({ projects: { f1: 'Clients' }, liveDraft: '[00:00.00-00:01.00] live' });
     await t.service.start({ ...sources, projectId: 'f1' });
     now += 30_000;
@@ -884,7 +884,7 @@ describe('RecordingService stop', () => {
     expect(t.service.getState().lastMeeting?.title).toBe('Fake planning meeting');
   });
 
-  it('162: the last meeting is forgotten when it is deleted', async () => {
+  it('the last meeting is forgotten when it is deleted', async () => {
     const t = build();
     await t.service.start(sources);
     await t.service.stop();
@@ -897,7 +897,7 @@ describe('RecordingService stop', () => {
     expect(t.service.getState().liveText).toBe('');
   });
 
-  it('190: a destination project deleted during the take files the meeting in the Inbox', async () => {
+  it('a destination project deleted during the take files the meeting in the Inbox', async () => {
     const t = build({ projects: { f1: 'Clients' } });
     await t.service.start({ ...sources, projectId: 'f1' });
     t.projects.records.delete('f1');
@@ -906,7 +906,7 @@ describe('RecordingService stop', () => {
     expect(t.store.saves[0]?.projectId).toBeNull();
   });
 
-  it('74: a second stop joins the one that runs; the capture stops once', async () => {
+  it('a second stop joins the one that runs; the capture stops once', async () => {
     const t = build();
     await t.service.start(sources);
     const first = t.service.stop();
@@ -918,7 +918,7 @@ describe('RecordingService stop', () => {
     expect(await t.service.stop()).toBe(false);
   });
 
-  it('75: a stop error is reported', async () => {
+  it('a stop error is reported', async () => {
     const t = build();
     t.host.failStop = new Error('writer closed');
     await t.service.start(sources);
@@ -927,7 +927,7 @@ describe('RecordingService stop', () => {
     await t.service.completion;
   });
 
-  it('75, B-30: a stop error never replaces a capture failure that was already notified', async () => {
+  it('a stop error never replaces a capture failure that was already notified', async () => {
     const t = build();
     t.host.failStop = new Error('writer closed');
     await t.service.start(sources);
@@ -938,7 +938,7 @@ describe('RecordingService stop', () => {
     expect(keys).not.toContain('Error_StopRecording');
   });
 
-  it('94: a hard failure stops the take once and keeps the audio', async () => {
+  it('a hard failure stops the take once and keeps the audio', async () => {
     const t = build();
     await t.service.start(sources);
     t.host.push({ type: 'output-failed', message: 'loopback gone' });
@@ -954,7 +954,7 @@ describe('RecordingService stop', () => {
     expect(t.store.saves[0]?.audioFilePath).toMatch(/\.wav$/);
   });
 
-  it('76: when the live pass gives no draft the visible text is kept', async () => {
+  it('when the live pass gives no draft the visible text is kept', async () => {
     const t = build({ liveDraft: null });
     t.transcriber.script.ready = false;
     await t.service.start(sources);
@@ -966,7 +966,7 @@ describe('RecordingService stop', () => {
 });
 
 describe('RecordingService discard', () => {
-  it('72, 73: deletes the WAV, saves nothing, and says it was discarded', async () => {
+  it('deletes the WAV, saves nothing, and says it was discarded', async () => {
     const t = build();
     await t.service.start(sources);
     const wav = path.join(t.inbox, '2026-11-03 Standup.wav');
@@ -998,7 +998,7 @@ describe('RecordingService discard', () => {
 });
 
 describe('RecordingService notes', () => {
-  it('130, 131: notes live in main, are saved trimmed, and refused while idle', async () => {
+  it('notes live in main, are saved trimmed, and refused while idle', async () => {
     const t = build();
     expect(t.service.setNotes('before')).toBe(false);
     await t.service.start(sources);
@@ -1018,7 +1018,7 @@ describe('RecordingService notes', () => {
     expect(t.store.saves[0]?.notes).toBeNull();
   });
 
-  it('B-10: notes of one take never reach the next one', async () => {
+  it('notes of one take never reach the next one', async () => {
     const t = build();
     await t.service.start(sources);
     t.service.setNotes('first take');
@@ -1035,7 +1035,7 @@ describe('RecordingService notes', () => {
 });
 
 describe('RecordingService retry', () => {
-  it('B-11: a failed first save can be processed again from the same audio', async () => {
+  it('a failed first save can be processed again from the same audio', async () => {
     const t = build({ liveDraft: null });
     t.store.failSaves = new Set([1]);
     t.transcriber.script.ready = false;
@@ -1050,7 +1050,7 @@ describe('RecordingService retry', () => {
     expect(t.store.records.get('meeting-1')?.transcript).toContain('hello');
   });
 
-  it('B-11: the retried meeting keeps the notes typed during the take', async () => {
+  it('the retried meeting keeps the notes typed during the take', async () => {
     const t = build({ liveDraft: null });
     t.store.failSaves = new Set([1]);
     t.transcriber.script.ready = false;
@@ -1064,7 +1064,7 @@ describe('RecordingService retry', () => {
     expect(t.store.saves.at(-1)?.notes).toBe('decide the date');
   });
 
-  it('139: a take that ends because the engine is missing reads as an error', async () => {
+  it('a take that ends because the engine is missing reads as an error', async () => {
     const t = build({ liveDraft: null });
     t.transcriber.script.ready = false;
     await t.service.start(sources);
@@ -1080,8 +1080,8 @@ describe('RecordingService retry', () => {
   });
 });
 
-describe('settings writes (B-31)', () => {
-  it('186: concurrent remember patches all reach the file', async () => {
+describe('settings writes', () => {
+  it('concurrent remember patches all reach the file', async () => {
     const store = new JsonSettingsStore({
       settingsFilePath: path.join(root, 'settings.json'),
     });
@@ -1103,7 +1103,7 @@ describe('settings writes (B-31)', () => {
 describe('RecordingService import (2.12)', () => {
   const picked = { title: 'Call', projectId: null, path: 'C:/in/call.mp3' };
 
-  it('170 to 173, B-19: converts at the dated stem, ends at the file time, runs the pipeline', async () => {
+  it('converts at the dated stem, ends at the file time, runs the pipeline', async () => {
     const t = build({ fileTimeMs: 2_000_000 });
     const result = await t.service.importAudio(picked);
     expect(result).toEqual({ started: true, meetingId: 'meeting-1' });
@@ -1113,7 +1113,7 @@ describe('RecordingService import (2.12)', () => {
     expect(call).toMatchObject({ source: 'C:/in/call.mp3' });
     const saved = t.store.saves.at(-1);
     expect(saved?.audioFilePath).toMatch(/Call\.wav$/);
-    // The file time is the end, 30 s of audio before it is the start (B-19).
+    // The file time is the end, 30 s of audio before it is the start.
     expect(Date.parse(saved?.recordedAt ?? '')).toBe(2_000_000 - 30_000);
     expect(Date.parse(saved?.endedAt ?? '')).toBe(2_000_000);
     expect(t.service.gate.phase).toBe('Idle');
@@ -1135,7 +1135,7 @@ describe('RecordingService import (2.12)', () => {
     expect(gone.store.saves.at(-1)?.projectId).toBeNull();
   });
 
-  it('173: the idle preview stops for the import and comes back after a failure', async () => {
+  it('the idle preview stops for the import and comes back after a failure', async () => {
     const t = build();
     t.controller.startPreview('mic-1', 'record');
     t.host.failImport = new Error('unsupported codec');
@@ -1146,7 +1146,7 @@ describe('RecordingService import (2.12)', () => {
     expect(t.controller.previewState).toEqual({ owner: 'record', deviceId: 'mic-1' });
   });
 
-  it('172: no live draft, no highlights and no paused time reach the pipeline', async () => {
+  it('no live draft, no highlights and no paused time reach the pipeline', async () => {
     const t = build();
     t.service.setNotes('stale');
     await t.service.importAudio(picked);
@@ -1157,7 +1157,7 @@ describe('RecordingService import (2.12)', () => {
     expect(t.service.getState().notes).toBe('');
   });
 
-  it('171: a conversion failure removes the partial WAV and shows Error_ImportAudio', async () => {
+  it('a conversion failure removes the partial WAV and shows Error_ImportAudio', async () => {
     const t = build();
     t.host.failImport = new Error('unsupported codec');
     const result = await t.service.importAudio(picked);
@@ -1171,7 +1171,7 @@ describe('RecordingService import (2.12)', () => {
     expect(t.service.getState().status[0]).toMatchObject({ key: 'Error_ImportAudio' });
   });
 
-  it('170: cancel during the conversion stops it and cleans up without an error', async () => {
+  it('cancel during the conversion stops it and cleans up without an error', async () => {
     const t = build();
     let release: () => void = () => undefined;
     const original = t.host.call.bind(t.host);
@@ -1411,7 +1411,7 @@ describe('RecordingService entry points and close state', () => {
     expect(t.service.isCaptureActive).toBe(false);
   });
 
-  it('165: recording requires confirmation, and an unfinished run is a pending save', async () => {
+  it('recording requires confirmation, and an unfinished run is a pending save', async () => {
     const t = build();
     expect(t.service.requiresCloseConfirmation).toBe(false);
     expect(t.service.hasPendingSaves).toBe(false);
@@ -1433,7 +1433,7 @@ describe('RecordingService entry points and close state', () => {
       ]);
     });
 
-    it('Preparing: no confirmation, but pending (101)', () => {
+    it('Preparing: no confirmation, but pending', () => {
       const t = build();
       t.service.gate.tryBeginPreparing();
       expect([t.service.requiresCloseConfirmation, t.service.hasPendingSaves]).toEqual([
@@ -1475,7 +1475,7 @@ describe('RecordingService entry points and close state', () => {
     });
   });
 
-  describe('101: closing during a start or an import does not abandon the take', () => {
+  describe('closing during a start or an import does not abandon the take', () => {
     function holdCall(t: ReturnType<typeof build>, method: string) {
       let release: () => void = () => undefined;
       const gate = new Promise<void>((resolve) => {

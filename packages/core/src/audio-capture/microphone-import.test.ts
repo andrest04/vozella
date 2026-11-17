@@ -61,7 +61,7 @@ describe('MicrophoneLevelPreview', () => {
     expect(port.sessions[0]?.stopCalls).toBe(1);
   });
 
-  it('S4: two overlapping starts leave exactly one running capture', async () => {
+  it('two overlapping starts leave exactly one running capture', async () => {
     const port = new FakeCapturePort();
     const gates: (() => void)[] = [];
     const slow = {

@@ -4,13 +4,13 @@ import axe from 'axe-core';
 import { expect, test, type Page } from '@playwright/test';
 import { launchApp, openSettingsTab, type LaunchedApp } from './launch';
 
-// The summary provider section of Settings (S20) in the real window, on the fake native build and
+// The summary provider section of Settings in the real window, on the fake native build and
 // a throwaway data root. No real CLI, model or network is involved. Screenshots go to
-// docs/port/screens/summaries/settings-*.png and are rewritten only with VOZELLA_SCREENSHOTS=1.
+// docs/screenshots/summaries/settings-*.png and are rewritten only with VOZELLA_SCREENSHOTS=1.
 
 test.describe.configure({ timeout: 90_000 });
 
-const shots = path.resolve(__dirname, '../../../docs/port/screens/summaries');
+const shots = path.resolve(__dirname, '../../../docs/screenshots/summaries');
 const capture = process.env.VOZELLA_SCREENSHOTS === '1';
 
 interface Session {
@@ -128,7 +128,7 @@ test('the engine rows are Local, Claude Code, Codex and the API key engines, and
   }
 });
 
-test('a settings file that names Grok shows the notice, selects nothing and changes nothing (S07, 172)', async () => {
+test('a settings file that names Grok shows the notice, selects nothing and changes nothing', async () => {
   const seedFile = {
     selectedSummaryProvider: 'Xai',
     selectedXaiModelId: 'grok-4.6',

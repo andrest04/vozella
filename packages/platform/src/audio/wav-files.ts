@@ -87,7 +87,7 @@ function requirePath(path: string): void {
 }
 
 /**
- * Fixes the RIFF and data sizes of a WAV a crash left at zero (spec 3.6). Never touches a
+ * Fixes the RIFF and data sizes of a WAV a crash left at zero. Never touches a
  * consistent file, never truncates audio, never throws for I/O errors.
  */
 export function repairWavFile(path: string): WavRepairStatus {

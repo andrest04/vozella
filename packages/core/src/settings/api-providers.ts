@@ -83,7 +83,7 @@ export const apiModelLabels = (
     }),
   );
 
-/** The picker's list: the suggestions plus the saved model when it is not on it (B13). */
+/** The picker's list: the suggestions plus the saved model when it is not on it. */
 export const apiModelOptions = (engine: ApiEngine, model: string): readonly string[] =>
   model === '' || engine.models.includes(model) ? engine.models : [...engine.models, model];
 

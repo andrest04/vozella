@@ -8,7 +8,7 @@ import {
 import { restoreMicrophone, type MicrophoneChoice } from '../audio-capture/source-picker';
 import type { AppSettings } from '../library/settings';
 
-/** Microphone choice rules (spec 8, items 20-23): one entry point over the existing helpers. */
+/** Microphone choice rules: one entry point over the existing helpers. */
 
 export type RememberedMicrophone = Pick<
   AppSettings,

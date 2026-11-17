@@ -13,7 +13,7 @@ export type IconName = 'icon.ico' | 'tray.ico';
 /**
  * Absolute path of a bundled icon. Packaged builds copy them to `resources/icons` (a file the
  * shell can read, unlike one inside the archive); development reads `build/`. Never relative to
- * the working directory (bug 14).
+ * the working directory.
  */
 export function resolveIconPath(input: IconPathInput, name: IconName): string {
   return input.isPackaged

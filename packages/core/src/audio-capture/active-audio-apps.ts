@@ -1,4 +1,4 @@
-/** Discovery of the applications producing audio right now (spec 3.4). */
+/** Discovery of the applications producing audio right now. */
 
 export interface AudioSessionSnapshot {
   readonly processId: number;
@@ -79,7 +79,7 @@ const MEETING_APPS = new Set([
 
 const collator = new Intl.Collator('en', { sensitivity: 'accent' });
 
-/** Name ordering, case-insensitive, with a fixed locale so every machine agrees (S8). */
+/** Name ordering, case-insensitive, with a fixed locale so every machine agrees. */
 export function compareNames(a: string, b: string): number {
   return collator.compare(a, b);
 }
@@ -88,7 +88,7 @@ function samePath(a: string, b: string): boolean {
   return a.toLowerCase() === b.toLowerCase();
 }
 
-/** A parent whose children roll up into it even with a different image (S6). */
+/** A parent whose children roll up into it even with a different image. */
 function isRollupHost(details: ProcessDetails): boolean {
   const name = executableName(details).toLowerCase();
   return BROWSERS.has(name) || MEETING_APPS.has(name);
@@ -168,7 +168,7 @@ export class ActiveAudioAppService {
     );
   }
 
-  /** Climbs to the parent while it runs the same image (spec 3.4.3). */
+  /** Climbs to the parent while it runs the same image. */
   private findRoot(start: ProcessDetails): ProcessDetails {
     let current = start;
     const seen = new Set<number>([current.processId]);
@@ -179,7 +179,7 @@ export class ActiveAudioAppService {
       seen.add(parentPid);
       const parent = this.processes.getProcess(parentPid);
       if (!parent?.exePath) break;
-      // S6: a helper under a known browser or meeting app belongs to that app, whatever its image.
+      // A helper under a known browser or meeting app belongs to that app, whatever its image.
       if (!samePath(parent.exePath, current.exePath) && !isRollupHost(parent)) break;
       // A parent that started after its child is a recycled pid.
       if (

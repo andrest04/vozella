@@ -27,7 +27,7 @@ const errorText = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
 /**
- * The speaker labels switch and the model it needs (spec 2.6): download, delete and the switch run
+ * The speaker labels switch and the model it needs: download, delete and the switch run
  * one at a time, follow the shared install progress for the speaker model stage, and keep the
  * failure text for the row below.
  */

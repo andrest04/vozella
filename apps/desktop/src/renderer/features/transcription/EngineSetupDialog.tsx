@@ -7,7 +7,7 @@ import { overallPercent } from './live-lines';
 import { useEngineInstall } from './use-engine-install';
 
 /**
- * The record-time engine gate (spec 2.1, 2.2). It opens only when the engine is not on disk, starts
+ * The record-time engine gate. It opens only when the engine is not on disk, starts
  * the download by itself and closes with `true` once the engine is ready. Cancel, Escape and the
  * close button all cancel the transfer and close with `false`; the caller then does not record.
  * A failure keeps the dialog open with the raw message and a Try again button.

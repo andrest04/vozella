@@ -151,7 +151,7 @@ export const summariesToggleAction = defineRequest('summaries.toggleAction', {
 });
 
 /**
- * T4: replaces a meeting's summary with a chat answer (`answer`, split in main like a summary run)
+ * Replaces a meeting's summary with a chat answer (`answer`, split in main like a summary run)
  * or puts back what a replace answered (`restore`, the undo). `saved` carries the content it
  * replaced, so the page can offer Undo; a running summary answers `busy`.
  */
@@ -189,7 +189,7 @@ export const summariesCopyActions = defineRequest('summaries.copyActions', {
   ]),
 });
 
-/** The session-level Copy command: the notes or the summary, null when that text is blank (item 104). */
+/** The session-level Copy command: the notes or the summary, null when that text is blank. */
 export const summariesCopyText = defineRequest('summaries.copyText', {
   input: z.object({ meetingId, mode: z.enum(['notes', 'summary']) }),
   output: z.object({ text: z.string().nullable() }),

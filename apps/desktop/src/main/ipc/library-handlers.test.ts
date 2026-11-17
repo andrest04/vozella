@@ -263,7 +263,7 @@ describe('library handlers', () => {
     expect(t.events.filter((e) => e.name === 'library.changed')).toEqual([]);
   });
 
-  it('lets a quit wait for a move that is still being written (B16)', async () => {
+  it('lets a quit wait for a move that is still being written', async () => {
     const t = await setup();
     await t.runtime.meetings.save(record());
     const created = await t.runtime.projectService.create({ name: 'Trabajo' });
@@ -391,7 +391,7 @@ describe('library handlers', () => {
     expect(saved).toHaveBeenCalledTimes(1);
   });
 
-  it('reports the location and refuses a MeetingLive folder in test mode', async () => {
+  it('reports the location and refuses the real data folders in test mode', async () => {
     const t = await setup();
     expect((await t.call('library.getLocation')).value).toMatchObject({
       libraryRoot: path.join(dir, 'meetings'),
@@ -402,6 +402,10 @@ describe('library handlers', () => {
       path: path.join(dir, 'x', 'MeetingLive'),
     });
     expect(refused.value).toMatchObject({ status: 'refused', reason: 'forbidden' });
+    const own = await t.call('library.setLocation', {
+      path: path.join(dir, 'fake-docs', 'Vozella'),
+    });
+    expect(own.value).toMatchObject({ status: 'refused', reason: 'forbidden' });
     expect(await t.call('library.chooseLocation')).toMatchObject({
       value: { status: 'cancelled' },
     });

@@ -1,6 +1,6 @@
 import type { AsrBackend } from './asr-types';
 
-/** Whether speaker labels will be produced (B7: the missing model is now visible). */
+/** Whether speaker labels will be produced (a missing model is visible). */
 export type DiarizationState = 'off' | 'on' | 'model-missing';
 
 export interface AsrBackendUsage {

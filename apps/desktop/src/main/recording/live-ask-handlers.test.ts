@@ -108,7 +108,7 @@ describe('live ask handlers', () => {
   });
 
   it.each([[''], ['codex'], ['2'], [null]])(
-    'B-20: a blank or unparsable provider (%s) is not chosen and never falls back to Local',
+    'a blank or unparsable provider (%s) is not chosen and never falls back to Local',
     async (provider) => {
       const t = setup(true, provider);
       await t.call('recording.ask', { question: 'Why?', webSearch: false });
@@ -124,7 +124,7 @@ describe('live ask handlers', () => {
     },
   );
 
-  it('116: a preset question is routed through the preset path and answered', async () => {
+  it('a preset question is routed through the preset path and answered', async () => {
     const t = setup();
     await t.call('recording.ask', { question: 'Summarize so far', webSearch: false, preset: true });
     await settle();

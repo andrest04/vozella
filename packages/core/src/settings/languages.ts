@@ -1,6 +1,6 @@
 /**
- * Meeting (transcription) and summary languages. Spec 2.6. Display names are looked up from the
- * string catalog with `labelKey` when they are drawn, never frozen at start up (B9).
+ * Meeting (transcription) and summary languages. Display names are looked up from the
+ * string catalog with `labelKey` when they are drawn, never frozen at start up.
  */
 
 export interface LanguageEntry {
@@ -43,7 +43,7 @@ export function engineLocaleFor(code: string | null | undefined): string {
 }
 
 /**
- * The code the picker shows and the engine or summarizer uses, so the two always agree (B6):
+ * The code the picker shows and the engine or summarizer uses, so the two always agree:
  * blank gives the default, case and surrounding spaces are ignored, and a code the catalog does
  * not know falls back to `unknown`.
  */

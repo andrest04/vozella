@@ -114,7 +114,7 @@ afterEach(() => {
   Reflect.deleteProperty(window, 'vozella');
 });
 
-describe('the recording bar content (items 50, 62)', () => {
+describe('the recording bar content', () => {
   it('shows the elapsed time by name, the title and the sources summary', () => {
     installApi();
     mount();
@@ -161,8 +161,8 @@ describe('the recording bar content (items 50, 62)', () => {
   });
 });
 
-describe('level meter (items 101, 102, B-13, B-14, B-15)', () => {
-  it('is named for what it measures, the microphone, and hides when the take has none (B-13)', () => {
+describe('level meter', () => {
+  it('is named for what it measures, the microphone, and hides when the take has none', () => {
     installApi();
     const view = mount();
     expect(screen.getByRole('meter', { name: 'Mic level' })).toBeVisible();
@@ -170,14 +170,14 @@ describe('level meter (items 101, 102, B-13, B-14, B-15)', () => {
     expect(screen.queryByRole('meter')).toBeNull();
   });
 
-  it('shows the level from the audio worker as sent, on the one dB scale (B-14)', () => {
+  it('shows the level from the audio worker as sent, on the one dB scale', () => {
     const api = installApi();
     mount();
     api.emit('audio.recording.level', { level: 56 });
     expect(screen.getByRole('meter', { name: 'Mic level' })).toHaveAttribute('aria-valuenow', '56');
   });
 
-  it('drops to zero while paused and does not freeze on the last value (B-15)', () => {
+  it('drops to zero while paused and does not freeze on the last value', () => {
     const api = installApi();
     const view = mount();
     api.emit('audio.recording.level', { level: 70 });
@@ -201,7 +201,7 @@ describe('the buttons', () => {
     expect(api.named('recording.stop')).toHaveLength(1);
   });
 
-  it('shows the LIVE badge while recording and hides it while paused (item 64)', () => {
+  it('shows the LIVE badge while recording and hides it while paused', () => {
     installApi();
     const view = mount();
     expect(screen.getByTestId('live-badge')).toBeVisible();
@@ -218,7 +218,7 @@ describe('the buttons', () => {
   });
 });
 
-describe('Highlight feedback (item 68)', () => {
+describe('Highlight feedback', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -261,7 +261,7 @@ describe('Highlight feedback (item 68)', () => {
   });
 });
 
-describe('Copy (item 70)', () => {
+describe('Copy', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -305,7 +305,7 @@ describe('Copy (item 70)', () => {
   });
 });
 
-describe('Discard (item 71)', () => {
+describe('Discard', () => {
   it('asks first, defaults to Keep recording and discards nothing on Keep', async () => {
     const api = installApi();
     mount();
@@ -347,7 +347,7 @@ describe('Discard (item 71)', () => {
   });
 });
 
-describe('accelerators on the page (spec 2.6)', () => {
+describe('accelerators on the page', () => {
   it('Ctrl+R stops, Ctrl+P pauses, Ctrl+Shift+D asks to discard', async () => {
     const api = installApi();
     mount();
@@ -378,7 +378,7 @@ describe('accelerators on the page (spec 2.6)', () => {
   });
 });
 
-describe('the pulse (items 63, 193)', () => {
+describe('the pulse', () => {
   it('pulses while recording and rests while paused', () => {
     installApi();
     const view = mount();

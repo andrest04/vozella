@@ -46,7 +46,7 @@ export interface MeetingSelection {
 }
 
 /**
- * Spec 3.13 `ApplyMeetingFilter`. Newest first; the query matches titles only, every word of it
+ * Newest first; the query matches titles only, every word of it
  * in any order and without regard to case or accents.
  */
 export function selectMeetings(
@@ -79,13 +79,13 @@ export interface EmptyFlags {
   readonly showLibraryEmpty: boolean;
   readonly showNoProjectEmpty: boolean;
   readonly showProjectEmpty: boolean;
-  /** B15: a search matched nothing in a view that has meetings. */
+  /** A search matched nothing in a view that has meetings. */
   readonly showNoMatches: boolean;
   readonly hasMeetings: boolean;
   readonly isEmpty: boolean;
 }
 
-/** Spec 2.9, plus the no-matches message the first version of the page lacked. */
+/** Includes a no-matches message. */
 export function emptyFlags(input: EmptyFlagsInput): EmptyFlags {
   const noProjectEmpty = input.isNoProjectSelected && input.inViewCount === 0;
   const showLibraryEmpty =

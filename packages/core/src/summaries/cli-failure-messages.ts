@@ -2,7 +2,7 @@ import type { TranslateFn } from '../i18n/translator';
 import { ApiProviderError, type ApiFailureKind } from './api-failure';
 import { CliToolError, type CliFailureKind } from './cli-failure';
 
-/** Stable codes for failures that are not CLI failures (B28). Text lives in the catalogs. */
+/** Stable codes for failures that are not CLI failures. Text lives in the catalogs. */
 export const SUMMARY_ERROR_CODES = [
   'LocalModelMissing',
   'LocalEmpty',
@@ -27,7 +27,7 @@ export class SummaryError extends Error {
   }
 }
 
-/** Kind to the UI layer key (`CliFailureUserMessage`, spec 2.5). `{0}` is the display name. */
+/** Kind to the UI layer key (`CliFailureUserMessage`). `{0}` is the display name. */
 export const CLI_FAILURE_UI_KEYS: Readonly<Record<CliFailureKind, string>> = {
   NotInstalled: 'Error_CliNotInstalled',
   NotSignedIn: 'Error_CliNotSignedIn',

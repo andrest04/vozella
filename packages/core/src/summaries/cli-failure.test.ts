@@ -13,7 +13,7 @@ import {
 } from './cli-failure';
 import { CancelledError, isCancellation } from './provider';
 
-describe('classifyFailure order (spec 2.5)', () => {
+describe('classifyFailure order', () => {
   it('not on PATH wins over everything', () => {
     expect(classifyFailure(0, 'fine', '', false)).toBe('NotInstalled');
   });
@@ -71,7 +71,7 @@ describe('classifyFailure order (spec 2.5)', () => {
   });
 });
 
-describe('B12: classification input', () => {
+describe('classification input', () => {
   it('ignores summary words in stdout', () => {
     expect(
       classifyFailure(1, 'We discussed billing, the quota and the payment plan.', 'boom'),
@@ -263,7 +263,7 @@ describe('runRequiredStdout', () => {
     expect(error.kind).toBe('NotSignedIn');
   });
 
-  it('keeps summary words from stdout out of the classification (B12)', async () => {
+  it('keeps summary words from stdout out of the classification', async () => {
     const runner = fakeRunner({
       result: { exitCode: 3, stdout: 'billing quota credit payment', stderr: 'segfault' },
     });

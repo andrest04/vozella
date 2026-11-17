@@ -58,7 +58,7 @@ const recipe = (index: number, kind: 'Meeting' | 'Project' = 'Meeting') => {
   return found;
 };
 
-describe('Recipes button (items 108, 111)', () => {
+describe('Recipes button', () => {
   it('opens the full list of nine for a meeting and three for a folder', async () => {
     const user = userEvent.setup();
     const { unmount } = render(<Harness kind="Meeting" />);
@@ -108,7 +108,7 @@ describe('Recipes button (items 108, 111)', () => {
   });
 });
 
-describe('slash filter (items 110, 111, S7)', () => {
+describe('slash filter', () => {
   it('opens on a leading slash and lists everything for an empty query', async () => {
     const user = userEvent.setup();
     render(<Harness />);

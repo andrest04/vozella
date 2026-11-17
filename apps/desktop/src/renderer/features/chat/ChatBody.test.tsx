@@ -176,7 +176,7 @@ function deferred() {
   return { promise, settle };
 }
 
-describe('composer keys (items 28 to 31, S1)', () => {
+describe('composer keys', () => {
   it('Enter sends and clears the draft; the answer renders as Markdown', async () => {
     const api = install({});
     mount();
@@ -214,7 +214,7 @@ describe('composer keys (items 28 to 31, S1)', () => {
     expect(api.sends).toHaveLength(0);
   });
 
-  it('Enter during IME composition is ignored (S1)', () => {
+  it('Enter during IME composition is ignored', () => {
     const api = install({});
     mount();
     fireEvent.change(box(), { target: { value: 'konnichiwa' } });
@@ -240,7 +240,7 @@ describe('composer keys (items 28 to 31, S1)', () => {
   });
 });
 
-describe('send button (item 32)', () => {
+describe('send button', () => {
   it('is enabled only for a non-blank draft and names its shortcut', async () => {
     install({});
     mount();
@@ -253,7 +253,7 @@ describe('send button (item 32)', () => {
   });
 });
 
-describe('optimistic rows, rollback and draft restore (items 33 to 35, 44)', () => {
+describe('optimistic rows, rollback and draft restore', () => {
   it('shows the user row and Thinking at once, then the streamed text', async () => {
     const open = deferred();
     const api = install({ send: () => open.promise });
@@ -297,7 +297,7 @@ describe('optimistic rows, rollback and draft restore (items 33 to 35, 44)', () 
     const notice = await screen.findByTestId('InfoMeetingChatError');
     expect(notice.textContent).toContain('Could not answer');
     expect(notice.textContent).toContain('boom');
-    // Item 45: severity error, announced as an alert.
+    // severity error, announced as an alert.
     const alert = within(notice).getByRole('alert');
     expect(alert.getAttribute('data-tone')).toBe('error');
     expect(screen.queryByTestId('ListMeetingChat')).toBeNull();
@@ -368,7 +368,7 @@ const CONTENT_CHIPS = [
 ];
 const ITEM = { text: 'Send the deck', isDone: false };
 
-describe('starter chips (items 39 to 41)', () => {
+describe('starter chips', () => {
   it('a meeting with action items shows the four meeting recipes', async () => {
     install({ actionItems: () => [ITEM] });
     mount(MEETING);
@@ -518,7 +518,7 @@ describe('live chips (T2)', () => {
   });
 });
 
-describe('copy and stop (items 42, 43, B19)', () => {
+describe('copy and stop', () => {
   const seeded = stateOf({
     messages: [msg('u', 'user', 'old'), msg('a', 'assistant', 'older answer')],
     hasMessages: true,
@@ -560,7 +560,7 @@ describe('copy and stop (items 42, 43, B19)', () => {
   });
 });
 
-describe('scope mismatch and accessible text (items 36, 126)', () => {
+describe('scope mismatch and accessible text', () => {
   it('shows the mismatch text from the state, also while sending', async () => {
     const api = install({
       state: stateOf({
@@ -594,7 +594,7 @@ describe('scope mismatch and accessible text (items 36, 126)', () => {
   });
 });
 
-describe('provider gate (item 38)', () => {
+describe('provider gate', () => {
   const needsSetup: ChatSendOutcomeDto = {
     status: 'setup-required',
     kind: 'Local',
@@ -638,7 +638,7 @@ describe('provider gate (item 38)', () => {
   });
 });
 
-describe('language (B8)', () => {
+describe('language', () => {
   it('relabels the chips and the placeholder in Spanish', async () => {
     install({ actionItems: () => [] });
     mount(MEETING, 'es');
@@ -653,7 +653,7 @@ describe('language (B8)', () => {
 });
 
 describe('audit fixes', () => {
-  it('the Send tooltip names both chords, Enter and Ctrl+Enter (item 30, bug 23)', async () => {
+  it('the Send tooltip names both chords, Enter and Ctrl+Enter', async () => {
     install({});
     mount();
     await userEvent.type(box(), 'x');
@@ -667,7 +667,7 @@ describe('audit fixes', () => {
     ]);
   });
 
-  it('a rejected chat.send rolls back, shows a mapped sentence and unlocks sending (items 39, 43)', async () => {
+  it('a rejected chat.send rolls back, shows a mapped sentence and unlocks sending', async () => {
     let n = 0;
     const api = install({
       send: () => {
@@ -697,7 +697,7 @@ describe('audit fixes', () => {
     expect(api.sends).toHaveLength(2);
   });
 
-  it('opens the CLI setup dialog for Claude Code and Codex (item 37)', async () => {
+  it('opens the CLI setup dialog for Claude Code and Codex', async () => {
     for (const kind of ['ClaudeCode', 'Codex'] as const) {
       install({
         send: () => Promise.resolve({ status: 'setup-required', kind, originalDraft: 'q' }),
@@ -714,7 +714,7 @@ describe('audit fixes', () => {
     }
   });
 
-  it('Stop before chat.send reaches main drops the answer (B19)', async () => {
+  it('Stop before chat.send reaches main drops the answer', async () => {
     let release!: () => void;
     const gap = new Promise<void>((resolve) => {
       release = resolve;

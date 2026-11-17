@@ -2,7 +2,7 @@
 
 Design for replacing nested Library folders with flat, Claude-style Projects in Vozella. Branch `feat/projects`. Status: design revision 2 (after the architecture critique, see section 12), ready for the Contracts phase.
 
-How to read this: sections 1 to 3 say what and why, 4 to 7 say how it is stored and wired, 8 is the UI and how it follows the impeccable skill, 9 to 11 are tests, removals and risks, 12 records decisions and the answer to each critique point, 13 is the implementation plan (Contracts phase, five parallel lanes, merge order, e2e, final purge).
+How to read this: sections 1 to 3 say what and why, 4 to 7 say how it is stored and wired, 8 is the UI and how it follows the impeccable skill, 9 to 11 are tests, removals and risks, 12 records decisions and the answer to each critique point, 13 is the implementation plan (Contracts phase, five parallel lanes, merge order, e2e, e2e).
 
 ## 1. Goals
 
@@ -12,7 +12,7 @@ How to read this: sections 1 to 3 say what and why, 4 to 7 say how it is stored 
 - Chat history is persisted per project (and for no project): listable, reopenable, deletable.
 - Existing libraries migrate once, automatically, without moving a single meeting file, with a verified backup, and idempotently. Every old folder, including subfolders, becomes its own project and keeps its id. A malformed old folder list can never lose or overwrite data.
 - Storage is versioned with forward migrations so the next change is a new migration, not a rewrite. One module per feature, core stays pure, platform implements ports, contracts hold the zod schemas.
-- No .NET, WinUI or OneDrive code or wording in the new storage, and none left behind in the code this feature touches. The only native code remains the small Rust addon that the OS forces (audio, calendar, sessions, windows); this feature adds no Rust.
+- The new storage is plain TypeScript. The only native code remains the small Rust addon that the OS forces (audio, calendar, sessions, windows); this feature adds no Rust.
 - The whole Projects tab follows the impeccable skill: Operate mode, its vocabulary, its refusals (section 8.0).
 
 ## 2. Non-goals
@@ -22,7 +22,7 @@ How to read this: sections 1 to 3 say what and why, 4 to 7 say how it is stored 
 - Drag and drop of files onto the project panel (the picker is v1; drop reuses the preload bridge later).
 - Embeddings or a database. Retrieval stays BM25 in memory (stack.md: no database until a measured need).
 - Renaming the Jev analysis field `suggestedFolderId` (stored meeting data; a blanket search and replace must exclude it) and the `{0}` placeholder syntax of the locale catalogs (our template syntax; not touched).
-- Importing the three pre-Documents layouts of the old app (app data `Meetings`/`Recordings`, `meetings.json`). They are detected and reported, not imported (section 4.5, decision 3).
+- Importing the three pre-Documents layouts of earlier versions (app data `Meetings`/`Recordings`, `meetings.json`). They are detected and reported, not imported (section 4.5, decision 3).
 - Cloud sync, cloud AI. Context never leaves the PC except to the engine the user already chose for that send, as today.
 
 ## 3. Domain model
@@ -75,7 +75,7 @@ Rules:
 
 - A meeting belongs to at most one project. In memory the field is `projectId` (renamed from `folderId` in the Contracts phase). On disk the Markdown frontmatter key stays `folderId`: the two-line mapping (parse and render) lives only in `meeting-markdown.ts`, which is what keeps every meeting file and every `https://meetinglive.local/meeting/<id>` link valid. A meeting whose project id is unknown (deleted, or never existed) reads as "no project", exactly as the Inbox rule does today.
 - "No project" is the former Inbox: `projectId === null` or an unknown id. Its directory stays `<Library>/Inbox`.
-- Every id that reaches a path (project, file, thread) is a canonical lowercase GUID: parsed once at the boundary by the shared `parseGuid` (core, section 10), lowercased, and rejected otherwise. Lowercasing is what stops two ids that differ only by case from landing on the same NTFS path.
+- Every id that reaches a path (project, file, thread) is a canonical lowercase GUID: parsed once at the boundary by the shared `parseGuid` (core), lowercased, and rejected otherwise. Lowercasing is what stops two ids that differ only by case from landing on the same NTFS path.
 - Thread owner is resolved when the thread is created: scope Project uses that project, Meeting uses the meeting's project, Live uses the take's project, AllMeetings is no project. A thread stays with its owner even if the meeting moves later. This is what makes "Chats of a project" include its meeting chats.
 - A thread whose Meeting scope points at a meeting that no longer exists is kept and opens read-only (section 6, "Opening a thread"). Threads are never deleted as a side effect of deleting a meeting; they are deleted with their project.
 - Chat attachments stay per conversation and are not persisted; a message stores only the attachment names for display.
@@ -190,7 +190,7 @@ This replaces the three legacy steps of `runStartupMigrations` and, by decision,
 
 Step `001-folders-to-projects` is split into a pure plan and the writes.
 
-1. **Find the source (read-only).** Candidates in order: `<Library>/folders.json`, then `<appData>/folders.json` (the location the old user-data migration used to move into the Library; a user who never ran it still has the list there). The first that exists is the source; the other one, if present, is only reported (`ignoredSource`) and left untouched. None exists means an empty list (fresh install): manifest v1, no backup, no notice. A source that cannot be read or parsed stops the step with state `error` and no manifest; meetings keep listing as "no project". Also detect, never import, the older layouts (`<appData>/Meetings`, `<appData>/Recordings`, `<appData>/meetings.json`): they are listed in `report.legacyLeftovers` and the notice says so.
+1. **Find the source (read-only).** Candidates in order: `<Library>/folders.json`, then `<appData>/folders.json` (the location earlier versions used for the folder list). The first that exists is the source; the other one, if present, is only reported (`ignoredSource`) and left untouched. None exists means an empty list (fresh install): manifest v1, no backup, no notice. A source that cannot be read or parsed stops the step with state `error` and no manifest; meetings keep listing as "no project". Also detect, never import, the older layouts (`<appData>/Meetings`, `<appData>/Recordings`, `<appData>/meetings.json`): they are listed in `report.legacyLeftovers` and the notice says so.
 2. **Parse and validate (pure, no writes).** The legacy reader (`migrations/legacy-folders-reader.ts`, the only code that still knows that shape: strips a BOM, accepts any key case) yields raw entries. Then `planProjects(entries)` in core:
    - Ids: `parseGuid` (it already returns the lowercase hyphenated form). An entry without a valid id is skipped and reported (`skipped: [{ index, reason: 'invalid-id' }]`): no meeting can reference an id that does not parse.
    - Duplicate ids (after lowercasing): the first entry in file order wins, later ones are dropped and reported (`reason: 'duplicate-id'`). This happens before any write, so two `project.json` writes can never target one path.
@@ -342,7 +342,6 @@ Where each surface gets it:
 
 Performance: `readDocuments` keeps an mtime-keyed in-memory cache; per project at most 25 files and 1_000_000 extracted characters, so one retrieval chunks and scores a bounded corpus. If a measured send exceeds roughly 150 ms, pre-chunk at add time into `extracted.json` (the format already has sections; a version 2 upgrade adds chunks), no database.
 
-
 ## 8. UI information architecture
 
 Operate mode (impeccable): the visitor completes a task, so scanability, consistency and native expectations outrank expression. Whoever builds this loads `frontend-design`, `impeccable` and `accessibility`, runs `impeccable context` once, and reads `craft-floor.md` before the first edit. Strings in both locale files, UI lane only.
@@ -368,8 +367,7 @@ The user asked that the whole tab follow the impeccable nomenclature and convent
 | Copy: product voice, controls name their action, errors name problem and recovery | Sentence case, no exclamation marks, no emoji, no "AI magic"; the vocabulary below |
 | Naming | Terms: Project, No project, Instructions, Context files, Meetings, Chats, Start meeting in this project, Move to project. UI keys follow the existing `Ui_<Area><Name>` pattern (`Ui_ProjectsTitle`, `Ui_ProjectStartMeeting`, `Ui_ProjectInstructionsEmpty`). Code: containers `*Route`, hooks `use-*`, one feature folder `features/projects`, shared list in `features/meeting-list` (section 8.4) |
 
-The word "folder" survives in the UI only where it means a file-system folder (the Library location in Settings). Everything that meant a library folder says project. The shared-library notice `Ui_LibraryFolderShared` ("Both versions read and write the same files") is no longer true after the migration and is rewritten in this lane.
-
+The word "folder" survives in the UI only where it means a file-system folder (the Library location in Settings). Everything that meant a library folder says project.
 ### 8.1 Sidebar
 
 Rail: Record, Projects, Library, Settings. `/projects`, `/projects/<id>` and `/projects/none` keep Projects selected; Session keeps Library selected as today. Library becomes the flat "all meetings" list (search, filters, bulk, preview) with a project filter in place of the tree.
@@ -458,12 +456,11 @@ AiPanel header gets a History control: a popover list of threads for the current
 ## 9. Test strategy
 
 - Unit (Vitest, every package): pure logic first, RED before GREEN where a deterministic test exists: name resolution, plan building (duplicate ids, cycles, odd ids), directory allocation and validation, project service, context packer, thread lifecycle, sort and search ordering, navigation helpers, the version rule (`max(per-kind) <= STORAGE_SCHEMA_VERSION`). The Contracts phase includes tests for the zod schemas and the shared kernel.
-- Integration (Vitest with real fs): adapters run on `fs.mkdtemp` directories under the OS temp folder. The migration runs against a committed legacy fixture library written in plain JSON by hand (BOM, CRLF, nesting, collisions, orphans, 5 meetings; no .NET tooling). Crash and resume by injecting a failing writer; backup hash equality; idempotency by running twice and comparing a directory snapshot; read-only mode by pausing the migration and calling every writer; ordering by asserting that no getter resolves before `migrateStorage` and that a meeting save started during the migration waits; library location change with two temp roots. Every run sets `VOZELLA_DATA_ROOT` to a temp folder; the data-root guard refuses the real `Documents\MeetingLive` and `Documents\Vozella`. No real accounts, no model downloads.
+- Integration (Vitest with real fs): adapters run on `fs.mkdtemp` directories under the OS temp folder. The migration runs against a committed legacy fixture library written in plain JSON by hand (BOM, CRLF, nesting, collisions, orphans, 5 meetings). Crash and resume by injecting a failing writer; backup hash equality; idempotency by running twice and comparing a directory snapshot; read-only mode by pausing the migration and calling every writer; ordering by asserting that no getter resolves before `migrateStorage` and that a meeting save started during the migration waits; library location change with two temp roots. Every run sets `VOZELLA_DATA_ROOT` to a temp folder; the data-root guard refuses the real data folders. No real accounts, no model downloads.
 - Contract: each new channel round-trips input and output through its zod schema; main handlers are tested with fakes.
 - Component (jsdom): grid, page, inline editors, popovers, thread list, move popover; keyboard behavior and accessible names; the 960 px layout through a mocked `matchMedia` (`(min-width: 960px)` drives a `data-layout="side" | "stacked"` attribute that the test asserts, plus the disclosure open and closed state).
 - E2E (Playwright `_electron`, one spec `projects.spec.ts`, scenarios in section 13.5): run with `VOZELLA_E2E_BACKGROUND=1` so no window pops up; includes a real resize across 960 px. `pnpm check` (typecheck, lint, unit) passes before every commit.
-- Hygiene: a guard test (section 13.6) keeps OneDrive, .NET and WinUI wording out of code and docs.
-- Not verifiable here: real Windows Recycle Bin behavior, real PDF files from the wild, long libraries (> 5k meetings) with many projects, a real picked Library folder; recorded in the parity ledger as `pending-real-validation`.
+- Not verifiable here: real Windows Recycle Bin behavior, real PDF files from the wild, long libraries (> 5k meetings) with many projects, a real picked Library folder; these stay as manual checks.
 
 Required cases by risk (each is named in the lane that owns it): duplicate folder ids; id differing only by case; parent cycle and self-parent; depth above the cap; odd ids (path separators, `..`, device names); corrupt `dir` (absolute, `..`, `.vozella`, reserved name); allocation avoiding existing on-disk directories, accents and case, reserved names, trailing dots, prefix and child of a migrated dir; legacy `<appData>/folders.json` adopted and backed up; backup missing, unreadable or different aborts with nothing written; source delete failure keeps manifest v1 with no rerun and no second backup; writers refused while migrating or in error; meeting save during `error` moves nothing; unknown per-kind version listed as `unsupported` and write refused; unknown keys survive read-modify-write for every file kind; delete resumable after a crash between moves, partial result counts, parent delete never touching a child's meetings; duplicate meeting id tie-break and shadowed audio untouched.
 
@@ -474,17 +471,6 @@ Nesting (all of it):
 - core: `library/folder-tree.ts` (`folderChain`, `folderDirectorySegments`, `buildFolderTree`, `flattenFolderPaths`, `buildBreadcrumbs`, `expandedAncestors`; the locale collator moves next to the project sort), `FolderRecord` and `folder.ts`, `folder-personality.ts` (accent and icon), `nameTaken` parent-scoped logic and the B26b orphan rule in `library-service.ts`, `canDeleteFolder` and the `not-empty` failure, `createFolder({parentId})`.
 - renderer: `LibraryFolders.tsx`, `Breadcrumbs.tsx`, `ui/Tree.tsx`, `ui/tree-navigation.ts` and their tests and gallery entries, folder tree keyboard navigation, create-inside-current-folder, `expandedAncestors` in `library-store.ts`, `use-folder-note.ts` (instructions replace it), `folder-visuals` and its test, parent pickers in dialogs, the `folder-*` color tokens.
 - contracts: `folderSchema`, `parentId`, `colorKey`, `iconKey`, the five folder channels.
-
-.NET and WinUI in library storage and in the library domain:
-
-- core: `folders-json.ts` (parse and serialize of the old array, CRLF) and its test; `dotnet-json.ts` is deleted, with `parseGuid` and `stripBom` moving, names unchanged, to `guid.ts` and `text-bom.ts` so every importer keeps working, and the .NET escaper `escapeLikeDotNet` and the compact and indented stringifiers going away; `settings.ts` and `meeting-markdown.ts` write plain UTF-8, LF, no escaping, ISO-8601 with millisecond precision and offset (`offset-date.ts` writes that and keeps reading any fractional length, because files written earlier have seven digits), while their readers keep accepting BOM, CRLF, any key case and numeric strings, because the user's existing files contain them (decision 9); `RESERVED_FOLDER_NAMES` `meetings`/`recordings` and `folderDirectoryName` in `names.ts`; app-paths fields `foldersFilePath` (the migration derives its input path), `meetingsFilePath`, `meetingsDirectory`, `recordingsDirectory`, `legacy*`, `chatThreadsFilePath` (unused) and the `xaiCredentialsFilePath` comment about on-disk compatibility.
-- platform: `json-folder-repository.ts` and its tests (directory mirror, `rewriteSiblingAudioPaths`), the three legacy migrations in `migrations.ts` (user data location, flat library layout, `meetings.json`) and `migrations.test.ts`, `winui-library.test.ts` and `fixtures/winui-library/`, in `markdown-meeting-repository.ts` the `isLegacyFlatDump` / `isUserFolderDirectory` / `locate` / `legacy` flag (B10, B12), `directoryFor` over folder chains in `library-layout.ts`.
-- docs: the byte-compatibility bullet in `docs/port/stack.md` now applies to nothing in the library (meeting Markdown stays plain Markdown); `docs/port/specs/library-storage.md` folder sections are marked superseded; the stack.md design line "narrow sidebar with the library tree" is updated.
-
-OneDrive: no runtime code mentions it (checked with a case-insensitive search of `apps`, `packages`, `native`). Seven places remain and all go: `README.md` (the sentence that says Documents follows OneDrive redirection), `docs/port/specs/shell-platform.md` (one table cell), `docs/port/specs/library-storage.md` (two cells), `docs/port/parity/library-storage.md` (one bullet), `packages/platform/src/data-root/resolve-data-root.test.ts` (the `E:\OneDrive\Documents\MeetingLive` fixture becomes `E:\Backups\Documents\MeetingLive`, same assertion). The product still asks Electron for the Documents folder; where that is is the OS's concern and no longer written down.
-
-Kept on purpose (AGENTS.md): `LEGACY_FOLDER_NAME = 'MeetingLive'`, `sharesMeetingLive`, the guard refusing real MeetingLive folders, the `https://meetinglive.local/meeting/` link scheme. These are data-safety names, and their comments say "legacy data folder", not WinUI or .NET. Out of scope on purpose: the `{0}` placeholder syntax in the locale catalogs and `core/i18n/format.ts` (our template syntax; only its comments are reworded in the purge), the Jev `suggestedFolderId` (stored meeting data), the historical port specs under `docs/port/specs`, `parity` and `research` (an archive; they get a one-line banner and no OneDrive).
-
 ## 11. Risks
 
 | Risk | Impact | Mitigation |
@@ -511,18 +497,17 @@ Kept on purpose (AGENTS.md): `LEGACY_FOLDER_NAME = 'MeetingLive'`, `sharesMeetin
 
 ### 12.1 Decisions made in this design
 
-These follow from the approved product decisions and from the user's instruction on 2026-11-16 that the tab follow the impeccable nomenclature and that OneDrive and .NET leave the code entirely.
+These follow from the approved product decisions and from the user's instruction on 2026-11-16 that the tab follow the impeccable nomenclature.
 
 1. The Library route stays as the flat all-meetings list (cross-project search, filters, bulk). Projects is a new rail entry; the folder tree is gone.
 2. Project directories are frozen at creation; migrated projects keep their existing directories, so the migration moves no files.
-3. The three WinUI-era startup migrations are removed together with the folder code. Step 001 itself finds the folder list in the Library root or, failing that, the app data root; older layouts are detected and reported, not imported. The parity ledger records "dropped: import of pre-Documents layouts".
+3. Step 001 finds the folder list in the Library root or, failing that, the app data root; older layouts are detected and reported, not imported.
 4. `folderId` becomes `projectId` in code, IPC and domain; the frontmatter key is the only place that keeps the old name.
 5. Threads are persisted for every chat scope and owned by a project or by no project; a thread is created on its first successful turn.
 6. Dates in the new storage are ISO-8601 UTC. Meeting frontmatter dates are written ISO-8601 with offset and millisecond precision; readers accept the older seven-digit form.
 7. Project files are copied, extracted once, never re-read from the original path, and images are out for v1.
 8. Projects have no accent color or icon. The first draft carried `colorKey` and `iconKey` as migrated data with a 3 px accent bar; that bar breaks the impeccable ban on colored side borders, and keeping data nothing can display or edit is dead weight. The old values stay in the backup.
-9. Meeting Markdown and `settings.json` are written plain (UTF-8, LF, no escaping) and read tolerantly (BOM, CRLF, any key case, numeric strings), so no file the user already has becomes unreadable. If the user wants the tolerant readers gone too, that orphans files written by the old app and needs a separate decision.
-10. Zero legacy wording: OneDrive disappears everywhere (seven places, section 10); .NET and WinUI disappear from code, comments and docs except the data-safety names and the historical port archive; a guard test keeps it that way (section 13.6).
+9. Meeting Markdown and `settings.json` are written plain (UTF-8, LF, no escaping) and read tolerantly (BOM, CRLF, any key case, numeric strings), so no file the user already has becomes unreadable. If the user wants the tolerant readers gone too, that orphans files written by earlier versions and needs a separate decision.
 11. No Rust is added. The addon stays as the stack says: only where the OS forces it.
 
 ### 12.2 Critique points
@@ -531,7 +516,7 @@ Verdict key: accepted, accepted with change, rejected in part.
 
 | # | Verdict | What changed and where |
 | --- | --- | --- |
-| 1 | Accepted with change | Chose the second fix: step 001 reads `<Library>/folders.json` then `<appData>/folders.json` and reports older layouts (4.5, step 1). Rejected keeping `migrateUserDataLocation` and `migrateLibraryLayout` as frozen steps before 001: that keeps .NET-era code the user wants gone, and the flat dump is already found by the recursive scan. The deliberate drop is decision 3 and a parity row; L1 tests the app data case |
+| 1 | Accepted with change | Chose the second fix: step 001 reads `<Library>/folders.json` then `<appData>/folders.json` and reports older layouts (4.5, step 1). Older layouts are only reported, since the flat dump is already found by the recursive scan; L1 tests the app data case |
 | 2 | Accepted | Ids validated with `parseGuid` and lowercased; duplicates deduped before any write; cycles, self-parents and depth above 32 become roots; odd and invalid ids skipped and reported; tests listed (4.5 step 2, section 9). Chose dedupe over failing the step, so one bad entry cannot block every project |
 | 3 | Accepted with change | `dir` validated in the schema and again with `isUnder` (4.3). Rejected "fall back to Inbox" for writes: it would silently move a project's meeting to Inbox. Reads answer Inbox, writes are refused and the project is reported as `unsafe-dir` |
 | 4 | Accepted | Allocation rules in 4.3: folded comparison, on-disk entries, legacy dirs, reserved names, trailing dots and spaces, prefix and child of a frozen dir, `mkdir` reservation. Tests in L1 |
@@ -553,7 +538,7 @@ Verdict key: accepted, accepted with change, rejected in part.
 
 ## 13. Implementation plan
 
-Phases: Contracts (serial), five lanes in parallel (each in its own worktree on a branch from the Contracts commit), integration, purge, multi-lens review with one fix round, e2e. Commits are conventional, tests and docs with behavior, no attribution, no push. Every lane loads the skills its surfaces require from `.atl/skill-registry.md` before editing (`design-patterns` everywhere; `electron-best-practices` for main and IPC; `vitest` for tests; `frontend-design`, `impeccable`, `accessibility` for the UI lane; `playwright-best-practices` for e2e).
+Phases: Contracts (serial), five lanes in parallel (each in its own worktree on a branch from the Contracts commit), integration, multi-lens review with one fix round, e2e. Commits are conventional, tests and docs with behavior, no attribution, no push. Every lane loads the skills its surfaces require from `.atl/skill-registry.md` before editing (`design-patterns` everywhere; `electron-best-practices` for main and IPC; `vitest` for tests; `frontend-design`, `impeccable`, `accessibility` for the UI lane; `playwright-best-practices` for e2e).
 
 ### 13.1 Contracts phase
 
@@ -590,7 +575,7 @@ NEW LOCALE KEYS: backend lanes add none. Failure reasons are enums; the UI lane 
 
 ### 13.2 Lanes
 
-Rules for every lane: edit only the exclusive surfaces below (no file appears in two lanes; verified mechanically against `git ls-files`); tests sit next to the code; no new barrel exports (public symbols go in files the Contracts phase created); no locale edits outside the UI lane; no edits to Contracts-owned files; no new reference to OneDrive, .NET or WinUI in code, comments or docs (section 13.6); `pnpm check` green before each commit; test first.
+Rules for every lane: edit only the exclusive surfaces below (no file appears in two lanes; verified mechanically against `git ls-files`); tests sit next to the code; no new barrel exports (public symbols go in files the Contracts phase created); no locale edits outside the UI lane; no edits to Contracts-owned files; `pnpm check` green before each commit; test first.
 
 ### `L1-storage` Storage, migration and project use cases
 
@@ -611,19 +596,15 @@ Edit surfaces (exclusive):
 - `apps/desktop/src/main/ipc/library-handlers*.ts`
 - `apps/desktop/src/main/ipc/projects-handlers*.ts`
 - `apps/desktop/src/main/projects/projects-controller*.ts`
-- `docs/port/stack.md`
-- `docs/port/specs/library-storage.md`
-- `docs/port/parity/library-storage.md`
 
-Goal: Replace the folder tree with flat projects on disk, migrate old libraries safely, expose the project use cases, and remove the .NET and WinUI code from the library domain. Read sections 3, 4, 5, 6 and 10 of docs/design/projects.md.
+Goal: Replace the folder tree with flat projects on disk, migrate old libraries safely, expose the project use cases, and remove the folder code from the library domain. Read sections 3, 4, 5, 6 and 10 of docs/design/projects.md.
 
 Build:
 - core/projects: `project-names` (pure: validate name, fold for uniqueness with `foldText`, `planProjects` with duplicate-id dedupe, cycle and depth-cap handling, invalid-id skip, `resolveMigratedNames` for the collision rule of 4.5), `project-dir` (`isSafeProjectDir`, `sanitizeDirName`, `allocateProjectDir(name, taken)` per 4.3), `ProjectService` (create, update, setInstructions, delete with the resumable `partial` contract of section 5, list with `lastActivityAt` from ProjectRepository + MeetingRepository + ChatThreadRepository.activity + ProjectFileStore counts and the no-project overview, pin, name-taken with folded names, busy checks).
-- core/library: `LibraryService` keeps load, search, moveMeeting(s), deleteMeeting(s) and loses every folder use case; `LibraryView` becomes all | none | project(id); remove nesting and WinUI/.NET code per section 10 (`folder.ts`, `folder-tree.ts`, `folders-json.ts`, `folder-personality.ts`, `canDeleteFolder`, `FolderRepository`, `nameTaken` parent logic, reserved Meetings/Recordings rule, legacy app-paths fields, `chatThreadsFilePath`); `dotnet-json.ts` is deleted with `parseGuid` and `stripBom` moved (names kept) to `guid.ts` and `text-bom.ts`; `settings.ts` and `meeting-markdown.ts` write plain UTF-8/LF/ISO-8601 ms and keep tolerant readers; `in-memory-library` and `workspace` follow the rename (`selectedProjectId`, `publishSelectedProject`, shell tag Projects).
+- core/library: `LibraryService` keeps load, search, moveMeeting(s), deleteMeeting(s) and loses every folder use case; `LibraryView` becomes all | none | project(id); remove nesting and the folder code per section 10 (`folder.ts`, `folder-tree.ts`, `folders-json.ts`, `folder-personality.ts`, `canDeleteFolder`, `FolderRepository`, `nameTaken` parent logic, reserved Meetings/Recordings rule, legacy app-paths fields, `chatThreadsFilePath`); the old JSON helper module is deleted with `parseGuid` and `stripBom` moved (names kept) to `guid.ts` and `text-bom.ts`; `settings.ts` and `meeting-markdown.ts` write plain UTF-8/LF/ISO-8601 ms and keep tolerant readers; `in-memory-library` and `workspace` follow the rename (`selectedProjectId`, `publishSelectedProject`, shell tag Projects).
 - platform/projects: `FileProjectRepository` (`project.json` per project, atomic writes, per-project keyed mutex, loose zod validation with `schemaVersion`, frozen dir allocation with `mkdir` reservation, `directoryOf` with the schema and `isUnder` checks, unsupported and corrupt reporting, writes refused unless the state is ready, delete = `discard()` of `.vozella/projects/<id>` only); `storage-state` holder; `storage-migrator` (manifest read and write, `MIGRATIONS` registry, newer-than-supported refusal, per-step manifest commit, the leftover-source cleanup of 4.5 step 7); `migrations/001-folders-to-projects.ts` and `migrations/legacy-folders-reader.ts` exactly per 4.5 (source discovery in Library then app data, plan, hash-verified backup with reuse, project writes, manifest, source delete).
-- platform/library: `MarkdownMeetingRepository` takes a `MeetingPlacement` instead of folders, keeps a meeting in place when `directoryOf` is null, scans skipping dot-directories, resolves duplicate ids deterministically and reports `shadowed`, protects audio referenced by a shadowed copy, drops the legacy flat-dump logic (`isLegacyFlatDump`, `isUserFolderDirectory`, `locate`, `legacy` in `prefer`); `library-runtime.build()` constructs services into locals, runs `migrateStorage`, then publishes (4.4), wires `ProjectService` and the new getters, rebuilds on `setLocation` (migration on the new root); delete `json-folder-repository.ts`, the three legacy migrations in `migrations.ts`, `winui-library.test.ts` and its fixtures; `ensure-directories` creates Inbox and `.vozella` only; `library-layout` loses `directoryFor`/`folderDirectorySegments` use; the `json-settings-store` follows the plain writer.
+- platform/library: `MarkdownMeetingRepository` takes a `MeetingPlacement` instead of folders, keeps a meeting in place when `directoryOf` is null, scans skipping dot-directories, resolves duplicate ids deterministically and reports `shadowed`, protects audio referenced by a shadowed copy, drops the legacy flat-dump logic (`isLegacyFlatDump`, `isUserFolderDirectory`, `locate`, `legacy` in `prefer`); `library-runtime.build()` constructs services into locals, runs `migrateStorage`, then publishes (4.4), wires `ProjectService` and the new getters, rebuilds on `setLocation` (migration on the new root); delete `json-folder-repository.ts`, the three legacy migrations in `migrations.ts`, the old library layout test and its fixtures; `ensure-directories` creates Inbox and `.vozella` only; `library-layout` loses `directoryFor`/`folderDirectorySegments` use; the `json-settings-store` follows the plain writer.
 - main: `library-handlers` lose folder channels, `library.load` returns meetings, skipped and shadowed, search takes the new scope, `applyWorkspaceAction` handles `publishSelectedProject` (section 6); `projects-handlers` and `projects-controller` serve `projects.list/get/create/update/setInstructions/delete/migrationReport/dismissMigrationReport` and broadcast `projects.changed` and `library.changed('project')`; `projects.delete` success publishes `null` as selected project. Controllers take the dialogs and `discard` (Electron `shell.trashItem`) as injected deps.
-- docs: update `docs/port/stack.md` (data-safety bullet, sidebar line), mark the folder sections of `docs/port/specs/library-storage.md` superseded by `docs/design/projects.md` and remove its OneDrive cells, and add parity-ledger rows to `docs/port/parity/library-storage.md` (dropped: folder list byte compatibility, nested folders, import of pre-Documents layouts; improved: projects; remove its OneDrive bullet).
 
 Tests this lane adds:
 
@@ -640,18 +621,16 @@ Edit surfaces (exclusive):
 - `packages/platform/src/chat/library-chat-reader*.ts`
 - `apps/desktop/src/main/chat/**`
 - `apps/desktop/src/main/ipc/chat-*`
-- `docs/port/parity/chat.md`
 
 Goal: Persisted, listable, reopenable, deletable chat threads per project (and for no project), and project instructions and files in the chat prompt. Read sections 5, 6 and 7 of docs/design/projects.md.
 
 Build:
 - `ChatService`: add `ChatThreadRepository` and `ProjectContextSource` deps. A thread is created lazily on the first successful turn and saved after every successful turn (cancelled or failed sends persist nothing). A failed save is logged, the chat continues in memory and `chat.state.historySaved` is false. Owner resolution at creation: scope Project is `scope.projectId`; Meeting is the meeting's `projectId`; Live is `LiveContextSnapshot.projectId`; AllMeetings is null. Title is the first user message, single line, cut at 60 characters; rename supported. `send()` continues the open thread only when `matchesOpenThread`, otherwise starts a new thread (the old one stays in history). New methods: `openThread(owner,id)` (refused while sending; returns the full `ThreadScope`, messages and `scopeStatus` per section 6), `deleteThread`, `listThreads(owner)`, `renameThread`; state gains `threadId` and `historySaved`. `send` on a thread whose scope is gone (`meeting-missing`, `live-ended`) fails with `scope-gone`. `newChat()` clears the open thread without deleting anything.
 - `scope-resolver`: surface `Projects` with a non-null `selectedProjectId` yields kind `Project`; `/projects/none` and `/projects` (null id) yield `AllMeetings`; History, Record and Settings behave as before.
-- `context-packer`: Project scope packs "Project: name" plus the project's meetings (instructions and files are NOT repeated there: they come from `packProjectContext`); Meeting and Live scopes prepend the project block when the owner project is known (Live: `ChatService` resolves `snapshot.projectId` through `ProjectContextSource` and fills `snapshot.project` before packing); AllMeetings never has one. `ChatService.pack` calls `packProjectContext` with `projectBudgetFor('chat', provider.id)` and query = user text + last user turn; on the local engine the block size is subtracted from `meetingChars` so the total stays constant (section 7). Rename kind `'Folder'` to `'Project'` in prompt-builder and packers; core string KEYS unchanged; reword comments that mention the old app.
+- `context-packer`: Project scope packs "Project: name" plus the project's meetings (instructions and files are NOT repeated there: they come from `packProjectContext`); Meeting and Live scopes prepend the project block when the owner project is known (Live: `ChatService` resolves `snapshot.projectId` through `ProjectContextSource` and fills `snapshot.project` before packing); AllMeetings never has one. `ChatService.pack` calls `packProjectContext` with `projectBudgetFor('chat', provider.id)` and query = user text + last user turn; on the local engine the block size is subtracted from `meetingChars` so the total stays constant (section 7). Rename kind `'Folder'` to `'Project'` in prompt-builder and packers; core string KEYS unchanged.
 - `LibraryChatReader`: `meetingsInProject`, `listProjects` replace the folder methods; the project note is removed (instructions come from `ProjectContextSource`).
 - platform `chat-thread-store`: files at `chats/<id>.json` under the owner directory (layout from Contracts), loose zod `chatThreadFileSchema`, atomic write, per-owner keyed mutex, list by mtime-cached header parse, corrupt or newer-version file reported and skipped without deleting, writes refused unless the state is ready, `activity()`.
 - main: `chat-controller` and `chat-handlers` add `chat.threads.list/open/rename/delete` and broadcast `chat.threads.changed`; `compose-chat` wires the new deps.
-- docs: add parity rows to `docs/port/parity/chat.md` (improved: persisted history; changed: folder scope becomes project scope).
 
 Tests this lane adds:
 
@@ -671,7 +650,6 @@ Edit surfaces (exclusive):
 - `apps/desktop/src/main/ipc/summaries-handlers*.ts`
 - `apps/desktop/src/main/ipc/project-files-handlers*.ts`
 - `apps/desktop/src/main/projects/project-files-controller*.ts`
-- `docs/port/parity/summaries.md`
 
 Goal: Copy project context files into project-owned storage with extracted text, serve them as context, and feed instructions and files to summaries. Read sections 4, 6 and 7 of docs/design/projects.md.
 
@@ -680,7 +658,6 @@ Build:
 - platform `project-context-source`: composes `ProjectRepository.get` and `ProjectFileStore.readDocuments` into the context data; null for an unknown project.
 - main: `project-files-controller` and `project-files-handlers` serve `projects.files.pick` (Electron open dialog through injected dialogs), `projects.files.add` (paths from a drop, validated again), `projects.files.remove`, and broadcast `projects.changed` with reason `'files'`.
 - summaries (core): `SummaryService` replaces the folders dep and `folderNoteOf` with `ProjectContextSource`; `series-context` and `prompt-builders` rename `folderNote` to `projectInstructions`, the `<folder_note>` block becomes `<project_instructions>` and a new `<project_files>` block carries `packAttachments` excerpts; query = meeting title + notes + first 2000 characters of the transcript; budgets from `projectBudgetFor('summary', provider.id)`; on the local engine the blocks count against `local-prompt-budget` and `local-map-reduce` overhead so the existing 4096-token guarantee holds. The prompt line that explains `<folder_note>` is rewritten for the new blocks. Any failure reading project context leaves it out and the summary still runs (existing rule). `compose-summaries` passes the live proxy for `projectContext`; `summaries-handlers` follow the rename. The platform summaries tests (`packages/platform/src/summaries/**`) are updated for the new dependency.
-- docs: parity rows in `docs/port/parity/summaries.md` (changed: folder note becomes project instructions plus files).
 
 Tests this lane adds:
 
@@ -699,8 +676,6 @@ Edit surfaces (exclusive):
 - `apps/desktop/src/main/live-copilot/**`
 - `apps/desktop/src/main/ipc/recording-handlers*.ts`
 - `apps/desktop/src/main/ipc/pill-handlers*.ts`
-- `docs/port/parity/recording.md`
-- `docs/port/parity/live-copilot.md`
 
 Goal: A take records into its project, and the live copilot sees the project instructions and files. Read sections 5, 6 and 7 of docs/design/projects.md.
 
@@ -708,7 +683,6 @@ Build:
 - Recording destination: `RecordingService` and `compose-recording` use `ProjectRepository.directoryOf(projectId)` for the audio directory (a null answer falls back to Inbox) and `ProjectRepository.get` for the existence check (`resolveProject` replaces `resolveFolder`; an unknown project falls back to no project as today); `entry-points` use `workspace.state.selectedProjectId` as the fallback (semantics in section 6: set on `/projects/<id>`, null elsewhere); `recording.start` and import (file, YouTube) take `projectId`; the take exposes `projectId` to the live ask. Starting a take never fails because a project was deleted meanwhile, and a take for a project that is unreadable (`unsafe-dir`, not ready) goes to Inbox with `projectId` null.
 - Live copilot: `LiveAskDeps.recording()` returns `projectId`; `LiveChatContext` gains `projectId`. Today the Live scope ignores folders and `packLiveSession` only packs title, notes and digest: add the project block. The pill and dock ask (`LiveAskSession`) resolves the block per question (query = the question) through `ProjectContextSource` and passes it to `packLiveSession` as its optional third argument (signature fixed by Contracts; the function lives in core/chat and is not edited here), so the pill, the dock and the Live chat see the same context; budgets from `projectBudgetFor('live', provider.id)`. The digest, question detection and local-model rules (never load the local model mid-take) are unchanged; a context read failure is logged and the ask goes on without it. The Live chat in the main chat service gets `projectId` from `LiveChatContext` (consumed by L2 through the existing `liveContext` callback shape).
 - Pill and live handlers follow the rename; no new IPC channel is needed.
-- docs: parity rows in `docs/port/parity/recording.md` and `docs/port/parity/live-copilot.md` (changed: destination is a project; improved: Live copilot sees project context).
 
 Tests this lane adds:
 
@@ -724,20 +698,19 @@ Edit surfaces (exclusive):
 - `apps/desktop/src/main/i18n-catalog-checks.test.ts`
 - `PRODUCT.md`
 - `DESIGN.md`
-- `docs/port/design-system.md`
 
-Goal: The whole Projects experience, following the impeccable skill and docs/port/design-system.md exactly as section 8 specifies (Operate mode, conformance table 8.0). Before any UI edit: load frontend-design, impeccable and accessibility, run impeccable context once, read craft-floor.md. Read sections 6 and 8 of docs/design/projects.md and implement them.
+Goal: The whole Projects experience, following the impeccable skill and docs/design-system.md exactly as section 8 specifies (Operate mode, conformance table 8.0). Before any UI edit: load frontend-design, impeccable and accessibility, run impeccable context once, read craft-floor.md. Read sections 6 and 8 of docs/design/projects.md and implement them.
 
 Build:
 - `features/meeting-list/` (new, extracted from `features/library` first, in its own commit): `MeetingGrid`, `BulkBar`, `ListHeader`, `use-bulk-actions`, the list store (renamed `meeting-list-store`), filters and preview, scoped by a `scope` prop (all, none, project id). `features/library` and `features/projects` import from it; a boundary test fails on any import between `features/library` and `features/projects`.
 - `features/projects/` (new, containers and presentational parts split per the stack rules): `ProjectsRoute` (grid, New project popover, search, sort, pinned group, No project row, empty states, notices of 8.6), `ProjectRoute` (header with inline rename and description edit, primary action, tabs Meetings and Chats, right panel with inline Instructions edit and Context files, menu Rename, Edit description, Pin, Delete with ConfirmDialog and the partial and busy results, the not-found state), `NoProjectRoute` (same frame, no right panel, no Start), `MoveToProjectPopover` (searchable flat list; used by the Library list, bulk bar, meeting preview and session header), `ProjectCard` (stretched-link pattern, pin button above it), `ProjectFilesPanel`, `ChatThreadList`, a kit `Disclosure` in `ui/`, `use-projects` store (zustand, listens to `projects.changed` and `library.changed`), `use-project`, `use-project-files`, `use-chat-threads`, a `useMediaQuery` hook that drives `data-layout` at `(min-width: 960px)`. Start meeting: navigate to `/record?project=<id>&start=1`; `RecordRoute` consumes the parameters with a replacing navigation before any async work, guarded by a ref, then follows the three cases of 8.3 (resolved and idle: start; unknown id: No project, no autostart, Notice; already recording: toast "A meeting is already recording" and the destination line, no second take).
-- `router.tsx`, `navigation.ts` and the rail: Record, Projects, Library, Settings; `tagOfPath`, `routeOfTag` and `railRouteOf` handle the tag `Projects` by prefix (`/projects`, `/projects/<id>`, `/projects/none` keep Projects selected); `AppShell` dispatches `publishSelectedProject` with the project id on `/projects/<id>` once the project resolves and `null` on every other route and on leave; reword the NavEntry comment that names the old app's automation ids.
+- `router.tsx`, `navigation.ts` and the rail: Record, Projects, Library, Settings; `tagOfPath`, `routeOfTag` and `railRouteOf` handle the tag `Projects` by prefix (`/projects`, `/projects/<id>`, `/projects/none` keep Projects selected); `AppShell` dispatches `publishSelectedProject` with the project id on `/projects/<id>` once the project resolves and `null` on every other route and on leave.
 - `features/library`: remove the tree, `Breadcrumbs`, `LibraryFolders`, `use-folder-note`, folder dialogs, `expandedAncestors` and every `folderChain` use; the Library route becomes the flat all-meetings list with a project filter (All projects, No project, one project) feeding `librarySearch` scope and the empty states of 8.4; keep filters, bulk actions (Move becomes Move to project), preview, undo. Remove `folder-visuals`, `ui/Tree.tsx`, `tree-navigation.ts` and their gallery entries and tests; remove the `folder-*` color tokens from `styles` and `DESIGN.md`.
 - `features/record`: destinations are projects, flat (No project first, then pinned, then by name), copy says "No project" not Inbox; `use-recording` and `RecordIdle` use `projectId`; the active-take screen shows its destination line.
 - `features/chat`: AiPanel gets a History control (popover list of threads for the current owner, New chat, open, rename, delete via `chat.threads.*`), scope label for Project scope, the pinned-scope rule and the read-only state of 6 ("Opening a thread"), the "This chat is not being saved" line when `historySaved` is false; `use-chat-scope` maps the workspace to the new scope kinds.
-- `features/session`, `features/settings` and others: replace folder wording and `folderId` usages; `SessionHeader` offers Move to project; `Ui_LibraryFolderShared` and `Ui_LibraryFoldersDamaged` are rewritten for the migrated reality.
+- `features/session`, `features/settings` and others: replace folder wording and `folderId` usages; `SessionHeader` offers Move to project; `Ui_LibraryFoldersDamaged` is rewritten for the migrated reality.
 - i18n: add every new key to `ui.en.json` and `ui.es.json` (`Ui_<Area><Name>` pattern, same placeholders and order, parity test), reword every existing value that says folder, carpeta or Inbox in the library sense to project, proyecto, No project, Sin proyecto, keep existing key names that core still references; "folder" stays only for the file-system Library location. Natural Latin American Spanish, sentence case.
-- Docs: `PRODUCT.md` terminology (project, no project; the Library bullet), `DESIGN.md` folder accent tokens removed, `docs/port/design-system.md` kit list (Tree removed, Disclosure added).
+- Docs: `PRODUCT.md` terminology (project, no project; the Library bullet), `DESIGN.md` folder accent tokens removed, `docs/design-system.md` kit list (Tree removed, Disclosure added).
 
 Tests this lane adds:
 
@@ -761,10 +734,9 @@ Vitest and Testing Library (jsdom), test first for logic: sort (Recent activity,
 5. L4-recording-live
 6. L5-ui
 7. integration (`pnpm check`, remove leftover stubs, resolve barrels)
-8. purge (13.6)
-9. e2e (13.5)
+8. e2e (13.5)
 
-Storage first because it owns the platform barrel and `LibraryRuntime`; context and chat before recording because `LiveChatContext` is consumed by both; UI last because it is the largest and imports every channel. Integration removes any stub left behind and runs `pnpm check`; the purge then runs once, serially, on the merged tree; the Playwright run closes.
+Storage first because it owns the platform barrel and `LibraryRuntime`; context and chat before recording because `LiveChatContext` is consumed by both; UI last because it is the largest and imports every channel. Integration removes any stub left behind and runs `pnpm check`; the Playwright run closes.
 
 ### 13.5 E2E
 
@@ -785,13 +757,3 @@ Scenarios (serial where they share a root):
 12. Deep links and cross-window: `#/projects/<unknown id>` shows "Project not found" with a back link and clears the selected project; delete a project from a second window while the first shows its page: the first switches to the not-found state without a reload.
 13. Library location change (when the folder-picker double of the existing data-location spec is reusable, else covered by the LibraryRuntime integration test only): switch the Library to a second seeded root, the new root migrates, projects show, the old root is untouched.
 14. Quality: axe (serious and critical = 0) on Projects, a project page and No project in light and dark; keyboard only: create a project, open it, add instructions, start a meeting; switch to Spanish: no raw keys and no "folder", "carpeta" or "Inbox" wording anywhere in these screens; reduced motion honored.
-
-### 13.6 Purge phase (serial, one writer, after integration)
-
-Goal: the user wants no OneDrive code or wording and nothing to do with .NET left. Lanes remove the code they own (L1 the library domain); this phase removes the rest and makes it permanent. Comments and docs only; no behavior change.
-
-1. OneDrive: the seven places of section 10. After this, a case-insensitive search for `onedrive` over the repository (excluding `node_modules`, `.git`, `odd/`, `docs/design/` and lock files) returns nothing.
-2. Wording: reword every comment, doc string and test title in `apps`, `packages` and `native` that names WinUI or .NET (about 45 files, found with `rg -i "winui|\.net\b|dotnet"`) so it describes the behavior, or says "an earlier version", without changing code. Keep the data-safety identifiers (`LEGACY_FOLDER_NAME`, `sharesMeetingLive`, the `meetinglive.local` scheme) and word their comments as "legacy data folder". The `{0}` placeholder syntax and the `automationId` values stay; only the comments that explain them change. `AGENTS.md` and `PRODUCT.md` keep their one-sentence origin statement, which explains the kept names.
-3. Archive notice: add `docs/port/README.md` saying the specs, parity ledgers and research of the first port are a historical archive, so their WinUI references are history, not requirements. No per-file edits there beyond the OneDrive cells.
-4. Guard test `packages/platform/src/hygiene/legacy-references.test.ts`: walks the repository from its root and fails on a case-insensitive `onedrive` in any text file outside the excluded paths above, and on `winui`, `dotnet` or `.NET` in any `.ts`, `.tsx`, `.rs` or `.css` file under `apps`, `packages` and `native` (the test file itself excluded). It runs inside `pnpm test`, so the rule stays true.
-5. Parity ledger: add the rows for the purge to `docs/port/parity/library-storage.md` and `shell-platform.md` ("dropped: OneDrive wording; .NET wording").

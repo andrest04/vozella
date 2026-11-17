@@ -235,7 +235,7 @@ describe('TranscriptTab', () => {
     });
   });
 
-  it('B9: a quiet refresh that fails while the first load is in flight shows the error and Retry', async () => {
+  it('a quiet refresh that fails while the first load is in flight shows the error and Retry', async () => {
     const gate = gateOf();
     const fake = install(STORED, gate.promise);
     mount();

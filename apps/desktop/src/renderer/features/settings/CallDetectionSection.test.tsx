@@ -56,7 +56,7 @@ const mount = (locale: 'en' | 'es' = 'en') =>
 const toggle = () => screen.getByRole('switch');
 const checked = () => toggle().getAttribute('aria-checked');
 
-describe('CallDetectionSection (items 135, 136, 140)', () => {
+describe('CallDetectionSection', () => {
   it('G1: shows the Call detection heading and only the popup toggle', async () => {
     install(true);
     const { container } = mount();
@@ -93,7 +93,7 @@ describe('CallDetectionSection (items 135, 136, 140)', () => {
     });
   });
 
-  it('S9: follows the Never again broadcast', async () => {
+  it('follows the Never again broadcast', async () => {
     const api = install(true);
     mount();
     await waitFor(() => {

@@ -6,7 +6,7 @@ export type InstallPhase = 'idle' | 'running' | 'failed';
 export interface EngineInstall {
   readonly phase: InstallPhase;
   readonly progress: InstallProgressDto | null;
-  /** The raw failure message (spec 2.2), while `phase` is `failed`. */
+  /** The raw failure message, while `phase` is `failed`. */
   readonly error: string | null;
   /**
    * Downloads whatever is missing. Main shares one transfer between callers. `local` asks for the
@@ -22,7 +22,7 @@ const errorText = (error: unknown): string =>
 /**
  * One engine download as the setup dialog and the Settings button show it. The main process owns
  * the transfer and shares it between callers, so a second window or a second click joins the first
- * (spec 2.2, 2.6); this hook only follows the progress events and keeps the failure text.
+ *; this hook only follows the progress events and keeps the failure text.
  */
 export function useEngineInstall(): EngineInstall {
   const [phase, setPhase] = useState<InstallPhase>('idle');

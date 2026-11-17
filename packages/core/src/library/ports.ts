@@ -45,7 +45,7 @@ export interface MeetingRepository {
   batch<T>(run: () => Promise<T>): Promise<T>;
 }
 
-/** Port: settings.json. Updates are read-modify-write under one lock (B17). */
+/** Port: settings.json. Updates are read-modify-write under one lock. */
 export interface SettingsStore {
   load(): Promise<AppSettings>;
   update(patch: Partial<AppSettings>): Promise<AppSettings>;

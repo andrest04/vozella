@@ -6,7 +6,7 @@ import { RelatedMeetings } from './RelatedMeetings';
 afterEach(cleanup);
 
 describe('RelatedMeetings', () => {
-  it('renders nothing when there are no related meetings (item 134)', () => {
+  it('renders nothing when there are no related meetings', () => {
     const { container } = render(
       <RelatedMeetings items={[]} caption="Related meetings" onOpen={() => undefined} />,
     );

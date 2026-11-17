@@ -50,7 +50,7 @@ describe('looksLikePlaceholder', () => {
     expect(looksLikePlaceholder('Meeting notes')).toBe(false);
     expect(looksLikePlaceholder('Budget')).toBe(false);
   });
-  it('B10: recognizes the Spanish auto title once its format is supplied', () => {
+  it('recognizes the Spanish auto title once its format is supplied', () => {
     const patterns = placeholderPatternsFromFormats(['Meeting {0}', 'Reunión {0}']);
     expect(looksLikePlaceholder('Reunión 3 nov, 15:04', patterns)).toBe(true);
     expect(looksLikePlaceholder('reunión 3 nov', patterns)).toBe(true);
@@ -79,7 +79,7 @@ describe('resolveTitle', () => {
   it('keeps a user-named title', () => {
     expect(resolveTitle('My talk', 'Budget')).toBe('My talk');
   });
-  it('B10: renames a Spanish auto title on summarize', () => {
+  it('renames a Spanish auto title on summarize', () => {
     const patterns = placeholderPatternsFromFormats(['Meeting {0}', 'Reunión {0}']);
     expect(resolveTitle('Reunión 3 nov, 15:04', 'Presupuesto', patterns)).toBe('Presupuesto');
   });

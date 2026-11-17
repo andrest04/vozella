@@ -90,7 +90,7 @@ describe('allocateProjectDir', () => {
   it('compares folded: case and accents', () => {
     expect(allocateProjectDir('cálculo', ['Calculo'])).toBe('cálculo 2');
   });
-  it('treats existing library entries as taken, including legacy Meetings and Recordings', () => {
+  it('treats existing library entries as taken, including a Library folder with loose meetings', () => {
     expect(allocateProjectDir('Meetings', ['Meetings', 'Recordings'])).toBe('Meetings 2');
     expect(allocateProjectDir('Recordings', ['Meetings', 'Recordings'])).toBe('Recordings 2');
   });

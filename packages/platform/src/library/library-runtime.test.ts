@@ -101,7 +101,6 @@ describe('start', () => {
       libraryRoot: roots.meetings,
       appDataRoot: roots.appData,
       source: 'env',
-      sharesMeetingLive: false,
       version: '1.2.3.4',
       startupError: null,
     });
@@ -383,19 +382,16 @@ describe('meetings stay put while the projects cannot place them', () => {
 describe('choosing a folder', () => {
   const meetingLive = () => path.join(dir, 'picked', 'MeetingLive');
 
-  it.each<RunMode>(['test', 'development'])(
-    '%s mode refuses a MeetingLive folder',
-    async (mode) => {
-      const { runtime, roots } = make({ mode, source: 'dev-fallback' });
-      await runtime.start();
-      const result = await runtime.setLocation(meetingLive());
-      expect(result).toMatchObject({ status: 'refused', reason: 'forbidden' });
-      expect(runtime.location().libraryRoot).toBe(roots.meetings);
-      expect(fs.existsSync(meetingLive())).toBe(false);
-    },
-  );
+  it.each<RunMode>(['test', 'development'])('%s mode refuses a protected folder', async (mode) => {
+    const { runtime, roots } = make({ mode, source: 'dev-fallback' });
+    await runtime.start();
+    const result = await runtime.setLocation(meetingLive());
+    expect(result).toMatchObject({ status: 'refused', reason: 'forbidden' });
+    expect(runtime.location().libraryRoot).toBe(roots.meetings);
+    expect(fs.existsSync(meetingLive())).toBe(false);
+  });
 
-  it('production with an environment override still refuses it', async () => {
+  it('production with an environment override still refuses a protected folder', async () => {
     const { runtime } = make({ mode: 'production', source: 'env' });
     await runtime.start();
     expect(await runtime.setLocation(meetingLive())).toMatchObject({
@@ -404,18 +400,26 @@ describe('choosing a folder', () => {
     });
   });
 
-  it('production without an override accepts a MeetingLive folder', async () => {
+  it('test mode refuses the real Vozella folder', async () => {
+    const { runtime } = make({ mode: 'test', source: 'dev-fallback' });
+    await runtime.start();
+    const own = path.join(dir, 'fake-documents', 'Vozella');
+    expect(await runtime.setLocation(own)).toMatchObject({
+      status: 'refused',
+      reason: 'forbidden',
+    });
+    expect(fs.existsSync(own)).toBe(false);
+  });
+
+  it('production without an override accepts an arbitrary folder', async () => {
     const { runtime, changes } = make({ mode: 'production', source: 'default' });
     await runtime.start();
-    const result = await runtime.setLocation(meetingLive());
+    const target = path.join(dir, 'anywhere');
+    const result = await runtime.setLocation(target);
     expect(result.status).toBe('changed');
-    expect(runtime.location()).toMatchObject({
-      libraryRoot: meetingLive(),
-      source: 'chosen',
-      sharesMeetingLive: true,
-    });
+    expect(runtime.location()).toMatchObject({ libraryRoot: target, source: 'chosen' });
     expect(changes).toEqual(['location']);
-    expect(fs.existsSync(path.join(meetingLive(), 'Inbox'))).toBe(true);
+    expect(fs.existsSync(path.join(target, 'Inbox'))).toBe(true);
   });
 
   it('any other folder is accepted in every mode and is used for new data', async () => {
@@ -460,7 +464,7 @@ describe('choosing a folder', () => {
     expect(third.runtime.location().libraryRoot).toBe(third.roots.meetings);
   });
 
-  it('a saved MeetingLive choice is ignored when the guard applies', async () => {
+  it('a saved choice is ignored when the guard applies', async () => {
     const prod = make({ mode: 'production', source: 'default' });
     await prod.runtime.start();
     await prod.runtime.setLocation(meetingLive());

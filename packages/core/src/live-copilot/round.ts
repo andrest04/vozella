@@ -1,6 +1,6 @@
 /**
- * C# `Math.Round(double)`: nearest integer, a midpoint goes to the even neighbour
- * (item 40). `Math.round` would send every midpoint up. Never returns -0.
+ * Banker's rounding: nearest integer, a midpoint goes to the even neighbour.
+ * `Math.round` would send every midpoint up. Never returns -0.
  */
 export function roundHalfEven(value: number): number {
   const floor = Math.floor(value);

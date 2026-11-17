@@ -10,7 +10,7 @@ import {
   toEnglishLanguageName,
 } from './prompt-builders';
 
-/** Spec 3.5 constants. */
+/** Map-reduce constants. */
 export const CONTEXT_TOKENS = 4096;
 export const FINAL_MAX_OUTPUT = 1024;
 export const NOTES_MAX_OUTPUT = 640;
@@ -19,12 +19,12 @@ export const MAX_PARTS = 64;
 export const MAX_MERGE_PASSES = 8;
 export const SUMMARY_TEMPERATURE = 0.3;
 
-/** Counts the tokens of a string the way the model would (BOS added). S11 supplies the sidecar. */
+/** Counts the tokens of a string the way the model would (BOS added). The sidecar supplies it. */
 export interface TokenCounter {
   count(text: string): Promise<number>;
 }
 
-/** One chat completion. S11 supplies the sidecar; tests supply a fake. */
+/** One chat completion. The sidecar supplies it; tests supply a fake. */
 export type InferFunction = (
   prompt: string,
   maxTokens: number,
@@ -148,7 +148,7 @@ export async function groupToBudget(
 }
 
 /**
- * Spec 3.5 map-reduce. Returns the raw model text; the caller runs the response splitter.
+ * Map-reduce. Returns the raw model text; the caller runs the response splitter.
  * Throws `SummaryError` (`NotesTooLong`, `TranscriptTooLong`, `CannotCondense`) before or between
  * inferences, and `CancelledError` when the signal fires.
  */

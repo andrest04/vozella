@@ -1,5 +1,5 @@
 /**
- * Code-point-safe cuts that still count UTF-16 units (spec 7, B10). Limits are counted in
+ * Code-point-safe cuts that still count UTF-16 units. Limits are counted in
  * JavaScript `length` units, and a cut never leaves half of a
  * surrogate pair behind: when the boundary falls inside a pair, the whole character is dropped.
  */

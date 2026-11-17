@@ -38,7 +38,7 @@ function cut(value: string, max: number): string {
   return value.slice(0, last >= 0xd800 && last <= 0xdbff ? max - 1 : max);
 }
 
-/** One entry of the old folder list, as the legacy reader hands it over (nothing validated yet). */
+/** An entry of the folder list written by earlier versions, as the reader hands it over (nothing validated yet). */
 export interface LegacyFolderEntry {
   readonly id: string | null;
   readonly name: string | null;
@@ -179,7 +179,7 @@ const cleanName = (raw: string | null): string => {
 };
 
 /**
- * Turns the raw old folder list into the projects to write. Pure: no file is read or written.
+ * Turns the raw folder list written by earlier versions into the projects to write. Pure: no file is read or written.
  * Invalid ids are skipped, duplicate ids (after lowercasing) keep the first entry, and a parent
  * that is missing, a loop, a self parent or a chain deeper than `MAX_CHAIN_DEPTH` makes the
  * folder a root. Every walk carries a visited set, so no input can loop.

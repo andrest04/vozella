@@ -19,7 +19,7 @@ const catalogs = { en: { ...en, ...uiEn }, es: { ...es, ...uiEs } } as Record<
 const placeholders = (text: string): string[] =>
   [...text.matchAll(/\{(\d+)/g)].map((m) => m[1] ?? '').sort();
 
-describe('summary failure and model label keys (parity items 72 to 77, 188)', () => {
+describe('summary failure and model label keys', () => {
   const modelKeys = SUMMARY_MODELS.flatMap((m) => [m.speedKey, m.qualityKey, m.useCaseKey]);
   const keys = [...new Set([...SUMMARY_FAILURE_CATALOG_KEYS, ...modelKeys])];
 
@@ -34,7 +34,7 @@ describe('summary failure and model label keys (parity items 72 to 77, 188)', ()
     }
   });
 
-  it('the six CliFailure keys and the model label keys are the ones the spec names', () => {
+  it('the six CliFailure keys and the model label keys are the expected ones', () => {
     for (const key of [
       'CliFailureNotInstalled',
       'CliFailureNotSignedIn',
@@ -66,7 +66,7 @@ describe('summary failure and model label keys (parity items 72 to 77, 188)', ()
     }
   });
 
-  it('formats a CLI failure and a stable code in each locale (B28)', () => {
+  it('formats a CLI failure and a stable code in each locale', () => {
     const spanish = createLookup(catalogs, 'es');
     const english = createLookup(catalogs, 'en');
     expect(formatFailure(new CliToolError('Codex', 'TimedOut'), english)).toBe(

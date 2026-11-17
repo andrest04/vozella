@@ -13,9 +13,9 @@ interface Preventable {
 }
 
 /**
- * Window close, quit, tray quit and the language restart share one gate (item 99). Once the gate
- * approved, the quit or the close it triggers goes through without asking again (item 100). An
- * exception in the gate is logged as `close failed` and leaves the app open (item 97).
+ * Window close, quit, tray quit and the language restart share one gate. Once the gate
+ * approved, the quit or the close it triggers goes through without asking again. An
+ * exception in the gate is logged as `close failed` and leaves the app open.
  */
 export class ExitFlow {
   private isApproved = false;

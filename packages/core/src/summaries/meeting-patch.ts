@@ -1,6 +1,6 @@
 import type { ActionItem, MeetingRecord } from '../library/meeting';
 
-/** The fields a summary run changes. Nothing else on the record is touched (B4). */
+/** The fields a summary run changes. Nothing else on the record is touched. */
 export interface SummaryPatch {
   readonly summary: string;
   readonly actionItems: readonly ActionItem[];

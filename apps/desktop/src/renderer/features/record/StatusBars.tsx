@@ -10,7 +10,7 @@ export function useStatusText(messages: readonly StatusMessage[]): string {
 }
 
 /**
- * The status of the page (spec 2.18). An error shows as the "Something went wrong" bar, in the
+ * The status of the page. An error shows as the "Something went wrong" bar, in the
  * idle column and again during a session; anything milder is a quiet caption under the hero.
  */
 export function StatusBars({

@@ -4,7 +4,7 @@ import { needsCloudKey } from './needs-cloud-key';
 import { SetupCards } from './SetupCards';
 
 /**
- * The inline setup panel (spec 2.4a): shown while the page is idle and something is missing. It
+ * The inline setup panel: shown while the page is idle and something is missing. It
  * never installs anything by itself; the page's action row holds the button that starts the same
  * ensure-ready pass Record uses.
  */

@@ -14,7 +14,7 @@ export interface SessionMeetingView {
 
 export interface SessionModel {
   readonly phase: SessionPhase;
-  /** Null unless a meeting is loaded. Header and tabs read this one value (B6). */
+  /** Null unless a meeting is loaded. Header and tabs read this one value. */
   readonly meeting: SessionMeetingView | null;
   readonly tab: SessionTab;
   /** Set by a tab change only; a reload after a rename does not slide. */
@@ -31,7 +31,7 @@ export interface SessionModel {
 /**
  * Resolves the meeting id once from the workspace and loads the view for it. Every async result
  * is checked against a sequence number, so a slow read for a meeting the user already left is
- * dropped (parity 14). Header and tabs share the one id (B6).
+ * dropped. Header and tabs share the one id.
  */
 export function useSession(): SessionModel {
   const [loading, setLoading] = useState(true);
@@ -47,7 +47,7 @@ export function useSession(): SessionModel {
   const bootRef = useRef<(() => void) | null>(null);
   const bootFailed = useRef(false);
   const sequence = useRef(0);
-  /** The id whose view was read successfully; a quiet failure before that is a full failure (B9). */
+  /** The id whose view was read successfully; a quiet failure before that is a full failure. */
   const loadedId = useRef<string | null>(null);
   const tracker = useRef<ReturnType<typeof createSlideTracker> | null>(null);
 
@@ -152,7 +152,7 @@ export function useSession(): SessionModel {
     });
     const offDeleted = window.vozella.on('workspace.meetingDeleted', ({ id }) => {
       if (id !== idRef.current) return;
-      // B20: the meeting is gone; drop any read still in flight and show the empty state.
+      // the meeting is gone; drop any read still in flight and show the empty state.
       sequence.current += 1;
       idRef.current = null;
       setMeeting(null);

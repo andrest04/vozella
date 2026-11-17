@@ -133,7 +133,7 @@ describe('SettingsPageService.load', () => {
     expect((await service.load()).uiLanguage).toBe('en-US');
   });
 
-  it('B13: option lists include a stored value that is not on the list', async () => {
+  it('option lists include a stored value that is not on the list', async () => {
     const { service, store } = page();
     await store.update({ selectedClaudeModelId: 'gpt-9', selectedCodexEffort: 'max' });
     const snapshot = await service.load();
@@ -142,7 +142,7 @@ describe('SettingsPageService.load', () => {
     expect(snapshot.codex.effortOptions).toEqual(['low', 'medium', 'high', 'xhigh', 'max']);
   });
 
-  it('B6: the pickers show the same code the engine uses', async () => {
+  it('the pickers show the same code the engine uses', async () => {
     const { service, store } = page();
     await store.update({ transcriptionLanguage: ' PT ', summaryLanguage: 'xx' });
     const snapshot = await service.load();
@@ -251,7 +251,7 @@ describe('SettingsPageService.load', () => {
     });
   });
 
-  it('B15: detection can be asked again after the CLI is installed', async () => {
+  it('detection can be asked again after the CLI is installed', async () => {
     const cli = { claude: false };
     const { service, store } = page({ cli });
     await store.update({ selectedSummaryProvider: 'ClaudeCode' });
@@ -363,7 +363,7 @@ describe('SettingsPageService.load', () => {
     ]);
   });
 
-  it('B18: a settings read that fails is an error value, not defaults shown as if loaded', async () => {
+  it('a settings read that fails is an error value, not defaults shown as if loaded', async () => {
     const { service, store } = page();
     store.load = () => Promise.reject(new Error('EACCES'));
     await expect(service.load()).rejects.toThrow('EACCES');
@@ -428,7 +428,7 @@ describe('exit gate and restart', () => {
     expect(calls).toEqual(['relaunch']);
   });
 
-  it('B10: a relaunch that fails is reported with its message', async () => {
+  it('a relaunch that fails is reported with its message', async () => {
     const restart = new RestartService({
       gates: new ExitGateRegistry(),
       relaunch: () => {

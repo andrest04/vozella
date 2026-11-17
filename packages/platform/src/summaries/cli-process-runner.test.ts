@@ -46,7 +46,7 @@ async function waitFor<T>(read: () => T | undefined, ms = 5000): Promise<T> {
   }
 }
 
-describe('PATH lookup (items 63, 64)', () => {
+describe('PATH lookup', () => {
   it('finds the program and returns its full path', async () => {
     expect(await runner.isOnPath('fakeexe')).toBe(true);
     const found = await runner.resolveExecutable('fakeexe');
@@ -81,7 +81,7 @@ describe('run (items 58, 65 to 69)', () => {
     expect((await runner.run(file, args, text, 10_000, never)).stdout).toBe(text);
   });
 
-  it('writes stdin without a byte order mark (B24)', async () => {
+  it('writes stdin without a byte order mark', async () => {
     const [file, args] = exe('bytes');
     const result = await runner.run(file, args, 'Reunión', 10_000, never);
     const [head, length] = result.stdout.split(':');
@@ -179,7 +179,7 @@ describe('run (items 58, 65 to 69)', () => {
     expect(isCancellation(error)).toBe(true);
   });
 
-  it('item 64: caller cancellation kills the process and the pid is gone, also while stdin is blocked', async () => {
+  it('caller cancellation kills the process and the pid is gone, also while stdin is blocked', async () => {
     const big = 'x'.repeat(8 * 1024 * 1024);
     const pidFile = path.join(fake.binDir, '..', 'cancel.pid');
     const source = new CancelSource();
@@ -325,7 +325,7 @@ describe('working directory (chat images)', () => {
   });
 });
 
-describe('cmd shim (B11)', () => {
+describe('cmd shim', () => {
   it.runIf(windows)('launches the resolved .cmd through cmd.exe, prompt on stdin', async () => {
     const text = 'Reunión con acentos';
     const result = await runner.run('fakecmd', ['echo'], text, 15_000, never);

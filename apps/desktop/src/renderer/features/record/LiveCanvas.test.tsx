@@ -51,7 +51,7 @@ const sizes = (el: HTMLElement, scrollHeight: number, clientHeight: number, scro
   el.scrollTop = scrollTop;
 };
 
-describe('LiveCanvas heading, badge and placeholder (items 104, 105, 64)', () => {
+describe('LiveCanvas heading, badge and placeholder', () => {
   it('names the region by its heading and shows the hint when empty', () => {
     mount();
     expect(screen.getByRole('heading', { level: 2, name: 'Live transcript' })).toBeVisible();
@@ -131,7 +131,7 @@ describe('live regions (accessibility)', () => {
   });
 });
 
-describe('copy in the heading row (spec 2.6)', () => {
+describe('copy in the heading row', () => {
   it('shows only when there is text and calls back', async () => {
     const onCopy = vi.fn();
     const view = mount({ live: false, onCopy });
@@ -142,7 +142,7 @@ describe('copy in the heading row (spec 2.6)', () => {
   });
 });
 
-describe('follow the end and Jump to latest (item 107)', () => {
+describe('follow the end and Jump to latest', () => {
   it('hides the button while stuck, shows it after scrolling up, and re-sticks on click', async () => {
     const text = Array.from({ length: 30 }, (_, i) => stamp(i, `line ${String(i)}`)).join('\n');
     mount({ text, committedLines: 30 });
@@ -178,7 +178,7 @@ describe('follow the end and Jump to latest (item 107)', () => {
   });
 });
 
-describe('the display holds still while the reader has it (item 106)', () => {
+describe('the display holds still while the reader has it', () => {
   it('keeps the old text while focused and catches up on blur', () => {
     const view = mount({ text: stamp(0, 'first'), committedLines: 1 });
     const area = screen.getByTestId('live-transcript');
@@ -215,7 +215,7 @@ describe('the display holds still while the reader has it (item 106)', () => {
   });
 });
 
-describe('updates replace the text (items 108, 109)', () => {
+describe('updates replace the text', () => {
   it('replaces a live text with the offline transcript, whatever it was', () => {
     const view = mount({ text: stamp(0, 'live words'), committedLines: 1 });
     view.again({
@@ -236,7 +236,7 @@ describe('updates replace the text (items 108, 109)', () => {
   });
 });
 
-describe('a four-hour transcript stays calm (items 111, B-22)', () => {
+describe('a four-hour transcript stays calm', () => {
   // One phrase every 3 s for 4 hours is 4800 lines; the live pass is 40 phrases a minute at most.
   const LINES = 4800;
   const hours4 = (n: number, star: (i: number) => boolean): string =>

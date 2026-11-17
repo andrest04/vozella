@@ -1,4 +1,4 @@
-/** WAV file rules (spec 3.6, 4.1, 2.2.5, 2.9). Pure: reads go through a byte reader. */
+/** WAV file rules. Pure: reads go through a byte reader. */
 
 export const MIX_SAMPLE_RATE = 16_000;
 export const FILE_BYTES_PER_SECOND = 32_000;
@@ -55,7 +55,7 @@ export function encodePcm16Wav(samples: Float32Array, sampleRate: number): Uint8
   return bytes;
 }
 
-/** Header-flush cadence (spec 2.2.5): fires once per interval of written bytes. */
+/** Header-flush cadence: fires once per interval of written bytes. */
 export class WavHeaderFlushCadence {
   private lastFlushBytes = 0;
 
@@ -105,7 +105,7 @@ function tag(bytes: Uint8Array, offset: number): string {
   return String.fromCharCode(...bytes.subarray(offset, offset + 4));
 }
 
-/** Read-only analysis of a WAV whose sizes may never have been written (spec 3.6). */
+/** Read-only analysis of a WAV whose sizes may never have been written. */
 export function analyzeWav(file: ByteSource): WavAnalysis {
   const length = file.length;
   if (length > UINT32_MAX) return { status: 'Unsupported' };
@@ -169,7 +169,7 @@ export interface WavInfo {
 }
 
 /**
- * Reads the format and the length of a consistent WAV (spec 2.9). It does not repair:
+ * Reads the format and the length of a consistent WAV. It does not repair:
  * a file whose sizes are zero throws.
  */
 export function readWavInfo(file: ByteSource): WavInfo {

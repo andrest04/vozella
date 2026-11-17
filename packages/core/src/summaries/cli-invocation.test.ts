@@ -120,7 +120,7 @@ describe('streaming invocation', () => {
   });
 });
 
-describe('B30 option validation', () => {
+describe('option validation', () => {
   it('accepts every listed choice', () => {
     for (const model of ['sonnet', 'opus', 'haiku', 'fable']) {
       expect(claudePrintArgs({ model })).toContain(model);

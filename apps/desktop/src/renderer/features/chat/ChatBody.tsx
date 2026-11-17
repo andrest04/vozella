@@ -60,7 +60,7 @@ export function ChatBody({
   const context = useRecipeContext(scope);
 
   // Saved prompts lead the `/` list and the starters (Phase 5). Built-in names are looked up on
-  // every render, so a language change relabels the starters (B8).
+  // every render, so a language change relabels the starters.
   const lookup = useCallback((key: string) => t(key as StringKey), [t]);
   const library = usePromptLibrary({ kind: scope.kind, context, draft: chat.draft, lookup });
   const { armed, arm, disarm } = library;

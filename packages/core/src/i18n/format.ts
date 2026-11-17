@@ -30,7 +30,7 @@ function names(
 }
 
 /**
- * Renders the .NET custom date pattern letters this app uses: d dd ddd dddd, M MM MMM MMMM,
+ * Renders the date pattern letters the catalog templates use: d dd ddd dddd, M MM MMM MMMM,
  * yy yyyy, H HH h hh, m mm, s ss, tt. Text inside quotes is copied; other characters are copied.
  * Backslash escapes the next character.
  */
@@ -110,14 +110,14 @@ function formatArg(arg: FormatArg, spec: string | undefined, locale: CatalogLoca
     return formatCustomDate(arg, spec, locale);
   }
   if (typeof arg === 'number' && spec !== undefined) {
-    // The source strings only use the .NET patterns "0" and "0.#".
+    // The catalog templates only use the number patterns "0" and "0.#".
     const digits = spec === '0.#' ? 1 : 0;
     return new Intl.NumberFormat(tag, { maximumFractionDigits: digits }).format(arg);
   }
   return String(arg);
 }
 
-/** Fills .NET style positional placeholders: {0}, {1:t}, {2:0.#}. Missing arguments stay visible. */
+/** Fills the catalog template placeholders (positional, numbered from zero): {0}, {1:t}, {2:0.#}. Missing arguments stay visible. */
 export function formatTemplate(
   template: string,
   args: readonly FormatArg[],

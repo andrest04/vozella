@@ -16,7 +16,7 @@ describe('HighlightedLiveText', () => {
     expect(cache.passes).toBe(0);
   });
 
-  it('reuses the result until the text or the marks change (B-22)', () => {
+  it('reuses the result until the text or the marks change', () => {
     const cache = new HighlightedLiveText();
     cache.render(text, [1000]);
     cache.render(text, [1000]);

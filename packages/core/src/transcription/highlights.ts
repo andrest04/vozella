@@ -1,6 +1,6 @@
 import { formatElapsed } from './stamp-format';
 
-/** Stars the stamped lines at the moments the user marked while recording (spec 3.13). */
+/** Stars the stamped lines at the moments the user marked while recording. */
 export const HIGHLIGHT_MARKER_PREFIX = '* ';
 
 const MARK_LINE = /^\* (\d+):(\d{2}\.\d{2})\s*$/;
@@ -9,7 +9,7 @@ const LINE_RANGE = /^\[(\d+):(\d{2}\.\d{2})-(\d+):(\d{2}\.\d{2})\]/;
 export const formatMarkLine = (elapsedMs: number): string =>
   HIGHLIGHT_MARKER_PREFIX + formatElapsed(elapsedMs);
 
-/** Minutes may have more digits than an int holds (B19), so this uses a double. */
+/** Minutes may have more digits than an int holds, so this uses a double. */
 function parseElapsed(minutes: string, seconds: string): number {
   return Math.round(Number(minutes) * 60_000 + Number(seconds) * 1000);
 }
@@ -80,7 +80,7 @@ export function applyHighlights(
 }
 
 /**
- * The starred lines of a transcript as elapsed start times, so they can be re-applied (B8).
+ * The starred lines of a transcript as elapsed start times, so they can be re-applied.
  * Marks-only lines (`* mm:ss.ff`, written when nothing was stamped) are recovered too.
  */
 export function starredLineStarts(transcript: string): number[] {

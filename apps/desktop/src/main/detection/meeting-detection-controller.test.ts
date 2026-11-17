@@ -122,7 +122,7 @@ function setup(options: { popupEnabled?: boolean; settingsFail?: boolean } = {})
 }
 
 describe('MeetingDetectionController', () => {
-  describe('the in-app call bar closes by itself (bug 5, item 38)', () => {
+  describe('the in-app call bar closes by itself', () => {
     it('tells the windows when the call ends, even if the popup never showed', async () => {
       const t = setup({ popupEnabled: false });
       await t.detect(true);
@@ -173,7 +173,7 @@ describe('MeetingDetectionController', () => {
     expect(t.popup.events).toContain('notify-hide-animated');
   });
 
-  it('54: each show restarts the 30 s auto-hide and cancels the earlier timer', async () => {
+  it('each show restarts the 30 s auto-hide and cancels the earlier timer', async () => {
     const t = setup();
     await t.detect(true);
     const first = t.timeouts.find((x) => x.ms === 30_000);
@@ -186,7 +186,7 @@ describe('MeetingDetectionController', () => {
     expect(t.timeouts.filter((x) => x.ms === 30_000 && !x.cleared)).toHaveLength(1);
   });
 
-  it('57: a cancelled exit never hides a popup that was shown again', async () => {
+  it('a cancelled exit never hides a popup that was shown again', async () => {
     const t = setup();
     await t.detect(true);
     await t.detect(false);
@@ -197,7 +197,7 @@ describe('MeetingDetectionController', () => {
     expect(t.controller.isShown).toBe(true);
   });
 
-  it('58: a second dismiss during the fade-out, or on a hidden popup, does nothing more', async () => {
+  it('a second dismiss during the fade-out, or on a hidden popup, does nothing more', async () => {
     const t = setup();
     await t.detect(true);
     t.controller.dismiss();
@@ -370,7 +370,7 @@ describe('MeetingDetectionController', () => {
     expect(t.popup.events).toHaveLength(before);
   });
 
-  it('12, 169: dispose is safe to call twice and leaves no timer running', async () => {
+  it('dispose is safe to call twice and leaves no timer running', async () => {
     const t = setup();
     await t.detect(true);
     t.controller.dispose();
@@ -381,7 +381,7 @@ describe('MeetingDetectionController', () => {
     expect(t.controller.isShown).toBe(false);
   });
 
-  it('150: a call found after dispose offers nothing, because the poll is gone', () => {
+  it('a call found after dispose offers nothing, because the poll is gone', () => {
     const t = setup();
     t.controller.dispose();
     expect(t.intervals[0]?.cleared).toBe(true);

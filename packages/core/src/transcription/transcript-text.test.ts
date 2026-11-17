@@ -74,11 +74,11 @@ describe('stamp formatter', () => {
     it('WhenRecordedHeaderIsMissing_PrependsRecordedAndEnded', () => {
       expect(ensureEndedHeader('body', rec, end)).toBe(`${recorded}\n${ended}\nbody`);
     });
-    it('keeps CRLF', () => {
+    it('keeps the stored newline style', () => {
       const out = ensureEndedHeader(`${recorded}\r\nbody`, rec, end);
       expect(out).toBe(`${recorded}\r\n${ended}\r\nbody`);
     });
-    it('B20: a transcript that starts with Ended gets one Recorded line, not two pairs', () => {
+    it('a transcript that starts with Ended gets one Recorded line, not two pairs', () => {
       const out = ensureEndedHeader('Ended 1999-01-01 00:00\nbody', rec, end);
       expect(out).toBe(`${recorded}\n${ended}\nbody`);
     });
@@ -122,23 +122,23 @@ describe('highlights', () => {
     expect(applyHighlights('[00:05.00-00:06.00] a', [0])).toBe('* [00:05.00-00:06.00] a');
     expect(applyHighlights('plain', [2000])).toBe('plain\n* 00:02.00');
   });
-  it('keeps CRLF and survives huge minute counts (B19)', () => {
+  it('keeps the stored newline style and survives huge minute counts', () => {
     const out = applyHighlights('[99999999999:00.00-99999999999:05.00] a\r\nb', [1]);
     expect(out).toBe('* [99999999999:00.00-99999999999:05.00] a\r\nb');
     expect(out.replace(/\r\n/g, '')).not.toContain('\n');
   });
-  it('keeps LF when the transcript is LF only, and CRLF when appending marks (83)', () => {
+  it('keeps LF when the transcript is LF only, and the stored CRLF when appending marks', () => {
     expect(applyHighlights('[00:00.00-00:01.00] a\nb', [0])).not.toContain('\r');
     expect(applyHighlights('plain\r\nmore', [2000])).toBe('plain\r\nmore\r\n* 00:02.00');
   });
-  it('de-duplicates equal marks before writing mark lines (76)', () => {
+  it('de-duplicates equal marks before writing mark lines', () => {
     expect(applyHighlights('', [1500, 1500, 5000])).toBe('* 00:01.50\n* 00:05.00');
     expect(applyHighlights('plain', [2000, 2000])).toBe('plain\n* 00:02.00');
   });
-  it('recovers marks-only starred lines for re-applying (B8)', () => {
+  it('recovers marks-only starred lines for re-applying', () => {
     expect(starredLineStarts(applyHighlights('', [1500, 5000]))).toEqual([1500, 5000]);
   });
-  it('reads starred lines back for re-applying (B8)', () => {
+  it('reads starred lines back for re-applying', () => {
     const starred = applyHighlights(t, [15_000, 31_000]);
     expect(starredLineStarts(starred)).toEqual([12_000, 30_000]);
   });
@@ -173,7 +173,7 @@ describe('committed line parser', () => {
     expect(extractCommittedBody('[00:60.00-00:61.00] bad')).toBe('[00:60.00-00:61.00] bad');
     expect(extractCommittedBody('[00:03.00-00:05.50] [ Speaker-x ] t')).toBe('[ Speaker-x ] t');
   });
-  it('B14: a starred line reads like the line under the star', () => {
+  it('a starred line reads like the line under the star', () => {
     expect(extractCommittedBody('* [00:30.00-00:41.55] [ Speaker-1 ] Starred')).toBe('Starred');
     expect(parseCommittedLineEnd('* [00:30.00-00:41.55] x')).toBe(41_550);
   });
@@ -187,7 +187,7 @@ describe('progress', () => {
     expect(toPercent(200, 100)).toBe(100);
     expect(toPercent(-5, 100)).toBe(0);
   });
-  it('B13: reports each distinct percent once', () => {
+  it('reports each distinct percent once', () => {
     const seen: number[] = [];
     const report = distinctPercent((p) => seen.push(p));
     for (let i = 0; i < 1000; i += 1) report(toPercent(i, 1000) < 50 ? 10 : 20);

@@ -37,7 +37,7 @@ function build(state: { recording?: boolean; pending?: boolean; saved?: boolean 
   return { guard, calls, answers, service };
 }
 
-describe('CloseGuard (165)', () => {
+describe('CloseGuard', () => {
   it('lets an idle app close without a dialog', async () => {
     const t = build();
     expect(await t.guard.mayClose()).toBe(true);
@@ -88,7 +88,7 @@ describe('CloseGuard (165)', () => {
   });
 });
 
-describe('CloseGuard per phase (90 to 101)', () => {
+describe('CloseGuard per phase', () => {
   it('Preparing (101): no confirmation, the progress shows while the start settles', async () => {
     const t = build({ pending: true });
     expect(await t.guard.mayClose()).toBe(true);
@@ -101,19 +101,19 @@ describe('CloseGuard per phase (90 to 101)', () => {
     expect(t.calls).not.toContain('confirm');
   });
 
-  it('the window is restored before any dialog (92)', async () => {
+  it('the window is restored before any dialog', async () => {
     const t = build({ recording: true });
     await t.guard.mayClose();
     expect(t.calls.indexOf('restore')).toBeLessThan(t.calls.indexOf('confirm'));
   });
 
-  it('a failed save never closes unless the user says Close anyway (95)', async () => {
+  it('a failed save never closes unless the user says Close anyway', async () => {
     const t = build({ pending: true, saved: false });
     expect(await t.guard.mayClose()).toBe(false);
     expect(t.calls).toEqual(['restore', 'saving', 'shutdown', 'hide', 'failed']);
   });
 
-  it('a refused second request does not touch the dialogs (96)', async () => {
+  it('a refused second request does not touch the dialogs', async () => {
     const t = build({ recording: true });
     const first = t.guard.mayClose();
     expect(await t.guard.mayClose()).toBe(false);
@@ -122,7 +122,7 @@ describe('CloseGuard per phase (90 to 101)', () => {
     expect(t.service.shutdown).toHaveBeenCalledOnce();
   });
 
-  it('a dialog that cannot be shown keeps the app open (98)', async () => {
+  it('a dialog that cannot be shown keeps the app open', async () => {
     const t = build({ recording: true });
     t.service.shutdown.mockClear();
     const guard = new CloseGuard({
@@ -142,7 +142,7 @@ describe('CloseGuard per phase (90 to 101)', () => {
 });
 
 describe('RendererCloseDialogs', () => {
-  it('a dialog nobody answers settles on abandon and the next close is not refused (96)', async () => {
+  it('a dialog nobody answers settles on abandon and the next close is not refused', async () => {
     const dialogs = new RendererCloseDialogs({
       send: () => undefined,
       windowAvailable: () => true,

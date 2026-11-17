@@ -25,7 +25,7 @@ describe('defaultMeetingTitle', () => {
 });
 
 describe('placeholderFormats', () => {
-  it('exposes both languages so a Spanish placeholder is recognized (B-1)', () => {
+  it('exposes both languages so a Spanish placeholder is recognized', () => {
     const formats = placeholderFormats({ en, es });
     expect(formats).toEqual(['Meeting {0}', 'Reunión {0}']);
     const patterns = placeholderPatternsFromFormats(formats);

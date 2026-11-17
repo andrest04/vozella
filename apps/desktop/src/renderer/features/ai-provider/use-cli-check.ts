@@ -13,7 +13,7 @@ export interface CliCheck {
 }
 
 /**
- * Looks for the CLI on PATH. The check tests PATH only (B32): a CLI that is installed but not
+ * Looks for the CLI on PATH. The check tests PATH only: a CLI that is installed but not
  * signed in is found here and fails later with a classified NotSignedIn message at summarize time.
  * `onFound` is called when a check succeeds; `check` decides which request it sends.
  */

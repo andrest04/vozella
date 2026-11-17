@@ -22,7 +22,7 @@ import { buildSeriesContext, packProjectSummaryContext } from './series-context'
 const recordedAt = parseOffsetDate('2026-11-02T14:00:00.0000000-05:00')!;
 const NEVER = new CancelSource().signal;
 
-/** Predictable counter: whitespace-separated words plus one for BOS, like the C# fake. */
+/** Predictable counter: whitespace-separated words plus one for BOS. */
 const wordCounter: TokenCounter = {
   count: async (text) => text.split(/\s+/).filter((w) => w !== '').length + 1,
 };
@@ -316,7 +316,7 @@ describe('groupToBudget', () => {
   });
 });
 
-describe('properties (items 50 and 51)', () => {
+describe('properties', () => {
   function rng(seed: number): () => number {
     let s = seed >>> 0;
     return () => {

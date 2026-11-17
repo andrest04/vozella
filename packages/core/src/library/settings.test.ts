@@ -22,7 +22,7 @@ const parseObject = (text: string): Record<string, unknown> =>
   JSON.parse(text) as Record<string, unknown>;
 
 describe('defaults', () => {
-  it('matches the spec table', () => {
+  it('matches the settings table', () => {
     expect(defaults).toEqual<AppSettings>({
       selectedSummaryModelId: null,
       selectedSummaryProvider: null,
@@ -99,7 +99,7 @@ describe('resolvers', () => {
     expect(resolveClaudeModelId({ ...defaults, selectedClaudeModelId: 'opus' })).toBe('opus');
   });
 
-  it('stored blank or whitespace values resolve to the defaults (item 46)', () => {
+  it('stored blank or whitespace values resolve to the defaults', () => {
     for (const blankValue of ['', '  ']) {
       expect(resolveClaudeModelId({ ...defaults, selectedClaudeModelId: blankValue })).toBe(
         'sonnet',
@@ -159,7 +159,7 @@ describe('resolvers', () => {
     expect(JSON.parse(unchanged)).toMatchObject(JSON.parse(text) as object);
   });
 
-  it('B18: numeric text does not parse as a provider', () => {
+  it('numeric text does not parse as a provider', () => {
     for (const text of ['0', '1', '99', '-1']) {
       expect(resolveSummaryProviderKind({ ...defaults, selectedSummaryProvider: text })).toBe(
         'Local',
@@ -204,7 +204,7 @@ describe('reading and writing', () => {
     expect(parseSettingsJson('null').settings).toEqual(defaults);
   });
 
-  it('B5: a corrupt file raises a typed error', () => {
+  it('a corrupt file raises a typed error', () => {
     expect(() => parseSettingsJson('{oops')).toThrow(LibraryFileCorruptError);
     expect(() => parseSettingsJson('[1]')).toThrow(LibraryFileCorruptError);
     expect(() => parseSettingsJson('')).toThrow(LibraryFileCorruptError);
@@ -267,7 +267,7 @@ describe('reading and writing', () => {
     expect(engineOnly).not.toContain('cloudTranscriptionModelId');
   });
 
-  it('B17: unknown keys survive a patch and stay after the known ones', () => {
+  it('unknown keys survive a patch and stay after the known ones', () => {
     const merged = applySettingsPatch(
       { futureThing: { a: 1 }, uiLanguage: 'en' },
       { summaryLanguage: 'en' },
@@ -281,7 +281,7 @@ describe('reading and writing', () => {
     expect(text.indexOf('futureThing')).toBeGreaterThan(text.indexOf('liveCopilotPillAlong'));
   });
 
-  it('reads a BOM, CRLF, escaped and mixed-case file of an older version and rewrites it plain', () => {
+  it('reads a BOM, CRLF, escaped and mixed-case file written by an earlier version and rewrites it plain', () => {
     const older = `\uFEFF{\r\n  "UiLanguage": "es",\r\n  "summaryLanguage": "\\u00E9s",\r\n  "futureThing": 1\r\n}`;
     const { settings, raw } = parseSettingsJson(older);
     expect(settings.uiLanguage).toBe('es');
@@ -326,7 +326,7 @@ describe('reading and writing', () => {
     expect(serializeSettings(raw)).toBe(text);
   });
 
-  it('B17: a patch changes only the named fields', () => {
+  it('a patch changes only the named fields', () => {
     const base = applySettingsPatch({}, { summaryLanguage: 'en', uiLanguage: 'es' });
     const next = applySettingsPatch(base, { uiLanguage: 'en' });
     expect(readSettings(next).summaryLanguage).toBe('en');

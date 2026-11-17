@@ -78,7 +78,7 @@ export function resetRecordingStore(): void {
 
 /**
  * Applies a state from main. The end of a take (back to Idle) resets the title for the next one,
- * as the run reset always did (spec 2.2).
+ * as the run reset always did.
  */
 export function applyRecordingState(next: RecordingStateDto): void {
   const previous = get().state;
@@ -105,7 +105,7 @@ export async function loadRecordingState(): Promise<void> {
   }
 }
 
-/** Readiness: refreshed on entry, after setup, and before every Start and Import (item 18). */
+/** Readiness: refreshed on entry, after setup, and before every Start and Import. */
 export async function refreshSetup(): Promise<RecordingSetupDto | null> {
   try {
     const setup = await window.vozella.invoke('recording.getSetup', {});
@@ -175,7 +175,7 @@ export interface StartInput extends SourceChoice {
   readonly title: string;
 }
 
-/** Spec 2.5 from the page's side. Returns true when the take began. */
+/** The start, from the page's side. Returns true when the take began. */
 export async function startRecording(input: StartInput): Promise<boolean> {
   if (get().busy !== null || !isIdle()) return false;
   set({ busy: 'starting', notice: null });
@@ -200,7 +200,7 @@ export async function startRecording(input: StartInput): Promise<boolean> {
   }
 }
 
-/** Spec 2.12: pick a file, then run it through the pipeline. Cancelling the picker is silent. */
+/** Pick a file, then run it through the pipeline. Cancelling the picker is silent. */
 export function importRecording(title: string): Promise<boolean> {
   return runImport(async () => {
     const picked = await window.vozella.invoke('audio.import.pickFile', {});
@@ -213,7 +213,7 @@ export function importRecording(title: string): Promise<boolean> {
   });
 }
 
-/** Spec 2.12.1: the same import for a YouTube link; main downloads the audio first. */
+/** The same import for a YouTube link; main downloads the audio first. */
 export function importFromYouTube(title: string, url: string): Promise<boolean> {
   return runImport(() =>
     window.vozella.invoke('recording.importUrl', { title, projectId: get().projectId, url }),
@@ -252,7 +252,7 @@ export const pauseRecording = (): Promise<void> => command('pause');
 export const resumeRecording = (): Promise<void> => command('resume');
 export const stopRecording = (): Promise<void> => command('stop');
 
-/** Item 68: marks this moment; the elapsed time (WAV time, pauses excluded) comes back from main. */
+/** marks this moment; the elapsed time (WAV time, pauses excluded) comes back from main. */
 export async function highlightMoment(): Promise<number | null> {
   try {
     const result = await window.vozella.invoke('recording.highlight', {});
@@ -262,7 +262,7 @@ export async function highlightMoment(): Promise<number | null> {
   }
 }
 
-/** Item 70: puts text on the clipboard through main (the renderer clipboard is denied). */
+/** puts text on the clipboard through main (the renderer clipboard is denied). */
 export async function copyToClipboard(text: string): Promise<boolean> {
   try {
     const result = await window.vozella.invoke('summaries.writeClipboard', { text });
@@ -272,7 +272,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-/** Item 71, after the confirmation. */
+/** Discard, after the confirmation. */
 export async function discardRecording(): Promise<void> {
   try {
     await window.vozella.invoke('recording.discard', {});
@@ -289,7 +289,7 @@ export async function cancelProcessing(): Promise<void> {
   }
 }
 
-/** B-21: cancels the summary that keeps running after the hand-off, without touching the meeting. */
+/** cancels the summary that keeps running after the hand-off, without touching the meeting. */
 export async function cancelBackgroundSummary(meetingId: string): Promise<boolean> {
   try {
     const result = await window.vozella.invoke('recording.cancelProcessing', { meetingId });
@@ -299,7 +299,7 @@ export async function cancelBackgroundSummary(meetingId: string): Promise<boolea
   }
 }
 
-/** B-11: runs the pipeline again on the audio of a take whose first save failed. */
+/** runs the pipeline again on the audio of a take whose first save failed. */
 export async function retryProcessing(): Promise<boolean> {
   try {
     const result = await window.vozella.invoke('recording.retryProcessing', {});

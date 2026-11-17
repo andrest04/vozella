@@ -189,7 +189,7 @@ describe('SetupWizardDialog: chooser', () => {
   });
 });
 
-describe('SetupWizardDialog: local-only mode (B33)', () => {
+describe('SetupWizardDialog: local-only mode', () => {
   it('opens on hardware detection and never renders the chooser', async () => {
     let answer: (value: unknown) => void = () => undefined;
     const { api } = mount(
@@ -358,7 +358,7 @@ describe('SetupWizardDialog: downloading', () => {
     expect(screen.getByText('Choose a model to generate summaries')).toBeVisible();
   });
 
-  it('closing the dialog during a download cancels it and reports no result (B6)', async () => {
+  it('closing the dialog during a download cancels it and reports no result', async () => {
     const { api, onFinished } = await start({
       'summaries.chooseLocalModel': () => new Promise(() => undefined),
     });
@@ -383,7 +383,7 @@ describe('SetupWizardDialog: downloading', () => {
     expect(called(api, 'summaries.cancelLocalModel')).toHaveLength(1);
   });
 
-  it('a failed download returns to the list with a visible error and a Try again (B7)', async () => {
+  it('a failed download returns to the list with a visible error and a Try again', async () => {
     let attempts = 0;
     const { api, onFinished } = await start({
       'summaries.chooseLocalModel': () => {
@@ -417,7 +417,7 @@ describe('SetupWizardDialog: downloading', () => {
     expect(screen.getByRole('button', { name: 'Download and use this model' })).toBeVisible();
   });
 
-  it('an already downloaded model finishes at once without a download panel (item 131)', async () => {
+  it('an already downloaded model finishes at once without a download panel', async () => {
     const rows = [row('one.gguf', 'Small model', { downloaded: true })];
     const { onFinished } = await start({
       'summaries.hardware': () => hardwareAnswer(rows),

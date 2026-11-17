@@ -97,7 +97,7 @@ const hasVisible = (text: string): boolean => text.trim() !== '';
 const IDLE = { isAnswering: false, text: '', error: null, usedWeb: false } as const;
 
 /**
- * One typed question at a time (spec 3.12). A newer ask, Stop, Discard or a new take bumps the
+ * One typed question at a time. A newer ask, Stop, Discard or a new take bumps the
  * generation, so a stale answer never publishes and a cancelled one is silent.
  */
 export class LiveAskSession {
@@ -113,7 +113,7 @@ export class LiveAskSession {
     return this.state;
   }
 
-  /** The toggle. It is not reset between takes (114). */
+  /** The toggle. It is not reset between takes. */
   setForceWebSearch(value: boolean): void {
     this.forceWeb = value;
   }
@@ -127,7 +127,7 @@ export class LiveAskSession {
     return this.forceWeb;
   }
 
-  /** Item 116: the chips use the typed path with the prompt trimmed, over the whole take. */
+  /** The chips use the typed path with the prompt trimmed, over the whole take. */
   askPreset(prompt: string): Promise<void> {
     const trimmed = prompt.trim();
     return trimmed === '' ? Promise.resolve() : this.ask(trimmed, 'overview');
@@ -236,13 +236,13 @@ export class LiveAskSession {
     return takeTail(takeRecentWindow(committed, windowMs), chars);
   }
 
-  /** Stop and Discard (127). Silent: it only ends the answering state. */
+  /** Stop and Discard. Silent: it only ends the answering state. */
   cancel(): void {
     this.begin();
     if (this.state.isAnswering) this.set({ ...this.state, isAnswering: false });
   }
 
-  /** A new take: any answer goes, the web toggle stays (127, 114). */
+  /** A new take: any answer goes, the web toggle stays. */
   reset(): void {
     this.begin();
     this.asked = [];
@@ -252,7 +252,7 @@ export class LiveAskSession {
   }
 
   /**
-   * Bug 15: re-reads the provider and publishes the toggle state when it changed, so the pill
+   * Re-reads the provider and publishes the toggle state when it changed, so the pill
    * never shows a stale toggle after the provider changed in Settings mid-take.
    */
   async refreshWebSupport(): Promise<void> {

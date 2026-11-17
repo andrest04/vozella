@@ -1,4 +1,4 @@
-/** The numbers of the five-bar level indicator (spec 3.5). Pure math, no DOM. */
+/** The numbers of the five-bar level indicator. Pure math, no DOM. */
 
 export const BAR_COUNT = 5;
 export const BAR_WIDTH = 3;

@@ -11,7 +11,7 @@ export interface TranscriptModel {
 
 /**
  * Loads the transcript of the open meeting. The first state is loading, so the empty message
- * never flashes (B8). A save of this meeting (mid re-transcription) reloads quietly (B10); a
+ * never flashes. A save of this meeting (mid re-transcription) reloads quietly; a
  * result for an older request, or for another meeting, is dropped. The shell owns selection.
  */
 export function useTranscript(meetingId: string): TranscriptModel {
@@ -35,7 +35,7 @@ export function useTranscript(meetingId: string): TranscriptModel {
         setPhase('ready');
       } catch {
         if (mine !== sequence.current) return;
-        // A failed quiet refresh keeps what is on screen, unless it replaced the first load (B9).
+        // A failed quiet refresh keeps what is on screen, unless it replaced the first load.
         if (!quiet || !loaded.current) setPhase('error');
       }
     },

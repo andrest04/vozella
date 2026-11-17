@@ -71,7 +71,7 @@ describe('createLookup', () => {
     expect(createLookup(catalogs, 'es')('Hello', 'Ana')).toBe('Hola Ana');
   });
 
-  it('B8: a missing key falls back to English, then to the key, and reports each miss', () => {
+  it('a missing key falls back to English, then to the key, and reports each miss', () => {
     const misses: string[] = [];
     const t = createLookup(catalogs, 'es', (key, locale, fallback) => {
       misses.push(`${key}:${locale}:${fallback}`);

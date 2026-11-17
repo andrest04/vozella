@@ -6,8 +6,8 @@ import { LocaleState, resolveStartupLanguage } from './locale-state';
 const withLanguage = (uiLanguage: string | null) => () =>
   Promise.resolve({ ...readSettings({}), uiLanguage });
 
-describe('resolveStartupLanguage (items 2 to 5)', () => {
-  it('3: a settings file that cannot be read is reported and the OS language is used', async () => {
+describe('resolveStartupLanguage', () => {
+  it('a settings file that cannot be read is reported and the OS language is used', async () => {
     const onError = vi.fn();
     const result = await resolveStartupLanguage(
       () => Promise.reject(new Error('EACCES')),
@@ -18,7 +18,7 @@ describe('resolveStartupLanguage (items 2 to 5)', () => {
     expect(onError).toHaveBeenCalledOnce();
   });
 
-  it('3: a blank or whitespace language is not a choice', async () => {
+  it('a blank or whitespace language is not a choice', async () => {
     expect(await resolveStartupLanguage(withLanguage(''), ['es-MX'])).toEqual({
       tag: 'es',
       saved: false,
@@ -33,7 +33,7 @@ describe('resolveStartupLanguage (items 2 to 5)', () => {
     });
   });
 
-  it('4: a saved language wins over the OS on every launch', async () => {
+  it('a saved language wins over the OS on every launch', async () => {
     for (let launch = 0; launch < 3; launch += 1) {
       expect(await resolveStartupLanguage(withLanguage('es'), ['en-US'])).toEqual({
         tag: 'es',
@@ -42,13 +42,13 @@ describe('resolveStartupLanguage (items 2 to 5)', () => {
     }
   });
 
-  it('5: a regional or underscored tag resolves to the shipped language', async () => {
+  it('a regional or underscored tag resolves to the shipped language', async () => {
     expect(await resolveStartupLanguage(withLanguage('es_ES'), ['en-US'])).toMatchObject({
       tag: 'es',
     });
   });
 
-  it('5: an unknown saved tag changes nothing and the app stays in English', async () => {
+  it('an unknown saved tag changes nothing and the app stays in English', async () => {
     const result = await resolveStartupLanguage(withLanguage('xx'), ['es-MX']);
     expect(result.tag).toBe('en-US');
     expect((await resolveStartupLanguage(withLanguage('xx'), ['fr-FR'])).tag).toBe('en-US');

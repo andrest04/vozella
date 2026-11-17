@@ -17,7 +17,7 @@ export interface StartupLanguage {
 }
 
 /**
- * Spec 4.5: the saved `uiLanguage`, else the first OS language we ship, else English. A settings
+ * The saved `uiLanguage`, else the first OS language we ship, else English. A settings
  * file that cannot be read leaves the OS default; the app still starts.
  */
 export async function resolveStartupLanguage(
@@ -68,7 +68,7 @@ export class LocaleState {
   /** Looks a string up in the current language. Call it at the moment of use, not once at start. */
   readonly t: TranslateFn = (key, ...args) => this.lookup(key, ...args);
 
-  /** After the choice is saved. A choice that failed to save never gets here (B11). */
+  /** After the choice is saved. A choice that failed to save never gets here. */
   set(tag: UiLanguageTag): void {
     this.current = { tag, saved: true };
     this.lookup = createLookup(this.catalogs, localeOfUiTag(tag), this.onMissing);

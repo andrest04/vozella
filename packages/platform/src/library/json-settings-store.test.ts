@@ -53,7 +53,7 @@ describe('JsonSettingsStore', () => {
     expect(resolveDock(await store().load())).toEqual({ edge: 'Top', along: 0.25 });
   });
 
-  it('B17: concurrent updates of different fields both survive', async () => {
+  it('concurrent updates of different fields both survive', async () => {
     const a = store();
     const b = store();
     await Promise.all([
@@ -70,7 +70,7 @@ describe('JsonSettingsStore', () => {
     });
   });
 
-  it('B17: unknown keys written by a newer version survive an update', async () => {
+  it('unknown keys written by a newer version survive an update', async () => {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, '{"futureThing":{"a":1},"uiLanguage":"es"}');
     await store().update({ summaryLanguage: 'en' });
@@ -97,7 +97,7 @@ describe('JsonSettingsStore', () => {
     });
   });
 
-  it('next-session dates: concurrent remembers and updates all survive (B17)', async () => {
+  it('next-session dates: concurrent remembers and updates all survive', async () => {
     await Promise.all([
       store().rememberNextSessionDate('a', '2026-11-12'),
       store().update({ uiLanguage: 'es' }),
@@ -115,7 +115,7 @@ describe('JsonSettingsStore', () => {
     expect(await store().loadNextSessionDate('b')).toBe('2026-11-12');
   });
 
-  it('B5: a damaged file loads defaults and is kept aside, not overwritten', async () => {
+  it('a damaged file loads defaults and is kept aside, not overwritten', async () => {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, '{oops');
     expect((await store().load()).uiLanguage).toBeNull();
@@ -146,7 +146,7 @@ describe('JsonSettingsStore', () => {
     expect(called).toBe(true);
   });
 
-  it('reads a file the WinUI app wrote, including string numbers', async () => {
+  it('reads a file written by an earlier version, including string numbers', async () => {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(
       file,

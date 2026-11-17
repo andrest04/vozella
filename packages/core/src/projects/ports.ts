@@ -27,7 +27,7 @@ export type ProjectFailure =
 export type StorageState =
   | { readonly status: 'migrating' }
   | { readonly status: 'ready' }
-  /** A migration step threw or the old folder list was unreadable. */
+  /** A migration step threw or the folder list written by earlier versions was unreadable. */
   | { readonly status: 'error'; readonly message: string }
   /** The manifest is newer than this app understands (`StorageTooNewError`). */
   | { readonly status: 'newer'; readonly found: number; readonly supported: number };

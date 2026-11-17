@@ -1,5 +1,5 @@
 /**
- * How the recording pipeline picks the transcript (spec 3.12). The pipeline is the recording
+ * How the recording pipeline picks the transcript. The pipeline is the recording
  * module's; the rule lives here because it is a rule about transcripts.
  */
 export type TranscriptionStage =

@@ -39,7 +39,7 @@ describe('allocateAudioPath', () => {
     expect(await run()).toBe(path.join(dir, '2026-11-03 Standup 2.wav'));
   });
 
-  it('B-9: accepts the stem whose Markdown is this meeting and has no recording', async () => {
+  it('accepts the stem whose Markdown is this meeting and has no recording', async () => {
     fs.writeFileSync(path.join(dir, '2026-11-03 Standup.md'), '');
     expect(await run(() => Promise.resolve(true))).toBe(path.join(dir, '2026-11-03 Standup.wav'));
   });

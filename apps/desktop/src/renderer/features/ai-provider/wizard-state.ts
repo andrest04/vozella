@@ -21,7 +21,7 @@ export type WizardResult =
   | { readonly kind: SummaryApiKindDto };
 
 /**
- * One panel per phase (spec 2.6). `attempt` numbers every request the wizard sends; an answer
+ * One panel per phase. `attempt` numbers every request the wizard sends; an answer
  * carries the number it was sent under, and one that no longer matches is stale and dropped.
  */
 export type WizardState =
@@ -39,7 +39,7 @@ export type WizardState =
       readonly selected: string | null;
       /** True while the choice of an already downloaded file is being saved. */
       readonly busy: boolean;
-      /** The last download failure, shown above the list (B7). */
+      /** The last download failure, shown above the list. */
       readonly error: string | null;
     }
   | {
@@ -84,7 +84,7 @@ export type WizardAction =
   | { readonly type: 'close' };
 
 export function initialWizardState(mode: WizardMode): WizardState {
-  // Local-only opens on detection itself, so the chooser never shows first (B33).
+  // Local-only opens on detection itself, so the chooser never shows first.
   return mode === 'local-only'
     ? { phase: 'DetectingHardware', attempt: 1, error: null }
     : { phase: 'ChoosingEngine', attempt: 0 };

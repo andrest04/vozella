@@ -212,14 +212,14 @@ pub fn run_guarded(
     }
 }
 
-/// A packet flagged SILENT carries uninitialised memory: it must read as silence (spec 3.2).
+/// A packet flagged SILENT carries uninitialised memory: it must read as silence.
 fn zero_if_silent(raw: &mut VecDeque<u8>, silent: bool) {
     if silent {
         raw.iter_mut().for_each(|b| *b = 0);
     }
 }
 
-/// How long a device may take to initialise before the start gives up (spec 3.2: 12 s).
+/// How long a device may take to initialise before the start gives up (12 s).
 pub const READY_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(12);
 
 /// Waits for the capture thread to report that the device is open. The wasapi crate waits
@@ -291,21 +291,21 @@ fn hresult_of(error: &wasapi::WasapiError) -> Option<i32> {
     }
 }
 
-/// Spec 3.2: the text of a failed process-loopback activation, with a prefix support can search
+/// The text of a failed process-loopback activation, with a prefix support can search
 /// for. An error without a Windows code reads as E_FAIL.
 pub fn activation_failure(hresult: Option<i32>, message: &str) -> String {
     let code = hresult.unwrap_or(0x8000_4005_u32 as i32) as u32;
     format!("Process loopback activation failed: 0x{code:08X}. {message}")
 }
 
-/// Spec 3.2 and item 76: any other failure while a process capture starts reads the same way,
+/// Any other failure while a process capture starts reads the same way,
 /// with the Windows code, so support can search for it.
 pub fn start_failure(hresult: Option<i32>, message: &str) -> String {
     let code = hresult.unwrap_or(0x8000_4005_u32 as i32) as u32;
     format!("Process loopback capture failed to start: 0x{code:08X}. {message}")
 }
 
-/// Spec 3.1.4: a non-empty id that resolves to an active capture endpoint wins; anything
+/// A non-empty id that resolves to an active capture endpoint wins; anything
 /// else (empty, unplugged, stale) falls back to the default capture device.
 pub fn resolve_microphone(device_id: Option<&str>) -> Res<wasapi::Device> {
     let enumerator = DeviceEnumerator::new()?;
@@ -320,7 +320,7 @@ pub fn resolve_microphone(device_id: Option<&str>) -> Res<wasapi::Device> {
 }
 
 /// The resolution rule behind `resolve_microphone`, apart from COM so it can be tested.
-/// Recording and the preview both open through it (spec items 83, 84, 85).
+/// Recording and the preview both open through it.
 pub(crate) fn pick_microphone<T>(
     device_id: Option<&str>,
     active_by_id: impl FnOnce(&str) -> Option<T>,
@@ -448,7 +448,7 @@ mod tests {
             pick_microphone(Some("mic-1"), found, default).unwrap(),
             "mic-1"
         );
-        // Empty, absent, unplugged and stale ids all fall back and never throw (item 85).
+        // Empty, absent, unplugged and stale ids all fall back and never throw.
         assert_eq!(
             pick_microphone(Some(""), found, default).unwrap(),
             "default"

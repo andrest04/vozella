@@ -5,10 +5,10 @@ import { launchApp, type LaunchedApp } from './launch';
 import { writeMeeting } from './library-data';
 
 // The Recipes flyout (chat-8) against the fake summary provider. Screenshots land in
-// docs/port/screens/chat/ when VOZELLA_SCREENSHOTS=1.
+// docs/screenshots/chat/ when VOZELLA_SCREENSHOTS=1.
 test.describe.configure({ timeout: 120_000 });
 
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/chat');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/chat');
 const WORK = '33333333-3333-4333-8333-333333333333';
 
 const seed = (dataRoot: string): void => {
@@ -132,7 +132,7 @@ test('typing /action filters, a click fills the draft without sending', async ()
   }
 });
 
-test('a chip click sends and streams the answer (item 107)', async () => {
+test('a chip click sends and streams the answer', async () => {
   const { launched, page } = await open();
   try {
     await openMeeting(page);

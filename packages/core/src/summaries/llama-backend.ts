@@ -10,7 +10,7 @@ export type CudaGeneration = 'cuda12' | 'cuda13';
 
 export const isGpuBackend = (backend: LlamaBackend): boolean => backend !== 'cpu';
 
-/** Layers are offloaded to the GPU on every backend except cpu. Feeds S06's `rateFor`. */
+/** Layers are offloaded to the GPU on every backend except cpu. Feeds `rateFor`. */
 export const usesGpuOffload = isGpuBackend;
 
 /** A GPU that is not NVIDIA but reports video memory: Vulkan can use it. */

@@ -77,7 +77,7 @@ export type ExportIcsResult =
 export type PipelineSummaryResult =
   | { readonly status: 'completed' }
   | { readonly status: 'cancelled' }
-  /** The provider gate is not satisfied: the run ends with the transcript only (spec 113). */
+  /** The provider gate is not satisfied: the run ends with the transcript only. */
   | { readonly status: 'skipped' }
   | { readonly status: 'failed'; readonly message: string };
 
@@ -270,7 +270,7 @@ export class SummariesController {
     return resolveTemplateInstructions(record.noteTemplateId, customNoteTemplate);
   }
 
-  /** The sentence for any failure of the summary stage (S03 `formatFailure`). */
+  /** The sentence for any failure of the summary stage. */
   formatError(error: unknown): string {
     if (error instanceof CliToolError) return formatFailure(error, this.deps.t);
     return messageOf(error);

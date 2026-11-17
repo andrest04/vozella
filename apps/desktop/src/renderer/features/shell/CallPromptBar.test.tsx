@@ -56,7 +56,7 @@ const mount = (locale: 'en' | 'es' = 'en') =>
     </Providers>,
   );
 
-describe('CallPromptBar (items 111, 112)', () => {
+describe('CallPromptBar', () => {
   it('is hidden until a call is offered, then shows the three texts and the ids', () => {
     const api = install();
     const { container } = mount();
@@ -89,7 +89,7 @@ describe('CallPromptBar (items 111, 112)', () => {
   });
 
   it.each(['callEnded', 'recordingStarted'] as const)(
-    'closes itself when main reports %s (bug 5, item 38)',
+    'closes itself when main reports %s',
     (reason) => {
       const api = install();
       const { container } = mount();
@@ -101,7 +101,7 @@ describe('CallPromptBar (items 111, 112)', () => {
     },
   );
 
-  it('is offered again for the next call after it closed itself (items 35, 37)', () => {
+  it('is offered again for the next call after it closed itself', () => {
     const api = install();
     const { container } = mount();
     api.offer();

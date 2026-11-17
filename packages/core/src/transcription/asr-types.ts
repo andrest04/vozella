@@ -7,7 +7,7 @@ export interface AsrWord {
   readonly text: string | null;
 }
 
-/** One result read from a stream and already copied out of the engine (spec 4.3). */
+/** One result read from a stream and already copied out of the engine. */
 export interface AsrResult {
   readonly isFinal: boolean;
   readonly transcript: string;
@@ -66,7 +66,7 @@ export const MEETING_GEOMETRY: SortformerGeometry = {
 
 export type AsrBackend = 'cpu' | 'cuda';
 
-/** What the factory needs from the engine to build a recognizer (spec 3.5). */
+/** What the factory needs from the engine to build a recognizer. */
 export interface RecognizerSettings {
   readonly modelPath: string;
   /** Folder with `nemo_speech_asr_c.dll` and its siblings. */
@@ -104,7 +104,7 @@ export interface AsrStreamCoverage {
   readonly lostMs: number;
 }
 
-/** Spec 3.5: no `finish` here on purpose. Closing a stream with finish aborts the process. */
+/** No `finish` here on purpose. Closing a stream with finish aborts the process. */
 export interface AsrStream {
   push(samples: Float32Array, sampleRate: number): Promise<void>;
   /** Drains every result available now, each already copied and released. */

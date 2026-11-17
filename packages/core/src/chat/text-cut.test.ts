@@ -8,7 +8,7 @@ describe('text-cut', () => {
     expect(cutPrefix('abc', 3)).toBe('abc');
     expect(cutTail('abc', 5)).toBe('abc');
   });
-  it('B10: never leaves half of an emoji at the cut', () => {
+  it('never leaves half of an emoji at the cut', () => {
     expect(cutPrefix('ab😀cd', 3)).toBe('ab');
     expect(cutPrefix('ab😀cd', 4)).toBe('ab😀');
     expect(cutTail('ab😀cd', 3)).toBe('cd');

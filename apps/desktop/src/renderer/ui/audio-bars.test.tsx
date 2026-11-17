@@ -14,8 +14,8 @@ import {
   tickHeights,
 } from './audio-bars-math';
 
-describe('audio bars math (spec 3.5, item 103)', () => {
-  it('keeps the profile, phase steps and speeds of the spec', () => {
+describe('audio bars math', () => {
+  it('keeps the profile, phase steps and speeds fixed for the bars', () => {
     expect(BAR_PROFILE).toEqual([0.55, 0.8, 1.0, 0.8, 0.55]);
     expect(barPhase(0, 0)).toBeCloseTo(0.75, 10);
     expect(barPhase(1, 1)).toBeCloseTo(0.75 + 0.25 * Math.sin(1.3 + 9.5), 10);

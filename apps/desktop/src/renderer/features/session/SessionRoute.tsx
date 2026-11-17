@@ -20,7 +20,7 @@ const navigateTo = (tag: 'History' | 'Recording'): void => {
   void window.vozella.invoke('workspace.dispatch', { action: { type: 'navigateTo', tag } });
 };
 
-/** Copy feedback from core: one timer, restarted on every copy (items 58 to 60). */
+/** Copy feedback from core: one timer, restarted on every copy. */
 function useCopyFeedback(): {
   readonly visible: boolean;
   readonly show: () => void;
@@ -71,7 +71,7 @@ function SessionSkeleton({ label }: { readonly label: string }) {
 }
 
 /**
- * Container of the session page (spec 2.1): resolves the open meeting, owns the header actions
+ * Container of the session page: resolves the open meeting, owns the header actions
  * and mounts the two tabs. The tabs do their own work; the page only asks them for copy text.
  */
 export function SessionRoute() {
@@ -201,7 +201,7 @@ export function SessionRoute() {
           }
           closeRename();
           session.refresh();
-          // The inner tab re-reads the meeting from disk after a rename (item 35).
+          // The inner tab re-reads the meeting from disk after a rename.
           if (status !== 'missing') session.reloadContent();
         } catch (error) {
           setRenameProblem(

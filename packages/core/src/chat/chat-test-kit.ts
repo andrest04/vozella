@@ -60,7 +60,7 @@ export const scopeOf = (over: Partial<ChatScopeDecision> = {}): ChatScopeDecisio
   ...over,
 });
 
-/** A reader over fixed lists. It records which query ran, so a test can prove B17. */
+/** A reader over fixed lists. It records which query ran, so a test can prove the query was scoped. */
 export class FakeChatMeetingReader implements ChatMeetingReader {
   readonly calls: string[] = [];
   meetings: ContextMeeting[] = [];

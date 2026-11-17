@@ -6,48 +6,108 @@ import es from './locales/es.json';
 import uiEn from './locales/ui.en.json';
 import uiEs from './locales/ui.es.json';
 
-// R12, items 192 and 194. The spec file is the source of truth for the strings and the control
-// names of the Record page; this reads it, so a new key in the spec fails here until both
-// languages have it.
-
-const root = path.resolve(__dirname, '../../../../..');
-const spec = fs.readFileSync(path.join(root, 'docs/port/specs/recording.md'), 'utf8');
-// The page reads the converted keys and the hand-written `Ui_` keys from one merged catalog.
+// The strings and the control names of the Record page exist in both languages. The page reads
+// the converted keys and the hand-written `Ui_` keys from one merged catalog.
 const catalogEn: Record<string, string> = { ...en, ...uiEn };
 const catalogEs: Record<string, string> = { ...es, ...uiEs };
 
-/** Section 2 of the spec, "User-facing features". */
-function section2(): string {
-  const start = spec.indexOf('## 2. User-facing features');
-  const end = spec.indexOf('## 3. Domain rules');
-  expect(start).toBeGreaterThan(0);
-  expect(end).toBeGreaterThan(start);
-  return spec.slice(start, end);
-}
-
-/** The catalog keys named in backticks (the cut Coming up strings stay in the spec only): a resource key has an underscore or a control suffix. */
-function section2Keys(): string[] {
-  const found = section2().match(/`[A-Za-z][A-Za-z0-9_.]*`/g) ?? [];
-  const keys = found.map((entry) => entry.slice(1, -1));
-  return [...new Set(keys)].filter(
-    (key) =>
-      !key.startsWith('ComingUp_') &&
-      (key.includes('_') || /\.(Text|Content|Header|Title|PlaceholderText)$/.test(key)),
-  );
-}
+const RECORD_KEYS = [
+  'RecordPage_MeetingTitle.Header',
+  'RecordPage_Destination.Header',
+  'RecordPage_SourcesHeading.Text',
+  'RecordPage_MicrophoneNone',
+  'Microphone_SystemDefault',
+  'RecordPage_AllSystemAudio.Text',
+  'RecordPage_SystemCardTooltip',
+  'RecordPage_AppCardTooltip',
+  'RecordPage_AppDetectedTag.Text',
+  'RecordPage_BrowserHint.Text',
+  'RecordPage_AppNotPlaying.Text',
+  'RecordPage_NoAppsPlaying.Text',
+  'RecordPage_SuggestionTitle',
+  'RecordPage_SuggestionAction',
+  'RecordPage_SourceFallbackMessage',
+  'RecordPage_SourcesSummary',
+  'RecordingSetup_Headline.Text',
+  'RecordingSetup_SetUpToRecord.Content',
+  'RecordingSetup.Title',
+  'RecordingSetup_Live.Header',
+  'RecordingSetup_NotNeeded',
+  'RecordingSetup_Ready',
+  'RecordingSetup_NeedsSetup',
+  'RecordingSetup_LiveDetail',
+  'RecordingSetup_LiveNotNeededDetail',
+  'RecordingSetup_Engine.Header',
+  'RecordingSetup_EngineDetail',
+  'RecordingSetup_Summary.Header',
+  'RecordingSetup_SummaryNotChosen',
+  'RecordingSetup_SummaryLocal',
+  'RecordingSetup_SummaryLocalModel',
+  'Cli_ClaudeName',
+  'Cli_CodexName',
+  'Xai_ProviderName',
+  'RecordingSetup_Done',
+  'RecordingSetup_SetUp',
+  'Status_LoadingModel',
+  'Error_StopRecording',
+  'RecordPage_LiveBadge.Text',
+  'RecordPage_LiveTranscriptHint.Text',
+  'RecordPage_JumpToLatest',
+  'RecordPage_LiveQuestionNotice.Title',
+  'RecordPage_LiveAnswer.Content',
+  'RecordPage_LiveAnswerDismiss.Content',
+  'RecordPage_LiveAnswerError.Title',
+  'LiveCopilot_WebTooltipOn',
+  'LiveCopilot_WebTooltipOff',
+  'RecordPage_WebBadge.Text',
+  'LiveCopilot_PromptMissed',
+  'LiveCopilot_PromptExplain',
+  'Status_SetupCancelled',
+  'LiveCopilot_NeedsSetup',
+  'RecordPage_LiveAnswerEmpty',
+  'RecordPage_SessionNotes.Header',
+  'RecordPage_SessionNotes.PlaceholderText',
+  'RecordPage_CancelProcessing.Content',
+  'Status_Transcribing',
+  'Status_TranscribingPercent',
+  'Status_GeneratingSummary',
+  'Status_CancelledTranscriptSaved',
+  'Status_ProcessingCancelled',
+  'Record_Import',
+  'Ui_ImportYouTube',
+  'Ui_ImportYouTubeTitle',
+  'Ui_ImportYouTubeLabel',
+  'Ui_ImportYouTubePlaceholder',
+  'Ui_ImportYouTubeCancel',
+  'Ui_ImportYouTubeSubmit',
+  'Ui_ErrorYouTubeUrl',
+  'Ui_StatusDownloadingYouTube',
+  'Ui_ErrorYtDlpInstall',
+  'Ui_ErrorYouTubeDownload',
+  'RecordPage_Open.Content',
+  'RecordPage_BriefHeading.Text',
+  'RecordPage_BriefFailed.Title',
+  'RecordPage_BriefFailedFormat',
+  'LiveCopilot_StartedMessage',
+  'AppClose_Recording_Title',
+  'AppClose_Recording_Content',
+  'AppClose_Saving_Title',
+  'AppClose_SaveFailed_Title',
+  'AppClose_SaveFailed_Content',
+  'Error_OutputCaptureFailed',
+  'Error_CaptureFaulted',
+  'Warning_MicrophoneLost',
+  'Warning_OutputAudioLost',
+  'Warning_NoAudioSourcesLeft',
+  'RecordPage_StatusErrorTitle.Title',
+] as const;
 
 function placeholders(text: string): string[] {
   return [...text.matchAll(/\{(\d+)\}/g)].map((match) => match[1] ?? '').sort();
 }
 
-describe('item 192: the strings of spec section 2', () => {
-  const keys = section2Keys();
-
-  it('finds the keys in the spec', () => {
-    expect(keys.length).toBeGreaterThan(60);
-  });
-
-  it.each(keys)('%s exists in English and Spanish with the same placeholders', (key) => {
+describe('Record page strings', () => {
+  it.each(RECORD_KEYS)('%s exists in English and Spanish with the same placeholders', (key) => {
     expect(catalogEn[key], `${key} in en`).toBeDefined();
     expect(catalogEs[key], `${key} in es`).toBeDefined();
     expect(placeholders(catalogEs[key] ?? '')).toEqual(placeholders(catalogEn[key] ?? ''));
@@ -64,144 +124,125 @@ describe('item 192: the strings of spec section 2', () => {
 });
 
 /**
- * Item 194: each control the spec lists, with where the port keeps it. The automation id
- * became a `data-testid`; a few were renamed with the control (the toggle is two buttons, Record
- * and Stop). A name that is an accessible-name resource key is checked in the catalog instead.
+ * Each control of the Record page and where the app keeps it. The automation id is a `data-testid`;
+ * the toggle is two buttons, Record and Stop. A name that is an accessible-name resource key is
+ * checked in the catalog instead.
  */
-const controls: { spec: string; port: string; file: string; kind: 'testid' | 'key' }[] = [
+const controls: { name: string; target: string; file: string; kind: 'testid' | 'key' }[] = [
   {
-    spec: 'BtnToggleRecording',
-    port: 'BtnRecord',
+    name: 'BtnToggleRecording',
+    target: 'BtnRecord',
     file: 'features/record/RecordRoute.tsx',
     kind: 'testid',
   },
   {
-    spec: 'BtnToggleRecording',
-    port: 'BtnStop',
+    name: 'BtnToggleRecording',
+    target: 'BtnStop',
     file: 'features/record/RecordingBar.tsx',
     kind: 'testid',
   },
   {
-    spec: 'BtnPauseRecording',
-    port: 'BtnPause',
+    name: 'BtnPauseRecording',
+    target: 'BtnPause',
     file: 'features/record/RecordingBar.tsx',
     kind: 'testid',
   },
   {
-    spec: 'BtnHighlightMoment',
-    port: 'BtnHighlight',
+    name: 'BtnHighlightMoment',
+    target: 'BtnHighlight',
     file: 'features/record/RecordingBar.tsx',
     kind: 'testid',
   },
   {
-    spec: 'BtnCopyLiveTranscript',
-    port: 'BtnCopy',
+    name: 'BtnCopyLiveTranscript',
+    target: 'BtnCopy',
     file: 'features/record/RecordingBar.tsx',
     kind: 'testid',
   },
   {
-    spec: 'BtnDiscardRecording',
-    port: 'BtnDiscard',
+    name: 'BtnDiscardRecording',
+    target: 'BtnDiscard',
     file: 'features/record/RecordingBar.tsx',
     kind: 'testid',
   },
   {
-    spec: 'BtnImportAudio',
-    port: 'BtnImportAudio',
+    name: 'BtnImportAudio',
+    target: 'BtnImportAudio',
     file: 'features/record/RecordRoute.tsx',
     kind: 'testid',
   },
   {
-    spec: 'BtnCancelProcessing',
-    port: 'BtnCancelProcessing',
+    name: 'BtnCancelProcessing',
+    target: 'BtnCancelProcessing',
     file: 'features/record/ProcessingBar.tsx',
     kind: 'testid',
   },
   {
-    spec: 'BtnOpenSession',
-    port: 'BtnOpenResult',
+    name: 'BtnOpenSession',
+    target: 'BtnOpenResult',
     file: 'features/record/ResultCard.tsx',
     kind: 'testid',
   },
   {
-    spec: 'TxtMeetingTitle',
-    port: 'TxtMeetingTitle',
+    name: 'TxtMeetingTitle',
+    target: 'TxtMeetingTitle',
     file: 'features/record/RecordIdle.tsx',
     kind: 'testid',
   },
   {
-    spec: 'ComboRecordDestination',
-    port: 'CmbDestination',
+    name: 'ComboRecordDestination',
+    target: 'CmbDestination',
     file: 'features/record/RecordIdle.tsx',
     kind: 'testid',
   },
   {
-    spec: 'ComboRecordMicrophone',
-    port: 'ComboRecordMicrophone.AutomationProperties.Name',
+    name: 'ComboRecordMicrophone',
+    target: 'ComboRecordMicrophone.AutomationProperties.Name',
     file: '',
     kind: 'key',
   },
   {
-    spec: 'ListRecordAudioSource',
-    port: 'ListRecordAudioSource.AutomationProperties.Name',
+    name: 'ListRecordAudioSource',
+    target: 'ListRecordAudioSource.AutomationProperties.Name',
     file: '',
     kind: 'key',
   },
   {
-    spec: 'TxtRecordingNotes',
-    port: 'TxtRecordingNotes',
+    name: 'TxtRecordingNotes',
+    target: 'TxtRecordingNotes',
     file: 'features/record/notepad/Notepad.tsx',
     kind: 'testid',
   },
   {
-    spec: 'TxtLiveAsk',
-    port: 'TxtLiveAsk',
+    name: 'TxtLiveAsk',
+    target: 'TxtLiveAsk',
     file: 'features/record/LiveAskDock.tsx',
     kind: 'testid',
   },
   {
-    spec: 'ToggleLiveWebSearch',
-    port: 'ToggleLiveWebSearch',
+    name: 'ToggleLiveWebSearch',
+    target: 'ToggleLiveWebSearch',
     file: 'features/record/LiveAskDock.tsx',
     kind: 'testid',
   },
   {
-    spec: 'TxtLiveTranscriptPreview',
-    port: 'live-canvas',
+    name: 'TxtLiveTranscriptPreview',
+    target: 'live-canvas',
     file: 'features/record/LiveCanvas.tsx',
     kind: 'testid',
   },
 ];
 
-/** Controls of the armed live answer, which left with the owner decision of 2026-11-03. */
-const dropped = ['BtnLiveAnswer', 'BtnLiveAnswerDismiss'];
-
-describe('item 194: automation ids of the Record page', () => {
-  const line = /^194\..*$/m.exec(spec)?.[0] ?? '';
-  const listed = [...line.matchAll(/`[A-Za-z]+`/g)].map((found) => found[0]);
-  const names = listed
-    .map((entry) => entry.slice(1, -1))
-    .filter((name) => /^(Btn|Txt|Combo|List|Toggle)/.test(name));
-
-  it('covers every control the spec lists', () => {
-    expect(names.length).toBe(18);
-    for (const name of names) {
-      expect(
-        controls.some((control) => control.spec === name) || dropped.includes(name),
-        `${name} is mapped or dropped`,
-      ).toBe(true);
-    }
-  });
-
-  it.each(controls)('$spec is $port in the port', (control) => {
+describe('automation ids of the Record page', () => {
+  it.each(controls)('$name is $target', (control) => {
     if (control.kind === 'key') {
-      expect(catalogEn[control.port]).toBeDefined();
-      expect(catalogEs[control.port]).toBeDefined();
+      expect(catalogEn[control.target]).toBeDefined();
+      expect(catalogEs[control.target]).toBeDefined();
       return;
     }
     const source = fs.readFileSync(path.resolve(__dirname, '..', control.file), 'utf8');
     expect(source).toMatch(
-      new RegExp(`(data-testid|testId|id)["']?[=:]\\s*["{']+${control.port}["'}]`),
+      new RegExp(`(data-testid|testId|id)["']?[=:]\\s*["{']+${control.target}["'}]`),
     );
   });
 });

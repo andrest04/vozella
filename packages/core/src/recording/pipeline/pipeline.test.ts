@@ -67,7 +67,7 @@ describe('first save', () => {
     expect(store.saves).toHaveLength(1);
   });
 
-  it('B-7: keeps the previous summary and action items until the new summary succeeds', async () => {
+  it('keeps the previous summary and action items until the new summary succeeds', async () => {
     const store = new ScriptedMeetingStore();
     store.records.set(
       TEST_MEETING_ID,
@@ -89,7 +89,7 @@ describe('first save', () => {
     });
   });
 
-  it('a new take writes no summary with the transcript (spec 140)', async () => {
+  it('a new take writes no summary with the transcript', async () => {
     const h = createPipelineHarness({ transcriber: { result: OFFLINE } });
     const out = await h.pipeline.run(makeRequest(), h.host, h.cancel);
     expect(out.kind).toBe('transcript-saved');
@@ -100,7 +100,7 @@ describe('first save', () => {
     });
   });
 
-  it('B-11: a failed first save with no draft returns a recoverable outcome and keeps the message', async () => {
+  it('a failed first save with no draft returns a recoverable outcome and keeps the message', async () => {
     const store = new ScriptedMeetingStore();
     store.failSaves.add(1);
     const h = createPipelineHarness({ store });
@@ -124,7 +124,7 @@ describe('first save', () => {
     expect(store.records.get(TEST_MEETING_ID)?.transcript).toContain('offline words');
   });
 
-  it('B-3: a take that replaces another WAV keeps the previous one', async () => {
+  it('a take that replaces another WAV keeps the previous one', async () => {
     const store = new ScriptedMeetingStore();
     store.records.set(
       TEST_MEETING_ID,
@@ -136,7 +136,7 @@ describe('first save', () => {
     expect(out).toMatchObject({ previousAudioPath: 'C:/lib/first (previous).wav' });
   });
 
-  it('B-3: when the first save fails with a draft, the later save still keeps the previous WAV', async () => {
+  it('when the first save fails with a draft, the later save still keeps the previous WAV', async () => {
     const store = new ScriptedMeetingStore();
     store.records.set(
       TEST_MEETING_ID,
@@ -150,7 +150,7 @@ describe('first save', () => {
     expect(out).toMatchObject({ previousAudioPath: 'C:/lib/first (previous).wav' });
   });
 
-  it('B-3: without a keeper, or when it fails, the old path is reported and left alone', async () => {
+  it('without a keeper, or when it fails, the old path is reported and left alone', async () => {
     const store = new ScriptedMeetingStore();
     store.records.set(TEST_MEETING_ID, makeMeeting({ audioFilePath: 'C:/lib/first.wav' }));
     const failing = new FakePreviousAudioKeeper();
@@ -165,7 +165,7 @@ describe('first save', () => {
     });
   });
 
-  it('B-28: later saves use the audio path the repository returned', async () => {
+  it('later saves use the audio path the repository returned', async () => {
     const store = new ScriptedMeetingStore();
     store.moveAudioTo = 'C:/lib/Folder/standup.wav';
     const h = createPipelineHarness({ store, transcriber: { result: OFFLINE } });
@@ -245,7 +245,7 @@ describe('offline pass', () => {
     ]);
   });
 
-  it('B-18: engine not ready without a draft uses the accurate message', async () => {
+  it('engine not ready without a draft uses the accurate message', async () => {
     const h = createPipelineHarness({ transcriber: { ready: false } });
     const out = await h.pipeline.run(makeRequest(), h.host, h.cancel);
     expect(out.kind).toBe('saved-without-transcript');
@@ -420,7 +420,7 @@ describe('saved record', () => {
     analyzedAt: '2026-09-01T12:40:00.000+00:00',
   };
 
-  it('B-6: carries over Jev, notes, attendees, calendar ids, template, follow-up and plan', async () => {
+  it('carries over Jev, notes, attendees, calendar ids, template, follow-up and plan', async () => {
     const store = new ScriptedMeetingStore();
     store.records.set(
       TEST_MEETING_ID,

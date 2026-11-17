@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 /**
- * A blank take-notes request (calendar-detection items 93, 94 and 96). Main remembers the request
+ * A blank take-notes request. Main remembers the request
  * until this page consumes it: on mount (the user navigated here), on the live event while the
  * window is visible, and when the window becomes visible again. Starting is skipped while a take
  * is running or being processed.

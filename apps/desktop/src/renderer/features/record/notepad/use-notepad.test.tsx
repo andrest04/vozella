@@ -59,7 +59,7 @@ describe('useNotepad', () => {
     expect(result.current.visible).toBe(false);
   });
 
-  it('B-10: the next take starts with no text from the previous one', async () => {
+  it('the next take starts with no text from the previous one', async () => {
     const host = install({ isRecording: true, notes: 'take one notes' });
     const { result } = renderHook(() => useNotepad());
     await waitFor(() => {

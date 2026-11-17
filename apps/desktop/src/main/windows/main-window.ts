@@ -12,9 +12,9 @@ export interface MainWindowOptions {
   readonly showOnReady: boolean;
   /** Theme at creation, so the first paint and the caption buttons already match. */
   readonly theme: ResolvedTheme;
-  /** Saved or default geometry (items 16, 17; window-state.json). */
+  /** Saved or default geometry (window-state.json). */
   readonly placement: WindowPlacement;
-  /** Absolute path of the window icon (bug 14). */
+  /** Absolute path of the window icon. */
   readonly iconPath: string;
 }
 

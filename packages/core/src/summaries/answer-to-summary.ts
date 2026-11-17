@@ -14,7 +14,7 @@ const isActionHeader = (line: string): boolean =>
   key(line) === '## action items' || key(line) === '**action items**';
 
 /**
- * Turns a chat answer into the summary content it replaces (T4).
+ * Turns a chat answer into the summary content it replaces.
  *
  * An answer shaped like a generated summary (`## Summary` and/or `## Action Items`) goes through
  * the same splitter as a summary run. Its action items replace the stored ones only when the

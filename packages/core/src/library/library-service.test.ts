@@ -73,7 +73,7 @@ describe('moveMeeting', () => {
     expect(t.meetings.records.get('m')?.projectId).toBeNull();
   });
 
-  it('B13: refuses a meeting that is being recorded or processed', async () => {
+  it('refuses a meeting that is being recorded or processed', async () => {
     const t = setup();
     t.meetings.records.set('m', meeting('m'));
     t.busy.register({ isBusy: (id) => id === 'm' });

@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 
-/** Spec 2.7: the view counts as at the end within this many pixels. */
+/** The view counts as at the end within this many pixels. */
 export const STICK_THRESHOLD = 32;
 
 export interface ScrollMetrics {
@@ -9,7 +9,7 @@ export interface ScrollMetrics {
   readonly clientHeight: number;
 }
 
-/** Stuck when the content does not scroll, or the offset is within 32 px of the end (item 107). */
+/** Stuck when the content does not scroll, or the offset is within 32 px of the end. */
 export function isStuck({ scrollTop, scrollHeight, clientHeight }: ScrollMetrics): boolean {
   const scrollable = scrollHeight - clientHeight;
   return scrollable <= 0 || scrollTop >= scrollable - STICK_THRESHOLD;

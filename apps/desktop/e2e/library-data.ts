@@ -56,8 +56,8 @@ export interface LegacyFolderSeed {
 }
 
 /**
- * The folder list of an older version as it was written on Windows: a byte order mark, CRLF line
- * ends, and the first entry with PascalCase keys, the way the old writer left some of them.
+ * The folder list of an older version as an earlier version wrote it: a byte order mark, CRLF line
+ * ends, and the first entry with PascalCase keys, the way that writer left some of them.
  */
 export function legacyFolderBytes(folders: readonly LegacyFolderSeed[]): Buffer {
   const entries = folders.map((folder, index) => {

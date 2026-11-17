@@ -42,7 +42,7 @@ describe('snippetFromMarkdown', () => {
   });
 });
 
-describe('snippetFromMarkdown, B15 marker rule', () => {
+describe('snippetFromMarkdown, marker rule', () => {
   it('keeps underscores and asterisks inside words, URLs and file names', () => {
     expect(snippetFromMarkdown('See snake_case and my_file_name.txt')).toBe(
       'See snake_case and my_file_name.txt',
@@ -64,7 +64,7 @@ describe('snippetFromMarkdown, B15 marker rule', () => {
   });
 });
 
-describe('snippetFromMarkdown, B10 surrogate-safe cut', () => {
+describe('snippetFromMarkdown, surrogate-safe cut', () => {
   it('never leaves half of an emoji at the 140 boundary', () => {
     const result = snippetFromMarkdown(`${'x'.repeat(139)}\u{1F600} tail`);
     expect(result).toBe(`${'x'.repeat(139)}…`);
@@ -110,7 +110,7 @@ describe('meetingSnippet', () => {
     expect(meetingSnippet('   ', transcript)).toBe('Hello team Second line');
   });
 
-  it('S6: a spoken line starting with "# " is still read as a heading and dropped, on purpose', () => {
+  it('a spoken line starting with "# " is still read as a heading and dropped, on purpose', () => {
     const transcript = ['[00:00.00-00:03.00] # one', '[00:03.00-00:05.00] kept words'].join('\n');
     expect(meetingSnippet(null, transcript)).toBe('kept words');
   });
@@ -124,7 +124,7 @@ describe('meetingSnippet', () => {
     expect(meetingSnippet('', '')).toBe('');
   });
 
-  it('keeps list bullets, blockquote marks and link syntax, as WinUI does (B15 decision)', () => {
+  it('keeps list bullets, blockquote marks and link syntax', () => {
     expect(snippetFromMarkdown('- foo [x](http://y)')).toBe('- foo [x](http://y)');
     expect(snippetFromMarkdown('> quoted')).toBe('> quoted');
   });

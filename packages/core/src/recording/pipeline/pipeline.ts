@@ -24,7 +24,7 @@ export interface OfflineTranscriber {
     readonly audioPath: string;
     readonly language: string;
     readonly recordedAtMs: number;
-    /** Time the user paused, in milliseconds (the clock skew of the old app). */
+    /** Time the user paused, in milliseconds. */
     readonly clockSkewMs: number;
     readonly speakerDiarization: boolean;
     readonly onProgress: (percent: number) => void;
@@ -32,12 +32,12 @@ export interface OfflineTranscriber {
   }): Promise<string>;
 }
 
-/** Port: keeps the audio of a take that is replaced (B-3). Returns where it now lives. */
+/** Port: keeps the audio of a take that is replaced. Returns where it now lives. */
 export interface PreviousAudioKeeper {
   keep(audioPath: string): Promise<string>;
 }
 
-/** The nine callbacks of spec 3.9 plus the notes. The run host (R4) implements them. */
+/** The nine callbacks plus the notes. The run host implements them. */
 export interface PipelineHost {
   readonly currentSessionNotes: string | null;
   onStatusChanged(status: Message): void;
@@ -83,7 +83,7 @@ export type PipelineOutcome =
   | { readonly kind: 'cancelled'; readonly transcriptSaved: boolean; readonly audioPath: string }
   /** Part 2 finished (completed, no provider, summary failed, summary cancelled). */
   | ({ readonly audioPath: string } & SummaryStageOutcome)
-  /** Any other exception (spec 3.7 exception handling). The host was told. */
+  /** Any other exception. The host was told. */
   | {
       readonly kind: 'failed';
       readonly transcriptSaved: boolean;
@@ -110,7 +110,7 @@ class RunState {
   transcriptSaved = false;
   audioPath: string;
   previousAudioPath: string | null = null;
-  /** True once the replaced WAV was kept or reported (B-3); a failed first save leaves it false. */
+  /** True once the replaced WAV was kept or reported; a failed first save leaves it false. */
   previousHandled = false;
 
   constructor(
@@ -122,7 +122,7 @@ class RunState {
 }
 
 /**
- * The first half of the post-recording pipeline (spec 3.7 steps 1 to 4): save first, run the
+ * The first half of the post-recording pipeline: save first, run the
  * offline pass, choose the transcript, save it. The summary stage is part 2.
  */
 export class RecordingPipeline {
@@ -146,7 +146,7 @@ export class RecordingPipeline {
   }
 
   /**
-   * The host-level guard (spec 3.7, item 150): never throws, an escaping exception becomes a
+   * The host-level guard: never throws, an escaping exception becomes a
    * terminal status, and `complete` always runs.
    */
   async runGuarded(
@@ -166,7 +166,7 @@ export class RecordingPipeline {
     }
   }
 
-  /** Cancels the summary that runs after the hand-off (B-21). False when none runs. */
+  /** Cancels the summary that runs after the hand-off. False when none runs. */
   cancelBackgroundSummary(meetingId: string): boolean {
     return this.deps.summary?.cancelBackgroundSummary(meetingId) ?? false;
   }
@@ -179,7 +179,7 @@ export class RecordingPipeline {
     }
   }
 
-  /** Any non-cancel exception (spec 3.7 exception handling). */
+  /** Any non-cancel exception. */
   private async onFailed(state: RunState, error: unknown): Promise<PipelineOutcome> {
     const { request, host } = state;
     const friendly = this.safeFormat(error);
@@ -321,7 +321,7 @@ export class RecordingPipeline {
       return this.withoutTranscript(state);
     }
 
-    // 4. Save the transcript. A re-run keeps the old summary until the new one succeeds (B-7).
+    // 4. Save the transcript. A re-run keeps the old summary until the new one succeeds.
     if (cancel.cancelled) throw new TranscriptionCancelledError();
     const record = await this.saveTranscript(state);
     return {
@@ -342,7 +342,7 @@ export class RecordingPipeline {
     };
   }
 
-  /** Cancellation (spec 3.7 outer handling, transcript half). */
+  /** Cancellation. */
   private async onCancelled(state: RunState): Promise<PipelineOutcome> {
     const { request, host } = state;
     if (isBlankText(state.transcript)) state.transcript = this.draftOf(request);
@@ -376,7 +376,7 @@ export class RecordingPipeline {
     state.durable = true;
     state.transcriptSaved = true;
     if (!state.previousHandled) {
-      // B-3: the first save failed with a draft; this save repoints the record, so the old WAV is kept now.
+      // The first save failed with a draft; this save repoints the record, so the old WAV is kept now.
       state.previousHandled = true;
       state.previousAudioPath = await this.keepPreviousAudio(
         state.existing,
@@ -386,7 +386,7 @@ export class RecordingPipeline {
     return record;
   }
 
-  /** One save. Later saves use the path and fields the repository returned (B-28, B-6). */
+  /** One save. Later saves use the path and fields the repository returned. */
   private async save(
     state: RunState,
     content: Omit<ProcessedContent, 'sessionNotes' | 'audioPath'>,
@@ -404,7 +404,7 @@ export class RecordingPipeline {
   }
 
   /**
-   * B-3: a new take that replaces a different WAV keeps the old one. It is renamed next to
+   * A new take that replaces a different WAV keeps the old one. It is renamed next to
    * itself when a keeper is wired; if that fails or there is none, the file stays where it is
    * and its path is reported, so nothing is orphaned silently.
    */

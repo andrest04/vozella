@@ -130,7 +130,7 @@ describe('summary stage: completion', () => {
     expect(stored?.transcript).toContain('offline words');
   });
 
-  it('passes the title, recorded time, summary language and ended time to the summary call (143)', async () => {
+  it('passes the title, recorded time, summary language and ended time to the summary call', async () => {
     const h = harness();
     await h.pipeline.run(makeRequest(), h.host, h.cancel);
     const request = h.seen[0];
@@ -147,7 +147,7 @@ describe('summary stage: completion', () => {
     expect(h.seen[0]?.endedAt ?? null).toBeNull();
   });
 
-  it('finishes with the transcription warning when there is one (147)', async () => {
+  it('finishes with the transcription warning when there is one', async () => {
     const h = harness({ transcriber: { result: new Error('engine crashed') } });
     const outcome = await h.pipeline.run(makeRequest({ liveDraft: DRAFT }), h.host, h.cancel);
     expect(outcome.kind).toBe('completed');
@@ -158,7 +158,7 @@ describe('summary stage: completion', () => {
   });
 });
 
-describe('summary stage: notes and enhancement (134, 143)', () => {
+describe('summary stage: notes and enhancement', () => {
   it('reads the session notes at call time, after the hand-off', async () => {
     const host = new RecordingHostSpy();
     host.currentSessionNotes = 'early notes';
@@ -254,7 +254,7 @@ describe('summary stage: notes and enhancement (134, 143)', () => {
   });
 });
 
-describe('summary stage: title (144, 145, B-1)', () => {
+describe('summary stage: title', () => {
   it('replaces the English placeholder title and notifies the workspace', async () => {
     const h = harness();
     const outcome = await h.pipeline.run(
@@ -267,7 +267,7 @@ describe('summary stage: title (144, 145, B-1)', () => {
     expect(h.notified).toEqual([TEST_MEETING_ID]);
   });
 
-  it('B-1: replaces the Spanish placeholder title too', async () => {
+  it('replaces the Spanish placeholder title too', async () => {
     const h = harness();
     await h.pipeline.run(makeRequest({ title: 'Reunión 2 nov, 14:05' }), h.host, h.cancel);
     expect(h.store.records.get(TEST_MEETING_ID)?.title).toBe('Budget review');
@@ -282,7 +282,7 @@ describe('summary stage: title (144, 145, B-1)', () => {
   });
 });
 
-describe('summary stage: no provider (141)', () => {
+describe('summary stage: no provider', () => {
   it('ends as done without a summary when no provider is chosen, never calling one', async () => {
     const h = harness({ provider: null });
     const outcome = await h.pipeline.run(makeRequest(), h.host, h.cancel);
@@ -294,7 +294,7 @@ describe('summary stage: no provider (141)', () => {
     expect(h.store.records.get(TEST_MEETING_ID)?.summary).toBeNull();
   });
 
-  it('treats an unparsable provider name as not chosen (B-20)', async () => {
+  it('treats an unparsable provider name as not chosen', async () => {
     const h = harness({ provider: 'claudecode' });
     expect((await h.pipeline.run(makeRequest(), h.host, h.cancel)).kind).toBe('no-summary');
   });
@@ -327,7 +327,7 @@ describe('summary stage: no provider (141)', () => {
   });
 });
 
-describe('summary stage: failure and cancellation (148, 149, 163, B-21)', () => {
+describe('summary stage: failure and cancellation', () => {
   it('keeps the transcript and reports the formatted failure when the summary fails', async () => {
     const h = harness({
       summarize: () => Promise.reject(new CliToolError('Claude Code', 'NotSignedIn')),
@@ -344,7 +344,7 @@ describe('summary stage: failure and cancellation (148, 149, 163, B-21)', () => 
     expect(stored?.summary).toBeNull();
   });
 
-  it('B-21: cancelBackgroundSummary stops the summary after the hand-off and keeps the transcript', async () => {
+  it('cancelBackgroundSummary stops the summary after the hand-off and keeps the transcript', async () => {
     let started!: () => void;
     const running = new Promise<void>((resolve) => {
       started = resolve;
@@ -391,7 +391,7 @@ describe('summary stage: failure and cancellation (148, 149, 163, B-21)', () => 
     expect(outcome.kind).toBe('summary-cancelled');
   });
 
-  it('cancelling before the hand-off saves the transcript once (148)', async () => {
+  it('cancelling before the hand-off saves the transcript once', async () => {
     const h = harness({ transcriber: { cancelDuring: new CancelSource() } });
     const outcome = await h.pipeline.run(makeRequest({ liveDraft: DRAFT }), h.host, h.cancel);
     expect(outcome).toMatchObject({ kind: 'cancelled', transcriptSaved: true });
@@ -401,7 +401,7 @@ describe('summary stage: failure and cancellation (148, 149, 163, B-21)', () => 
   });
 });
 
-describe('generic failure handler (149)', () => {
+describe('generic failure handler', () => {
   it('with a transcript: reports the summary failed without saving it twice', async () => {
     // Settings loads: 1 offline pass, 2 the stage. The stage's load throws.
     const h = harness({ failSettingsLoad: 2 });
@@ -454,7 +454,7 @@ describe('generic failure handler (149)', () => {
   });
 });
 
-describe('host-level guard (150)', () => {
+describe('host-level guard', () => {
   it('turns an escaping exception into a terminal status and always completes', async () => {
     const h = harness({ failSettingsLoad: 2 });
     const host: PipelineHost = Object.create(h.host) as PipelineHost;

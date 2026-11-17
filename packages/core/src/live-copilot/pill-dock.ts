@@ -2,7 +2,7 @@ import { PILL_EDGES, type PillEdge } from '../library/settings';
 import { clamp, type Point, type Rect } from '../meeting-detection/popup-placement';
 import { roundHalfEven } from './round';
 
-/** Pure docking math (spec live-copilot 2.4). Integer pixel math; callers choose the unit. */
+/** Pure docking math. Integer pixel math; callers choose the unit. */
 export type DockEdge = PillEdge;
 
 export const DEFAULT_EDGE: DockEdge = 'Right';
@@ -38,7 +38,7 @@ export function nearestEdge(centerX: number, centerY: number, area: Rect): DockE
 export const travelRange = (areaLength: number, capsuleLength: number, margin: number): number =>
   Math.max(0, areaLength - capsuleLength - 2 * margin);
 
-/** Capsule position for an edge and a fractional offset along it. Rounds half to even (item 40). */
+/** Capsule position for an edge and a fractional offset along it. Rounds half to even. */
 export function positionFor(
   edge: DockEdge,
   along: number,
@@ -80,7 +80,7 @@ export function alongFor(
 
 /**
  * Window rectangle with the chat panel open. The panel grows from the capsule toward the
- * screen center; centering uses truncating division (C# int `/ 2`), then the result is
+ * screen center; centering uses truncating division (integer `/ 2`), then the result is
  * clamped into the work area.
  */
 export function expandedBounds(
@@ -111,8 +111,8 @@ export function expandedBounds(
 }
 
 /**
- * Item 46 and bug 5: only the four names, case-insensitive. Numeric strings and comma
- * flags ("0", "Left,Top") fall back to Right; the C# enum parser accepted them.
+ * Only the four names, case-insensitive. Numeric strings and comma
+ * flags ("0", "Left,Top") fall back to Right.
  */
 export function parseEdge(raw: string | null | undefined): DockEdge {
   if (typeof raw !== 'string') return DEFAULT_EDGE;

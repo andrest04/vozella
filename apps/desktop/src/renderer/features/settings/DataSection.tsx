@@ -84,9 +84,6 @@ export function DataSection() {
               {notice}
             </Notice>
           ) : null}
-          {location.sharesMeetingLive ? (
-            <Notice className="mb-2">{t('Ui_LibraryFolderShared')}</Notice>
-          ) : null}
           <DataRow title={t('Settings_MeetingsLocation.Header')} value={location.libraryRoot}>
             {location.source === 'chosen' ? (
               <Button

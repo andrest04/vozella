@@ -97,7 +97,7 @@ describe('recording entry points', () => {
     });
   });
 
-  it('164: the busy registry refuses a meeting the recording holds', () => {
+  it('the busy registry refuses a meeting the recording holds', () => {
     const entry = createRecordingEntryPoints(
       fakeService() as unknown as RecordingService,
       new Workspace(),
@@ -109,7 +109,7 @@ describe('recording entry points', () => {
   });
 });
 
-describe('take-notes request (180)', () => {
+describe('take-notes request', () => {
   it('starts a blank recording once', async () => {
     const service = fakeService();
     const workspace = new Workspace();

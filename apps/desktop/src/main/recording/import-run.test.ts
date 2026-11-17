@@ -38,7 +38,7 @@ function build(over: Partial<ImportConversionDeps> = {}) {
 const request = { source: 'C:/in/call.mp3', title: 'Call', fileTimeMs: 10_000_000 };
 
 describe('convertForImport', () => {
-  it('B-19: the file time is the end and the start is derived from the duration (169)', async () => {
+  it('the file time is the end and the start is derived from the duration', async () => {
     const { deps } = build();
     const result = await convertForImport(deps, request, new CancelSource());
     expect(result).toEqual({
@@ -49,13 +49,13 @@ describe('convertForImport', () => {
     });
   });
 
-  it('allocates at the file time, and at now when the file time is unreadable (170)', async () => {
+  it('allocates at the file time, and at now when the file time is unreadable', async () => {
     const { deps } = build();
     await convertForImport(deps, { ...request, fileTimeMs: null }, new CancelSource());
     expect(deps.allocate).toHaveBeenCalledWith('Call', 5_000_000);
   });
 
-  it('removes the partial WAV and reports Error_ImportAudio on a conversion failure (171)', async () => {
+  it('removes the partial WAV and reports Error_ImportAudio on a conversion failure', async () => {
     const { deps, removed } = build({ convert: () => Promise.reject(new Error('bad codec')) });
     const result = await convertForImport(deps, request, new CancelSource());
     expect(result).toEqual({
@@ -73,7 +73,7 @@ describe('convertForImport', () => {
     expect(removed).toEqual([]);
   });
 
-  it('a cancel stops the conversion, removes the partial WAV and is not an error (170)', async () => {
+  it('a cancel stops the conversion, removes the partial WAV and is not an error', async () => {
     const cancel = new CancelSource();
     const { deps, removed } = build({
       convert: () => {

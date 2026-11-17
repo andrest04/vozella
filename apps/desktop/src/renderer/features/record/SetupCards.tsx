@@ -37,7 +37,7 @@ function SetupCard({ card }: { readonly card: Card }) {
 }
 
 /**
- * The three setup cards (spec 2.4): live preview, transcript engine, summary. Read only; the
+ * The three setup cards: live preview, transcript engine, summary. Read only; the
  * status words and the details come from main as catalog keys, so a language change relabels them.
  */
 export function SetupCards({ setup }: { readonly setup: RecordingSetupDto }) {

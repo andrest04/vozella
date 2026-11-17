@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 export interface NotepadState {
-  /** Spec 2.9: shown while recording or processing. */
+  /** Shown while recording or processing. */
   readonly visible: boolean;
   /** The notes main holds. */
   readonly notes: string;
@@ -11,7 +11,7 @@ export interface NotepadState {
 
 /**
  * The session notes as main publishes them. Main owns the text: it clears it at Start and Discard
- * (B-10), so the page only mirrors `recording.state` and sends edits back.
+ *, so the page only mirrors `recording.state` and sends edits back.
  */
 export function useNotepad(): NotepadState {
   const [visible, setVisible] = useState(false);

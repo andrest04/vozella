@@ -63,7 +63,7 @@ function gate<T>() {
   return { promise, resolve };
 }
 
-describe('Copy button (item 104)', () => {
+describe('Copy button', () => {
   it('copies the summary in Enhanced mode and the notes in My notes mode', async () => {
     const user = userEvent.setup();
     const api = installSummariesApi({
@@ -92,7 +92,7 @@ describe('Copy button (item 104)', () => {
     expect(calls(api, 'summaries.writeClipboard')[1]?.input).toEqual({ text: 'my own notes' });
   });
 
-  it('item 55: registers the real copy source for the session Copy button, per mode, and clears it on unmount', async () => {
+  it('registers the real copy source for the session Copy button, per mode, and clears it on unmount', async () => {
     const user = userEvent.setup();
     const api = installSummariesApi({
       ...loadWith(done({ notes: 'my own notes' })),
@@ -254,7 +254,7 @@ describe('generating', () => {
     });
   });
 
-  it('shows the formatted failure from the provider (B28), and the run can be retried', async () => {
+  it('shows the formatted failure from the provider, and the run can be retried', async () => {
     const api = installSummariesApi({
       ...loadWith(fresh()),
       'summaries.generate': () => ({
@@ -451,7 +451,7 @@ describe('regenerate confirmation', () => {
   });
 });
 
-describe('cancel (B13)', () => {
+describe('cancel', () => {
   it('asks main to cancel, keeps the previous summary and says so quietly', async () => {
     const held = gate<unknown>();
     const api = installSummariesApi({
@@ -498,7 +498,7 @@ describe('cancel (B13)', () => {
   });
 });
 
-describe('needs setup (B34)', () => {
+describe('needs setup', () => {
   const needsSetup = {
     status: 'needs-setup',
     kind: 'Local',
@@ -559,7 +559,7 @@ describe('needs setup (B34)', () => {
   });
 });
 
-describe('note template (item 105)', () => {
+describe('note template', () => {
   it('shows the record template after load without writing it back', async () => {
     const api = installSummariesApi(loadWith(done({ noteTemplateId: 'standup' })));
     mount();
@@ -613,7 +613,7 @@ describe('note template (item 105)', () => {
   });
 });
 
-describe('copy action items (B16)', () => {
+describe('copy action items', () => {
   const openMenu = async () => {
     await userEvent.click(await screen.findByRole('button', { name: 'More options' }));
   };

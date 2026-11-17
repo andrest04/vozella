@@ -1,9 +1,9 @@
 import type { AsrBackend } from './asr-types';
 
 /**
- * The pinned downloads of the transcription engine (spec 3.9). "Latest" for the user means these
+ * The pinned downloads of the transcription engine. "Latest" for the user means these
  * exact files again, not a floating build. The runtime is NeMo-Speech.cpp v0.3.0; the GGUF files
- * are pinned to a commit and carry a SHA-256 that is checked after the download (B5).
+ * are pinned to a commit and carry a SHA-256 that is checked after the download.
  */
 
 export interface PinnedFile {

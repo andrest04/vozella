@@ -101,7 +101,7 @@ afterEach(() => {
   Reflect.deleteProperty(window, 'vozella');
 });
 
-describe('setup gate for a saved prompt engine (item 8)', () => {
+describe('setup gate for a saved prompt engine', () => {
   it('finishing the gate keeps the default engine in Settings', async () => {
     const api = install('Local');
     const { result } = renderHook(() => useChat(SCOPE, completingGate(api.settings)), {

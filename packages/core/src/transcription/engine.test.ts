@@ -111,7 +111,7 @@ describe('recognizer factory', () => {
     expect(engine.recognizers[0]?.settings.diarizationModelPath).toBe('C:/models/diar.gguf');
   });
 
-  it('Create_WhenDiarizationEnabledAndFileMissing_CreatesWithoutThrowing and says so (B7)', async () => {
+  it('Create_WhenDiarizationEnabledAndFileMissing_CreatesWithoutThrowing and says so', async () => {
     const { factory, engine, status } = setup();
     await factory.create({ enableDiarization: true });
     expect(engine.recognizers[0]?.settings.diarizationModelPath).toBeNull();
@@ -282,7 +282,7 @@ describe('TranscriptionEngineInstaller', () => {
   });
 
   describe('deleteEngine', () => {
-    it('removes the runtime and both models (B6)', async () => {
+    it('removes the runtime and both models', async () => {
       const { models, runtimes, installer } = make(null);
       models.model = true;
       models.diarization = true;
@@ -584,7 +584,7 @@ describe('LiveTranscriptionService', () => {
     expect(errors).toHaveLength(2);
   });
 
-  it('B4: a throwing subscriber does not leave the engine open', async () => {
+  it('a throwing subscriber does not leave the engine open', async () => {
     const { engine, factory } = setup();
     engine.script = { afterPush: [[final('uno', 1)]] };
     const errors: unknown[] = [];
@@ -601,7 +601,7 @@ describe('LiveTranscriptionService', () => {
     expect(errors).toHaveLength(1);
   });
 
-  it('B12: a Start and a Stop issued together never see a half started session', async () => {
+  it('a Start and a Stop issued together never see a half started session', async () => {
     const { engine, factory } = setup();
     const live = new LiveTranscriptionService({ factory });
     const started = live.start({ language: 'es', recordedAtMs: null, speakerDiarization: false });

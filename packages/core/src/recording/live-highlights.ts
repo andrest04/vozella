@@ -1,8 +1,8 @@
 import { applyHighlights } from '../transcription/highlights';
 
 /**
- * The canvas text of a take: the live transcript with the highlight stars (spec 3.11). The star
- * pass reads the whole text, so it runs only when the text or the marks changed (B-22): a status
+ * The canvas text of a take: the live transcript with the highlight stars. The star
+ * pass reads the whole text, so it runs only when the text or the marks changed: a status
  * change, a level tick or a repeated update with the same text reuses the last result.
  */
 export class HighlightedLiveText {
