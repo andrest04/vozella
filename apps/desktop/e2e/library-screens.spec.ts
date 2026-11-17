@@ -139,7 +139,7 @@ function seedLibrary(dataRoot: string): void {
     recordedAt: localStamp(2, 8, 0),
     endedAt: localStamp(2, 9, 30),
     directory: 'Universidad/Calculo',
-    folderId: CALC,
+    projectId: CALC,
     summary: 'Epsilon-delta definitions, two worked examples and the homework for Friday.',
   });
   writeMeeting(libraryRoot, {
@@ -148,7 +148,7 @@ function seedLibrary(dataRoot: string): void {
     recordedAt: localStamp(4, 11, 0),
     endedAt: localStamp(4, 11, 40),
     directory: 'Trabajo',
-    folderId: WORK,
+    projectId: WORK,
     summary: 'Finance wants the numbers by the end of the month.',
   });
 }

@@ -47,7 +47,7 @@ export interface ChatMeetingReader {
    * `question` lets the reader read the meetings that match it in full (marked with
    * `relevanceRank`) before the newest ones.
    */
-  meetingsInFolder(folderId: string, question?: string): Promise<readonly ContextMeeting[]>;
+  meetingsInFolder(projectId: string, question?: string): Promise<readonly ContextMeeting[]>;
   /** Every meeting, in any order: the packer sorts and caps. Same `question` rule. */
   listRecent(question?: string): Promise<readonly ContextMeeting[]>;
   listFolders(): Promise<readonly ContextFolder[]>;
@@ -188,7 +188,7 @@ export class ScopeRefreshGuard {
 
 const threadScope = (scope: ChatScopeDecision) => ({
   scopeKind: scope.kind,
-  folderId: scope.folderId,
+  projectId: scope.projectId,
   meetingId: scope.meetingId,
 });
 
@@ -201,7 +201,7 @@ export class ChatService {
   private decision: ChatScopeDecision = {
     isVisible: true,
     kind: 'AllMeetings',
-    folderId: null,
+    projectId: null,
     meetingId: null,
   };
   private sending = false;
@@ -429,16 +429,16 @@ export class ChatService {
     if (scope.kind === 'Meeting' && scope.meetingId !== null) {
       const found = await reader.meetingById(scope.meetingId);
       meetings = found === null ? [] : [found];
-    } else if (scope.kind === 'Folder' && scope.folderId !== null) {
-      meetings = await reader.meetingsInFolder(scope.folderId, query);
+    } else if (scope.kind === 'Project' && scope.projectId !== null) {
+      meetings = await reader.meetingsInFolder(scope.projectId, query);
     } else if (scope.kind === 'AllMeetings') {
       meetings = await reader.listRecent(query);
     }
     const folders =
-      scope.kind === 'Folder' || scope.kind === 'AllMeetings' ? await reader.listFolders() : [];
+      scope.kind === 'Project' || scope.kind === 'AllMeetings' ? await reader.listFolders() : [];
     return packContext(
       scope.kind,
-      scope.folderId,
+      scope.projectId,
       scope.meetingId,
       live,
       meetings,

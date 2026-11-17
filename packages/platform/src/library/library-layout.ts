@@ -6,9 +6,9 @@ import { folderDirectorySegments, siblingWavPath, type FolderRecord } from '@voz
 export function directoryFor(
   libraryRoot: string,
   folders: readonly FolderRecord[],
-  folderId: string | null,
+  projectId: string | null,
 ): string {
-  return nodePath.join(libraryRoot, ...folderDirectorySegments(folders, folderId));
+  return nodePath.join(libraryRoot, ...folderDirectorySegments(folders, projectId));
 }
 
 /** Windows and macOS volumes ignore case by default; comparing paths must too. */

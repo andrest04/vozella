@@ -76,7 +76,7 @@ function seedLibrary(dataRoot: string): void {
     title: 'Client recent',
     recordedAt: stamp(3),
     directory: 'Clients',
-    folderId: FOLDER,
+    projectId: FOLDER,
     summary: 'Scope for the client.',
   });
 }

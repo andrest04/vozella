@@ -12,7 +12,7 @@ function meeting(patch: Partial<MeetingRecord> = {}): MeetingRecord {
     endedAt: null,
     audioFilePath: '',
     sourcePath: null,
-    folderId: null,
+    projectId: null,
     summaryProvider: null,
     calendarEventId: null,
     calendarId: null,
@@ -90,7 +90,7 @@ describe('render', () => {
       endedAt: '2026-09-01T13:45:00.0000000-05:00',
       recordedAt: '2026-09-01T12:00:00.0000000-05:00',
       audioFilePath: 'C:\\Lib\\Universidad\\2026-09-01 Weekly sync planning.wav',
-      folderId: '7d1e0a52-33c4-4f6b-8a90-0c1d2e3f4a5b',
+      projectId: '7d1e0a52-33c4-4f6b-8a90-0c1d2e3f4a5b',
       summaryProvider: 'local',
       calendarEventId: 'AAMkAGI2',
       calendarId: 'cal-1',
@@ -119,7 +119,7 @@ describe('render', () => {
     const text = renderMeetingMarkdown(
       meeting({
         endedAt: '2026-09-01T13:00:00.0000000+00:00',
-        folderId: '7d1e0a52-33c4-4f6b-8a90-0c1d2e3f4a5b',
+        projectId: '7d1e0a52-33c4-4f6b-8a90-0c1d2e3f4a5b',
         summaryProvider: 'local',
         calendarEventId: 'e',
         attendees: ['A', 'B'],
@@ -177,7 +177,7 @@ describe('render', () => {
         id: 'ABCDEF12-1111-4111-8111-ABCDEFABCDEF',
         recordedAt: '2026-09-01T12:00:00Z',
         endedAt: '2026-09-01T13:00:00.5+00:00',
-        folderId: '7D1E0A52-33C4-4F6B-8A90-0C1D2E3F4A5B',
+        projectId: '7D1E0A52-33C4-4F6B-8A90-0C1D2E3F4A5B',
       }),
     );
     expect(text).toContain('id: abcdef12-1111-4111-8111-abcdefabcdef\n');
@@ -398,7 +398,7 @@ describe('parse', () => {
   it('ignores lines without a colon, lets later duplicates win, trims keys and values', () => {
     const back = parse(`${head}garbage line\n title :  First \ntitle: Second\nfolderId\n---\n`);
     expect(back.title).toBe('Second');
-    expect(back.folderId).toBeNull();
+    expect(back.projectId).toBeNull();
   });
 
   it('keeps colons inside values and reads a key without a value as empty', () => {
@@ -416,7 +416,7 @@ describe('parse', () => {
   it('ignores an unparsable endedAt and an invalid folderId', () => {
     const back = parse(`${head}endedAt: later\nfolderId: nope\n---\n`);
     expect(back.endedAt).toBeNull();
-    expect(back.folderId).toBeNull();
+    expect(back.projectId).toBeNull();
   });
 
   it('accepts any GUID text form for id', () => {

@@ -66,7 +66,7 @@ describe('SummaryTabService over the Markdown repository', () => {
       projectPlan: base.projectPlan,
       calendarEventId: 'evt-9',
       seriesId: 'series-9',
-      folderId: base.folderId,
+      projectId: base.projectId,
       joinUrl: base.joinUrl,
       attendees: base.attendees,
     });

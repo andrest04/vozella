@@ -163,7 +163,7 @@ test('a take starts: the started hint shows on the capsule for about 2.5 s and g
   const start = await main.evaluate(() =>
     window.vozella.invoke('recording.start', {
       title: 'Capsule e2e',
-      folderId: null,
+      projectId: null,
       microphone: null,
       appName: null,
     }),

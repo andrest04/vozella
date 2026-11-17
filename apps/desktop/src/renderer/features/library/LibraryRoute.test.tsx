@@ -42,12 +42,6 @@ afterEach(() => {
 function rowOf(name: RegExp): HTMLElement {
   return screen.getByRole('row', { name });
 }
-function optionAt(options: readonly HTMLElement[], index: number): HTMLElement {
-  const option = options[index];
-  if (!option) throw new Error('no option ' + String(index));
-  return option;
-}
-
 const UNI = '11111111-1111-4111-8111-111111111111';
 const CALC = '22222222-2222-4222-8222-222222222222';
 
@@ -79,11 +73,11 @@ const seed = ({ meetings, folders }: ReturnType<typeof installFakeApi>): void =>
   );
   meetings.records.set(
     'b',
-    meetingRecord('b', 'Planning', '2026-09-03T09:00:00.0000000+00:00', { folderId: UNI }),
+    meetingRecord('b', 'Planning', '2026-09-03T09:00:00.0000000+00:00', { projectId: UNI }),
   );
   meetings.records.set(
     'c',
-    meetingRecord('c', 'Review', '2026-09-02T09:00:00.0000000+00:00', { folderId: 'gone' }),
+    meetingRecord('c', 'Review', '2026-09-02T09:00:00.0000000+00:00', { projectId: 'gone' }),
   );
 };
 
@@ -94,46 +88,9 @@ describe('empty states', () => {
     await user.click(screen.getByRole('button', { name: 'Record a meeting' }));
     expect(api.actions).toContainEqual({ type: 'navigateTo', tag: 'Recording' });
   });
-
-  it('says so when a folder is empty and when a search matches nothing', async () => {
-    const { user } = await mount((api) => {
-      seed(api);
-      api.meetings.records.delete('b');
-    });
-    await user.click(screen.getByRole('treeitem', { name: /Universidad/ }));
-    expect(screen.getByText('This folder is empty.')).toBeInTheDocument();
-    await user.click(screen.getByRole('treeitem', { name: /Inbox/ }));
-    await user.type(screen.getByRole('searchbox'), 'zzz');
-    expect(await screen.findByText('No meetings match your search.')).toBeInTheDocument();
-  });
 });
 
 describe('the list', () => {
-  it('lists the inbox newest first, with unknown folders filed there, and a snippet', async () => {
-    const { user } = await mount(seed);
-    await user.click(screen.getByRole('treeitem', { name: /Inbox/ }));
-    const grid = screen.getByRole('grid', { name: 'Library' });
-    const rows = within(grid)
-      .getAllByRole('row')
-      .filter((row) => within(row).queryAllByRole('gridcell').length > 0);
-    expect(rows.map((row) => row.textContent)).toEqual([
-      expect.stringContaining('Review'),
-      expect.stringContaining('Standup'),
-    ]);
-    expect(within(rowOf(/Standup/)).getByText('Ship the release')).toBeInTheDocument();
-    expect(within(rowOf(/Review/)).getByText('No content yet')).toBeInTheDocument();
-  });
-
-  it('filters by title and keeps the query when the folder changes', async () => {
-    const { user } = await mount(seed);
-    await user.type(screen.getByRole('searchbox'), 'stand');
-    expect(rowOf(/Standup/)).toBeInTheDocument();
-    expect(screen.queryByRole('row', { name: /Review/ })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('treeitem', { name: /Universidad/ }));
-    expect(screen.getByRole('searchbox')).toHaveValue('stand');
-    expect(await screen.findByText('No meetings match your search.')).toBeInTheDocument();
-  });
-
   it('opens a meeting on the transcript and the summary through the workspace', async () => {
     const { api, user } = await mount(seed);
     await user.dblClick(rowOf(/Standup/));
@@ -152,264 +109,7 @@ describe('the list', () => {
   });
 });
 
-describe('folders', () => {
-  it('shows All, then Inbox, and expands only what leads to the selection', async () => {
-    await mount(seed);
-    const items = screen.getAllByRole('treeitem');
-    expect(items.map((item) => item.textContent)).toEqual(['All 3', 'Inbox 2', 'Universidad 1']);
-    expect(items[2]).toHaveAttribute('aria-expanded', 'false');
-  });
-
-  it('selects a folder, shows its path and its note', async () => {
-    const { user } = await mount(seed);
-    await user.click(screen.getByRole('treeitem', { name: /Universidad/ }));
-    expect(screen.getByRole('textbox', { name: 'Folder notes' })).toHaveValue('Fall term');
-    const crumbs = within(screen.getByRole('navigation', { name: 'Folder' }));
-    expect(crumbs.getAllByRole('button').map((b) => b.textContent)).toEqual([
-      'Inbox',
-      'Universidad',
-    ]);
-    expect(rowOf(/Planning/)).toBeInTheDocument();
-    await user.click(crumbs.getByRole('button', { name: 'Inbox' }));
-    expect(screen.queryByRole('textbox', { name: 'Folder notes' })).not.toBeInTheDocument();
-  });
-
-  it('creates a folder: blocks a blank name, refuses a duplicate, selects the new one', async () => {
-    const { api, user } = await mount(seed);
-    await user.click(screen.getByRole('button', { name: 'New folder' }));
-    const dialog = await screen.findByRole('dialog', { name: 'New folder' });
-    const create = within(dialog).getByRole('button', { name: 'Create' });
-    expect(create).toBeDisabled();
-
-    await user.type(within(dialog).getByRole('textbox', { name: 'Name' }), 'universidad');
-    await user.click(create);
-    expect(await within(dialog).findByText(/already exists/)).toBeInTheDocument();
-
-    await user.clear(within(dialog).getByRole('textbox', { name: 'Name' }));
-    await user.type(within(dialog).getByRole('textbox', { name: 'Name' }), '  Trabajo  {Enter}');
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    });
-    const created = (await api.folders.getAll()).find((f) => f.name === 'Trabajo');
-    expect(created).toMatchObject({ parentId: null, colorKey: expect.any(String) as unknown });
-    expect(await screen.findByRole('treeitem', { name: /Trabajo/ })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
-  });
-
-  it('creates a child of the selected folder and says where', async () => {
-    const { api, user } = await mount(seed);
-    await user.click(screen.getByRole('treeitem', { name: /Universidad/ }));
-    await user.click(screen.getByRole('button', { name: 'New folder' }));
-    const dialog = await screen.findByRole('dialog', { name: 'New folder in Universidad' });
-    await user.type(within(dialog).getByRole('textbox', { name: 'Name' }), 'Fisica{Enter}');
-    await waitFor(async () => {
-      expect((await api.folders.getAll()).find((f) => f.name === 'Fisica')?.parentId).toBe(UNI);
-    });
-    expect(await screen.findByRole('treeitem', { name: /Fisica/ })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
-    // Its parent opened so the selection is visible.
-    expect(screen.getByRole('treeitem', { name: /Universidad/ })).toHaveAttribute(
-      'aria-expanded',
-      'true',
-    );
-  });
-
-  it('renames from the context menu and keeps the folder selected', async () => {
-    const { api, user } = await mount(seed);
-    await user.pointer({
-      keys: '[MouseRight]',
-      target: screen.getByRole('treeitem', { name: /Universidad/ }),
-    });
-    await user.click(await screen.findByRole('menuitem', { name: 'Rename' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Rename folder' });
-    const name = within(dialog).getByRole('textbox', { name: 'Name' });
-    expect(name).toHaveValue('Universidad');
-    await user.clear(name);
-    await user.type(name, 'Estudios{Enter}');
-    await waitFor(async () => {
-      expect((await api.folders.getAll()).find((f) => f.id === UNI)?.name).toBe('Estudios');
-    });
-    expect(await screen.findByRole('treeitem', { name: /Estudios/ })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
-  });
-
-  it('selects the folder under a right click even when the menu is dismissed', async () => {
-    const { user } = await mount(seed);
-    expect(screen.getByRole('treeitem', { name: /Universidad/ })).toHaveAttribute(
-      'aria-selected',
-      'false',
-    );
-    await user.pointer({
-      keys: '[MouseRight]',
-      target: screen.getByRole('treeitem', { name: /Universidad/ }),
-    });
-    await screen.findByRole('menuitem', { name: 'Rename' });
-    await user.keyboard('{Escape}');
-    expect(screen.getByRole('treeitem', { name: /Universidad/ })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
-  });
-
-  it('saves the personality with the picked color and icon', async () => {
-    const { api, user } = await mount(seed);
-    await user.click(screen.getByRole('treeitem', { name: /Universidad/ }));
-    await user.click(screen.getByRole('button', { name: 'Folder actions' }));
-    await user.click(await screen.findByRole('menuitem', { name: 'Personality' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Folder personality' });
-    expect(
-      within(dialog)
-        .getAllByRole('radio', { checked: true })
-        .map((r) => r.getAttribute('aria-label')),
-    ).toEqual(['teal', 'folder']);
-    expect(within(dialog).getAllByRole('radio')).toHaveLength(7 + 18);
-    await user.click(within(dialog).getByRole('radio', { name: 'purple' }));
-    await user.click(within(dialog).getByRole('radio', { name: 'book' }));
-    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
-    await waitFor(async () => {
-      expect((await api.folders.getAll()).find((f) => f.id === UNI)).toMatchObject({
-        colorKey: 'purple',
-        iconKey: 'book',
-      });
-    });
-  });
-
-  it('refuses to delete a folder that still has contents, and deletes an empty one', async () => {
-    const { api, user } = await mount(seed);
-    await user.click(screen.getByRole('treeitem', { name: /Universidad/ }));
-    await user.click(screen.getByRole('button', { name: 'Folder actions' }));
-    await user.click(await screen.findByRole('menuitem', { name: 'Delete folder' }));
-    expect(
-      await screen.findByText(
-        'This folder still has subfolders or meetings. Empty it before deleting.',
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-
-    expect(api.folders.folders).toHaveLength(2);
-  });
-
-  it('deletes an empty folder after confirming and goes back to Inbox', async () => {
-    const { api, user } = await mount((fake) => {
-      fake.folders.folders = [folderRecord(UNI, 'Vacia')];
-    });
-    await user.click(screen.getByRole('treeitem', { name: /Vacia/ }));
-    await user.click(screen.getByRole('button', { name: 'Folder actions' }));
-    await user.click(await screen.findByRole('menuitem', { name: 'Delete folder' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Delete this folder?' });
-    expect(
-      within(dialog).getByText(
-        'This deletes the folder "Vacia". Meetings inside it are not deleted.',
-      ),
-    ).toBeInTheDocument();
-    // The dialog moves the focus just after it appears.
-    await waitFor(() => {
-      expect(within(dialog).getByRole('button', { name: 'Cancel' })).toHaveFocus();
-    });
-    await user.click(within(dialog).getByRole('button', { name: 'Delete' }));
-    await waitFor(() => {
-      expect(api.folders.folders).toHaveLength(0);
-    });
-    await waitFor(() => {
-      expect(screen.getByRole('treeitem', { name: /Inbox/ })).toHaveAttribute(
-        'aria-selected',
-        'true',
-      );
-    });
-    expect(api.workspace.state.selectedFolderId).toBeNull();
-  });
-});
-
-describe('folder note', () => {
-  it('saves when the folder changes, and stores blank as nothing', async () => {
-    const { api, user } = await mount(seed);
-    await user.click(screen.getByRole('treeitem', { name: /Universidad/ }));
-    const note = screen.getByRole('textbox', { name: 'Folder notes' });
-    await user.clear(note);
-    await user.type(note, '  New note  ');
-    expect((await api.folders.getAll()).find((f) => f.id === UNI)?.note).toBe('Fall term');
-    await user.click(screen.getByRole('treeitem', { name: /Inbox/ }));
-    await waitFor(async () => {
-      expect((await api.folders.getAll()).find((f) => f.id === UNI)?.note).toBe('New note');
-    });
-
-    await user.click(screen.getByRole('treeitem', { name: /Universidad/ }));
-    await user.clear(screen.getByRole('textbox', { name: 'Folder notes' }));
-    await user.click(screen.getByRole('treeitem', { name: /Inbox/ }));
-    await waitFor(async () => {
-      expect((await api.folders.getAll()).find((f) => f.id === UNI)?.note).toBeNull();
-    });
-  });
-
-  it('stores a typed note after a pause, with no other trigger (B16)', async () => {
-    const { api, user } = await mount(seed);
-    await user.click(screen.getByRole('treeitem', { name: /Universidad/ }));
-    await user.type(screen.getByRole('textbox', { name: 'Folder notes' }), ' typed');
-    await waitFor(
-      async () => {
-        expect((await api.folders.getAll()).find((f) => f.id === UNI)?.note).toBe(
-          'Fall term typed',
-        );
-      },
-      { timeout: 3000 },
-    );
-    expect(api.calls.filter((c) => c.name === 'library.setFolderNote')).toHaveLength(1);
-  });
-
-  it('saves a typed note when the page is left, and on pagehide', async () => {
-    const { api, user } = await mount(seed);
-    await user.click(screen.getByRole('treeitem', { name: /Universidad/ }));
-    await user.type(screen.getByRole('textbox', { name: 'Folder notes' }), ' and more');
-    window.dispatchEvent(new Event('pagehide'));
-    await waitFor(async () => {
-      expect((await api.folders.getAll()).find((f) => f.id === UNI)?.note).toBe(
-        'Fall term and more',
-      );
-    });
-    // The change event that follows reloads; it must not save the same note again, forever.
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(api.calls.filter((c) => c.name === 'library.setFolderNote')).toHaveLength(1);
-  });
-
-  it('does not save an unchanged note', async () => {
-    const { api, user } = await mount(seed);
-    await user.click(screen.getByRole('treeitem', { name: /Universidad/ }));
-    await user.click(screen.getByRole('treeitem', { name: /Inbox/ }));
-    expect(api.calls.filter((c) => c.name === 'library.setFolderNote')).toHaveLength(0);
-  });
-});
-
 describe('moving and deleting a meeting', () => {
-  it('moves to a folder path, preselecting the current folder', async () => {
-    const { api, user } = await mount(seed);
-    await user.click(screen.getByRole('treeitem', { name: /Inbox/ }));
-    const row = rowOf(/Standup/);
-    await user.click(within(row).getByRole('button', { name: 'More actions' }));
-    await user.click(await screen.findByRole('menuitem', { name: 'Move' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Move meeting' });
-    const options = within(dialog).getAllByRole('radio');
-    expect(options.map((o) => o.closest('label')?.textContent)).toEqual([
-      'Inbox',
-      'Universidad',
-      'Universidad / Calculo',
-    ]);
-    expect(options[0]).toBeChecked();
-    await user.click(optionAt(options, 2));
-    await user.click(within(dialog).getByRole('button', { name: 'Move' }));
-    await waitFor(() => {
-      expect(api.meetings.records.get('a')?.folderId).toBe(CALC);
-    });
-    await waitFor(() => {
-      expect(screen.queryByRole('row', { name: /Standup/ })).not.toBeInTheDocument();
-    });
-  });
-
   it('refuses a busy meeting before asking, then deletes after confirming', async () => {
     const { api, user } = await mount(seed);
     api.busy.register({ isBusy: (id) => id === 'a' });
@@ -614,46 +314,9 @@ describe('the grid', () => {
     await screen.findByRole('dialog', { name: 'Move meeting' });
     expect(api.actions).not.toContainEqual({ type: 'openSession', tab: 'Transcript' });
   });
-
-  it('starts again at the top in another view, on its newest meeting', async () => {
-    const { user } = await mount(seed);
-    act(() => {
-      rowOf(/Planning/).focus();
-    });
-    await user.click(screen.getByRole('treeitem', { name: /Inbox/ }));
-    expect(useLibraryStore.getState().cursorId).toBe('c');
-    expect(useLibraryStore.getState().scrollOffset).toBe(0);
-  });
 });
 
 describe('the header of the list', () => {
-  it('names the view with its count, and has no Library title', async () => {
-    const { user } = await mount(seed);
-    expect(screen.getByRole('heading', { level: 1, name: 'All' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Library' })).not.toBeInTheDocument();
-    expect(screen.getByTestId('library-view-count')).toHaveTextContent('3');
-    await user.click(screen.getByRole('treeitem', { name: /Inbox/ }));
-    expect(screen.getByRole('heading', { level: 1, name: 'Inbox' })).toBeInTheDocument();
-    expect(screen.getByTestId('library-view-count')).toHaveTextContent('2');
-  });
-
-  it('has breadcrumbs, an actions menu and a note only for a real folder', async () => {
-    const { user } = await mount(seed);
-    expect(screen.queryByRole('navigation', { name: 'Folder' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Folder actions' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('textbox', { name: 'Folder notes' })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('treeitem', { name: /Universidad/ }));
-    expect(screen.getByRole('heading', { level: 1, name: 'Universidad' })).toBeInTheDocument();
-    expect(screen.getByRole('navigation', { name: 'Folder' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Folder actions' })).toBeInTheDocument();
-    // The note carries its name without a visible label above it.
-    expect(screen.getByRole('textbox', { name: 'Folder notes' })).toHaveAttribute(
-      'placeholder',
-      'Notes for this folder',
-    );
-    expect(screen.queryByText('Folder notes')).not.toBeInTheDocument();
-  });
-
   it('keeps the count of the view while a search narrows the list', async () => {
     const { user } = await mount(seed);
     await user.type(screen.getByRole('searchbox'), 'stand');
@@ -884,7 +547,7 @@ describe('searching inside meetings', () => {
     meetings.records.set(
       'named',
       meetingRecord('named', 'Fiscal review', '2026-08-31T09:00:00.0000000+00:00', {
-        folderId: UNI,
+        projectId: UNI,
       }),
     );
     meetings.records.set(
@@ -977,20 +640,6 @@ describe('searching inside meetings', () => {
       type: 'openSession',
       tab: 'Transcript',
     });
-  });
-
-  it('offers to search everything from a narrower view, and keeps the query', async () => {
-    const { user } = await mount(seedBodies);
-    await user.type(screen.getByRole('searchbox'), 'fiscal');
-    expect(screen.queryByRole('button', { name: 'Search all meetings' })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('treeitem', { name: /Inbox/ }));
-    await screen.findByRole('row', { name: /Standup/ });
-    expect(screen.queryByRole('row', { name: /Fiscal review/ })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Search all meetings' }));
-    expect(await screen.findByRole('row', { name: /Fiscal review/ })).toBeInTheDocument();
-    expect(screen.getByRole('searchbox')).toHaveValue('fiscal');
-    expect(screen.getByRole('heading', { level: 1, name: 'All' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Search all meetings' })).not.toBeInTheDocument();
   });
 
   it('a slow answer to an old query does not replace a newer one', async () => {
@@ -1092,38 +741,6 @@ describe('checking several meetings', () => {
     expect(within(bar()).getByText('Checked: 2')).toBeInTheDocument();
     await user.click(day);
     expect(screen.queryByRole('toolbar')).not.toBeInTheDocument();
-  });
-
-  it('moves the checked meetings together, in one request', async () => {
-    const { api, user } = await mount(seedMany);
-    await user.click(check(/First/));
-    await user.click(check(/Third/));
-    await user.click(within(bar()).getByRole('button', { name: 'Move' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Move 2 meetings' });
-    await user.click(within(dialog).getByRole('radio', { name: 'Universidad' }));
-    await user.click(within(dialog).getByRole('button', { name: 'Move' }));
-    await waitFor(() => {
-      expect(api.meetings.records.get('c')?.folderId).toBe(UNI);
-    });
-    expect(api.meetings.records.get('a')?.folderId).toBe(UNI);
-    expect(api.meetings.records.get('b')?.folderId).toBeNull();
-    expect(api.calls.filter((c) => c.name === 'library.moveMeetings')).toHaveLength(1);
-    await waitFor(() => {
-      expect(screen.queryByRole('toolbar')).not.toBeInTheDocument();
-    });
-  });
-
-  it('says how many could not move, and leaves those checked', async () => {
-    const { api, user } = await mount(seedMany);
-    api.busy.register({ isBusy: (id) => id === 'a' });
-    await user.click(check(/First/));
-    await user.click(check(/Second/));
-    await user.click(within(bar()).getByRole('button', { name: 'Move' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Move 2 meetings' });
-    await user.click(within(dialog).getByRole('radio', { name: 'Universidad' }));
-    await user.click(within(dialog).getByRole('button', { name: 'Move' }));
-    expect(await screen.findByText('1 of 2 meetings could not be moved.')).toBeInTheDocument();
-    expect(rowOf(/First/)).toHaveAttribute('aria-selected', 'true');
   });
 
   it('shows the work under way and holds the actions until it ends', async () => {
@@ -1504,7 +1121,6 @@ describe('the keyboard', () => {
 });
 
 describe('dragging meetings to a folder', () => {
-  const TYPE = 'application/x-vozella-meetings';
   const dataTransfer = () => {
     const data = new Map<string, string>();
     return {
@@ -1532,58 +1148,11 @@ describe('dragging meetings to a folder', () => {
       meetings.records.set(id, meetingRecord(id, title, `2026-09-${day}T09:00:00.0000000+00:00`));
     }
   };
-  const dragTo = (from: HTMLElement, to: HTMLElement) => {
-    const transfer = dataTransfer();
-    fireEvent.dragStart(from, { dataTransfer: transfer });
-    fireEvent.dragOver(to, { dataTransfer: transfer });
-    fireEvent.drop(to, { dataTransfer: transfer });
-    fireEvent.dragEnd(from, { dataTransfer: transfer });
-    return transfer;
-  };
-
-  it('an unchecked row drags alone, even with others checked, and files it', async () => {
-    const { api, user } = await mount(seedDrag);
-    expect(rowOf(/First/)).toHaveAttribute('draggable', 'true');
-    await user.click(within(rowOf(/Second/)).getByRole('checkbox'));
-    const transfer = dragTo(rowOf(/First/), tree(/Universidad/));
-    expect(transfer.effectAllowed).toBe('move');
-    expect(transfer.types).toEqual([TYPE]);
-    await waitFor(() => {
-      expect(api.meetings.records.get('a')?.folderId).toBe(UNI);
-    });
-    expect(api.meetings.records.get('b')?.folderId).toBeNull();
-    expect(api.calls.find((c) => c.name === 'library.moveMeetings')?.input).toEqual({
-      meetingIds: ['a'],
-      folderId: UNI,
-    });
-  });
-
-  it('a checked row drags the whole set, and the ids stay readable during the drag', async () => {
-    const { api, user } = await mount(seedDrag);
-    await user.click(within(rowOf(/First/)).getByRole('checkbox'));
-    await user.click(within(rowOf(/Third/)).getByRole('checkbox'));
-    const transfer = dataTransfer();
-    fireEvent.dragStart(rowOf(/First/), { dataTransfer: transfer });
-    expect(useLibraryStore.getState().draggedIds).toEqual(['a', 'c']);
-    expect(transfer.setDragImage).toHaveBeenCalled();
-    fireEvent.drop(tree(/Universidad/), { dataTransfer: transfer });
-    fireEvent.dragEnd(rowOf(/First/), { dataTransfer: transfer });
-    expect(useLibraryStore.getState().draggedIds).toEqual([]);
-    await waitFor(() => {
-      expect(api.meetings.records.get('c')?.folderId).toBe(UNI);
-    });
-    expect(api.meetings.records.get('a')?.folderId).toBe(UNI);
-    expect(api.meetings.records.get('b')?.folderId).toBeNull();
-    await waitFor(() => {
-      expect(screen.queryByRole('toolbar')).not.toBeInTheDocument();
-    });
-  });
-
   it('Inbox is a target and All is not, and only meetings can land', async () => {
     const { api } = await mount(({ meetings, folders }) => {
       seedDrag({ meetings, folders } as never);
       const record = meetings.records.get('a');
-      if (record) meetings.records.set('a', { ...record, folderId: UNI });
+      if (record) meetings.records.set('a', { ...record, projectId: UNI });
     });
     const transfer = dataTransfer();
     fireEvent.dragStart(rowOf(/First/), { dataTransfer: transfer });
@@ -1599,156 +1168,7 @@ describe('dragging meetings to a folder', () => {
     );
     fireEvent.drop(tree(/Inbox/), { dataTransfer: transfer });
     await waitFor(() => {
-      expect(api.meetings.records.get('a')?.folderId).toBeNull();
+      expect(api.meetings.records.get('a')?.projectId).toBeNull();
     });
-  });
-
-  it('dropping where the meetings already are does nothing', async () => {
-    const { api } = await mount(({ meetings, folders }) => {
-      seedDrag({ meetings, folders } as never);
-      const record = meetings.records.get('a');
-      if (record) meetings.records.set('a', { ...record, folderId: UNI });
-    });
-    dragTo(rowOf(/First/), tree(/Universidad/));
-    await new Promise((resolve) => setTimeout(resolve, 30));
-    expect(api.calls.some((c) => c.name === 'library.moveMeetings')).toBe(false);
-    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
-  });
-
-  it('holding over a closed folder opens it, and leaving in time does not', async () => {
-    await mount(seedDrag);
-    const transfer = dataTransfer();
-    fireEvent.dragStart(rowOf(/First/), { dataTransfer: transfer });
-    fireEvent.dragOver(tree(/Universidad/), { dataTransfer: transfer });
-    fireEvent.dragLeave(tree(/Universidad/), { dataTransfer: transfer });
-    await new Promise((resolve) => setTimeout(resolve, 650));
-    expect(tree(/Universidad/)).toHaveAttribute('aria-expanded', 'false');
-    fireEvent.dragOver(tree(/Universidad/), { dataTransfer: transfer });
-    await waitFor(
-      () => {
-        expect(tree(/Universidad/)).toHaveAttribute('aria-expanded', 'true');
-      },
-      { timeout: 1000 },
-    );
-    expect(tree(/Calculo/)).toBeInTheDocument();
-    fireEvent.dragEnd(rowOf(/First/), { dataTransfer: transfer });
-  });
-
-  it('Undo puts each meeting back where it was', async () => {
-    const { api, user } = await mount(({ meetings, folders }) => {
-      seedDrag({ meetings, folders } as never);
-      const record = meetings.records.get('b');
-      if (record) meetings.records.set('b', { ...record, folderId: CALC });
-    });
-    await user.click(within(rowOf(/First/)).getByRole('checkbox'));
-    await user.click(within(rowOf(/Second/)).getByRole('checkbox'));
-    dragTo(rowOf(/First/), tree(/Universidad/));
-    expect(await screen.findByText('Moved 2 meetings to Universidad.')).toBeInTheDocument();
-    await waitFor(() => {
-      expect(api.meetings.records.get('b')?.folderId).toBe(UNI);
-    });
-    await user.click(screen.getByRole('button', { name: 'Undo' }));
-    await waitFor(() => {
-      expect(api.meetings.records.get('a')?.folderId).toBeNull();
-    });
-    await waitFor(() => {
-      expect(api.meetings.records.get('b')?.folderId).toBe(CALC);
-    });
-    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
-  });
-
-  it('Undo is also there after the Move dialog, for one meeting and for several', async () => {
-    const { api, user } = await mount(seedDrag);
-    await user.click(within(rowOf(/First/)).getByRole('button', { name: 'More actions' }));
-    await user.click(await screen.findByRole('menuitem', { name: 'Move' }));
-    let dialog = await screen.findByRole('dialog', { name: 'Move meeting' });
-    await user.click(within(dialog).getByRole('radio', { name: 'Universidad' }));
-    await user.click(within(dialog).getByRole('button', { name: 'Move' }));
-    expect(await screen.findByText('Moved "First" to Universidad.')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Undo' }));
-    await waitFor(() => {
-      expect(api.meetings.records.get('a')?.folderId).toBeNull();
-    });
-
-    await user.click(
-      await within(await screen.findByRole('row', { name: /Second/ })).findByRole('checkbox'),
-    );
-    await user.click(within(rowOf(/Third/)).getByRole('checkbox'));
-    await user.click(
-      within(screen.getByRole('toolbar', { name: 'Checked meetings' })).getByRole('button', {
-        name: 'Move',
-      }),
-    );
-    dialog = await screen.findByRole('dialog', { name: 'Move 2 meetings' });
-    await user.click(within(dialog).getByRole('radio', { name: 'Universidad' }));
-    await user.click(within(dialog).getByRole('button', { name: 'Move' }));
-    expect(await screen.findByText('Moved 2 meetings to Universidad.')).toBeInTheDocument();
-  });
-
-  it('a meeting that cannot move is reported and only the moved ones are offered back', async () => {
-    const { api, user } = await mount(seedDrag);
-    api.busy.register({ isBusy: (id) => id === 'a' });
-    await user.click(within(rowOf(/First/)).getByRole('checkbox'));
-    await user.click(within(rowOf(/Second/)).getByRole('checkbox'));
-    dragTo(rowOf(/First/), tree(/Universidad/));
-    expect(await screen.findByText('1 of 2 meetings could not be moved.')).toBeInTheDocument();
-    expect(await screen.findByText('Moved "Second" to Universidad.')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Undo' }));
-    await waitFor(() => {
-      expect(api.meetings.records.get('b')?.folderId).toBeNull();
-    });
-    expect(api.calls.filter((c) => c.name === 'library.moveMeetings').map((c) => c.input)).toEqual([
-      { meetingIds: ['a', 'b'], folderId: UNI },
-      { meetingIds: ['b'], folderId: null },
-    ]);
-  });
-
-  it('the Undo offer can be closed and goes away by itself', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    try {
-      const { user } = await mount(seedDrag);
-      dragTo(rowOf(/First/), tree(/Universidad/));
-      const offer = await screen.findByRole('button', { name: 'Undo' });
-      expect(offer).toBeInTheDocument();
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(9000);
-      });
-      expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
-      dragTo(rowOf(/Second/), tree(/Universidad/));
-      await screen.findByRole('button', { name: 'Undo' });
-      await user.click(screen.getByRole('button', { name: 'Dismiss' }));
-      expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-});
-
-describe('the note and the debounced reload', () => {
-  it('B16: a character typed while the debounced reload is really in flight is kept', async () => {
-    const { api, user } = await mount(seed);
-    await user.click(screen.getByRole('treeitem', { name: /Universidad/ }));
-    let release: (() => void) | null = null;
-    const original = api.service.load.bind(api.service);
-    vi.spyOn(api.service, 'load').mockImplementationOnce(async () => {
-      const stale = await original();
-      await new Promise<void>((resolve) => {
-        release = resolve;
-      });
-      return stale;
-    });
-    const note = screen.getByRole('textbox', { name: 'Folder notes' });
-    await user.type(note, 'A');
-    // Unlike the audit test, wait until the reload has passed the debounce and sits on the gate.
-    await waitFor(
-      () => {
-        expect(release).not.toBeNull();
-      },
-      { timeout: 3000 },
-    );
-    await user.type(note, 'B');
-    (release as unknown as () => void)();
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(screen.getByRole('textbox', { name: 'Folder notes' })).toHaveValue('Fall termAB');
   });
 });

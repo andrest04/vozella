@@ -102,7 +102,7 @@ describe('basics', () => {
 describe('directory mirror', () => {
   it('rename moves the directory and its meetings, and rewrites audioFilePath', async () => {
     await fx.folders.save(folder(FOLDER_1, 'Old'));
-    const first = await fx.meetings.save(meeting({ folderId: FOLDER_1 }));
+    const first = await fx.meetings.save(meeting({ projectId: FOLDER_1 }));
     const wav = first.sourcePath?.replace(/\.md$/, '.wav') ?? '';
     fs.writeFileSync(wav, 'RIFF');
     await fx.meetings.save({ ...first, audioFilePath: wav });
@@ -123,7 +123,7 @@ describe('directory mirror', () => {
   it('reparenting moves the directory under the new parent', async () => {
     await fx.folders.save(folder(FOLDER_1, 'A'));
     await fx.folders.save(folder(FOLDER_2, 'B'));
-    await fx.meetings.save(meeting({ folderId: FOLDER_2 }));
+    await fx.meetings.save(meeting({ projectId: FOLDER_2 }));
     await fx.folders.save(folder(FOLDER_2, 'B', FOLDER_1));
     expect(tree(fx.root)).toEqual(['A/B/2026-09-01 Standup.md', 'folders.json']);
   });
@@ -131,14 +131,14 @@ describe('directory mirror', () => {
   it('renaming a parent moves its children with it', async () => {
     await fx.folders.save(folder(FOLDER_1, 'P'));
     await fx.folders.save(folder(FOLDER_2, 'C', FOLDER_1));
-    await fx.meetings.save(meeting({ folderId: FOLDER_2 }));
+    await fx.meetings.save(meeting({ projectId: FOLDER_2 }));
     await fx.folders.save(folder(FOLDER_1, 'Q'));
     expect(tree(fx.root)).toEqual(['Q/C/2026-09-01 Standup.md', 'folders.json']);
   });
 
   it('B7: a case-only rename changes the directory name', async () => {
     await fx.folders.save(folder(FOLDER_1, 'trabajo'));
-    await fx.meetings.save(meeting({ folderId: FOLDER_1 }));
+    await fx.meetings.save(meeting({ projectId: FOLDER_1 }));
     await fx.folders.save(folder(FOLDER_1, 'Trabajo'));
     expect(fs.readdirSync(fx.root).includes('Trabajo')).toBe(true);
     expect(fs.readdirSync(fx.root).includes('trabajo')).toBe(false);
@@ -147,12 +147,12 @@ describe('directory mirror', () => {
 
   it('B9: rewriting audio paths leaves meetings without a recording alone', async () => {
     await fx.folders.save(folder(FOLDER_1, 'Old'));
-    const noAudio = await fx.meetings.save(meeting({ folderId: FOLDER_1 }));
+    const noAudio = await fx.meetings.save(meeting({ projectId: FOLDER_1 }));
     const elsewhere = await fx.meetings.save(
       meeting({
         id: ID_B,
         title: 'Other',
-        folderId: FOLDER_1,
+        projectId: FOLDER_1,
         audioFilePath: 'D:\\elsewhere\\x.wav',
       }),
     );
@@ -169,7 +169,7 @@ describe('directory mirror', () => {
     await fx.folders.save(folder(FOLDER_1, 'Old'));
     const dir = path.join(fx.root, 'Old');
     const md = path.join(dir, '2026-09-01 Standup.md');
-    const text = renderMeetingMarkdown(meeting({ folderId: FOLDER_1 })).replace(/\n/g, '\r\n');
+    const text = renderMeetingMarkdown(meeting({ projectId: FOLDER_1 })).replace(/\n/g, '\r\n');
     fs.writeFileSync(md, text);
     fs.writeFileSync(path.join(dir, '2026-09-01 Standup.wav'), 'RIFF');
     await fx.folders.save(folder(FOLDER_1, 'New'));
@@ -208,7 +208,7 @@ describe('locking', () => {
     const repo = new MarkdownMeetingRepository({ root: fx.root, folders: fx.folders });
     await Promise.all([
       fx.folders.save(folder(FOLDER_1, 'A')),
-      repo.save(meeting({ folderId: FOLDER_1 })),
+      repo.save(meeting({ projectId: FOLDER_1 })),
       fx.folders.save(folder(FOLDER_2, 'B')),
     ]);
     expect((await fx.folders.getAll()).map((f) => f.id).sort()).toEqual(
@@ -227,7 +227,7 @@ describe('reserved and device names', () => {
   ])('B8c, B10: a folder named %s is created as the directory %s', async (name, directory) => {
     await fx.folders.save(folder(FOLDER_1, name));
     expect(fs.statSync(path.join(fx.root, directory)).isDirectory()).toBe(true);
-    await fx.meetings.save(meeting({ folderId: FOLDER_1 }));
+    await fx.meetings.save(meeting({ projectId: FOLDER_1 }));
     expect(tree(fx.root)).toContain(`${directory}/2026-09-01 Standup.md`);
     // The flat-dump rule does not swallow it: the meeting is a current-layout file.
     expect((await fx.meetings.list()).items).toHaveLength(1);

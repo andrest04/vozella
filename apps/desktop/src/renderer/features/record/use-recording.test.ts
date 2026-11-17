@@ -149,7 +149,7 @@ describe('the recording store', () => {
     expect(api.calls).toEqual(['recording.importUrl']);
     expect(inputs[0]).toEqual({
       title: 't',
-      folderId: 'f1',
+      projectId: 'f1',
       url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
     });
     expect(useRecordingStore.getState().busy).toBeNull();

@@ -15,11 +15,11 @@ afterEach(() => {
   useLibraryStore.setState({ folderRequest: null });
 });
 
-const meeting = { id: 'm1', title: 'Standup', folderId: null } as MeetingListItemDto;
+const meeting = { id: 'm1', title: 'Standup', projectId: null } as MeetingListItemDto;
 
 describe('confirmText', () => {
   it('words each confirmation from its own entry', () => {
-    expect(confirmText({ kind: 'deleteFolder', folderId: 'f1', name: 'Work' })).toEqual({
+    expect(confirmText({ kind: 'deleteFolder', projectId: 'f1', name: 'Work' })).toEqual({
       title: { key: 'LibraryDeleteFolder_Title', args: [] },
       description: { key: 'LibraryDeleteFolder_Content', args: ['Work'] },
       cancel: 'LibraryDeleteFolder_Cancel',
@@ -78,16 +78,16 @@ describe('useLibraryDialogs', () => {
   it('opens the dialog a sidebar folder request asks for, and clears the request', () => {
     const { result } = mountDialogs();
     act(() => {
-      requestFolderAction({ kind: 'rename', folderId: 'f1' });
+      requestFolderAction({ kind: 'rename', projectId: 'f1' });
     });
-    expect(result.current.dialog).toEqual({ kind: 'rename', folderId: 'f1', name: 'Work' });
+    expect(result.current.dialog).toEqual({ kind: 'rename', projectId: 'f1', name: 'Work' });
     expect(useLibraryStore.getState().folderRequest).toBeNull();
   });
 
   it('reports a folder that cannot be deleted instead of asking', () => {
     const { result, showStatus } = mountDialogs(false);
     act(() => {
-      result.current.runFolderAction({ kind: 'delete', folderId: 'f1' });
+      result.current.runFolderAction({ kind: 'delete', projectId: 'f1' });
     });
     expect(result.current.dialog).toBeNull();
     expect(showStatus).toHaveBeenCalledWith({ key: 'LibraryDeleteFolder_NotEmpty', args: [] });

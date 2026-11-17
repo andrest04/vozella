@@ -77,7 +77,7 @@ describe('ChatService.send success', () => {
 
   it('reads the folder and its meetings for a folder scope, everything for all', async () => {
     const rig = rigWithMeeting();
-    await rig.service.send('x', scopeOf({ kind: 'Folder', folderId: guid(1001) }), null);
+    await rig.service.send('x', scopeOf({ kind: 'Project', projectId: guid(1001) }), null);
     expect(rig.reader.calls).toEqual([`folder:${guid(1001)}`, 'folders']);
     rig.reader.calls.length = 0;
     await rig.service.send('x', scopeOf(), null);

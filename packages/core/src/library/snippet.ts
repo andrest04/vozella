@@ -80,7 +80,7 @@ export function meetingListItem(record: MeetingRecord): MeetingListItem {
     title: record.title,
     recordedAt: record.recordedAt,
     endedAt: record.endedAt,
-    folderId: record.folderId,
+    projectId: record.projectId,
     snippet: meetingSnippet(record.summary, record.transcript),
     hasSummary: hasText(record.summary),
     hasTranscript: hasText(record.transcript),

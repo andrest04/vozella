@@ -21,7 +21,7 @@ const stub = (item: MeetingListItem): ContextMeeting => ({
   id: item.id,
   title: item.title,
   recordedAt: item.recordedAt,
-  folderId: item.folderId,
+  projectId: item.projectId,
   summary: null,
   notes: null,
   transcript: null,
@@ -42,11 +42,11 @@ export class LibraryChatReader implements ChatMeetingReader {
     return this.deps.meetings.get(id);
   }
 
-  async meetingsInFolder(folderId: string, question?: string): Promise<readonly ContextMeeting[]> {
-    const key = compactMeetingId(folderId);
+  async meetingsInFolder(projectId: string, question?: string): Promise<readonly ContextMeeting[]> {
+    const key = compactMeetingId(projectId);
     const { items } = await this.deps.meetings.list();
     return this.load(
-      items.filter((item) => item.folderId !== null && compactMeetingId(item.folderId) === key),
+      items.filter((item) => item.projectId !== null && compactMeetingId(item.projectId) === key),
       question,
     );
   }

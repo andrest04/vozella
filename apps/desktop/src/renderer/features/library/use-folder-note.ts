@@ -1,11 +1,11 @@
-import type { FolderDto } from '@vozella/contracts';
+import type { FolderRecord } from '@vozella/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { folderIdOfView, registerFolderNote, useLibraryStore } from './library-store';
 
 /** Idle time after the last keystroke before the folder note is stored. */
 export const NOTE_AUTOSAVE_MS = 400;
 
-function noteOf(folder: FolderDto | undefined): string {
+function noteOf(folder: FolderRecord | undefined): string {
   return folder?.note ?? '';
 }
 
@@ -26,7 +26,7 @@ export function useFolderNote(): FolderNote {
     return { folders, id, text: noteOf(folders.find((f) => f.id === id)) };
   });
   const [noteText, setNoteTextState] = useState(initial.text);
-  const foldersRef = useRef<readonly FolderDto[]>(initial.folders);
+  const foldersRef = useRef<readonly FolderRecord[]>(initial.folders);
   const ownerRef = useRef<string | null>(initial.id);
   const noteRef = useRef(initial.text);
   const typedAtLoadStart = useRef(initial.text);
@@ -45,15 +45,9 @@ export function useFolderNote(): FolderNote {
     const text = noteRef.current.trim();
     const next = text === '' ? null : text;
     if (next === folder.note) return;
-    // Remember what was stored right away: the change event that follows reloads, and that reload
-    // must not find the note still "unsaved" and save it again.
-    foldersRef.current = foldersRef.current.map((f) => (f.id === id ? { ...f, note: next } : f));
-    const result = await window.vozella.invoke('library.setFolderNote', { id, note: next });
-    if (!result.ok) {
-      foldersRef.current = foldersRef.current.map((f) =>
-        f.id === id ? { ...f, note: folder.note } : f,
-      );
-    }
+    // The folder note has no channel any more: it becomes the project's instructions in the UI
+    // lane. With no folders on the wire this point is not reached.
+    await Promise.resolve();
   }, []);
 
   useEffect(

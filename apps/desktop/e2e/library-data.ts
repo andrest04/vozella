@@ -12,7 +12,7 @@ export interface SeedMeeting {
   readonly transcript?: string;
   /** Directory under the library root; Inbox by default. */
   readonly directory?: string;
-  readonly folderId?: string;
+  readonly projectId?: string;
 }
 
 /** Writes a meeting the way the app stores it, into a throwaway library root. */
@@ -27,7 +27,8 @@ export function writeMeeting(libraryRoot: string, meeting: SeedMeeting): string 
     ...(meeting.endedAt ? [`endedAt: ${meeting.endedAt}`] : []),
     ...(meeting.attendees?.length ? [`attendees: ${meeting.attendees.join(' | ')}`] : []),
     'audioFilePath: ',
-    ...(meeting.folderId ? [`folderId: ${meeting.folderId}`] : []),
+    // `folderId` is the on-disk key of a meeting's project id.
+    ...(meeting.projectId ? [`folderId: ${meeting.projectId}`] : []),
     '---',
     '',
   ];

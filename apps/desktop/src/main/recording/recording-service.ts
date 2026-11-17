@@ -77,8 +77,8 @@ export interface ControllerPort {
 
 export interface LibraryPort {
   /** The directory of a destination folder; the Inbox for null and for an unknown folder. */
-  audioDirectory(folderId: string | null): Promise<string>;
-  folderExists(folderId: string): Promise<boolean>;
+  audioDirectory(projectId: string | null): Promise<string>;
+  folderExists(projectId: string): Promise<boolean>;
   /** True when the Markdown at this path holds this meeting id. */
   ownsMarkdown(meetingId: string, markdownPath: string): Promise<boolean>;
 }
@@ -155,7 +155,7 @@ export interface RecordingServiceDeps {
 
 export interface StartRequest {
   readonly title: string;
-  readonly folderId: string | null;
+  readonly projectId: string | null;
   /** Null: the page never loaded the list, so the remembered choice is used (B-23). */
   readonly microphone: MicrophoneChoiceDto | null;
   /** Undefined: restore the remembered app (B-23). Null: all system audio. */
@@ -185,7 +185,7 @@ const LIVE_STOPPED_KEY = 'Ui_CloudLiveStopped';
 interface Take {
   meetingId: string;
   title: string;
-  folderId: string | null;
+  projectId: string | null;
   microphone: MicrophoneChoiceDto;
   appName: string | null;
   audioPath: string;
@@ -286,13 +286,13 @@ export class RecordingService {
           this.publish();
         },
         trackPreparing: () => this.trackPreparing(),
-        process: async (request, folderId) => {
+        process: async (request, projectId) => {
           this.take = null;
           this.frozenElapsedMs = 0;
-          const folder = await this.resolveFolder(folderId);
+          const folder = await this.resolveFolder(projectId);
           this.gate.markProcessing();
           const run = this.runs.startRun({ meetingId: request.meetingId });
-          void this.runPipeline(run, { ...request, folderId: folder });
+          void this.runPipeline(run, { ...request, projectId: folder });
         },
       },
       setup: deps.setup,
@@ -496,7 +496,7 @@ export class RecordingService {
       this.frozenElapsedMs = 0;
       this.title = request.title.trim() === '' ? deps.defaultTitle(deps.nowMs()) : request.title;
       const title = this.title;
-      const directory = await deps.library.audioDirectory(request.folderId);
+      const directory = await deps.library.audioDirectory(request.projectId);
       if (settings.liveTranscriptionEnabled) {
         this.runs.setTakeStatus({ key: 'Status_LoadingModel', args: [] });
       }
@@ -526,7 +526,7 @@ export class RecordingService {
       this.take = {
         meetingId,
         title,
-        folderId: request.folderId,
+        projectId: request.projectId,
         microphone,
         appName,
         audioPath: outcome.path,
@@ -669,7 +669,7 @@ export class RecordingService {
     // 78. The request is built from what the take holds right now, before the first await.
     const title = take.title;
     const highlights = [...take.highlights];
-    const folderId = take.folderId;
+    const projectId = take.projectId;
     const file = take.audioPath;
     const closedPauseMs = take.pausedAtMs === null ? 0 : deps.nowMs() - take.pausedAtMs;
     this.frozenElapsedMs = this.elapsedMs(deps.nowMs());
@@ -691,7 +691,7 @@ export class RecordingService {
         outcome.error === null && takeDraft !== null && (deps.live.draftIsFinal?.() ?? false);
       const audioPath = outcome.path ?? file;
       deps.files.repair(audioPath);
-      const folder = await this.resolveFolder(folderId);
+      const folder = await this.resolveFolder(projectId);
 
       this.gate.markProcessing();
       const run = this.runs.startRun({ meetingId: take.meetingId });
@@ -704,7 +704,7 @@ export class RecordingService {
         liveDraft,
         ...(liveDraftIsFinal ? { liveDraftIsFinal } : {}),
         pausedDurationMs: Math.round(outcome.pausedSeconds * 1000),
-        folderId: folder,
+        projectId: folder,
         highlightsMs: highlights,
         ...(liveOutput !== null && hasLiveTakeOutput(liveOutput)
           ? { liveTake: this.liveTake(liveOutput) }
@@ -739,10 +739,10 @@ export class RecordingService {
     this.publish();
   }
 
-  private async resolveFolder(folderId: string | null): Promise<string | null> {
-    if (folderId === null) return null;
+  private async resolveFolder(projectId: string | null): Promise<string | null> {
+    if (projectId === null) return null;
     try {
-      return (await this.deps.library.folderExists(folderId)) ? folderId : null;
+      return (await this.deps.library.folderExists(projectId)) ? projectId : null;
     } catch {
       // A failing folder store files the take in the Inbox.
       return null;

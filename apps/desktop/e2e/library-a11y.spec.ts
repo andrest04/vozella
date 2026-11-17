@@ -48,7 +48,7 @@ function seedLibrary(dataRoot: string): void {
     recordedAt: '2026-09-09T09:00:00.0000000+00:00',
     endedAt: '2026-09-09T09:30:00.0000000+00:00',
     directory: 'Clients/Acme',
-    folderId: CHILD,
+    projectId: CHILD,
     summary: 'Scope of the next phase.',
   });
 }

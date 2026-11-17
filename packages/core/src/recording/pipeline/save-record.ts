@@ -67,7 +67,7 @@ export function buildProcessedRecord(
       request.endedAtMs === null ? null : dateText(base?.endedAt ?? undefined, request.endedAtMs),
     audioFilePath: content.audioPath,
     sourcePath: base?.sourcePath ?? null,
-    folderId: request.folderId,
+    projectId: request.projectId,
     summaryProvider: content.summaryProvider,
     calendarEventId: trimmedOrNull(request.calendarEventId) ?? base?.calendarEventId ?? null,
     calendarId: trimmedOrNull(request.calendarId) ?? base?.calendarId ?? null,

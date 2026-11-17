@@ -3,7 +3,7 @@ import { flattenFolderPaths } from '@vozella/core';
 
 export interface Destination {
   /** Null is the Inbox. */
-  readonly folderId: string | null;
+  readonly projectId: string | null;
   readonly path: string;
 }
 
@@ -18,14 +18,14 @@ export function buildDestinations(
 
 /** The reload keeps the chosen folder while it exists and falls back to the Inbox otherwise. */
 export function retainDestination(
-  folderId: string | null,
+  projectId: string | null,
   destinations: readonly Destination[],
 ): string | null {
-  return destinations.some((destination) => destination.folderId === folderId) ? folderId : null;
+  return destinations.some((destination) => destination.projectId === projectId) ? projectId : null;
 }
 
 /** The Select works with strings; the Inbox needs a value of its own. */
 export const INBOX_VALUE = '__inbox__';
-export const toOptionValue = (folderId: string | null): string => folderId ?? INBOX_VALUE;
+export const toOptionValue = (projectId: string | null): string => projectId ?? INBOX_VALUE;
 export const fromOptionValue = (value: string): string | null =>
   value === INBOX_VALUE ? null : value;

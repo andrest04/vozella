@@ -119,10 +119,10 @@ export function NameDialog({
 
 export interface MoveDialogProps extends DialogChrome {
   readonly primaryLabel: string;
-  readonly destinations: readonly { readonly folderId: string | null; readonly path: string }[];
+  readonly destinations: readonly { readonly projectId: string | null; readonly path: string }[];
   /** The meeting's current folder id; unknown ids fall back to Inbox, the first row. */
   readonly currentFolderId: string | null;
-  readonly onMove: (folderId: string | null) => void;
+  readonly onMove: (projectId: string | null) => void;
 }
 
 const INBOX_VALUE = '';
@@ -139,7 +139,7 @@ export function MoveDialog({
   currentFolderId,
   onMove,
 }: MoveDialogProps) {
-  const initial = destinations.find((d) => d.folderId === currentFolderId)?.folderId ?? null;
+  const initial = destinations.find((d) => d.projectId === currentFolderId)?.projectId ?? null;
   const [value, setValue] = useState(initial ?? INBOX_VALUE);
   useEffect(() => {
     if (open) setValue(initial ?? INBOX_VALUE);
@@ -178,7 +178,7 @@ export function MoveDialog({
           value={value}
           onValueChange={setValue}
           options={destinations.map((d) => ({
-            value: d.folderId ?? INBOX_VALUE,
+            value: d.projectId ?? INBOX_VALUE,
             label: d.path,
           }))}
         />

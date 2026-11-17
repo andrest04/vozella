@@ -207,17 +207,17 @@ export class LibraryService {
     }
   }
 
-  async moveMeeting(input: { meetingId: string; folderId: string | null }): Promise<DoneResult> {
+  async moveMeeting(input: { meetingId: string; projectId: string | null }): Promise<DoneResult> {
     if (this.deps.busy.isBusy(input.meetingId)) return { ok: false, reason: 'busy' };
     try {
       const record = await this.deps.meetings.get(input.meetingId);
       if (record === null) return { ok: false, reason: 'not-found' };
-      if (input.folderId !== null) {
+      if (input.projectId !== null) {
         const folders = await this.deps.folders.getAll();
-        if (!folders.some((f) => f.id === input.folderId))
+        if (!folders.some((f) => f.id === input.projectId))
           return { ok: false, reason: 'not-found' };
       }
-      await this.deps.meetings.save({ ...record, folderId: input.folderId });
+      await this.deps.meetings.save({ ...record, projectId: input.projectId });
       return { ok: true };
     } catch (error) {
       return failure(error);
@@ -237,10 +237,10 @@ export class LibraryService {
   /** Each meeting on its own: one that cannot move stays and the rest still go. */
   async moveMeetings(input: {
     meetingIds: readonly string[];
-    folderId: string | null;
+    projectId: string | null;
   }): Promise<readonly MeetingOutcome[]> {
     return this.eachMeeting(input.meetingIds, (meetingId) =>
-      this.moveMeeting({ meetingId, folderId: input.folderId }),
+      this.moveMeeting({ meetingId, projectId: input.projectId }),
     );
   }
 

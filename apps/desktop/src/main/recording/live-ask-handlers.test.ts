@@ -397,6 +397,7 @@ describe('rolling digest (T2)', () => {
       digest: 'Because it does.',
       title: 'Algebra',
       notes: 'ask about limits',
+      projectId: null,
     });
     t.liveAsk.hooks.cancel();
     expect(t.liveAsk.chatContext().digest).toBeNull();

@@ -166,7 +166,7 @@ describe('library layout', () => {
     await fx.folders.save(folder(FOLDER_1, 'Universidad'));
     put(
       path.join(fx.paths.meetingsDirectory, `${ID_A}.md`),
-      renderMeetingMarkdown(meeting({ folderId: FOLDER_1 })),
+      renderMeetingMarkdown(meeting({ projectId: FOLDER_1 })),
     );
     await migrateLibraryLayout(deps());
     expect(tree(fx.root)).toEqual(['Universidad/2026-09-01 Standup.md', 'folders.json']);
@@ -337,7 +337,7 @@ describe('runStartupMigrations', () => {
 
   it('149: a user folder named Meetings lives in "Meetings folder" and its meetings are not legacy', async () => {
     await fx.folders.save(folder(FOLDER_1, 'Meetings'));
-    await fx.meetings.save(meeting({ folderId: FOLDER_1 }));
+    await fx.meetings.save(meeting({ projectId: FOLDER_1 }));
     const before = tree(fx.root);
     expect(before).toContain('Meetings folder/2026-09-01 Standup.md');
     await migrateLibraryLayout(deps());
@@ -350,7 +350,7 @@ describe('runStartupMigrations', () => {
     await fx.folders.save(folder(FOLDER_1, 'Meetings'));
     const owned = put(
       path.join(fx.root, 'Meetings', '2026-09-01 Standup.md'),
-      renderMeetingMarkdown(meeting({ folderId: FOLDER_1 })),
+      renderMeetingMarkdown(meeting({ projectId: FOLDER_1 })),
     );
     const dump = put(
       path.join(fx.paths.meetingsDirectory, `${ID_B}.md`),

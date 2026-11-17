@@ -11,6 +11,7 @@
     "test": "vitest run --testTimeout=60000"
   },
   "dependencies": {
+    "@vozella/contracts": "workspace:*",
     "@vozella/core": "workspace:*",
     "jszip": "3.10.2",
     "mammoth": "1.13.0",

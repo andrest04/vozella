@@ -8,7 +8,7 @@ import type { PipelineRequest } from './pipeline/request';
  */
 export interface StartRecordingOptions {
   readonly title?: string;
-  readonly folderId?: string | null;
+  readonly projectId?: string | null;
   /** A meeting the take re-records. */
   readonly meetingId?: string | null;
 }
@@ -57,7 +57,7 @@ export function pipelineRequestFromRetranscription(
       title: request.title,
       liveDraft: null,
       pausedDurationMs: Math.round(request.pausedSeconds * 1000),
-      folderId: request.folderId,
+      projectId: request.projectId,
       highlightsMs: request.highlightsMs,
       agenda: request.agenda,
       noteTemplateId: request.noteTemplateId,

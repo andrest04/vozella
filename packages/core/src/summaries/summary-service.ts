@@ -183,7 +183,7 @@ export class SummaryService {
    */
   private async seriesContextFor(record: MeetingRecord): Promise<SeriesContextInput | null> {
     try {
-      const folderNote = await this.folderNoteOf(record.folderId);
+      const folderNote = await this.folderNoteOf(record.projectId);
       const title = record.title.trim();
       const hasSeries = (record.seriesId ?? '').trim() !== '';
       const before = instantOf(record.recordedAt);
@@ -218,9 +218,9 @@ export class SummaryService {
     }
   }
 
-  private async folderNoteOf(folderId: string | null): Promise<string | null> {
-    if (folderId === null || this.deps.folders === undefined) return null;
-    const folder = (await this.deps.folders.getAll()).find((f) => f.id === folderId);
+  private async folderNoteOf(projectId: string | null): Promise<string | null> {
+    if (projectId === null || this.deps.folders === undefined) return null;
+    const folder = (await this.deps.folders.getAll()).find((f) => f.id === projectId);
     return folder?.note ?? null;
   }
 

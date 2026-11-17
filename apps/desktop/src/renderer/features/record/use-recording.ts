@@ -1,5 +1,5 @@
+import type { FolderRecord } from '@vozella/core';
 import type {
-  FolderDto,
   MicrophoneChoiceDto,
   OutputOf,
   RecordingMessageDto,
@@ -31,9 +31,9 @@ export interface RecordingStore {
   /** The part of the live transcript the engine will not rewrite (the rest is the interim tail). */
   readonly committedText: string;
   readonly setup: RecordingSetupDto | null;
-  readonly folders: readonly FolderDto[];
+  readonly folders: readonly FolderRecord[];
   /** Null is the Inbox. */
-  readonly folderId: string | null;
+  readonly projectId: string | null;
   /** What the user typed; null shows the default title for `defaultAtMs`. */
   readonly title: string | null;
   readonly defaultAtMs: number;
@@ -50,7 +50,7 @@ const initial = (): RecordingStore => ({
   committedText: '',
   setup: null,
   folders: [],
-  folderId: null,
+  projectId: null,
   title: null,
   defaultAtMs: Date.now(),
   notice: null,
@@ -124,10 +124,11 @@ export async function loadFolders(): Promise<void> {
   try {
     const result = await window.vozella.invoke('library.load', {});
     if (!result.ok) return;
-    const folders = result.folders;
-    const { folderId } = get();
-    const kept = folderId !== null && folders.some((folder) => folder.id === folderId);
-    set({ folders, folderId: kept ? folderId : null });
+    // Folders are gone from the wire: projects replace them in the UI lane.
+    const folders: readonly FolderRecord[] = [];
+    const { projectId } = get();
+    const kept = projectId !== null && folders.some((folder) => folder.id === projectId);
+    set({ folders, projectId: kept ? projectId : null });
   } catch {
     // The list stays as it was.
   }
@@ -136,8 +137,8 @@ export async function loadFolders(): Promise<void> {
 export const setTitle = (title: string): void => {
   set({ title });
 };
-export const setFolderId = (folderId: string | null): void => {
-  set({ folderId });
+export const setFolderId = (projectId: string | null): void => {
+  set({ projectId });
 };
 export const setNotice = (notice: RecordingMessageDto | null): void => {
   set({ notice });
@@ -198,7 +199,7 @@ export async function startRecording(input: StartInput): Promise<boolean> {
   try {
     const result = await window.vozella.invoke('recording.start', {
       title: input.title,
-      folderId: get().folderId,
+      projectId: get().projectId,
       microphone: input.microphone,
       processId: input.processId,
       appName: input.appName,
@@ -223,7 +224,7 @@ export function importRecording(title: string): Promise<boolean> {
     if (picked === null) return null;
     return window.vozella.invoke('recording.import', {
       title,
-      folderId: get().folderId,
+      projectId: get().projectId,
       path: picked.path,
     });
   });
@@ -232,7 +233,7 @@ export function importRecording(title: string): Promise<boolean> {
 /** Spec 2.12.1: the same import for a YouTube link; main downloads the audio first. */
 export function importFromYouTube(title: string, url: string): Promise<boolean> {
   return runImport(() =>
-    window.vozella.invoke('recording.importUrl', { title, folderId: get().folderId, url }),
+    window.vozella.invoke('recording.importUrl', { title, projectId: get().projectId, url }),
   );
 }
 

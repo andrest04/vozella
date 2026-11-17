@@ -136,7 +136,9 @@ export function renderMeetingMarkdown(record: MeetingRecord): string {
   out += `recordedAt: ${normalizeOffsetDate(record.recordedAt) ?? record.recordedAt}\n`;
   if (record.endedAt) out += `endedAt: ${normalizeOffsetDate(record.endedAt) ?? record.endedAt}\n`;
   out += `audioFilePath: ${oneLine(record.audioFilePath)}\n`;
-  if (record.folderId) out += `folderId: ${parseGuid(record.folderId) ?? record.folderId}\n`;
+  // `folderId` is the on-disk name of the project id: meeting files written before projects
+  // existed carry it, and renaming the key would orphan them.
+  if (record.projectId) out += `folderId: ${parseGuid(record.projectId) ?? record.projectId}\n`;
   if (record.summaryProvider) out += `summaryProvider: ${oneLine(record.summaryProvider)}\n`;
   const optional: readonly (readonly [string, string | null])[] = [
     ['calendarEventId', record.calendarEventId],
@@ -379,7 +381,8 @@ export function parseMeetingMarkdown(
     endedAt,
     audioFilePath,
     sourcePath: path,
-    folderId: parseGuid(map.get('folderId')),
+    // On-disk key of the project id, see `renderMeetingMarkdown`.
+    projectId: parseGuid(map.get('folderId')),
     summaryProvider: optional('summaryProvider'),
     calendarEventId: optional('calendarEventId'),
     calendarId: optional('calendarId'),

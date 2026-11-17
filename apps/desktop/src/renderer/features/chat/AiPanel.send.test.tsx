@@ -20,7 +20,7 @@ function install(send: () => Promise<ChatSendOutcomeDto>) {
     lastProcessedMeetingId: null,
     sessionTab: 'Transcript',
     currentShellTag: 'Recording',
-    selectedFolderId: null,
+    selectedProjectId: null,
     liveTranscript: '',
     isCaptureActive: false,
   };

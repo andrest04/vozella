@@ -18,7 +18,7 @@ import type { DialogState } from './use-library-dialogs';
 export interface UndoMove {
   readonly message: string;
   readonly restore: readonly {
-    readonly folderId: string | null;
+    readonly projectId: string | null;
     readonly meetingIds: readonly string[];
   }[];
 }
@@ -130,51 +130,51 @@ export function useBulkActions({
   }, []);
 
   /** Offers the way back from a move that happened. A folder that is gone reads as the Inbox. */
-  const offerUndo = (moved: readonly MeetingListItemDto[], folderId: string | null): void => {
+  const offerUndo = (moved: readonly MeetingListItemDto[], projectId: string | null): void => {
     const [first] = moved;
     if (!first) return;
     const groups = new Map<string | null, string[]>();
     for (const meeting of moved) {
-      const known = library.folders.some((f) => f.id === meeting.folderId);
-      const from = known ? meeting.folderId : null;
+      const known = library.folders.some((f) => f.id === meeting.projectId);
+      const from = known ? meeting.projectId : null;
       groups.set(from, [...(groups.get(from) ?? []), meeting.id]);
     }
-    const place = library.destinations.find((d) => d.folderId === folderId)?.path ?? '';
+    const place = library.destinations.find((d) => d.projectId === projectId)?.path ?? '';
     setUndoMove({
       message:
         moved.length === 1
           ? t('Ui_LibraryMovedOne', first.title, place)
           : t('Ui_LibraryMovedMany', String(moved.length), place),
-      restore: [...groups].map(([from, meetingIds]) => ({ folderId: from, meetingIds })),
+      restore: [...groups].map(([from, meetingIds]) => ({ projectId: from, meetingIds })),
     });
   };
 
   const runMoveMany = async (
     meetings: readonly MeetingListItemDto[],
-    folderId: string | null,
+    projectId: string | null,
   ): Promise<void> => {
-    const moving = meetings.filter((m) => m.folderId !== folderId);
+    const moving = meetings.filter((m) => m.projectId !== projectId);
     if (moving.length === 0) return;
     setUndoMove(null);
     // One meeting is too quick to report, and "Moving 1 meetings" is not a sentence.
     if (moving.length > 1) setBulkWork({ kind: 'moving', count: moving.length });
     const failed = await library.moveMeetings(
       moving.map((m) => m.id),
-      folderId,
+      projectId,
     );
     setBulkWork(null);
     setChecks((current) => keepLive(current, failed));
     offerUndo(
       moving.filter((m) => !failed.includes(m.id)),
-      folderId,
+      projectId,
     );
     afterWork();
   };
 
   const runUndo = async (undo: UndoMove): Promise<void> => {
     setUndoMove(null);
-    for (const { folderId, meetingIds } of undo.restore) {
-      await library.moveMeetings(meetingIds, folderId);
+    for (const { projectId, meetingIds } of undo.restore) {
+      await library.moveMeetings(meetingIds, projectId);
     }
   };
 
@@ -189,7 +189,7 @@ export function useBulkActions({
     const wanted = new Set(dropRequest.meetingIds);
     void runDrop.current(
       meetings.filter((m) => wanted.has(m.id)),
-      dropRequest.folderId,
+      dropRequest.projectId,
     );
   }, [dropRequest]);
 

@@ -57,7 +57,7 @@ describe('a library written by the WinUI app', () => {
     const weekly = await fx.meetings.get('3f2b8c1e-9a47-4d0e-b1c2-5e6f7a8b9c0d');
     expect(weekly).toMatchObject({
       id: '3f2b8c1e-9a47-4d0e-b1c2-5e6f7a8b9c0d',
-      folderId: '8e2f1b63-44d5-4a7c-9ba1-1d2e3f4a5b6c',
+      projectId: '8e2f1b63-44d5-4a7c-9ba1-1d2e3f4a5b6c',
       recordedAt: '2026-09-01T12:00:00.0000000-05:00',
       endedAt: '2026-09-01T13:45:00.0000000-05:00',
       summaryProvider: 'local',

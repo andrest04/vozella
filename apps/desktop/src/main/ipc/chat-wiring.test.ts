@@ -11,7 +11,7 @@ const event: IpcEventLike = {
   sender: { id: 1 },
   senderFrame: { url: 'vozella://app/index.html', parent: null },
 };
-const scope = (kind: string) => ({ isVisible: true, kind, folderId: null, meetingId: null });
+const scope = (kind: string) => ({ isVisible: true, kind, projectId: null, meetingId: null });
 
 const reader: ChatMeetingReader = {
   meetingById: () => Promise.resolve(null),

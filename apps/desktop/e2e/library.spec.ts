@@ -25,18 +25,18 @@ test('the library works end to end through the typed API, on a throwaway data ro
 
   // A folder, its directory, and its note.
   const created = await page.evaluate(() =>
-    window.vozella.invoke('library.createFolder', { name: 'Universidad', parentId: null }),
+    window.vozella.invoke('projects.create', { name: 'Universidad' }),
   );
   if (!created.ok) throw new Error('create failed');
   expect(fs.existsSync(path.join(libraryRoot, 'Universidad'))).toBe(true);
   const noted = await page.evaluate(
-    (id) => window.vozella.invoke('library.setFolderNote', { id, note: '  Fall term  ' }),
-    created.folder.id,
+    (id) => window.vozella.invoke('projects.setInstructions', { id, instructions: 'Fall term' }),
+    created.project.id,
   );
-  expect(noted).toMatchObject({ ok: true, folder: { note: 'Fall term' } });
+  expect(noted).toMatchObject({ ok: true, project: { instructions: 'Fall term' } });
 
   const duplicate = await page.evaluate(() =>
-    window.vozella.invoke('library.createFolder', { name: 'universidad', parentId: null }),
+    window.vozella.invoke('projects.create', { name: 'universidad' }),
   );
   expect(duplicate).toMatchObject({ ok: false, reason: 'name-taken' });
 
@@ -108,13 +108,13 @@ test('search reads bodies, and bulk actions report each meeting, through the typ
   });
 
   const created = await page.evaluate(() =>
-    window.vozella.invoke('library.createFolder', { name: 'Bulk', parentId: null }),
+    window.vozella.invoke('projects.create', { name: 'Bulk' }),
   );
   if (!created.ok) throw new Error('create failed');
   const moved = await page.evaluate(
-    ([meetingIds, folderId]) =>
-      window.vozella.invoke('library.moveMeetings', { meetingIds, folderId }),
-    [ids, created.folder.id] as const,
+    ([meetingIds, projectId]) =>
+      window.vozella.invoke('library.moveMeetings', { meetingIds, projectId }),
+    [ids, created.project.id] as const,
   );
   expect(moved.results).toEqual([
     { meetingId: ids[0], ok: true },

@@ -12,6 +12,7 @@ import {
   type CliPathProbe,
   type Logger,
   type LocalModelStore,
+  type ProjectContextSource,
   type OfflineTranscriber,
   type SettingsStore,
   type SummaryProviderResolver,
@@ -47,6 +48,8 @@ export interface ComposeRecordingDeps {
   /** The app's API key store: an API engine that requires a key is ready only with one saved. */
   readonly apiKeys?: Pick<ApiKeyStore, 'has'>;
   readonly settings: SettingsStore;
+  /** The instructions and files of a project, for the live copilot (live proxy). */
+  readonly projectContext: ProjectContextSource;
   readonly workspace: Workspace;
   readonly broadcast: Broadcast;
   readonly logger: Logger;
@@ -105,10 +108,10 @@ export function composeRecording(deps: ComposeRecordingDeps): RecordingService {
     takes: deps.takes,
     controller: deps.controller,
     library: {
-      audioDirectory: async (folderId) =>
-        directoryFor(library.libraryRoot, await library.folders.getAll(), folderId),
-      folderExists: async (folderId) =>
-        (await library.folders.getAll()).some((folder) => folder.id === folderId),
+      audioDirectory: async (projectId) =>
+        directoryFor(library.libraryRoot, await library.folders.getAll(), projectId),
+      folderExists: async (projectId) =>
+        (await library.folders.getAll()).some((folder) => folder.id === projectId),
       ownsMarkdown: async (meetingId, markdownPath) =>
         (await library.meetings.locate(meetingId)).some((entry) =>
           samePath(entry.path, markdownPath),

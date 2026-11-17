@@ -38,8 +38,8 @@ export function scopeLabel(kind: ChatScopeKind): string {
   switch (kind) {
     case 'AllMeetings':
       return 'All meetings';
-    case 'Folder':
-      return 'Folder';
+    case 'Project':
+      return 'Project';
     case 'Meeting':
       return 'Meeting';
     case 'Live':

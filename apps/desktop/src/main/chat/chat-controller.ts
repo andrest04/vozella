@@ -351,6 +351,9 @@ export class ChatController {
       hasMessages: state.hasMessages,
       canStartNewChat: state.canStartNewChat,
       attachments: this.attachmentDtos(),
+      // Until the chat lane persists threads there is no open thread and nothing to save.
+      threadId: null,
+      historySaved: true,
     };
   }
 

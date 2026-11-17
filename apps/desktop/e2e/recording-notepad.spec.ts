@@ -54,7 +54,7 @@ const startTake = (): Promise<unknown> =>
   page.evaluate(() =>
     window.vozella.invoke('recording.start', {
       title: 'Notes check',
-      folderId: null,
+      projectId: null,
       microphone: { kind: 'SystemDefault', deviceId: null },
       appName: null,
     }),

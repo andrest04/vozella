@@ -33,7 +33,7 @@ describe('buildDestinations (item 190)', () => {
       'Alpha / zeta',
       'beta',
     ]);
-    expect(buildDestinations(folders, 'Inbox', 'en')[0]?.folderId).toBeNull();
+    expect(buildDestinations(folders, 'Inbox', 'en')[0]?.projectId).toBeNull();
   });
 
   it('keeps the selection while the folder exists and falls back to the Inbox', () => {

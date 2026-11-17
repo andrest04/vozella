@@ -41,7 +41,7 @@ describe('save and read', () => {
 
   it('round-trips a meeting and sets sourcePath', async () => {
     const saved = await fx.meetings.save(
-      meeting({ summary: '## Decisions\nShip it', notes: 'n', folderId: null }),
+      meeting({ summary: '## Decisions\nShip it', notes: 'n', projectId: null }),
     );
     expect(saved.sourcePath).toBe(path.join(fx.root, 'Inbox', '2026-09-01 Standup.md'));
     expect(await fx.meetings.get(ID_A)).toEqual(saved);
@@ -50,9 +50,9 @@ describe('save and read', () => {
   it('files a meeting in its folder directory, and an unknown folder in Inbox', async () => {
     await fx.folders.save(folder(FOLDER_1, 'Universidad'));
     await fx.folders.save(folder(FOLDER_2, 'Calculo', FOLDER_1));
-    await fx.meetings.save(meeting({ folderId: FOLDER_2 }));
+    await fx.meetings.save(meeting({ projectId: FOLDER_2 }));
     await fx.meetings.save(
-      meeting({ id: ID_B, title: 'Lost', folderId: 'deadbeef-0000-0000-0000-000000000000' }),
+      meeting({ id: ID_B, title: 'Lost', projectId: 'deadbeef-0000-0000-0000-000000000000' }),
     );
     expect(tree(fx.root)).toEqual([
       'Inbox/2026-09-01 Lost.md',
@@ -95,14 +95,14 @@ describe('moving and renaming', () => {
     const withAudio = await fx.meetings.save({ ...first, audioFilePath: wav });
     expect(withAudio.audioFilePath).toBe(wav);
 
-    const moved = await fx.meetings.save({ ...withAudio, folderId: FOLDER_1 });
+    const moved = await fx.meetings.save({ ...withAudio, projectId: FOLDER_1 });
     expect(tree(fx.root)).toEqual([
       'Universidad/2026-09-01 Standup.md',
       'Universidad/2026-09-01 Standup.wav',
       'folders.json',
     ]);
     expect(moved.audioFilePath).toBe(path.join(fx.root, 'Universidad', '2026-09-01 Standup.wav'));
-    expect(moved.folderId).toBe(FOLDER_1);
+    expect(moved.projectId).toBe(FOLDER_1);
     expect((await fx.meetings.get(ID_A))?.audioFilePath).toBe(moved.audioFilePath);
   });
 
@@ -151,7 +151,7 @@ describe('moving and renaming', () => {
       const wav = first.sourcePath?.replace(/\.md$/, '.wav') ?? '';
       fs.writeFileSync(wav, 'RIFF');
       await expect(
-        failing.meetings.save({ ...first, audioFilePath: wav, folderId: FOLDER_1 }),
+        failing.meetings.save({ ...first, audioFilePath: wav, projectId: FOLDER_1 }),
       ).rejects.toThrow('EBUSY');
       expect(tree(failing.root)).toEqual([
         'Inbox/2026-09-01 Standup.md',
@@ -173,7 +173,7 @@ describe('blank audioFilePath and replacing a destination', () => {
     expect(tree(fx.root)).toEqual(['Inbox/2026-09-01 Retro.md', 'Inbox/2026-09-01 Retro.wav']);
     await fx.folders.save(folder(FOLDER_1, 'Universidad'));
     const again = (await fx.meetings.get(ID_A))!;
-    await fx.meetings.save({ ...again, audioFilePath: '', folderId: FOLDER_1 });
+    await fx.meetings.save({ ...again, audioFilePath: '', projectId: FOLDER_1 });
     expect(tree(fx.root)).toContain('Universidad/2026-09-01 Retro.wav');
     expect(tree(fx.root)).not.toContain('Inbox/2026-09-01 Retro.wav');
   });
@@ -309,7 +309,7 @@ describe('delete', () => {
         const saved = await save();
         await f.folders.save(folder(FOLDER_1, 'Universidad'));
         unlinked.length = 0;
-        await f.meetings.save({ ...saved, folderId: FOLDER_1 });
+        await f.meetings.save({ ...saved, projectId: FOLDER_1 });
         expect(discard).not.toHaveBeenCalled();
         expect(unlinked).toEqual(['2026-09-01 Standup.md']);
       } finally {
@@ -450,14 +450,14 @@ describe('batch', () => {
     await fx.meetings.batch(async () => {
       await fx.meetings.list();
       await fx.meetings.save(meeting({ id: ID_B, title: 'Second' }));
-      await fx.meetings.save({ ...saved, folderId: FOLDER_1 });
-      expect((await fx.meetings.get(ID_A))?.folderId).toBe(FOLDER_1);
+      await fx.meetings.save({ ...saved, projectId: FOLDER_1 });
+      expect((await fx.meetings.get(ID_A))?.projectId).toBe(FOLDER_1);
       expect(await fx.meetings.get(ID_B)).toMatchObject({ title: 'Second' });
       expect((await fx.meetings.list()).items).toHaveLength(2);
       await fx.meetings.delete(ID_B);
       expect(await fx.meetings.get(ID_B)).toBeNull();
     });
-    expect((await fx.meetings.list()).items.map((i) => i.folderId)).toEqual([FOLDER_1]);
+    expect((await fx.meetings.list()).items.map((i) => i.projectId)).toEqual([FOLDER_1]);
     expect(tree(fx.root)).toContain('Universidad/2026-09-01 Standup.md');
     expect(tree(fx.root)).not.toContain('Inbox/2026-09-01 Standup.md');
   });
@@ -480,11 +480,14 @@ describe('batch', () => {
 describe('list', () => {
   it('walks every depth and returns the light items', async () => {
     await fx.folders.save(folder(FOLDER_1, 'Universidad'));
-    await fx.meetings.save(meeting({ folderId: FOLDER_1, summary: '# T\nBody' }));
+    await fx.meetings.save(meeting({ projectId: FOLDER_1, summary: '# T\nBody' }));
     await fx.meetings.save(meeting({ id: ID_B, title: 'Second' }));
     const { items, skipped } = await fx.meetings.list();
     expect(items.map((i) => i.id).sort()).toEqual([ID_A, ID_B]);
-    expect(items.find((i) => i.id === ID_A)).toMatchObject({ folderId: FOLDER_1, snippet: 'Body' });
+    expect(items.find((i) => i.id === ID_A)).toMatchObject({
+      projectId: FOLDER_1,
+      snippet: 'Body',
+    });
     expect(skipped).toEqual([]);
   });
 
@@ -632,9 +635,9 @@ describe('duplicate ids', () => {
 describe('robustness', () => {
   it('B5: a damaged folders.json does not stop meetings from being saved', async () => {
     fs.writeFileSync(fx.paths.foldersFilePath, '{oops');
-    const saved = await fx.meetings.save(meeting({ folderId: FOLDER_1 }));
+    const saved = await fx.meetings.save(meeting({ projectId: FOLDER_1 }));
     expect(saved.sourcePath).toBe(path.join(fx.root, 'Inbox', '2026-09-01 Standup.md'));
-    expect(saved.folderId).toBe(FOLDER_1);
+    expect(saved.projectId).toBe(FOLDER_1);
     expect(fs.readFileSync(fx.paths.foldersFilePath, 'utf8')).toBe('{oops');
   });
 
@@ -681,15 +684,15 @@ describe('robustness', () => {
 });
 
 describe('the directory tree is a write-only mirror', () => {
-  it('the folder of a meeting is its frontmatter folderId, not the directory it sits in', async () => {
+  it('the folder of a meeting is its frontmatter projectId, not the directory it sits in', async () => {
     await fx.folders.save(folder(FOLDER_1, 'Universidad'));
-    const saved = await fx.meetings.save(meeting({ folderId: FOLDER_1 }));
+    const saved = await fx.meetings.save(meeting({ projectId: FOLDER_1 }));
     // The user drags the file to another directory in the file manager.
     const elsewhere = path.join(fx.root, 'Dragged', 'moved.md');
     fs.mkdirSync(path.dirname(elsewhere), { recursive: true });
     fs.renameSync(saved.sourcePath ?? '', elsewhere);
     const item = (await fx.meetings.list()).items[0];
-    expect(item?.folderId).toBe(FOLDER_1);
+    expect(item?.projectId).toBe(FOLDER_1);
     expect((await fx.meetings.get(ID_A))?.sourcePath).toBe(elsewhere);
   });
 });
@@ -706,7 +709,7 @@ describe('the microphone activity sidecar (<name>.mic.json) follows its recordin
   it('moves with the wav when the meeting changes folder or title', async () => {
     await fx.folders.save(folder(FOLDER_1, 'Universidad'));
     const saved = await withRecording();
-    await fx.meetings.save({ ...saved, folderId: FOLDER_1, title: 'Retro' });
+    await fx.meetings.save({ ...saved, projectId: FOLDER_1, title: 'Retro' });
     expect(tree(fx.root)).toEqual([
       'Universidad/2026-09-01 Retro.md',
       'Universidad/2026-09-01 Retro.mic.json',

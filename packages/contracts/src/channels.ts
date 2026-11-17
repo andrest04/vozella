@@ -5,6 +5,7 @@ import * as chat from './chat';
 import * as library from './library';
 import * as liveCopilot from './live-copilot';
 import * as meetingPrompt from './meeting-prompt';
+import * as projects from './projects';
 import * as recording from './recording';
 import * as session from './session';
 import * as settings from './settings';
@@ -73,13 +74,19 @@ export const requestChannels = {
   [appReportRendererError.name]: appReportRendererError,
   [diagnosticsNativeSelfTest.name]: diagnosticsNativeSelfTest,
   [appSetThemePreference.name]: appSetThemePreference,
+  [projects.projectsList.name]: projects.projectsList,
+  [projects.projectsGet.name]: projects.projectsGet,
+  [projects.projectsCreate.name]: projects.projectsCreate,
+  [projects.projectsUpdate.name]: projects.projectsUpdate,
+  [projects.projectsSetInstructions.name]: projects.projectsSetInstructions,
+  [projects.projectsDelete.name]: projects.projectsDelete,
+  [projects.projectsFilesPick.name]: projects.projectsFilesPick,
+  [projects.projectsFilesAdd.name]: projects.projectsFilesAdd,
+  [projects.projectsFilesRemove.name]: projects.projectsFilesRemove,
+  [projects.projectsMigrationReport.name]: projects.projectsMigrationReport,
+  [projects.projectsDismissMigrationReport.name]: projects.projectsDismissMigrationReport,
   [library.libraryLoad.name]: library.libraryLoad,
   [library.libraryGetMeeting.name]: library.libraryGetMeeting,
-  [library.libraryCreateFolder.name]: library.libraryCreateFolder,
-  [library.libraryRenameFolder.name]: library.libraryRenameFolder,
-  [library.libraryUpdateFolderPersonality.name]: library.libraryUpdateFolderPersonality,
-  [library.librarySetFolderNote.name]: library.librarySetFolderNote,
-  [library.libraryDeleteFolder.name]: library.libraryDeleteFolder,
   [library.libraryMoveMeeting.name]: library.libraryMoveMeeting,
   [library.libraryDeleteMeeting.name]: library.libraryDeleteMeeting,
   [library.libraryMoveMeetings.name]: library.libraryMoveMeetings,
@@ -186,6 +193,10 @@ export const requestChannels = {
   [chat.chatState.name]: chat.chatState,
   [chat.chatSetScope.name]: chat.chatSetScope,
   [chat.chatMeetingExists.name]: chat.chatMeetingExists,
+  [chat.chatThreadsList.name]: chat.chatThreadsList,
+  [chat.chatThreadsOpen.name]: chat.chatThreadsOpen,
+  [chat.chatThreadsRename.name]: chat.chatThreadsRename,
+  [chat.chatThreadsDelete.name]: chat.chatThreadsDelete,
   [chat.chatCopyText.name]: chat.chatCopyText,
   [chat.chatOpenExternal.name]: chat.chatOpenExternal,
   [chat.chatAttachPick.name]: chat.chatAttachPick,
@@ -212,6 +223,7 @@ export const requestChannels = {
 
 export const eventChannels = {
   [library.libraryChanged.name]: library.libraryChanged,
+  [projects.projectsChanged.name]: projects.projectsChanged,
   [library.workspaceChanged.name]: library.workspaceChanged,
   [library.workspaceNavigationRequested.name]: library.workspaceNavigationRequested,
   [library.workspaceMeetingDeleted.name]: library.workspaceMeetingDeleted,
@@ -244,6 +256,7 @@ export const eventChannels = {
   [chat.chatChunk.name]: chat.chatChunk,
   [chat.chatStateChanged.name]: chat.chatStateChanged,
   [chat.chatPromptsChanged.name]: chat.chatPromptsChanged,
+  [chat.chatThreadsChanged.name]: chat.chatThreadsChanged,
   [updates.updatesStateChanged.name]: updates.updatesStateChanged,
 } as const;
 

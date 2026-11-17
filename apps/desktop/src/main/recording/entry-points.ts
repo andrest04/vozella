@@ -20,7 +20,7 @@ export function createRecordingEntryPoints(
       const result = await service.start(
         {
           title: options.title ?? '',
-          folderId: options.folderId ?? workspace.state.selectedFolderId,
+          projectId: options.projectId ?? workspace.state.selectedProjectId,
           // The page never loaded the sources: main restores the remembered ones (B-23).
           microphone: null,
           appName: null,

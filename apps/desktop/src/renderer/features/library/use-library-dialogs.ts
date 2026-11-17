@@ -6,9 +6,9 @@ import type { StatusMessage } from './use-library';
 
 export type DialogState =
   | { readonly kind: 'newFolder' }
-  | { readonly kind: 'rename'; readonly folderId: string; readonly name: string }
-  | { readonly kind: 'personality'; readonly folderId: string }
-  | { readonly kind: 'deleteFolder'; readonly folderId: string; readonly name: string }
+  | { readonly kind: 'rename'; readonly projectId: string; readonly name: string }
+  | { readonly kind: 'personality'; readonly projectId: string }
+  | { readonly kind: 'deleteFolder'; readonly projectId: string; readonly name: string }
   | { readonly kind: 'move'; readonly meeting: MeetingListItemDto }
   | { readonly kind: 'deleteMeeting'; readonly meeting: MeetingListItemDto }
   /** `refused`: the Recycle Bin said no. Otherwise it was asked for directly, with Shift+Delete. */
@@ -112,14 +112,18 @@ export function useLibraryDialogs({ folderName, canDeleteFolder, showStatus }: F
   const runFolderAction = (request: FolderRequest): void => {
     if (request.kind === 'new') setDialog({ kind: 'newFolder' });
     else if (request.kind === 'rename') {
-      setDialog({ kind: 'rename', folderId: request.folderId, name: folderName(request.folderId) });
+      setDialog({
+        kind: 'rename',
+        projectId: request.projectId,
+        name: folderName(request.projectId),
+      });
     } else if (request.kind === 'personality') {
-      setDialog({ kind: 'personality', folderId: request.folderId });
-    } else if (canDeleteFolder(request.folderId)) {
+      setDialog({ kind: 'personality', projectId: request.projectId });
+    } else if (canDeleteFolder(request.projectId)) {
       setDialog({
         kind: 'deleteFolder',
-        folderId: request.folderId,
-        name: folderName(request.folderId),
+        projectId: request.projectId,
+        name: folderName(request.projectId),
       });
     } else {
       showStatus({ key: 'LibraryDeleteFolder_NotEmpty', args: [] });

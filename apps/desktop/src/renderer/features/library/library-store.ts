@@ -4,9 +4,10 @@ import {
   folderView,
   INBOX_VIEW,
   isInLibraryView,
+  type FolderRecord,
   type LibraryView,
 } from '@vozella/core';
-import type { FailureReasonDto, FolderDto, MeetingListItemDto } from '@vozella/contracts';
+import type { FailureReasonDto, MeetingListItemDto } from '@vozella/contracts';
 import { create } from 'zustand';
 import { NO_FILTERS, type MeetingFilters } from './meeting-filters';
 
@@ -23,12 +24,12 @@ export interface LoadProblem {
 /** A folder action chosen in the sidebar. The route owns the dialogs, so it carries them out. */
 export type FolderRequest =
   | { readonly kind: 'new' }
-  | { readonly kind: 'rename' | 'personality' | 'delete'; readonly folderId: string };
+  | { readonly kind: 'rename' | 'personality' | 'delete'; readonly projectId: string };
 
 /** Meetings dropped on a folder in the sidebar. The route moves them, and offers Undo. */
 export interface DropRequest {
   readonly meetingIds: readonly string[];
-  readonly folderId: string | null;
+  readonly projectId: string | null;
 }
 
 /** Marks a drag as meetings. The ids stay here: `getData` is not available during `dragover`. */
@@ -39,7 +40,7 @@ export interface LibraryState {
   readonly problem: LoadProblem | null;
   /** Files the last load could not read as meetings, with the reason. */
   readonly skipped: readonly SkippedFile[];
-  readonly folders: readonly FolderDto[];
+  readonly folders: readonly FolderRecord[];
   readonly meetings: readonly MeetingListItemDto[];
   readonly view: LibraryView;
   /** Kept across views and meetings for this session. Never written to disk. */
@@ -83,10 +84,13 @@ export const REFRESH_DEBOUNCE_MS = 150;
  */
 export interface FolderNoteParticipant {
   readonly beforeLoad: () => Promise<void>;
-  readonly afterLoad: (folders: readonly FolderDto[], selected: FolderDto | undefined) => void;
+  readonly afterLoad: (
+    folders: readonly FolderRecord[],
+    selected: FolderRecord | undefined,
+  ) => void;
   /** Called synchronously before the view changes; the promise settles when the note is stored. */
   readonly leave: () => Promise<void>;
-  readonly entered: (selected: FolderDto | undefined) => void;
+  readonly entered: (selected: FolderRecord | undefined) => void;
 }
 
 let note: FolderNoteParticipant | null = null;
@@ -109,12 +113,14 @@ export const folderIdOfView = (view: LibraryView): string | null =>
 const sameView = (a: LibraryView, b: LibraryView): boolean =>
   a.kind === b.kind && folderIdOfView(a) === folderIdOfView(b);
 
-const folderOfView = (view: LibraryView, folders: readonly FolderDto[]): FolderDto | undefined =>
-  folders.find((f) => f.id === folderIdOfView(view));
+const folderOfView = (
+  view: LibraryView,
+  folders: readonly FolderRecord[],
+): FolderRecord | undefined => folders.find((f) => f.id === folderIdOfView(view));
 
-function publish(folderId: string | null): void {
+function publish(projectId: string | null): void {
   void window.vozella.invoke('workspace.dispatch', {
-    action: { type: 'publishSelectedFolder', folderId },
+    action: { type: 'publishSelectedProject', projectId },
   });
 }
 
@@ -136,17 +142,18 @@ async function load(restore: LibraryView | undefined, firstLoad: boolean): Promi
       set({ problem: { reason: result.reason, message: result.message } });
       return;
     }
+    // Folders are gone from the wire: projects replace them in the UI lane, so the tree is empty.
+    const folders: readonly FolderRecord[] = [];
     const current = get();
     const wanted = restore ?? current.view;
     // A folder that went away lands on the Inbox (#107).
-    const view =
-      wanted.kind === 'folder' && !folderOfView(wanted, result.folders) ? INBOX_VIEW : wanted;
+    const view = wanted.kind === 'folder' && !folderOfView(wanted, folders) ? INBOX_VIEW : wanted;
     const next = folderIdOfView(view);
     // Only widen: the expansion the user chose stays (B14).
-    const ancestors = expandedAncestors(result.folders, next);
+    const ancestors = expandedAncestors(folders, next);
     set({
       problem: null,
-      folders: result.folders,
+      folders,
       meetings: result.meetings,
       skipped: result.skipped,
       view,
@@ -156,7 +163,7 @@ async function load(restore: LibraryView | undefined, firstLoad: boolean): Promi
       selectionApplied = true;
       publish(next);
     }
-    note?.afterLoad(result.folders, folderOfView(view, result.folders));
+    note?.afterLoad(folders, folderOfView(view, folders));
   } finally {
     if (seq === loadSeq) set({ isLoading: false });
   }
@@ -202,7 +209,7 @@ export function connectLibrary(): () => void {
         let restored: string | null = null;
         try {
           const state = await window.vozella.invoke('workspace.getState', {});
-          restored = state.selectedFolderId;
+          restored = state.selectedProjectId;
         } catch {
           // No saved selection: open on All rather than leaving the skeleton up.
         }
@@ -302,16 +309,16 @@ export interface DirectCounts {
 
 /** Each container counts only its own meetings, so a parent does not include its children. */
 export function directCounts(
-  folders: readonly Pick<FolderDto, 'id'>[],
-  meetings: readonly Pick<MeetingListItemDto, 'folderId'>[],
+  folders: readonly Pick<FolderRecord, 'id'>[],
+  meetings: readonly Pick<MeetingListItemDto, 'projectId'>[],
 ): DirectCounts {
   const known = new Set(folders.map((f) => f.id));
   const byFolder = new Map<string, number>();
   let inbox = 0;
   for (const meeting of meetings) {
     if (isInLibraryView(INBOX_VIEW, known, meeting)) inbox += 1;
-    else if (meeting.folderId !== null) {
-      byFolder.set(meeting.folderId, (byFolder.get(meeting.folderId) ?? 0) + 1);
+    else if (meeting.projectId !== null) {
+      byFolder.set(meeting.projectId, (byFolder.get(meeting.projectId) ?? 0) + 1);
     }
   }
   return { all: meetings.length, inbox, byFolder };

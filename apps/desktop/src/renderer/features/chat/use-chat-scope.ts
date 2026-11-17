@@ -12,7 +12,7 @@ export interface ChatScopeView {
 const HIDDEN: ChatScopeDecision = {
   isVisible: false,
   kind: 'AllMeetings',
-  folderId: null,
+  projectId: null,
   meetingId: null,
 };
 
@@ -23,10 +23,9 @@ async function lookupName(decision: ChatScopeDecision): Promise<string | null> {
     });
     return record?.title ?? null;
   }
-  if (decision.kind === 'Folder' && decision.folderId !== null) {
-    const loaded = await window.vozella.invoke('library.load', {});
-    if (!loaded.ok) return null;
-    return loaded.folders.find((folder) => folder.id === decision.folderId)?.name ?? null;
+  if (decision.kind === 'Project' && decision.projectId !== null) {
+    const listed = await window.vozella.invoke('projects.list', {});
+    return listed.projects.find((project) => project.id === decision.projectId)?.name ?? null;
   }
   return null;
 }
@@ -36,7 +35,7 @@ function same(a: ChatScopeDecision | null, b: ChatScopeDecision): boolean {
     a !== null &&
     a.isVisible === b.isVisible &&
     a.kind === b.kind &&
-    a.folderId === b.folderId &&
+    a.projectId === b.projectId &&
     a.meetingId === b.meetingId
   );
 }

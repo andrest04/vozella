@@ -134,7 +134,7 @@ describe('recipe scope lists', () => {
   it('AvailabilityFor_MatchesScope', () => {
     expect(availabilityFor('Meeting')).toBe('single');
     expect(availabilityFor('Live')).toBe('single');
-    expect(availabilityFor('Folder')).toBe('multiple');
+    expect(availabilityFor('Project')).toBe('multiple');
     expect(availabilityFor('AllMeetings')).toBe('multiple');
     expect(() => availabilityFor('Other' as never)).toThrow();
   });
@@ -142,7 +142,7 @@ describe('recipe scope lists', () => {
   it('ForScope returns built-ins of the scope in catalog order', () => {
     expect(suffix(recipesForScope('Meeting', t))).toEqual(MEETING_FIRST);
     expect(suffix(recipesForScope('Live', t))).toEqual([...LIVE, ...MEETING_FIRST]);
-    expect(suffix(recipesForScope('Folder', t))).toEqual(['201', '202', '203']);
+    expect(suffix(recipesForScope('Project', t))).toEqual(['201', '202', '203']);
     expect(recipesForScope('AllMeetings', t)).toHaveLength(3);
   });
 
@@ -170,7 +170,7 @@ describe('recipe scope lists', () => {
   it('only a meeting scope reacts to the action items; live and multi scopes do not', () => {
     const context = { hasActionItems: false };
     expect(suffix(recipesForScope('Live', t, context))).toEqual([...LIVE, ...MEETING_FIRST]);
-    expect(suffix(recipesForScope('Folder', t, context))).toEqual(['201', '202', '203']);
+    expect(suffix(recipesForScope('Project', t, context))).toEqual(['201', '202', '203']);
   });
 
   it('filterRecipes: case-insensitive substring of draft[1..] trimmed on name or prompt', () => {
@@ -196,7 +196,7 @@ describe('live recipes (T2)', () => {
       'Suggest questions',
       'Decisions and tasks',
     ]);
-    for (const kind of ['Meeting', 'Folder', 'AllMeetings'] as const) {
+    for (const kind of ['Meeting', 'Project', 'AllMeetings'] as const) {
       expect(suffix(recipesForScope(kind, t)).some((id) => LIVE.includes(id))).toBe(false);
     }
     expect(builtInRecipes(t)).toHaveLength(12);

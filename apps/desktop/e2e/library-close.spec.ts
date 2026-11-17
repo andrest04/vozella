@@ -37,9 +37,7 @@ test('a folder note typed right before the window closes is kept', async () => {
   try {
     const page = await launched.app.firstWindow();
     await expect(page.getByRole('navigation')).toBeVisible();
-    await page.evaluate(() =>
-      window.vozella.invoke('library.createFolder', { name: 'Alpha', parentId: null }),
-    );
+    await page.evaluate(() => window.vozella.invoke('projects.create', { name: 'Alpha' }));
     await page.getByRole('link', { name: /Library|Biblioteca/ }).click();
     await page.getByRole('treeitem', { name: /Alpha/ }).click();
     await page.getByRole('textbox', { name: 'Folder notes' }).fill('typed just before close');
@@ -70,9 +68,7 @@ test('a folder note typed right before the close button is pressed is kept', asy
   try {
     const page = await launched.app.firstWindow();
     await expect(page.getByRole('navigation')).toBeVisible();
-    await page.evaluate(() =>
-      window.vozella.invoke('library.createFolder', { name: 'Beta', parentId: null }),
-    );
+    await page.evaluate(() => window.vozella.invoke('projects.create', { name: 'Beta' }));
     await page.getByRole('link', { name: /Library|Biblioteca/ }).click();
     await page.getByRole('treeitem', { name: /Beta/ }).click();
     await page.getByRole('textbox', { name: 'Folder notes' }).fill('typed before the X');

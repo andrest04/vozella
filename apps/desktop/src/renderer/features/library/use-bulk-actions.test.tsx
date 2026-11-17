@@ -10,8 +10,8 @@ afterEach(() => {
   cleanup();
 });
 
-const item = (id: string, folderId: string | null = null) =>
-  ({ id, title: `Title ${id}`, folderId }) as MeetingListItemDto;
+const item = (id: string, projectId: string | null = null) =>
+  ({ id, title: `Title ${id}`, projectId }) as MeetingListItemDto;
 
 /** Shows the key and its values, so a test reads what the user would. */
 const t: Translate = (key, ...args) => [key, ...args].join('|');
@@ -23,8 +23,8 @@ const fakeLibrary = (meetings: readonly MeetingListItemDto[], extra: Partial<Lib
     meetings,
     folders: [{ id: 'f1', name: 'Work' }] as unknown as LibraryModel['folders'],
     destinations: [
-      { folderId: null, path: 'Inbox' },
-      { folderId: 'f1', path: 'Work' },
+      { projectId: null, path: 'Inbox' },
+      { projectId: 'f1', path: 'Work' },
     ] as unknown as LibraryModel['destinations'],
     searching: false,
     beginDelete: vi.fn(() => Promise.resolve(true)),
@@ -115,7 +115,7 @@ describe('useBulkActions', () => {
     // A folder that is gone reads as the Inbox.
     expect(result.current.undoMove).toEqual({
       message: 'Ui_LibraryMovedMany|2|Work',
-      restore: [{ folderId: null, meetingIds: ['a', 'c'] }],
+      restore: [{ projectId: null, meetingIds: ['a', 'c'] }],
     });
     expect(result.current.bulkWork).toBeNull();
     expect(afterWork).toHaveBeenCalledOnce();

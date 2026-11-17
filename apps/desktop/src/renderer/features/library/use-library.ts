@@ -9,12 +9,12 @@ import {
   selectMeetings,
   type Breadcrumb,
   type EmptyFlags,
+  type FolderRecord,
   type LibraryView,
   type MoveDestination,
 } from '@vozella/core';
 import type {
   FailureReasonDto,
-  FolderDto,
   MeetingDeleteModeDto,
   MeetingListItemDto,
 } from '@vozella/contracts';
@@ -46,15 +46,15 @@ interface FailureResult {
   readonly reason: FailureReasonDto;
   readonly message?: string | undefined;
 }
-export type FolderResult = { readonly ok: true; readonly folder: FolderDto } | FailureResult;
+export type FolderResult = { readonly ok: true; readonly folder: FolderRecord } | FailureResult;
 
 export interface LibraryModel {
   readonly isLoading: boolean;
   readonly problem: LoadProblem | null;
   readonly skipped: readonly SkippedFile[];
-  readonly folders: readonly FolderDto[];
+  readonly folders: readonly FolderRecord[];
   readonly view: LibraryView;
-  readonly selectedFolder: FolderDto | null;
+  readonly selectedFolder: FolderRecord | null;
   readonly breadcrumbs: readonly Breadcrumb[];
   readonly meetings: readonly MeetingListItemDto[];
   /** Meetings in the view before the search filter. */
@@ -88,7 +88,7 @@ export interface LibraryModel {
   readonly deleteFolder: (id: string) => Promise<'deleted' | 'not-empty' | 'failed'>;
   /** Checks the in-memory snapshot, like the WinUI page. */
   readonly canDeleteFolder: (id: string) => boolean;
-  readonly moveMeeting: (meetingId: string, folderId: string | null) => Promise<boolean>;
+  readonly moveMeeting: (meetingId: string, projectId: string | null) => Promise<boolean>;
   /** Refuses a busy meeting before the dialog opens. True when the dialog may open. */
   readonly beginDelete: (meetingId: string) => Promise<boolean>;
   /** `trash-failed` means nothing was deleted and a permanent delete can be offered. */
@@ -99,7 +99,7 @@ export interface LibraryModel {
   /** Moves several in one request. Returns the ids that did not move. */
   readonly moveMeetings: (
     meetingIds: readonly string[],
-    folderId: string | null,
+    projectId: string | null,
   ) => Promise<readonly string[]>;
   /** Deletes several in one request. Failed ids stay; refused ids can go permanently instead. */
   readonly deleteMeetings: (
@@ -109,6 +109,9 @@ export interface LibraryModel {
   readonly openMeeting: (meetingId: string, tab: 'Transcript' | 'Summary') => void;
   readonly goRecord: () => void;
 }
+
+const UNAVAILABLE: FailureResult = { ok: false, reason: 'io-failed' };
+const unavailable = (): Promise<FolderResult> => Promise.resolve(UNAVAILABLE);
 
 const messageOf = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
@@ -222,37 +225,19 @@ export function useLibrary(locale: string, inboxLabel: string): LibraryModel {
     searchEverything: () => {
       selectView(ALL_VIEW);
     },
-    createFolder: (name) =>
-      changeFolder(() =>
-        window.vozella.invoke('library.createFolder', {
-          name,
-          parentId: folderIdOfView(useLibraryStore.getState().view),
-        }),
-      ),
-    renameFolder: (id, name) =>
-      changeFolder(() => window.vozella.invoke('library.renameFolder', { id, name })),
-    updatePersonality: (id, colorKey, iconKey) =>
-      changeFolder(() =>
-        window.vozella.invoke('library.updateFolderPersonality', { id, colorKey, iconKey }),
-      ),
+    // Folders have no channels any more: the Projects UI replaces these in the UI lane.
+    createFolder: () => changeFolder(unavailable),
+    renameFolder: () => changeFolder(unavailable),
+    updatePersonality: () => changeFolder(unavailable),
     canDeleteFolder: (id) => canDeleteFolder(snapshot, id).allowed,
-    deleteFolder: async (id) => {
+    deleteFolder: async () => {
       await saveNote();
-      const result = await window.vozella.invoke('library.deleteFolder', { id });
-      if (result.ok) {
-        await refreshLibrary(INBOX_VIEW);
-        return 'deleted';
-      }
       await refreshLibrary();
-      if (result.reason === 'not-empty') {
-        setStatus({ key: 'LibraryDeleteFolder_NotEmpty', args: [] });
-        return 'not-empty';
-      }
-      folderFailed(result);
+      folderFailed(UNAVAILABLE);
       return 'failed';
     },
-    moveMeeting: async (meetingId, folderId) => {
-      const result = await window.vozella.invoke('library.moveMeeting', { meetingId, folderId });
+    moveMeeting: async (meetingId, projectId) => {
+      const result = await window.vozella.invoke('library.moveMeeting', { meetingId, projectId });
       await refreshLibrary();
       if (result.ok) return true;
       setStatus(
@@ -280,11 +265,11 @@ export function useLibrary(locale: string, inboxLabel: string): LibraryModel {
       if (result.ok) return 'deleted';
       return result.reason === 'trash-failed' ? 'trash-failed' : 'failed';
     },
-    moveMeetings: async (meetingIds, folderId) => {
+    moveMeetings: async (meetingIds, projectId) => {
       try {
         const { results } = await window.vozella.invoke('library.moveMeetings', {
           meetingIds,
-          folderId,
+          projectId,
         });
         const failed = results.filter((r) => !r.ok).map((r) => r.meetingId);
         if (failed.length > 0) {

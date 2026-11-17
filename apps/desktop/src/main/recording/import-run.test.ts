@@ -113,7 +113,8 @@ describe('ImportRun', () => {
     const gate = new RecordingSessionGate();
     const log: string[] = [];
     const statuses: string[] = [];
-    const processed: { request: Omit<PipelineRequest, 'folderId'>; folderId: string | null }[] = [];
+    const processed: { request: Omit<PipelineRequest, 'projectId'>; projectId: string | null }[] =
+      [];
     const youtubeCalls: string[] = [];
     const settings = new InMemorySettingsStore();
     void settings.update({ selectedSummaryProvider: 'ClaudeCode' });
@@ -129,9 +130,9 @@ describe('ImportRun', () => {
         log.push('trackPreparing');
         return () => log.push('settled');
       },
-      process: (request, folderId) => {
+      process: (request, projectId) => {
         log.push('process');
-        processed.push({ request, folderId });
+        processed.push({ request, projectId });
         return Promise.resolve();
       },
     };
@@ -187,7 +188,7 @@ describe('ImportRun', () => {
     return { run, gate, log, statuses, processed, youtubeCalls };
   }
 
-  const picked = { title: 'Call', folderId: 'f-1', path: 'C:/in/call.mp3' };
+  const picked = { title: 'Call', projectId: 'f-1', path: 'C:/in/call.mp3' };
 
   it('runs a file import on the host in order and hands the WAV to the pipeline', async () => {
     const t = setup();
@@ -203,7 +204,7 @@ describe('ImportRun', () => {
       'settled',
     ]);
     expect(t.statuses).toEqual(['Status_Importing']);
-    expect(t.processed[0]?.folderId).toBe('f-1');
+    expect(t.processed[0]?.projectId).toBe('f-1');
     expect(t.processed[0]?.request).toMatchObject({
       meetingId: 'meeting-1',
       title: 'Call',
@@ -257,7 +258,7 @@ describe('ImportRun', () => {
     expect(t.run.cancel()).toBe(false);
     const running = t.run.importUrl({
       title: 'Talk',
-      folderId: null,
+      projectId: null,
       url: 'https://youtu.be/dQw4w9WgXcQ',
     });
     await vi.waitFor(() => {

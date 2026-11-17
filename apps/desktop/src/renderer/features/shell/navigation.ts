@@ -25,6 +25,8 @@ export const NAV: readonly NavEntry[] = [
 const ROUTE_OF_TAG: Readonly<Record<ShellTag, RailRoute | '/session'>> = {
   Recording: '/record',
   History: '/library',
+  // The Projects route arrives with the UI lane; until then the tag shares the Library page.
+  Projects: '/library',
   Settings: '/settings',
   Session: '/session',
 };

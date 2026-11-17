@@ -13,6 +13,7 @@ export * from './meeting-detection';
 export * from './recording';
 export * from './live-ask';
 export * from './chat';
+export * from './projects';
 export * from './session';
 export * from './live-copilot';
 export * from './shell';

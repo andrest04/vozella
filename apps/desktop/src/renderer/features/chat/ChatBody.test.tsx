@@ -37,10 +37,10 @@ vi.mock('../ai-provider/ProviderGateDialogs', () => ({
 
 type Listener = (payload: unknown) => void;
 
-const ALL = { isVisible: true, kind: 'AllMeetings', folderId: null, meetingId: null } as const;
-const MEETING = { isVisible: true, kind: 'Meeting', folderId: null, meetingId: 'm1' } as const;
-const LIVE = { isVisible: true, kind: 'Live', folderId: null, meetingId: null } as const;
-const FOLDER = { isVisible: true, kind: 'Folder', folderId: 'f1', meetingId: null } as const;
+const ALL = { isVisible: true, kind: 'AllMeetings', projectId: null, meetingId: null } as const;
+const MEETING = { isVisible: true, kind: 'Meeting', projectId: null, meetingId: 'm1' } as const;
+const LIVE = { isVisible: true, kind: 'Live', projectId: null, meetingId: null } as const;
+const FOLDER = { isVisible: true, kind: 'Project', projectId: 'f1', meetingId: null } as const;
 
 const msg = (id: string, role: 'user' | 'assistant', text: string) => ({
   id,
@@ -56,6 +56,8 @@ const stateOf = (over: Partial<ChatStateDto> = {}): ChatStateDto => ({
   hasMessages: false,
   canStartNewChat: true,
   attachments: [],
+  threadId: null,
+  historySaved: true,
   ...over,
 });
 

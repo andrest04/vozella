@@ -64,6 +64,8 @@ export interface LiveChatContext {
   readonly digest: string | null;
   readonly title: string | null;
   readonly notes: string | null;
+  /** The project of the take, so the live chat can pack its instructions and files. */
+  readonly projectId: string | null;
 }
 
 /** The live ask of one take: the session, the hooks the recording service calls, and the asks. */
@@ -179,6 +181,8 @@ export class LiveAsk {
       digest: this.digest.current,
       title: blankToNull(take.title),
       notes: blankToNull(take.notes),
+      // Filled in from the take once the recording lane exposes its project.
+      projectId: null,
     };
   }
 

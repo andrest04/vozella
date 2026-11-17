@@ -193,7 +193,7 @@ function legacyToRecord(entry: LegacyJson, index: number): MeetingRecord {
     endedAt: endedText === null ? null : normalizeOffsetDate(endedText),
     audioFilePath: requiredString(entry, 'audioFilePath', index),
     sourcePath: null,
-    folderId: parseGuid(str(entry.folderId)),
+    projectId: parseGuid(str(entry.folderId)),
     summaryProvider: str(entry.summaryProvider),
     calendarEventId: str(entry.calendarEventId),
     calendarId: str(entry.calendarId),

@@ -111,7 +111,7 @@ export interface MeetingRecord {
   readonly audioFilePath: string;
   /** Where the record was read from. Never written. */
   readonly sourcePath: string | null;
-  readonly folderId: string | null;
+  readonly projectId: string | null;
   readonly summaryProvider: string | null;
   readonly calendarEventId: string | null;
   readonly calendarId: string | null;
@@ -136,7 +136,7 @@ export interface MeetingListItem {
   readonly title: string;
   readonly recordedAt: string;
   readonly endedAt: string | null;
-  readonly folderId: string | null;
+  readonly projectId: string | null;
   readonly snippet: string;
   readonly hasSummary: boolean;
   readonly hasTranscript: boolean;

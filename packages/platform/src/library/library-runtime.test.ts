@@ -52,12 +52,35 @@ function make(
       opened.push(p);
       return Promise.resolve(options.open ?? '');
     },
+    extractor: () => Promise.resolve({ ok: false, reason: 'unreadable' }),
     pickFolder: () => Promise.resolve(options.picked ?? null),
     version: '1.2.3.4',
     onChanged: (reason) => changes.push(reason),
   });
   return { runtime, roots, changes, opened };
 }
+
+describe('project services', () => {
+  it('builds the project services beside the meetings and the library service', async () => {
+    const { runtime } = make();
+    await runtime.start();
+    expect(runtime.projects.state()).toEqual({ status: 'ready' });
+    expect(runtime.projectService).toBeDefined();
+    expect(runtime.projectFiles).toBeDefined();
+    expect(runtime.chatThreads).toBeDefined();
+    expect(await runtime.projectContext.get('00000000-0000-4000-8000-000000000001')).toBeNull();
+  });
+
+  it('rebuilds them when the library location changes', async () => {
+    const { runtime } = make({ mode: 'production', source: 'default' });
+    await runtime.start();
+    const before = runtime.projects;
+    const target = path.join(dir, 'elsewhere');
+    await runtime.setLocation(target);
+    expect(runtime.projects).not.toBe(before);
+    expect(runtime.projects.state()).toEqual({ status: 'ready' });
+  });
+});
 
 describe('start', () => {
   it('builds the default library, ensures directories and works', async () => {

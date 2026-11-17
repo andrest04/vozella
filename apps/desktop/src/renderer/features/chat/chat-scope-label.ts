@@ -6,7 +6,7 @@ import type { Translate } from '../../i18n/translate';
 export const SCOPE_ICON: Readonly<Record<ChatScopeKind, LucideIcon>> = {
   Live: Radio,
   Meeting: FileText,
-  Folder,
+  Project: Folder,
   AllMeetings: Layers,
 };
 
@@ -23,7 +23,7 @@ export function scopeLabel(
       return t('Chat_ScopeLive');
     case 'Meeting':
       return named === null ? t('Chat_ScopeMeeting') : t('Chat_ScopeMeetingNamed', named);
-    case 'Folder':
+    case 'Project':
       return named === null ? t('Chat_ScopeFolder') : t('Chat_ScopeFolderNamed', named);
     case 'AllMeetings':
       return t('Chat_ScopeAll');

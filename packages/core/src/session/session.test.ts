@@ -26,7 +26,7 @@ function record(over: Partial<MeetingRecord> = {}): MeetingRecord {
     endedAt: null,
     audioFilePath: 'C:\\a\\m1.wav',
     sourcePath: 'C:\\a\\m1.md',
-    folderId: null,
+    projectId: null,
     summaryProvider: null,
     calendarEventId: null,
     calendarId: null,

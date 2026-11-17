@@ -184,10 +184,10 @@ export function RecordRoute() {
   const destination = useMemo(() => {
     const inbox = t('Library_Inbox');
     return (
-      buildDestinations(store.folders, inbox, locale).find((d) => d.folderId === store.folderId)
+      buildDestinations(store.folders, inbox, locale).find((d) => d.projectId === store.projectId)
         ?.path ?? inbox
     );
-  }, [store.folders, store.folderId, locale, t]);
+  }, [store.folders, store.projectId, locale, t]);
   const cloudEngine =
     engine !== null && isCloudTranscriptionKind(engine.engine) ? engine.engine : null;
   // How the captions of a cloud engine arrive is a column of the engine table: in pieces they are
@@ -234,7 +234,7 @@ export function RecordRoute() {
         onTitleChange={setTitle}
         titleDisabled={isRecording || busy === 'starting'}
         folders={store.folders}
-        folderId={store.folderId}
+        projectId={store.projectId}
         onFolderChange={setFolderId}
         destinationDisabled={isRecording || busy === 'starting'}
       >

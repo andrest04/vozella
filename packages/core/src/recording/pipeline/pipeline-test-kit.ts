@@ -27,7 +27,7 @@ export function makeRequest(patch: Partial<PipelineRequest> = {}): PipelineReque
     title: 'Standup',
     liveDraft: null,
     pausedDurationMs: 0,
-    folderId: null,
+    projectId: null,
     highlightsMs: [],
     ...patch,
   };
@@ -41,7 +41,7 @@ export function makeMeeting(patch: Partial<MeetingRecord> = {}): MeetingRecord {
     endedAt: null,
     audioFilePath: 'C:/lib/standup.wav',
     sourcePath: null,
-    folderId: null,
+    projectId: null,
     summaryProvider: null,
     calendarEventId: null,
     calendarId: null,

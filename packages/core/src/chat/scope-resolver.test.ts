@@ -15,7 +15,7 @@ describe('ChatScopeResolverTests', () => {
     expect(resolveScope('Settings', true, F, M)).toEqual({
       isVisible: false,
       kind: 'AllMeetings',
-      folderId: null,
+      projectId: null,
       meetingId: null,
     });
   });
@@ -24,7 +24,7 @@ describe('ChatScopeResolverTests', () => {
       expect(resolveScope(surface, true, F, M)).toEqual({
         isVisible: true,
         kind: 'Live',
-        folderId: null,
+        projectId: null,
         meetingId: null,
       });
     }
@@ -33,15 +33,15 @@ describe('ChatScopeResolverTests', () => {
     expect(resolveScope('Session', false, F, M)).toEqual({
       isVisible: true,
       kind: 'Meeting',
-      folderId: null,
+      projectId: null,
       meetingId: M,
     });
   });
   it('Resolve_HistoryWithFolder_IsExactFolder', () => {
     expect(resolveScope('History', false, F, M)).toEqual({
       isVisible: true,
-      kind: 'Folder',
-      folderId: F,
+      kind: 'Project',
+      projectId: F,
       meetingId: null,
     });
   });
@@ -52,7 +52,7 @@ describe('ChatScopeResolverTests', () => {
     expect(resolveScope('Recording', false, F, M)).toEqual({
       isVisible: true,
       kind: 'AllMeetings',
-      folderId: null,
+      projectId: null,
       meetingId: null,
     });
   });
@@ -73,14 +73,14 @@ describe('ChatScopeResolverTests', () => {
     const decision = resolveScope('Session', false, null, M);
     expect(matchesOpenThread({ scopeKind: 'Meeting', meetingId: 'other' }, decision)).toBe(false);
     expect(matchesOpenThread({ scopeKind: 'AllMeetings', meetingId: M }, decision)).toBe(false);
-    expect(matchesOpenThread({ scopeKind: 'Meeting', folderId: F, meetingId: M }, decision)).toBe(
+    expect(matchesOpenThread({ scopeKind: 'Meeting', projectId: F, meetingId: M }, decision)).toBe(
       false,
     );
   });
   it('MatchesOpenThread_WhenScopeIdsMatch_IsTrue', () => {
     expect(
       matchesOpenThread(
-        { scopeKind: 'Meeting', folderId: null, meetingId: M },
+        { scopeKind: 'Meeting', projectId: null, meetingId: M },
         resolveScope('Session', false, null, M),
       ),
     ).toBe(true);
@@ -104,12 +104,19 @@ describe('ChatScopeResolverTests', () => {
     let count = 0;
     ws.on('scopeChanged', () => (count += 1));
     ws.setCurrentShellTag('History');
-    ws.publishSelectedFolder(null);
+    ws.publishSelectedProject(null);
     ws.selectMeeting(M);
     ws.setCaptureActive(true);
     expect(count).toBe(4);
     ws.setLiveTranscript('hello');
     expect(count).toBe(4);
     expect(ws.state.liveTranscript).toBe('hello');
+  });
+});
+
+describe('the Projects surface', () => {
+  it('is a known surface, not Unknown', () => {
+    expect(parseSurface('Projects')).toBe('Projects');
+    expect(parseSurface('Folders')).toBe('Unknown');
   });
 });

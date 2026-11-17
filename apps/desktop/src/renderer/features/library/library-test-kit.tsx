@@ -28,7 +28,7 @@ export const meetingRecord = (
   endedAt: null,
   audioFilePath: '',
   sourcePath: null,
-  folderId: null,
+  projectId: null,
   summaryProvider: null,
   calendarEventId: null,
   calendarId: null,
@@ -123,7 +123,7 @@ export function installFakeApi(options: { startupError?: string | null } = {}) {
       case 'library.deleteFolder': {
         const result = await service.deleteFolder(input.id as string);
         if (result.ok) {
-          workspace.publishSelectedFolder(null);
+          workspace.publishSelectedProject(null);
           emit('library.changed', { reason: 'folder' });
         }
         return result;
@@ -173,8 +173,8 @@ export function installFakeApi(options: { startupError?: string | null } = {}) {
         if (action.type === 'selectMeeting') workspace.selectMeeting(action.id);
         else if (action.type === 'openSession') workspace.openSession(action.tab);
         else if (action.type === 'navigateTo') workspace.navigateTo(action.tag);
-        else if (action.type === 'publishSelectedFolder') {
-          workspace.publishSelectedFolder(action.folderId);
+        else if (action.type === 'publishSelectedProject') {
+          workspace.publishSelectedProject(action.projectId);
         }
         return { state: workspace.state };
       }

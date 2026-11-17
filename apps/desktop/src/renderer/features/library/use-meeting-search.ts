@@ -8,6 +8,14 @@ export const SEARCH_DEBOUNCE_MS = 200;
 
 const NO_HITS: SearchHits = new Map();
 
+/** The wire names a project and no project; the page's view still names a folder and the Inbox. */
+const searchScope = (view: LibraryView) =>
+  view.kind === 'folder'
+    ? ({ kind: 'project', id: view.id } as const)
+    : view.kind === 'inbox'
+      ? ({ kind: 'none' } as const)
+      : ({ kind: 'all' } as const);
+
 export interface MeetingSearch {
   readonly hits: SearchHits;
   /** The answer for this query has not arrived. */
@@ -42,7 +50,7 @@ export function useMeetingSearch(query: string, view: LibraryView): MeetingSearc
     const requestId = sequence.current;
     const timer = setTimeout(() => {
       void window.vozella
-        .invoke('library.search', { query: text, scope: scope.current, requestId })
+        .invoke('library.search', { query: text, scope: searchScope(scope.current), requestId })
         .then((result) => {
           if (requestId !== sequence.current || result.stale) return;
           setAnswer({

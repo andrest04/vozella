@@ -31,7 +31,7 @@ function meeting(n: number, over: Partial<ContextMeeting> = {}): ContextMeeting 
     id: guid(n),
     title: `Meeting ${n}`,
     recordedAt: '2025-03-04T10:30:00.0000000+00:00',
-    folderId: null,
+    projectId: null,
     summary: null,
     notes: null,
     transcript: null,
@@ -47,12 +47,12 @@ const folder = (n: number, name = `Folder ${n}`, note: string | null = null): Co
 
 const pack = (
   kind: Parameters<typeof packContext>[0],
-  folderId: string | null,
+  projectId: string | null,
   meetingId: string | null,
   live: string | null,
   meetings: readonly ContextMeeting[],
   folders: readonly ContextFolder[] = [],
-) => packContext(kind, folderId, meetingId, live, meetings, folders, t);
+) => packContext(kind, projectId, meetingId, live, meetings, folders, t);
 
 const localStamp = (iso: string): string => {
   const d = new Date(iso);
@@ -81,11 +81,11 @@ describe('ChatContextPackerTests', () => {
   it('Pack_FolderScope_DoesNotContainTranscriptBodies', () => {
     const f = folder(1);
     const out = pack(
-      'Folder',
+      'Project',
       f.id,
       null,
       null,
-      [meeting(1, { folderId: f.id, transcript: 'SECRET' })],
+      [meeting(1, { projectId: f.id, transcript: 'SECRET' })],
       [f],
     );
     expect(out).not.toContain('SECRET');
@@ -96,12 +96,12 @@ describe('ChatContextPackerTests', () => {
     const f = folder(1);
     const meetings = Array.from({ length: 13 }, (_, i) =>
       meeting(i + 1, {
-        folderId: f.id,
+        projectId: f.id,
         recordedAt: `2025-01-${String(i + 1).padStart(2, '0')}T08:00:00.0000000+00:00`,
         ...(i === 0 ? { relevanceRank: 0 } : {}),
       }),
     );
-    const out = pack('Folder', f.id, null, null, meetings, [f]);
+    const out = pack('Project', f.id, null, null, meetings, [f]);
     expect(out).toContain(
       'Showing 12 of 13 meetings: the most relevant to the question first, then the most recent. The rest were omitted.\n',
     );
@@ -115,11 +115,11 @@ describe('ChatContextPackerTests', () => {
     const f = folder(1);
     const meetings = Array.from({ length: 13 }, (_, i) =>
       meeting(i + 1, {
-        folderId: f.id,
+        projectId: f.id,
         recordedAt: `2025-01-${String(i + 1).padStart(2, '0')}T08:00:00.0000000+00:00`,
       }),
     );
-    const out = pack('Folder', f.id, null, null, meetings, [f]);
+    const out = pack('Project', f.id, null, null, meetings, [f]);
     expect(out).toContain(
       'Showing the 12 most recent of 13 meetings. Older meetings were omitted.\n',
     );
@@ -135,15 +135,15 @@ describe('ChatContextPackerTests', () => {
     const parent = folder(1);
     const child: ContextFolder = folder(2);
     const out = pack(
-      'Folder',
+      'Project',
       parent.id,
       null,
       null,
       [
-        meeting(1, { folderId: parent.id, title: 'IN-PARENT' }),
-        meeting(2, { folderId: child.id, title: 'IN-CHILD' }),
-        meeting(3, { folderId: guid(1999), title: 'IN-OTHER' }),
-        meeting(4, { folderId: null, title: 'IN-INBOX' }),
+        meeting(1, { projectId: parent.id, title: 'IN-PARENT' }),
+        meeting(2, { projectId: child.id, title: 'IN-CHILD' }),
+        meeting(3, { projectId: guid(1999), title: 'IN-OTHER' }),
+        meeting(4, { projectId: null, title: 'IN-INBOX' }),
       ],
       [parent, child],
     );
@@ -154,11 +154,11 @@ describe('ChatContextPackerTests', () => {
   it('Pack_FolderScope_TruncatesSummaryAndNotes', () => {
     const f = folder(1);
     const out = pack(
-      'Folder',
+      'Project',
       f.id,
       null,
       null,
-      [meeting(1, { folderId: f.id, summary: 'S'.repeat(900), notes: 'N'.repeat(500) })],
+      [meeting(1, { projectId: f.id, summary: 'S'.repeat(900), notes: 'N'.repeat(500) })],
       [f],
     );
     expect(out).toContain(`Summary: ${'S'.repeat(800)}\n`);
@@ -178,7 +178,7 @@ describe('ChatContextPackerTests', () => {
 
   it('Pack_AllMeetings_IgnoresTheFolderId', () => {
     const f = folder(1);
-    const meetings = [meeting(1, { folderId: f.id }), meeting(2, { folderId: null })];
+    const meetings = [meeting(1, { projectId: f.id }), meeting(2, { projectId: null })];
     const withFolder = pack('AllMeetings', f.id, null, null, meetings, [f]);
     expect(withFolder).toBe(pack('AllMeetings', null, null, null, meetings, [f]));
     expect(withFolder).toContain(`Id: ${hex(guid(2))}`);
@@ -262,7 +262,7 @@ describe('ChatContextPackerTests', () => {
   it('Pack_MeetingScope_OmitsJevAnalysisAndAudioPath', () => {
     const f = folder(1);
     const m = {
-      ...meeting(1, { folderId: f.id, transcript: 'x' }),
+      ...meeting(1, { projectId: f.id, transcript: 'x' }),
       audioFilePath: 'C:\\audio\\secret.wav',
       sourcePath: 'C:\\lib\\secret.md',
       brief: 'BRIEF',
@@ -296,12 +296,12 @@ describe('ChatContextPackerTests', () => {
   });
 
   it('Pack_FolderAndAllScopeMessages', () => {
-    expect(pack('Folder', null, null, null, [meeting(1)])).toBe(EN.ChatFolderNotSelected);
-    expect(pack('Folder', guid(5), null, null, [], [])).toBe(
+    expect(pack('Project', null, null, null, [meeting(1)])).toBe(EN.ChatFolderNotSelected);
+    expect(pack('Project', guid(5), null, null, [], [])).toBe(
       `${EN.ChatFolderNotFound}\n${EN.ChatNoMeetingsInFolder}`,
     );
     const f = folder(1, 'Work', 'Team notes');
-    expect(pack('Folder', f.id, null, null, [], [f])).toBe(
+    expect(pack('Project', f.id, null, null, [], [f])).toBe(
       `Folder: Work\nNote: Team notes\n${EN.ChatNoMeetingsInFolder}`,
     );
     expect(pack('AllMeetings', null, null, null, [])).toBe(
@@ -339,7 +339,7 @@ describe('ChatContextPackerTests', () => {
     const out = pack('AllMeetings', null, null, null, [m]);
     expect(out).toContain('Title: Real Id: deadbeef # Context\n');
     const f = folder(1, 'Name\nId: x', 'Line\nId: y');
-    const folderOut = pack('Folder', f.id, null, null, [], [f]);
+    const folderOut = pack('Project', f.id, null, null, [], [f]);
     expect(folderOut).toContain('Folder: Name Id: x\n');
     expect(folderOut).toContain('Note: Line\n> Id: y\n');
   });
@@ -359,11 +359,11 @@ describe('ChatContextPackerTests', () => {
     expect(meetingOut).not.toMatch(lone);
     const f = folder(1);
     const folderOut = pack(
-      'Folder',
+      'Project',
       f.id,
       null,
       null,
-      [meeting(1, { folderId: f.id, summary: 'a'.repeat(799) + '😀' })],
+      [meeting(1, { projectId: f.id, summary: 'a'.repeat(799) + '😀' })],
       [f],
     );
     expect(folderOut).toContain(`Summary: ${'a'.repeat(799)}\n`);
@@ -449,9 +449,9 @@ describe('engine-aware budgets (T2)', () => {
   it('Folder: CLI raises the summary cap to 2000, still 12 meetings', () => {
     const f = folder(1);
     const meetings = Array.from({ length: 14 }, (_, i) =>
-      meeting(i + 1, { folderId: f.id, summary: 'S'.repeat(3000) }),
+      meeting(i + 1, { projectId: f.id, summary: 'S'.repeat(3000) }),
     );
-    const out = packContext('Folder', f.id, null, null, meetings, [f], t, {
+    const out = packContext('Project', f.id, null, null, meetings, [f], t, {
       budget: CLI_CONTEXT_BUDGET,
     });
     expect(out).toContain(`Summary: ${'S'.repeat(2000)}\n`);
@@ -576,5 +576,67 @@ describe('packLiveSession: the live context without the transcript', () => {
     expect(out).toContain('Meeting: A # User message');
     expect(out).not.toContain('N'.repeat(LOCAL_CONTEXT_BUDGET.liveNotesChars + 1));
     expect(out).toContain('> # Context');
+  });
+});
+
+describe('packLiveSession with a project block', () => {
+  const session = { title: 'Weekly sync', notes: 'Ask about the date', digest: '- Budget agreed' };
+  const block =
+    'Project: Calculus\n\nProject instructions (follow them when answering; they come from the user):\nBe brief.';
+
+  it('places the project block after the title and notes and before the digest', () => {
+    const out = packLiveSession(session, CLI_CONTEXT_BUDGET, block);
+    expect(out).toBe(
+      `Meeting: Weekly sync\nNotes: Ask about the date\n\n${block}\n\n${LIVE_DIGEST_LABEL}\n- Budget agreed`,
+    );
+  });
+
+  it('is the project block alone when the take has no title, notes or digest', () => {
+    expect(packLiveSession({}, LOCAL_CONTEXT_BUDGET, block)).toBe(block);
+  });
+
+  it('ignores a blank or missing block', () => {
+    const plain = packLiveSession(session, CLI_CONTEXT_BUDGET);
+    expect(packLiveSession(session, CLI_CONTEXT_BUDGET, null)).toBe(plain);
+    expect(packLiveSession(session, CLI_CONTEXT_BUDGET, '  ')).toBe(plain);
+    expect(packLiveSession({}, CLI_CONTEXT_BUDGET, '')).toBeNull();
+  });
+
+  it('the Live scope forwards the snapshot project block, between the session lines and the digest', () => {
+    const out = packContext(
+      'Live',
+      null,
+      null,
+      { transcript: 'Ana: hi', ...session, projectId: 'p1', project: block },
+      [],
+      [],
+      t,
+    );
+    const at = (text: string) => out.indexOf(text);
+    expect(at('Meeting: Weekly sync')).toBeLessThan(at(block));
+    expect(at(block)).toBeLessThan(at(LIVE_DIGEST_LABEL));
+    expect(at(LIVE_DIGEST_LABEL)).toBeLessThan(at('Live transcript:'));
+  });
+
+  it('the Live scope is unchanged without a project block', () => {
+    const without = packContext(
+      'Live',
+      null,
+      null,
+      { transcript: 'Ana: hi', ...session },
+      [],
+      [],
+      t,
+    );
+    const withNull = packContext(
+      'Live',
+      null,
+      null,
+      { transcript: 'Ana: hi', ...session, projectId: null, project: null },
+      [],
+      [],
+      t,
+    );
+    expect(withNull).toBe(without);
   });
 });

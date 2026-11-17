@@ -38,7 +38,7 @@ export function meetingFixture(n: number, over: Partial<ContextMeeting> = {}): C
     id: guid(n),
     title: `Meeting ${n}`,
     recordedAt: '2025-03-04T10:30:00.0000000+00:00',
-    folderId: null,
+    projectId: null,
     summary: null,
     notes: null,
     transcript: null,
@@ -50,7 +50,7 @@ export function meetingFixture(n: number, over: Partial<ContextMeeting> = {}): C
 export const scopeOf = (over: Partial<ChatScopeDecision> = {}): ChatScopeDecision => ({
   isVisible: true,
   kind: 'AllMeetings',
-  folderId: null,
+  projectId: null,
   meetingId: null,
   ...over,
 });
@@ -73,9 +73,9 @@ export class FakeChatMeetingReader implements ChatMeetingReader {
     return this.run(`byId:${id}`, () => this.meetings.find((m) => m.id === id) ?? null);
   }
 
-  meetingsInFolder(folderId: string): Promise<readonly ContextMeeting[]> {
-    return this.run(`folder:${folderId}`, () =>
-      this.meetings.filter((m) => m.folderId === folderId),
+  meetingsInFolder(projectId: string): Promise<readonly ContextMeeting[]> {
+    return this.run(`folder:${projectId}`, () =>
+      this.meetings.filter((m) => m.projectId === projectId),
     );
   }
 

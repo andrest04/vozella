@@ -22,7 +22,7 @@ export type SidebarLocation = 'library' | 'session' | 'elsewhere';
 /** The rename, personality and delete entries, in the sidebar and in the folder header. */
 export function folderMenuEntries(
   t: Translate,
-  folderId: string,
+  projectId: string,
   run: (request: FolderRequest) => void,
 ): MenuEntry[] {
   return [
@@ -31,7 +31,7 @@ export function folderMenuEntries(
       label: t('LibraryContext_Rename'),
       icon: Pencil,
       onSelect: () => {
-        run({ kind: 'rename', folderId });
+        run({ kind: 'rename', projectId });
       },
     },
     {
@@ -39,7 +39,7 @@ export function folderMenuEntries(
       label: t('LibraryContext_Personality'),
       icon: Palette,
       onSelect: () => {
-        run({ kind: 'personality', folderId });
+        run({ kind: 'personality', projectId });
       },
     },
     {
@@ -47,7 +47,7 @@ export function folderMenuEntries(
       label: t('LibraryContext_Delete'),
       icon: Trash,
       onSelect: () => {
-        run({ kind: 'delete', folderId });
+        run({ kind: 'delete', projectId });
       },
     },
   ];
@@ -137,7 +137,7 @@ export function LibraryFolders({ location }: { readonly location: SidebarLocatio
             disarmExpand();
             const meetingIds = useLibraryStore.getState().draggedIds;
             if (meetingIds.length === 0) return;
-            requestDrop({ meetingIds, folderId: id === INBOX_NODE_ID ? null : id });
+            requestDrop({ meetingIds, projectId: id === INBOX_NODE_ID ? null : id });
           },
           'data-drop-target': dropId === id ? 'true' : undefined,
         };

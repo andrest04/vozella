@@ -1,4 +1,4 @@
-import type { FolderDto } from '@vozella/contracts';
+import type { FolderRecord } from '@vozella/core';
 import { Ellipsis, Search, X } from 'lucide-react';
 import type { KeyboardEvent, ReactNode, RefObject } from 'react';
 import { Button, Icon, IconButton, Input, Menu, Textarea, type MenuEntry } from '../../ui';
@@ -17,7 +17,7 @@ export interface ListHeaderProps {
   readonly filterResults: string;
   readonly filterResultsLabel: string;
   /** Only a real folder has an icon, a path, a menu and a note. */
-  readonly folder: FolderDto | null;
+  readonly folder: FolderRecord | null;
   readonly breadcrumbs: ReactNode;
   readonly menuEntries: readonly MenuEntry[];
   readonly menuLabel: string;

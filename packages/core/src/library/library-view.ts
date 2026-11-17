@@ -28,15 +28,15 @@ export const folderView = (id: string): LibraryView => ({ kind: 'folder', id });
 export function isInLibraryView(
   view: LibraryView,
   knownFolderIds: ReadonlySet<string>,
-  meeting: Pick<MeetingListItem, 'folderId'>,
+  meeting: Pick<MeetingListItem, 'projectId'>,
 ): boolean {
   switch (view.kind) {
     case 'all':
       return true;
     case 'inbox':
-      return meeting.folderId === null || !knownFolderIds.has(meeting.folderId);
+      return meeting.projectId === null || !knownFolderIds.has(meeting.projectId);
     case 'folder':
-      return meeting.folderId === view.id;
+      return meeting.projectId === view.id;
   }
 }
 
@@ -113,11 +113,11 @@ export type DeleteFolderCheck =
   | { readonly allowed: false; readonly reason: 'not-empty' | 'not-found' };
 
 /** A folder can go only when it has no child folders and no meetings filed in it. */
-export function canDeleteFolder(snapshot: LibrarySnapshot, folderId: string): DeleteFolderCheck {
-  if (!snapshot.folders.some((f) => f.id === folderId))
+export function canDeleteFolder(snapshot: LibrarySnapshot, projectId: string): DeleteFolderCheck {
+  if (!snapshot.folders.some((f) => f.id === projectId))
     return { allowed: false, reason: 'not-found' };
   const busy =
-    snapshot.folders.some((f) => f.parentId === folderId) ||
-    snapshot.meetings.some((m) => m.folderId === folderId);
+    snapshot.folders.some((f) => f.parentId === projectId) ||
+    snapshot.meetings.some((m) => m.projectId === projectId);
   return busy ? { allowed: false, reason: 'not-empty' } : { allowed: true };
 }

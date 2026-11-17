@@ -118,7 +118,7 @@ describe.runIf(process.env.VOZELLA_LIBRARY_TIMING === '1')(
 
       const ids = Array.from({ length: MOVES }, (_, index) => idOf(index));
       const move = await elapsed(() =>
-        service.moveMeetings({ meetingIds: ids, folderId: FOLDER_1 }),
+        service.moveMeetings({ meetingIds: ids, projectId: FOLDER_1 }),
       );
       report(`moveMeetings ${String(MOVES)}: ${String(move.ms)} ms`);
       expect(move.value.every((result) => result.ok)).toBe(true);

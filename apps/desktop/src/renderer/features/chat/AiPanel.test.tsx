@@ -18,7 +18,7 @@ function install(initial: Partial<WorkspaceStateDto> = {}, recording = { isPause
     lastProcessedMeetingId: null,
     sessionTab: 'Transcript',
     currentShellTag: 'Recording',
-    selectedFolderId: null,
+    selectedProjectId: null,
     liveTranscript: '',
     isCaptureActive: false,
     ...initial,
@@ -38,8 +38,8 @@ function install(initial: Partial<WorkspaceStateDto> = {}, recording = { isPause
         if (entry?.delay) await entry.delay;
         return { record: entry ? { title: entry.title } : null };
       }
-      case 'library.load':
-        return { ok: true, folders: [{ id: FOLDER, name: 'Calculo' }], meetings: [], skipped: [] };
+      case 'projects.list':
+        return { projects: [{ id: FOLDER, name: 'Calculo' }] };
       case 'chat.setScope':
         return { canStartNewChat: true };
       case 'chat.newChat':
@@ -257,13 +257,13 @@ describe('AiPanel scope chip (items 6 to 11)', () => {
   });
 
   it('shows the folder name on the library, and Carpeta without a name in Spanish', async () => {
-    install({ currentShellTag: 'History', selectedFolderId: FOLDER });
+    install({ currentShellTag: 'History', selectedProjectId: FOLDER });
     mount();
     await waitFor(() => {
       expect(chip().textContent).toBe('Folder: Calculo');
     });
     cleanup();
-    install({ currentShellTag: 'History', selectedFolderId: 'missing' });
+    install({ currentShellTag: 'History', selectedProjectId: 'missing' });
     mount('es');
     await waitFor(() => {
       expect(chip().textContent).toBe('Carpeta');
@@ -275,7 +275,7 @@ describe('AiPanel scope chip (items 6 to 11)', () => {
     for (const state of [
       { isCaptureActive: true },
       { currentShellTag: 'Session' as const, selectedMeetingId: MEETING },
-      { currentShellTag: 'History' as const, selectedFolderId: FOLDER },
+      { currentShellTag: 'History' as const, selectedProjectId: FOLDER },
       {},
     ]) {
       install(state);
@@ -334,9 +334,9 @@ describe('scope delivery (items 18 to 20)', () => {
     await api.change({
       currentShellTag: 'Session',
       selectedMeetingId: null,
-      selectedFolderId: FOLDER,
+      selectedProjectId: FOLDER,
     });
-    await api.change({ currentShellTag: 'Recording', selectedFolderId: null });
+    await api.change({ currentShellTag: 'Recording', selectedProjectId: null });
     await act(async () => {
       release();
       await Promise.resolve();

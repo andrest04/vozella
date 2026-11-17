@@ -1,4 +1,4 @@
-export const SHELL_TAGS = ['Recording', 'History', 'Settings', 'Session'] as const;
+export const SHELL_TAGS = ['Recording', 'Projects', 'History', 'Settings', 'Session'] as const;
 export type ShellTag = (typeof SHELL_TAGS)[number];
 export const SESSION_TABS = ['Transcript', 'Summary'] as const;
 export type SessionTab = (typeof SESSION_TABS)[number];
@@ -8,8 +8,8 @@ export interface WorkspaceState {
   readonly lastProcessedMeetingId: string | null;
   readonly sessionTab: SessionTab;
   readonly currentShellTag: ShellTag;
-  /** null is Inbox. */
-  readonly selectedFolderId: string | null;
+  /** The project whose page is open; null on every other route (and for no project). */
+  readonly selectedProjectId: string | null;
   readonly liveTranscript: string;
   readonly isCaptureActive: boolean;
 }
@@ -34,7 +34,7 @@ function isSessionTab(value: string): value is SessionTab {
 }
 
 /**
- * App-lifetime hub (spec 4.6): selected meeting, selected Library folder, shell tag, and
+ * App-lifetime hub (spec 4.6): selected meeting, selected project, shell tag, and
  * navigation requests. Pages ask for navigation; only the shell acts on it.
  */
 export class Workspace {
@@ -43,7 +43,7 @@ export class Workspace {
     lastProcessedMeetingId: null,
     sessionTab: 'Transcript',
     currentShellTag: 'Recording',
-    selectedFolderId: null,
+    selectedProjectId: null,
     liveTranscript: '',
     isCaptureActive: false,
   };
@@ -96,8 +96,8 @@ export class Workspace {
     this.navigateTo('Session');
   }
 
-  publishSelectedFolder(folderId: string | null): void {
-    this.patch({ selectedFolderId: folderId });
+  publishSelectedProject(projectId: string | null): void {
+    this.patch({ selectedProjectId: projectId });
     this.emit('scopeChanged', undefined);
   }
 

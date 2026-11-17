@@ -232,12 +232,12 @@ function build(options: Options = {}) {
     takes,
     controller,
     library: {
-      audioDirectory: (folderId) =>
+      audioDirectory: (projectId) =>
         options.audioDirectoryError
           ? Promise.reject(options.audioDirectoryError)
           : Promise.resolve(
-              folderId !== null && folders[folderId] !== undefined
-                ? path.join(root, folders[folderId])
+              projectId !== null && folders[projectId] !== undefined
+                ? path.join(root, folders[projectId])
                 : inbox,
             ),
       folderExists: (id) => Promise.resolve(folders[id] !== undefined),
@@ -313,7 +313,7 @@ function build(options: Options = {}) {
 
 const sources = {
   title: 'Standup',
-  folderId: null,
+  projectId: null,
   microphone: { kind: 'SystemDefault' as const, deviceId: null },
   processId: null,
   appName: null,
@@ -322,7 +322,7 @@ const sources = {
 describe('RecordingService start', () => {
   it('records into the dated stem of the destination folder and publishes the state', async () => {
     const t = build({ folders: { f1: 'Clients' } });
-    const result = await t.service.start({ ...sources, folderId: 'f1' });
+    const result = await t.service.start({ ...sources, projectId: 'f1' });
     expect(result).toMatchObject({ started: true, meetingId: 'meeting-1' });
     const state = t.service.getState();
     expect(state).toMatchObject({ phase: 'Recording', isRecording: true, isPaused: false });
@@ -400,7 +400,7 @@ describe('RecordingService start', () => {
     });
     const result = await t.service.start({
       title: 'Pill',
-      folderId: null,
+      projectId: null,
       microphone: null,
       appName: null,
     });
@@ -713,7 +713,7 @@ describe('RecordingService live take output', () => {
 describe('RecordingService stop', () => {
   it('74, 77, 78: saves the meeting with the title, folder and audio of the take', async () => {
     const t = build({ folders: { f1: 'Clients' }, liveDraft: '[00:00.00-00:01.00] live' });
-    await t.service.start({ ...sources, folderId: 'f1' });
+    await t.service.start({ ...sources, projectId: 'f1' });
     now += 30_000;
     const stopped = t.service.stop();
     expect(t.service.getState().isRecording).toBe(true);
@@ -721,7 +721,7 @@ describe('RecordingService stop', () => {
     expect(t.service.getState()).toMatchObject({ phase: 'Processing', isProcessing: true });
     await t.service.completion;
     const saved = t.store.saves[0];
-    expect(saved).toMatchObject({ id: 'meeting-1', title: 'Standup', folderId: 'f1' });
+    expect(saved).toMatchObject({ id: 'meeting-1', title: 'Standup', projectId: 'f1' });
     expect(saved?.audioFilePath).toBe(path.join(root, 'Clients', '2026-11-03 Standup.wav'));
     const state = t.service.getState();
     expect(state.phase).toBe('Idle');
@@ -836,11 +836,11 @@ describe('RecordingService stop', () => {
 
   it('190: a destination folder deleted during the take files the meeting in the Inbox', async () => {
     const t = build({ folders: { f1: 'Clients' } });
-    await t.service.start({ ...sources, folderId: 'f1' });
+    await t.service.start({ ...sources, projectId: 'f1' });
     delete t.folders.f1;
     await t.service.stop();
     await t.service.completion;
-    expect(t.store.saves[0]?.folderId).toBeNull();
+    expect(t.store.saves[0]?.projectId).toBeNull();
   });
 
   it('74: a second stop joins the one that runs; the capture stops once', async () => {
@@ -1038,7 +1038,7 @@ describe('settings writes (B-31)', () => {
 });
 
 describe('RecordingService import (2.12)', () => {
-  const picked = { title: 'Call', folderId: null, path: 'C:/in/call.mp3' };
+  const picked = { title: 'Call', projectId: null, path: 'C:/in/call.mp3' };
 
   it('170 to 173, B-19: converts at the dated stem, ends at the file time, runs the pipeline', async () => {
     const t = build({ fileTimeMs: 2_000_000 });
@@ -1181,7 +1181,7 @@ function holdImport(t: ReturnType<typeof build>): { converting(): boolean; relea
 }
 
 describe('RecordingService import from YouTube', () => {
-  const link = { title: 'Talk', folderId: null, url: 'https://youtu.be/dQw4w9WgXcQ' };
+  const link = { title: 'Talk', projectId: null, url: 'https://youtu.be/dQw4w9WgXcQ' };
   const canonical = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
   const workFolder = (): string => path.join(root, 'youtube', 'meeting-1');
 
@@ -1299,7 +1299,7 @@ describe('RecordingService entry points and close state', () => {
     title: 'Old',
     liveDraft: null,
     pausedDurationMs: 0,
-    folderId: null,
+    projectId: null,
     highlightsMs: [],
   };
 
@@ -1417,7 +1417,7 @@ describe('RecordingService entry points and close state', () => {
     });
 
     it('an import in flight finishes into a saved meeting', async () => {
-      const picked = { title: 'Call', folderId: null, path: 'C:/in/call.mp3' };
+      const picked = { title: 'Call', projectId: null, path: 'C:/in/call.mp3' };
       const t = build();
       const release = holdCall(t, 'importAudio');
       const importing = t.service.importAudio(picked);

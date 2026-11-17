@@ -3,15 +3,15 @@ import { folderDirectoryName } from './names';
 
 export const MAX_CHAIN_STEPS = 64;
 
-/** Folders from the root down to `folderId`. Stops at a missing parent or after 64 steps. */
+/** Folders from the root down to `projectId`. Stops at a missing parent or after 64 steps. */
 export function folderChain(
   folders: readonly FolderRecord[],
-  folderId: string | null,
+  projectId: string | null,
 ): FolderRecord[] {
-  if (folderId === null) return [];
+  if (projectId === null) return [];
   const byId = new Map(folders.map((f) => [f.id, f]));
   const chain: FolderRecord[] = [];
-  let current = byId.get(folderId);
+  let current = byId.get(projectId);
   while (current && chain.length < MAX_CHAIN_STEPS) {
     chain.unshift(current);
     current = current.parentId === null ? undefined : byId.get(current.parentId);
@@ -22,9 +22,9 @@ export function folderChain(
 /** Directory path segments under the Library root. An empty chain is Inbox. */
 export function folderDirectorySegments(
   folders: readonly FolderRecord[],
-  folderId: string | null,
+  projectId: string | null,
 ): string[] {
-  const chain = folderChain(folders, folderId);
+  const chain = folderChain(folders, projectId);
   return chain.length === 0 ? ['Inbox'] : chain.map((f) => folderDirectoryName(f.name));
 }
 
@@ -67,7 +67,7 @@ export function buildFolderTree(folders: readonly FolderRecord[], locale?: strin
 
 export interface MoveDestination {
   /** null is Inbox. */
-  readonly folderId: string | null;
+  readonly projectId: string | null;
   readonly path: string;
 }
 
@@ -78,11 +78,11 @@ export function flattenFolderPaths(
   locale?: string,
 ): MoveDestination[] {
   if (inboxLabel.trim() === '') throw new Error('The Inbox label must not be blank.');
-  const result: MoveDestination[] = [{ folderId: null, path: inboxLabel }];
+  const result: MoveDestination[] = [{ projectId: null, path: inboxLabel }];
   const walk = (nodes: readonly FolderNode[], prefix: string | null): void => {
     for (const node of nodes) {
       const path = prefix === null ? node.folder.name : `${prefix} / ${node.folder.name}`;
-      result.push({ folderId: node.folder.id, path });
+      result.push({ projectId: node.folder.id, path });
       walk(node.children, path);
     }
   };
@@ -92,7 +92,7 @@ export function flattenFolderPaths(
 
 export interface Breadcrumb {
   /** null is the Inbox item. */
-  readonly folderId: string | null;
+  readonly projectId: string | null;
 }
 
 /** Inbox, then the chain root to selected (spec 2.4). */
@@ -100,7 +100,10 @@ export function buildBreadcrumbs(
   folders: readonly FolderRecord[],
   selectedId: string | null,
 ): Breadcrumb[] {
-  return [{ folderId: null }, ...folderChain(folders, selectedId).map((f) => ({ folderId: f.id }))];
+  return [
+    { projectId: null },
+    ...folderChain(folders, selectedId).map((f) => ({ projectId: f.id })),
+  ];
 }
 
 /** Ids of the ancestors of the target: the only nodes a reload expands. */

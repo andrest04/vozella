@@ -24,14 +24,14 @@ describe('recording entry points', () => {
   it('startRecording uses the remembered sources, the selected folder and an optional meeting', async () => {
     const service = fakeService();
     const workspace = new Workspace();
-    workspace.publishSelectedFolder('f1');
+    workspace.publishSelectedProject('f1');
     const entry = createRecordingEntryPoints(service as unknown as RecordingService, workspace);
     expect(await entry.startRecording({ meetingId: 'm1' })).toEqual({
       started: true,
       meetingId: 'm1',
     });
     expect(service.start).toHaveBeenCalledWith(
-      { title: '', folderId: 'f1', microphone: null, appName: null },
+      { title: '', projectId: 'f1', microphone: null, appName: null },
       { meetingId: 'm1' },
     );
   });

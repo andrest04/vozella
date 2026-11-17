@@ -107,17 +107,9 @@ test('Set up to record asks, installs the engine and shows Record', async () => 
 
 test('the destination lists the Inbox first, then the folders as paths', async () => {
   await page.evaluate(async () => {
-    const parent = await window.vozella.invoke('library.createFolder', {
-      name: 'Clients',
-      parentId: null,
-    });
-    if (parent.ok) {
-      await window.vozella.invoke('library.createFolder', {
-        name: 'Acme',
-        parentId: parent.folder.id,
-      });
-    }
-    await window.vozella.invoke('library.createFolder', { name: 'archive', parentId: null });
+    await window.vozella.invoke('projects.create', { name: 'Clients' });
+    await window.vozella.invoke('projects.create', { name: 'Acme' });
+    await window.vozella.invoke('projects.create', { name: 'archive' });
   });
   // The list reloads on every entry to the page.
   await page.getByRole('link', { name: 'Library' }).click();

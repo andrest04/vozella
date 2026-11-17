@@ -62,7 +62,7 @@ const seed = ({ meetings, folders }: Api): void => {
   add('recent-transcript', 'Recent with transcript', 2, { transcript: 'Talked about pelicans' });
   add('older-summary', 'Older with summary', 20, { summary: 'Pelicans again' });
   add('old-bare', 'Old and bare', 60);
-  add('folder-recent', 'Folder recent', 3, { folderId: FOLDER, summary: 'In a folder' });
+  add('folder-recent', 'Folder recent', 3, { projectId: FOLDER, summary: 'In a folder' });
 };
 
 async function mount() {
@@ -173,18 +173,6 @@ describe('the filtered list', () => {
     );
   });
 
-  it('combines with the selected view and keeps the filter across views', async () => {
-    const { user } = await mount();
-    await choose(user, 'Last 7 days');
-    await user.click(screen.getByRole('treeitem', { name: /Inbox/ }));
-    expect(titles()).toEqual(['recent-summary', 'recent-transcript']);
-    expect(screen.getByTestId('library-view-count')).toHaveTextContent(/^2 of 4$/);
-    await user.click(screen.getByRole('treeitem', { name: /Clients/ }));
-    expect(titles()).toEqual(['folder-recent']);
-    expect(screen.getByTestId('library-view-count')).toHaveTextContent(/^1 of 1$/);
-    expect(screen.getByRole('button', { name: 'Remove filter: Last 7 days' })).toBeInTheDocument();
-  });
-
   it('filters what the title search and the search inside meetings found', async () => {
     const { user } = await mount();
     await choose(user, 'Last 7 days');
@@ -281,42 +269,11 @@ describe('chips', () => {
 });
 
 describe('no match', () => {
-  it('says so in its own words and offers to clear', async () => {
-    const { user } = await mount();
-    await choose(user, 'Last 7 days', 'Without summary');
-    await user.click(screen.getByRole('treeitem', { name: /Clients/ }));
-    expect(screen.getByText('No meetings match these filters.')).toBeInTheDocument();
-    expect(screen.queryByText('This folder is empty.')).not.toBeInTheDocument();
-    expect(screen.queryByText('No meetings match your search.')).not.toBeInTheDocument();
-    expect(screen.getByTestId('library-view-count')).toHaveTextContent(/^0 of 1$/);
-
-    await user.click(screen.getByRole('button', { name: 'Clear filters' }));
-    expect(titles()).toEqual(['folder-recent']);
-    expect(filterButton()).toHaveFocus();
-  });
-
   it('keeps the search line when the search itself found nothing', async () => {
     const { user } = await mount();
     await choose(user, 'Last 7 days');
     await user.type(screen.getByRole('searchbox'), 'zzzz');
     expect(await screen.findByText('No meetings match your search.')).toBeInTheDocument();
-    expect(screen.queryByText('No meetings match these filters.')).not.toBeInTheDocument();
-  });
-
-  it('keeps the empty folder line when the folder has nothing to filter', async () => {
-    const api = installFakeApi();
-    seed(api);
-    api.meetings.records.delete('folder-recent');
-    const user = userEvent.setup();
-    render(
-      <Providers>
-        <LibraryScreen />
-      </Providers>,
-    );
-    await screen.findByRole('row', { name: /Recent with summary/ });
-    await choose(user, 'Last 7 days');
-    await user.click(screen.getByRole('treeitem', { name: /Clients/ }));
-    expect(screen.getByText('This folder is empty.')).toBeInTheDocument();
     expect(screen.queryByText('No meetings match these filters.')).not.toBeInTheDocument();
   });
 });

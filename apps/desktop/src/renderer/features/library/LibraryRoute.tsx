@@ -77,8 +77,8 @@ export function LibraryRoute() {
   const folderName = (id: string): string => library.folders.find((f) => f.id === id)?.name ?? '';
 
   const crumbs = library.breadcrumbs.map((crumb) => ({
-    id: crumb.folderId,
-    label: crumb.folderId === null ? t('Library_Inbox') : folderName(crumb.folderId),
+    id: crumb.projectId,
+    label: crumb.projectId === null ? t('Library_Inbox') : folderName(crumb.projectId),
   }));
 
   const dialogs = useLibraryDialogs({
@@ -96,7 +96,7 @@ export function LibraryRoute() {
   };
   const personalityFolder =
     shown?.kind === 'personality'
-      ? (library.folders.find((f) => f.id === shown.folderId) ?? null)
+      ? (library.folders.find((f) => f.id === shown.projectId) ?? null)
       : null;
   const newFolderTitle =
     library.selectedFolder === null
@@ -188,7 +188,7 @@ export function LibraryRoute() {
   const runConfirm = (confirmed: ConfirmDialogState): void => {
     switch (confirmed.kind) {
       case 'deleteFolder':
-        void library.deleteFolder(confirmed.folderId);
+        void library.deleteFolder(confirmed.projectId);
         return;
       case 'deleteMany':
         void bulk.runDeleteMany(confirmed.meetingIds, 'trash');
@@ -542,7 +542,7 @@ export function LibraryRoute() {
         initialValue={shown?.kind === 'rename' ? shown.name : ''}
         onSubmit={async (name) => {
           if (dialog?.kind !== 'rename') return null;
-          const result = await library.renameFolder(dialog.folderId, name);
+          const result = await library.renameFolder(dialog.projectId, name);
           return !result.ok && result.reason === 'name-taken' ? t('Ui_LibraryNameTaken') : null;
         }}
       />
@@ -559,7 +559,7 @@ export function LibraryRoute() {
         initialIcon={resolveIconKey(personalityFolder?.iconKey)}
         onSave={(colorKey, iconKey) => {
           if (dialog?.kind === 'personality') {
-            void library.updatePersonality(dialog.folderId, colorKey, iconKey);
+            void library.updatePersonality(dialog.projectId, colorKey, iconKey);
           }
         }}
       />
@@ -570,12 +570,12 @@ export function LibraryRoute() {
         cancelLabel={t('LibraryMove_Cancel')}
         primaryLabel={t('LibraryMove_Primary')}
         destinations={library.destinations}
-        currentFolderId={shown?.kind === 'move' ? shown.meeting.folderId : null}
-        onMove={(folderId) => {
+        currentFolderId={shown?.kind === 'move' ? shown.meeting.projectId : null}
+        onMove={(projectId) => {
           if (dialog?.kind !== 'move') return;
           const { meeting } = dialog;
-          void library.moveMeeting(meeting.id, folderId).then((moved) => {
-            if (moved && meeting.folderId !== folderId) bulk.offerUndo([meeting], folderId);
+          void library.moveMeeting(meeting.id, projectId).then((moved) => {
+            if (moved && meeting.projectId !== projectId) bulk.offerUndo([meeting], projectId);
           });
         }}
       />
@@ -590,8 +590,8 @@ export function LibraryRoute() {
         primaryLabel={t('LibraryMove_Primary')}
         destinations={library.destinations}
         currentFolderId={null}
-        onMove={(folderId) => {
-          if (dialog?.kind === 'moveMany') void bulk.runMoveMany(dialog.meetings, folderId);
+        onMove={(projectId) => {
+          if (dialog?.kind === 'moveMany') void bulk.runMoveMany(dialog.meetings, projectId);
         }}
       />
       <ConfirmDialog

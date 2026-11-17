@@ -27,7 +27,7 @@ const event: IpcEventLike = {
   senderFrame: { url: 'vozella://app/index.html', parent: null },
 };
 
-const SCOPE = { isVisible: true, kind: 'AllMeetings', folderId: null, meetingId: null } as const;
+const SCOPE = { isVisible: true, kind: 'AllMeetings', projectId: null, meetingId: null } as const;
 const WHEN = new Date('2026-01-01T10:00:00.000Z');
 const message = (id: string, role: 'user' | 'assistant', text: string): ChatMessage => ({
   id,
@@ -204,9 +204,13 @@ const sendInput = (over: Record<string, unknown> = {}) => ({
 describe('chat handlers', () => {
   it('registers every chat request channel', () => {
     const { handlers } = setup();
-    // Saved prompts have their own registration (chat-prompts-handlers.ts).
+    // Saved prompts have their own registration (chat-prompts-handlers.ts); the thread channels
+    // (chat.threads.*) arrive with the chat lane.
     const expected = Object.keys(requestChannels).filter(
-      (name) => name.startsWith('chat.') && !name.startsWith('chat.prompts.'),
+      (name) =>
+        name.startsWith('chat.') &&
+        !name.startsWith('chat.prompts.') &&
+        !name.startsWith('chat.threads.'),
     );
     expect(expected).toHaveLength(13);
     for (const name of expected) expect(handlers.has(name)).toBe(true);
@@ -290,7 +294,7 @@ describe('chat handlers', () => {
     const sending = call(
       'chat.send',
       sendInput({
-        scope: { isVisible: true, kind: 'Live', folderId: null, meetingId: null },
+        scope: { isVisible: true, kind: 'Live', projectId: null, meetingId: null },
         liveTranscript: 'Ana: we ship on Friday',
       }),
     );
@@ -311,14 +315,14 @@ describe('chat handlers', () => {
     await call(
       'chat.send',
       sendInput({
-        scope: { isVisible: true, kind: 'Live', folderId: null, meetingId: null },
+        scope: { isVisible: true, kind: 'Live', projectId: null, meetingId: null },
         liveTranscript: 'Ana: we ship on Friday',
       }),
     );
     expect(service.sendCalls).toEqual([
       {
         draft: 'What did we decide?',
-        scope: { isVisible: true, kind: 'Live', folderId: null, meetingId: null },
+        scope: { isVisible: true, kind: 'Live', projectId: null, meetingId: null },
         live: 'Ana: we ship on Friday',
       },
     ]);
@@ -409,13 +413,13 @@ describe('chat handlers', () => {
     const { call, events } = setup();
     const state = ok(
       await call('chat.setScope', {
-        scope: { isVisible: true, kind: 'Live', folderId: null, meetingId: null },
+        scope: { isVisible: true, kind: 'Live', projectId: null, meetingId: null },
       }),
     ) as { showScopeMismatch: boolean };
     expect(state.showScopeMismatch).toBe(true);
     expect(events.filter((e) => e.name === 'chat.stateChanged')).toHaveLength(1);
     await call('chat.setScope', {
-      scope: { isVisible: true, kind: 'Live', folderId: null, meetingId: null },
+      scope: { isVisible: true, kind: 'Live', projectId: null, meetingId: null },
     });
     expect(events.filter((e) => e.name === 'chat.stateChanged')).toHaveLength(1);
   });

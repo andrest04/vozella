@@ -32,7 +32,7 @@ const record = (patch: Partial<MeetingRecord> = {}): MeetingRecord => ({
   endedAt: '2026-09-01T12:30:00.0000000+00:00',
   audioFilePath: '',
   sourcePath: null,
-  folderId: 'folder-1',
+  projectId: 'folder-1',
   summaryProvider: null,
   calendarEventId: 'evt-1',
   calendarId: 'cal-1',

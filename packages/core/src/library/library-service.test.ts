@@ -10,14 +10,14 @@ import { MeetingBusyRegistry } from './ports';
 const NOW = new Date('2026-09-05T15:00:00.000Z');
 const clock: Clock = { now: () => NOW };
 
-const meeting = (id: string, folderId: string | null = null, title = id): MeetingRecord => ({
+const meeting = (id: string, projectId: string | null = null, title = id): MeetingRecord => ({
   id,
   title,
   recordedAt: '2026-09-01T12:00:00.0000000+00:00',
   endedAt: null,
   audioFilePath: '',
   sourcePath: null,
-  folderId,
+  projectId,
   summaryProvider: null,
   calendarEventId: null,
   calendarId: null,
@@ -302,10 +302,10 @@ describe('moveMeeting', () => {
     const t = setup();
     t.folders.folders = [folder('a', 'A')];
     t.meetings.records.set('m', { ...meeting('m'), transcript: 'keep me' });
-    const result = await t.service.moveMeeting({ meetingId: 'm', folderId: 'a' });
+    const result = await t.service.moveMeeting({ meetingId: 'm', projectId: 'a' });
     expect(result).toMatchObject({ ok: true });
-    expect(t.meetings.records.get('m')).toMatchObject({ folderId: 'a', transcript: 'keep me' });
-    expect(await t.service.moveMeeting({ meetingId: 'm', folderId: 'a' })).toMatchObject({
+    expect(t.meetings.records.get('m')).toMatchObject({ projectId: 'a', transcript: 'keep me' });
+    expect(await t.service.moveMeeting({ meetingId: 'm', projectId: 'a' })).toMatchObject({
       ok: true,
     });
   });
@@ -313,15 +313,15 @@ describe('moveMeeting', () => {
   it('moves to Inbox with a null folder id', async () => {
     const t = setup();
     t.meetings.records.set('m', meeting('m', 'a'));
-    await t.service.moveMeeting({ meetingId: 'm', folderId: null });
-    expect(t.meetings.records.get('m')?.folderId).toBeNull();
+    await t.service.moveMeeting({ meetingId: 'm', projectId: null });
+    expect(t.meetings.records.get('m')?.projectId).toBeNull();
   });
 
   it('B13: refuses a meeting that is being recorded or processed', async () => {
     const t = setup();
     t.meetings.records.set('m', meeting('m'));
     t.busy.register({ isBusy: (id) => id === 'm' });
-    expect(await t.service.moveMeeting({ meetingId: 'm', folderId: null })).toMatchObject({
+    expect(await t.service.moveMeeting({ meetingId: 'm', projectId: null })).toMatchObject({
       ok: false,
       reason: 'busy',
     });
@@ -330,15 +330,15 @@ describe('moveMeeting', () => {
   it('reports an unknown meeting or destination, and save failures', async () => {
     const t = setup();
     t.folders.folders = [folder('a', 'A')];
-    expect(await t.service.moveMeeting({ meetingId: 'zz', folderId: null })).toMatchObject({
+    expect(await t.service.moveMeeting({ meetingId: 'zz', projectId: null })).toMatchObject({
       reason: 'not-found',
     });
     t.meetings.records.set('m', meeting('m'));
-    expect(await t.service.moveMeeting({ meetingId: 'm', folderId: 'zz' })).toMatchObject({
+    expect(await t.service.moveMeeting({ meetingId: 'm', projectId: 'zz' })).toMatchObject({
       reason: 'not-found',
     });
     t.meetings.save = () => Promise.reject(new Error('EBUSY: locked'));
-    expect(await t.service.moveMeeting({ meetingId: 'm', folderId: 'a' })).toMatchObject({
+    expect(await t.service.moveMeeting({ meetingId: 'm', projectId: 'a' })).toMatchObject({
       ok: false,
       reason: 'io-failed',
       message: 'EBUSY: locked',
@@ -450,23 +450,23 @@ describe('moveMeetings', () => {
     t.meetings.records.set('n', meeting('n'));
     t.busy.register({ isBusy: (id) => id === 'b' });
     expect(
-      await t.service.moveMeetings({ meetingIds: ['m', 'b', 'gone', 'n'], folderId: 'a' }),
+      await t.service.moveMeetings({ meetingIds: ['m', 'b', 'gone', 'n'], projectId: 'a' }),
     ).toEqual([
       { meetingId: 'm', ok: true },
       { meetingId: 'b', ok: false, reason: 'busy' },
       { meetingId: 'gone', ok: false, reason: 'not-found' },
       { meetingId: 'n', ok: true },
     ]);
-    expect(t.meetings.records.get('m')?.folderId).toBe('a');
-    expect(t.meetings.records.get('b')?.folderId).toBeNull();
-    expect(t.meetings.records.get('n')?.folderId).toBe('a');
+    expect(t.meetings.records.get('m')?.projectId).toBe('a');
+    expect(t.meetings.records.get('b')?.projectId).toBeNull();
+    expect(t.meetings.records.get('n')?.projectId).toBe('a');
   });
 
   it('runs the whole batch as one repository batch', async () => {
     const t = setup();
     t.meetings.records.set('m', meeting('m'));
     const batch = vi.spyOn(t.meetings, 'batch');
-    await t.service.moveMeetings({ meetingIds: ['m'], folderId: null });
+    await t.service.moveMeetings({ meetingIds: ['m'], projectId: null });
     await t.service.deleteMeetings({ meetingIds: ['m'], mode: 'trash' });
     expect(batch).toHaveBeenCalledTimes(2);
   });
@@ -474,7 +474,7 @@ describe('moveMeetings', () => {
   it('reports one result for an id named twice', async () => {
     const t = setup();
     t.meetings.records.set('m', meeting('m', 'a'));
-    expect(await t.service.moveMeetings({ meetingIds: ['m', 'm'], folderId: null })).toEqual([
+    expect(await t.service.moveMeetings({ meetingIds: ['m', 'm'], projectId: null })).toEqual([
       { meetingId: 'm', ok: true },
     ]);
   });
@@ -524,7 +524,7 @@ describe('load', () => {
     expect(result).toMatchObject({
       ok: true,
       folders: [{ id: 'a' }],
-      meetings: [{ id: 'm', folderId: 'a', snippet: 'Body text' }],
+      meetings: [{ id: 'm', projectId: 'a', snippet: 'Body text' }],
       skipped: [],
     });
   });

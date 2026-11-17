@@ -1,4 +1,4 @@
-import type { FolderDto } from '@vozella/contracts';
+import type { FolderRecord } from '@vozella/core';
 import { useMemo, type ChangeEvent, type ReactNode } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
 import { Field, Input, Select } from '../../ui';
@@ -17,7 +17,7 @@ export function RecordIdle({
   onTitleChange,
   titleDisabled,
   folders,
-  folderId,
+  projectId,
   onFolderChange,
   destinationDisabled,
   children,
@@ -29,9 +29,9 @@ export function RecordIdle({
   readonly title: string;
   readonly onTitleChange: (title: string) => void;
   readonly titleDisabled: boolean;
-  readonly folders: readonly FolderDto[];
-  readonly folderId: string | null;
-  readonly onFolderChange: (folderId: string | null) => void;
+  readonly folders: readonly FolderRecord[];
+  readonly projectId: string | null;
+  readonly onFolderChange: (projectId: string | null) => void;
   readonly destinationDisabled: boolean;
   readonly children?: ReactNode;
 }) {
@@ -40,7 +40,7 @@ export function RecordIdle({
   const options = useMemo(
     () =>
       buildDestinations(folders, inbox, locale).map((destination) => ({
-        value: toOptionValue(destination.folderId),
+        value: toOptionValue(destination.projectId),
         label: destination.path,
       })),
     [folders, inbox, locale],
@@ -53,7 +53,7 @@ export function RecordIdle({
   const destination = (
     <Select
       label={destinationLabel}
-      value={toOptionValue(folderId)}
+      value={toOptionValue(projectId)}
       options={options}
       disabled={destinationDisabled}
       testId="CmbDestination"

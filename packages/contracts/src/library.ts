@@ -1,21 +1,11 @@
 import { z } from 'zod';
 import { defineEvent, defineRequest } from './channel';
+import { projectIdSchema } from './ids';
 
 /** Library, settings storage and workspace channels (module: library-storage). */
 
 const empty = z.object({}).strict();
 const guid = z.string().min(1);
-
-export const folderSchema = z.object({
-  id: guid,
-  name: z.string(),
-  parentId: z.string().nullable(),
-  note: z.string().nullable(),
-  colorKey: z.string().nullable(),
-  iconKey: z.string().nullable(),
-  createdAt: z.string(),
-});
-export type FolderDto = z.infer<typeof folderSchema>;
 
 export const meetingListItemSchema = z.object({
   id: guid,
@@ -23,7 +13,8 @@ export const meetingListItemSchema = z.object({
   /** Round-trip text with offset; the UI formats it in the user's locale. */
   recordedAt: z.string(),
   endedAt: z.string().nullable(),
-  folderId: z.string().nullable(),
+  /** Null, or an id the project list does not know, is "no project". */
+  projectId: z.string().nullable(),
   snippet: z.string(),
   hasSummary: z.boolean(),
   hasTranscript: z.boolean(),
@@ -87,7 +78,8 @@ export const meetingRecordSchema = z.object({
   endedAt: z.string().nullable(),
   audioFilePath: z.string(),
   sourcePath: z.string().nullable(),
-  folderId: z.string().nullable(),
+  /** Null, or an id the project list does not know, is "no project". */
+  projectId: z.string().nullable(),
   summaryProvider: z.string().nullable(),
   calendarEventId: z.string().nullable(),
   calendarId: z.string().nullable(),
@@ -110,11 +102,16 @@ export const failureReasonSchema = z.enum([
   'empty-name',
   'name-taken',
   'not-found',
+  /** Folder-era reason: core still returns it until the storage lane removes the folder code. */
   'not-empty',
   'busy',
   'corrupt',
   'io-failed',
   'trash-failed',
+  /** Projects are not available right now, so a meeting cannot be placed in one. */
+  'storage-migrating',
+  'storage-error',
+  'storage-newer',
 ]);
 export type FailureReasonDto = z.infer<typeof failureReasonSchema>;
 
@@ -129,20 +126,18 @@ const done = z.discriminatedUnion('ok', [
   z.object({ ok: z.literal(true) }),
   z.object(failureShape),
 ]);
-const folderResult = z.discriminatedUnion('ok', [
-  z.object({ ok: z.literal(true), folder: folderSchema }),
-  z.object(failureShape),
-]);
-
 export const libraryLoad = defineRequest('library.load', {
   input: empty,
   output: z.discriminatedUnion('ok', [
     z.object({
       ok: z.literal(true),
-      folders: z.array(folderSchema).readonly(),
       meetings: z.array(meetingListItemSchema).readonly(),
       /** Files that could not be read as meetings. */
       skipped: z.array(z.object({ path: z.string(), reason: z.string() })).readonly(),
+      /** Meeting ids found in two files: the newest wins, the other copy is never touched. */
+      shadowed: z
+        .array(z.object({ id: guid, keptPath: z.string(), shadowedPath: z.string() }))
+        .readonly(),
     }),
     z.object(failureShape),
   ]),
@@ -153,33 +148,8 @@ export const libraryGetMeeting = defineRequest('library.getMeeting', {
   output: z.object({ record: meetingRecordSchema.nullable() }),
 });
 
-export const libraryCreateFolder = defineRequest('library.createFolder', {
-  input: z.object({ name: z.string().max(500), parentId: z.string().nullable() }),
-  output: folderResult,
-});
-
-export const libraryRenameFolder = defineRequest('library.renameFolder', {
-  input: z.object({ id: guid, name: z.string().max(500) }),
-  output: folderResult,
-});
-
-export const libraryUpdateFolderPersonality = defineRequest('library.updateFolderPersonality', {
-  input: z.object({ id: guid, colorKey: z.string().nullable(), iconKey: z.string().nullable() }),
-  output: folderResult,
-});
-
-export const librarySetFolderNote = defineRequest('library.setFolderNote', {
-  input: z.object({ id: guid, note: z.string().max(100_000).nullable() }),
-  output: folderResult,
-});
-
-export const libraryDeleteFolder = defineRequest('library.deleteFolder', {
-  input: z.object({ id: guid }),
-  output: done,
-});
-
 export const libraryMoveMeeting = defineRequest('library.moveMeeting', {
-  input: z.object({ meetingId: guid, folderId: z.string().nullable() }),
+  input: z.object({ meetingId: guid, projectId: projectIdSchema.nullable() }),
   output: done,
 });
 
@@ -201,7 +171,7 @@ const bulkResult = z.object({ results: z.array(meetingOutcome).readonly() });
 
 /** One result per meeting; a meeting that cannot move does not stop the others. */
 export const libraryMoveMeetings = defineRequest('library.moveMeetings', {
-  input: z.object({ meetingIds: bulkMeetingIds, folderId: z.string().nullable() }),
+  input: z.object({ meetingIds: bulkMeetingIds, projectId: projectIdSchema.nullable() }),
   output: bulkResult,
 });
 
@@ -211,10 +181,11 @@ export const libraryDeleteMeetings = defineRequest('library.deleteMeetings', {
   output: bulkResult,
 });
 
+/** Which meetings a search covers: all, those with no project, or one project's. */
 export const libraryViewSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('all') }),
-  z.object({ kind: z.literal('inbox') }),
-  z.object({ kind: z.literal('folder'), id: guid }),
+  z.object({ kind: z.literal('none') }),
+  z.object({ kind: z.literal('project'), id: projectIdSchema }),
 ]);
 export type LibraryViewDto = z.infer<typeof libraryViewSchema>;
 
@@ -289,7 +260,7 @@ export const librarySetLocation = defineRequest('library.setLocation', {
 });
 
 export const libraryChanged = defineEvent('library.changed', {
-  payload: z.object({ reason: z.enum(['meeting', 'folder', 'location']) }),
+  payload: z.object({ reason: z.enum(['meeting', 'project', 'location']) }),
 });
 
 // ---------------------------------------------------------------- settings
@@ -350,7 +321,7 @@ export const settingsUpdate = defineRequest('settings.update', {
 
 // --------------------------------------------------------------- workspace
 
-export const shellTagSchema = z.enum(['Recording', 'History', 'Settings', 'Session']);
+export const shellTagSchema = z.enum(['Recording', 'Projects', 'History', 'Settings', 'Session']);
 export const sessionTabSchema = z.enum(['Transcript', 'Summary']);
 
 export const workspaceStateSchema = z.object({
@@ -358,7 +329,8 @@ export const workspaceStateSchema = z.object({
   lastProcessedMeetingId: z.string().nullable(),
   sessionTab: sessionTabSchema,
   currentShellTag: shellTagSchema,
-  selectedFolderId: z.string().nullable(),
+  /** The project whose page is open; null on every other route. */
+  selectedProjectId: z.string().nullable(),
   liveTranscript: z.string(),
   isCaptureActive: z.boolean(),
 });
@@ -372,7 +344,7 @@ export const workspaceActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('setCurrentShellTag'), tag: shellTagSchema }),
   z.object({ type: z.literal('navigateTo'), tag: shellTagSchema }),
   z.object({ type: z.literal('openSession'), tab: sessionTabSchema }),
-  z.object({ type: z.literal('publishSelectedFolder'), folderId: z.string().nullable() }),
+  z.object({ type: z.literal('publishSelectedProject'), projectId: projectIdSchema.nullable() }),
   z.object({ type: z.literal('setLiveTranscript'), text: z.string() }),
   z.object({ type: z.literal('setCaptureActive'), active: z.boolean() }),
   z.object({ type: z.literal('requestTakeNotes') }),

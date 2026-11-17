@@ -31,7 +31,7 @@ const record = (id: string = ID, title = 'Standup'): MeetingRecord => ({
   endedAt: null,
   audioFilePath: '',
   sourcePath: null,
-  folderId: null,
+  projectId: null,
   summaryProvider: null,
   calendarEventId: null,
   calendarId: null,
@@ -71,6 +71,7 @@ async function setup(
     clock: new FakeClock('2026-09-05T15:00:00Z'),
     newId: () => crypto.randomUUID(),
     busy,
+    extractor: () => Promise.resolve({ ok: false, reason: 'unreadable' }),
     openPath: () => Promise.resolve(''),
     pickFolder: () => Promise.resolve(null),
     version: '1.0.0.0',
@@ -108,12 +109,12 @@ describe('bulk meeting handlers', () => {
     const t = await setup();
     await t.runtime.meetings.save(record());
     await t.runtime.meetings.save(record(OTHER, 'Other'));
-    const created = await t.call('library.createFolder', { name: 'Trabajo', parentId: null });
-    const folderId = (created.value as { folder: { id: string } }).folder.id;
+    const created = await t.runtime.service.createFolder({ name: 'Trabajo', parentId: null });
+    const projectId = created.ok ? created.folder.id : '';
     t.events.length = 0;
     t.busy.register({ isBusy: (id) => id === OTHER });
 
-    const moved = await t.call('library.moveMeetings', { meetingIds: [ID, OTHER], folderId });
+    const moved = await t.call('library.moveMeetings', { meetingIds: [ID, OTHER], projectId });
 
     expect(moved.value).toEqual({
       results: [
@@ -125,7 +126,7 @@ describe('bulk meeting handlers', () => {
     expect(t.events.filter((e) => e.name === 'workspace.meetingChanged')).toEqual([
       { name: 'workspace.meetingChanged', payload: { id: ID } },
     ]);
-    expect((await t.runtime.meetings.get(ID))?.folderId).toBe(folderId);
+    expect((await t.runtime.meetings.get(ID))?.projectId).toBe(projectId);
   });
 
   it('deletes several meetings with one library change and one deleted notice per meeting', async () => {
@@ -157,7 +158,7 @@ describe('bulk meeting handlers', () => {
     t.busy.register({ isBusy: () => true });
     t.events.length = 0;
     await t.call('library.deleteMeetings', { meetingIds: [ID], mode: 'trash' });
-    await t.call('library.moveMeetings', { meetingIds: [ID], folderId: null });
+    await t.call('library.moveMeetings', { meetingIds: [ID], projectId: null });
     expect(t.events).toEqual([]);
   });
 
@@ -218,39 +219,62 @@ describe('library handlers', () => {
     expect(t.events.map((e) => e.name)).toContain('library.changed');
   });
 
-  it('creates a folder, lists it, and tells the windows', async () => {
+  it('loads the meetings with no folders and an empty list of shadowed copies', async () => {
     const t = await setup();
-    const created = await t.call('library.createFolder', { name: 'Trabajo', parentId: null });
-    expect(created).toMatchObject({ ok: true, value: { ok: true, folder: { name: 'Trabajo' } } });
+    await t.runtime.meetings.save(record());
     const loaded = await t.call('library.load');
-    expect(loaded.value).toMatchObject({ ok: true, folders: [{ name: 'Trabajo' }], meetings: [] });
-    expect(t.events.map((e) => e.name)).toContain('library.changed');
+    expect(loaded.value).toMatchObject({
+      ok: true,
+      meetings: [{ id: ID }],
+      skipped: [],
+      shadowed: [],
+    });
+    expect(loaded.value).not.toHaveProperty('folders');
   });
 
-  it('lets a quit wait for a folder note that is still being written (B16)', async () => {
+  it('lets a quit wait for a move that is still being written (B16)', async () => {
     const t = await setup();
-    const created = await t.call('library.createFolder', { name: 'Trabajo', parentId: null });
-    const id = (created.value as { folder: { id: string } }).folder.id;
+    await t.runtime.meetings.save(record());
+    const created = await t.runtime.service.createFolder({ name: 'Trabajo', parentId: null });
+    const projectId = created.ok ? created.folder.id : '';
     // Not awaited: the window is closing while the write is in flight.
-    const inFlight = t.call('library.setFolderNote', { id, note: 'Keep this' });
+    const inFlight = t.call('library.moveMeeting', { meetingId: ID, projectId });
     await t.writes.settled();
-    const loaded = await t.call('library.load');
-    expect(loaded.value).toMatchObject({ folders: [{ id, note: 'Keep this' }] });
+    expect((await t.runtime.meetings.get(ID))?.projectId).toBe(projectId);
     await inFlight;
     await expect(t.writes.settled()).resolves.toBeUndefined();
+  });
+
+  it('searches inside a project, inside no project, or everywhere', async () => {
+    const t = await setup();
+    const second = '22222222-2222-2222-2222-222222222222';
+    const created = await t.runtime.service.createFolder({ name: 'Trabajo', parentId: null });
+    const projectId = created.ok ? created.folder.id : '';
+    await t.runtime.meetings.save({ ...record(), summary: 'budget review' });
+    await t.runtime.meetings.save({ ...record(second, 'Beta'), summary: 'budget plan', projectId });
+    const found = async (scope: unknown) => {
+      const answer = await t.call('library.search', { query: 'budget', scope, requestId: 1 });
+      const hits = (answer.value as { hits: { meetingId: string }[] }).hits;
+      return hits.map((hit) => hit.meetingId).sort();
+    };
+    expect(await found({ kind: 'all' })).toEqual([ID, second].sort());
+    expect(await found({ kind: 'none' })).toEqual([ID]);
+    expect(await found({ kind: 'project', id: projectId })).toEqual([second]);
+    expect(
+      (
+        await t.call('library.search', {
+          query: 'budget',
+          scope: { kind: 'folder', id: projectId },
+          requestId: 2,
+        })
+      ).ok,
+    ).toBe(false);
   });
 
   it('broadcasts a call prompt offer to every window', async () => {
     const t = await setup();
     t.workspace.offerCallPrompt();
     expect(t.events.map((e) => e.name)).toContain('workspace.callPromptOffered');
-  });
-
-  it('reports a duplicate name as a value', async () => {
-    const t = await setup();
-    await t.call('library.createFolder', { name: 'A', parentId: null });
-    const dup = await t.call('library.createFolder', { name: 'a', parentId: null });
-    expect(dup).toMatchObject({ ok: true, value: { ok: false, reason: 'name-taken' } });
   });
 
   it('moves and deletes a meeting, clears the workspace, and refuses busy ones', async () => {
@@ -262,7 +286,7 @@ describe('library handlers', () => {
       endedAt: null,
       audioFilePath: '',
       sourcePath: null,
-      folderId: null,
+      projectId: null,
       summaryProvider: null,
       calendarEventId: null,
       calendarId: null,
@@ -307,15 +331,6 @@ describe('library handlers', () => {
     expect(t.events.map((e) => e.name)).toEqual(
       expect.arrayContaining(['workspace.meetingDeleted', 'library.changed', 'workspace.changed']),
     );
-  });
-
-  it('deleting a folder resets the published folder to Inbox', async () => {
-    const t = await setup();
-    const created = await t.call('library.createFolder', { name: 'A', parentId: null });
-    const id = (created.value as { folder: { id: string } }).folder.id;
-    t.workspace.publishSelectedFolder(id);
-    expect(await t.call('library.deleteFolder', { id })).toMatchObject({ value: { ok: true } });
-    expect(t.workspace.state.selectedFolderId).toBeNull();
   });
 
   it('reads and patches settings, keeping other fields', async () => {
@@ -403,7 +418,7 @@ describe('workspace channels', () => {
       { type: 'setLastProcessed', id: 'm' },
       { type: 'setSessionTab', tab: 'Summary' },
       { type: 'setCurrentShellTag', tag: 'History' },
-      { type: 'publishSelectedFolder', folderId: 'f' },
+      { type: 'publishSelectedProject', projectId: 'f' },
       { type: 'setLiveTranscript', text: 'hi' },
       { type: 'setCaptureActive', active: true },
       { type: 'clearSelection' },
@@ -414,7 +429,7 @@ describe('workspace channels', () => {
     expect(w.state).toMatchObject({
       sessionTab: 'Summary',
       currentShellTag: 'History',
-      selectedFolderId: 'f',
+      selectedProjectId: 'f',
       liveTranscript: 'hi',
       isCaptureActive: true,
       selectedMeetingId: null,

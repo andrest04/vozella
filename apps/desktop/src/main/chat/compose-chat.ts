@@ -1,22 +1,23 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { Worker } from 'node:worker_threads';
 import {
   ATTACHMENT_EXTENSIONS,
   ChatService,
+  type ChatThreadRepository,
   type EngineChoices,
   type Logger,
+  type ProjectContextSource,
   type SummaryProviderResolver,
   type TranslateFn,
 } from '@vozella/core';
 import {
   ChatAttachmentStore,
-  createThreadedDocumentExtractor,
   JsonChatPromptStore,
   LibraryChatReader,
   SystemClock,
   writeFileAtomic,
+  type DocumentExtractor,
   type LibraryRuntime,
   liveRepository,
 } from '@vozella/platform';
@@ -44,8 +45,12 @@ export interface ComposeChatDeps {
   readonly dialogs: WindowDialogs;
   readonly tempDirectory: () => string;
   readonly documentsDirectory: () => string;
-  /** The folder of the bundled workers (`extract.js`). */
-  readonly workersDirectory: string;
+  /** The app's one threaded document extractor, shared with the project files. */
+  readonly extractor: DocumentExtractor;
+  /** The instructions and files of a project, for the chat context (read through the live proxy). */
+  readonly projectContext: ProjectContextSource;
+  /** Saved conversations (read through the live proxy). */
+  readonly threads: ChatThreadRepository;
   readonly writeClipboard: ChatControllerDeps['writeClipboard'];
   /** Opens a link in the browser; the fake native build substitutes its double. */
   readonly openExternal: ChatControllerDeps['openExternal'];
@@ -75,9 +80,7 @@ export function composeChat(deps: ComposeChatDeps): ComposedChat {
     logger,
     tempRoot: deps.tempDirectory(),
     // PDF, Word and PowerPoint are parsed in a worker thread, never on this one.
-    extractor: createThreadedDocumentExtractor(
-      () => new Worker(path.join(deps.workersDirectory, 'extract.js')),
-    ),
+    extractor: deps.extractor,
   });
   const chatPromptLog = deps.promptLogFile;
   const chatProviders = chatPromptLog

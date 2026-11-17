@@ -12,6 +12,7 @@ import {
   type HardwareProbe,
   type Logger,
   type MeetingBusyRegistry,
+  type ProjectContextSource,
   type TranslateFn,
   type Workspace,
 } from '@vozella/core';
@@ -54,6 +55,8 @@ export interface ComposeSummariesDeps {
   readonly publishGpuOffload: (read: () => boolean | undefined) => void;
   readonly activeGpuOffload: () => boolean | undefined;
   readonly busy: MeetingBusyRegistry;
+  /** The instructions and files of a project, for the summary context (live proxy). */
+  readonly projectContext: ProjectContextSource;
   readonly workspace: Workspace;
   readonly broadcast: Broadcast;
   /** Already scoped to the summaries (`logger.child('summaries')`). */

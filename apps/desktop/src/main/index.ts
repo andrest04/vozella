@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { Worker } from 'node:worker_threads';
 import {
   libraryChanged,
   recordingCloseRequest,
@@ -20,8 +21,10 @@ import { MeetingBusyRegistry, readEngineChoices, Workspace } from '@vozella/core
 import {
   JsonWindowStateStore,
   createNativePorts,
+  createThreadedDocumentExtractor,
   ForbiddenDataRootError,
   LibraryRuntime,
+  liveRepository,
   readWavDurationSeconds,
   recoverCrashedRecordings,
   RotatingFileLogger,
@@ -74,6 +77,7 @@ import { registerMeetingPromptHandlers } from './ipc/meeting-prompt-handlers';
 import { AudioController } from './audio/audio-controller';
 import { registerAudioHandlers } from './ipc/audio-handlers';
 import { composeChat } from './chat/compose-chat';
+import { composeProjects } from './projects/compose-projects';
 import { composeSettings } from './settings/compose-settings';
 import { composeSummaries } from './summaries/compose-summaries';
 import { composeTranscription } from './transcription/compose-transcription';
@@ -376,6 +380,11 @@ function main(): void {
   // report meetings they hold; the workspace is the app-lifetime hub.
   const busy = new MeetingBusyRegistry();
   const workspace = new Workspace();
+  // PDF, Word and PowerPoint text is extracted in a worker thread, never on this one. Chat
+  // attachments and project context files share the one extractor.
+  const extractor = createThreadedDocumentExtractor(
+    () => new Worker(path.join(__dirname, 'workers', 'extract.js')),
+  );
   const library = new LibraryRuntime({
     mode,
     roots: paths,
@@ -384,6 +393,7 @@ function main(): void {
     clock: new SystemClock(),
     newId: () => randomUUID(),
     busy,
+    extractor,
     openPath: (target) => shell.openPath(target),
     pickFolder: async (defaultPath) => {
       const result = await dialogs.showOpenDialog({
@@ -631,6 +641,15 @@ function main(): void {
         },
       });
 
+      composeProjects({
+        library,
+        workspace,
+        broadcast,
+        server: ipcServer,
+        dialogs,
+        logger: logger.child('projects'),
+      });
+
       // Audio capture: the recording module takes `audioController` to start and stop recordings.
       const audioController = new AudioController({
         host: audio,
@@ -696,6 +715,7 @@ function main(): void {
         },
         activeGpuOffload: () => llamaGpuOffload(),
         busy,
+        projectContext: liveRepository(() => library.projectContext),
         workspace,
         broadcast,
         logger: logger.child('summaries'),
@@ -718,6 +738,7 @@ function main(): void {
         digest: null,
         title: null,
         notes: null,
+        projectId: null,
       });
       const { service: chatService } = composeChat({
         library,
@@ -740,7 +761,9 @@ function main(): void {
         dialogs,
         tempDirectory: () => app.getPath('temp'),
         documentsDirectory: () => app.getPath('documents'),
-        workersDirectory: path.join(__dirname, 'workers'),
+        extractor,
+        projectContext: liveRepository(() => library.projectContext),
+        threads: liveRepository(() => library.chatThreads),
         writeClipboard: (text) => {
           return clipboard.writeText(text);
         },
@@ -809,6 +832,7 @@ function main(): void {
         cli: summaryCli,
         apiKeys,
         settings: library.settings,
+        projectContext: liveRepository(() => library.projectContext),
         workspace,
         broadcast,
         logger: logger.child('recording'),

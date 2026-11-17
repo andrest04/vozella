@@ -68,7 +68,7 @@ describe('LibraryChatReader bound (B17)', () => {
         id: `00000000-0000-0000-0000-0000000000${n}`,
         title: `Bulk ${n}`,
         recordedAt: `2027-01-${String(i + 1).padStart(2, '0')}T10:00:00.0000000+00:00`,
-        folderId: null,
+        projectId: null,
         transcript: `[00:00.00-00:01.00] Ana: line ${n}`,
       };
       records.push(await fx.meetings.save(record));

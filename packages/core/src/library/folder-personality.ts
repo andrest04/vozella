@@ -41,10 +41,10 @@ function canonical<T extends string>(keys: readonly T[], stored: string | null |
 }
 
 /** The stored color key, or a color derived from the folder id when none is stored. */
-export function resolveAccentKey(stored: string | null | undefined, folderId: string): AccentKey {
+export function resolveAccentKey(stored: string | null | undefined, projectId: string): AccentKey {
   const known = canonical(ACCENT_KEYS, stored);
   if (known) return known;
-  return ACCENT_KEYS[hashId(folderId.toLowerCase()) % ACCENT_KEYS.length] ?? 'blue';
+  return ACCENT_KEYS[hashId(projectId.toLowerCase()) % ACCENT_KEYS.length] ?? 'blue';
 }
 
 /** First color not used by any folder; when all are used, wraps by how many are used. */

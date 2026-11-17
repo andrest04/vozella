@@ -86,7 +86,7 @@ describe('SummaryService over the Markdown repository', () => {
 
     const back = await fx.meetings.get(WEEKLY);
     expect(back).toMatchObject({
-      folderId: '8e2f1b63-44d5-4a7c-9ba1-1d2e3f4a5b6c',
+      projectId: '8e2f1b63-44d5-4a7c-9ba1-1d2e3f4a5b6c',
       joinUrl: 'https://teams.microsoft.com/l/meetup-join/abc',
       attendees: ['Ana Perez', 'Luis Gomez'],
     });

@@ -16,7 +16,7 @@ function item(n: number): MeetingListItem {
     title: `Meeting ${n}`,
     recordedAt: `2025-01-${String(n).padStart(2, '0')}T08:00:00.0000000+00:00`,
     endedAt: null,
-    folderId: null,
+    projectId: null,
     snippet: '',
     hasSummary: false,
     hasTranscript: true,

@@ -1,4 +1,9 @@
-import { MeetingBusyRegistry, Workspace, type SettingsStore } from '@vozella/core';
+import {
+  MeetingBusyRegistry,
+  Workspace,
+  type ProjectContextSource,
+  type SettingsStore,
+} from '@vozella/core';
 import { FakeApiKeyStore, type LibraryRuntime } from '@vozella/platform';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -44,6 +49,7 @@ function compose(overrides: Partial<ComposeSummariesDeps> = {}) {
     publishGpuOffload,
     activeGpuOffload: () => undefined,
     busy,
+    projectContext: {} as ProjectContextSource,
     workspace: new Workspace(),
     broadcast: vi.fn(),
     logger: silentLogger(),

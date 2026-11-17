@@ -158,57 +158,29 @@ describe('RecordRoute idle zone (spec 2.1, 2.2)', () => {
     expect(screen.queryByText('Ready to record.')).toBeNull();
     await userEvent.click(screen.getByRole('combobox', { name: 'Save to' }));
     const options = (await screen.findAllByRole('option')).map((option) => option.textContent);
-    expect(options).toEqual(['Inbox', 'Alpha', 'Alpha / Child', 'beta']);
+    // Folders are gone from the wire; the projects destinations arrive with the UI lane.
+    expect(options).toEqual(['Inbox']);
   });
 
-  it('starts with the typed title, the chosen destination and the chosen sources', async () => {
+  it('starts with the typed title and the chosen sources', async () => {
     const api = installApi();
     mount();
     const title = await screen.findByRole('textbox', { name: 'Title' });
     await userEvent.clear(title);
     await userEvent.type(title, 'Weekly');
-    await userEvent.click(screen.getByRole('combobox', { name: 'Save to' }));
-    await userEvent.click(await screen.findByRole('option', { name: 'Alpha / Child' }));
     await userEvent.click(screen.getByRole('button', { name: 'Record' }));
     await waitFor(() => {
       expect(api.named('recording.start')).toHaveLength(1);
     });
     expect(api.named('recording.start')[0]?.input).toEqual({
       title: 'Weekly',
-      folderId: 'f-c',
+      projectId: null,
       microphone: { kind: 'SystemDefault', deviceId: null },
       processId: null,
       appName: null,
     });
     // The readiness was read again before the start (item 18).
     expect(api.named('recording.getSetup').length).toBeGreaterThanOrEqual(2);
-  });
-
-  it('keeps the destination across visits while the folder exists, else the Inbox', async () => {
-    installApi();
-    const first = mount();
-    await userEvent.click(await screen.findByRole('combobox', { name: 'Save to' }));
-    await userEvent.click(await screen.findByRole('option', { name: 'beta' }));
-    expect(screen.getByRole('combobox', { name: 'Save to' })).toHaveTextContent('beta');
-    first.unmount();
-    installApi({
-      'library.load': () => ({
-        ok: true,
-        folders: [folder('f-b', 'beta')],
-        meetings: [],
-        skipped: [],
-      }),
-    });
-    mount();
-    await waitFor(() => {
-      expect(screen.getByRole('combobox', { name: 'Save to' })).toHaveTextContent('beta');
-    });
-    cleanup();
-    installApi({ 'library.load': () => ({ ok: true, folders: [], meetings: [], skipped: [] }) });
-    mount();
-    await waitFor(() => {
-      expect(screen.getByRole('combobox', { name: 'Save to' })).toHaveTextContent('Inbox');
-    });
   });
 
   it.each([
@@ -919,7 +891,7 @@ describe('RecordRoute import (spec 2.12)', () => {
       expect(api.named('recording.import')).toHaveLength(1);
     });
     expect(api.named('recording.import')[0]?.input).toMatchObject({
-      folderId: null,
+      projectId: null,
       path: 'C:\\in\\call.mp3',
     });
   });
@@ -1000,7 +972,7 @@ describe('RecordRoute import from YouTube', () => {
       expect(api.named('recording.importUrl')).toHaveLength(1);
     });
     expect(api.named('recording.importUrl')[0]?.input).toMatchObject({
-      folderId: null,
+      projectId: null,
       url: NORMAL,
     });
     expect(String(api.named('recording.importUrl')[0]?.input.title)).not.toBe('');

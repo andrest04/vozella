@@ -51,7 +51,7 @@ describe('folderDirectorySegments', () => {
 
 describe('flattenFolderPaths', () => {
   it('returns Inbox only for no folders', () => {
-    expect(flattenFolderPaths([], 'Inbox')).toEqual([{ folderId: null, path: 'Inbox' }]);
+    expect(flattenFolderPaths([], 'Inbox')).toEqual([{ projectId: null, path: 'Inbox' }]);
   });
 
   it('sorts roots after Inbox and joins nested with " / "', () => {
@@ -109,8 +109,8 @@ describe('tree and breadcrumbs', () => {
   });
 
   it('breadcrumbs start at Inbox and follow the chain', () => {
-    expect(buildBreadcrumbs(folders, null)).toEqual([{ folderId: null }]);
-    expect(buildBreadcrumbs(folders, 'c').map((b) => b.folderId)).toEqual([null, 'a', 'c']);
+    expect(buildBreadcrumbs(folders, null)).toEqual([{ projectId: null }]);
+    expect(buildBreadcrumbs(folders, 'c').map((b) => b.projectId)).toEqual([null, 'a', 'c']);
   });
 
   it('expands only the ancestors of the target', () => {

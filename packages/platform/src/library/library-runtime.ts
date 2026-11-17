@@ -2,13 +2,21 @@ import fs from 'node:fs/promises';
 import nodePath from 'node:path';
 import {
   LibraryService,
+  ProjectService,
   createAppPaths,
+  createStorageLayout,
   type AppPaths,
   type AppSettings,
+  type ChatThreadRepository,
   type Clock,
   type Logger,
   type MeetingBusyProbe,
+  type ProjectContextSource,
+  type ProjectFileStore,
+  type ProjectRepository,
 } from '@vozella/core';
+import type { DocumentExtractor } from '../chat/document-extraction';
+import { createChatThreadStore } from '../chat/chat-thread-store';
 import { writeFileAtomic } from '../fs/atomic-write';
 import {
   ForbiddenDataRootError,
@@ -23,9 +31,14 @@ import { JsonSettingsStore } from './json-settings-store';
 import { errorCode } from './library-layout';
 import { MarkdownMeetingRepository } from './markdown-meeting-repository';
 import { runStartupMigrations } from './migrations';
+import { createProjectContextSource } from '../projects/project-context-source';
+import { createProjectFileStore } from '../projects/project-file-store';
+import { createProjectRepository } from '../projects/project-repository';
+import { migrateStorage } from '../projects/storage-migrator';
+import { StorageStateHolder } from '../projects/storage-state';
 
 export type LocationSource = DataRoots['source'] | 'chosen';
-export type LibraryChangeReason = 'meeting' | 'folder' | 'location';
+export type LibraryChangeReason = 'meeting' | 'project' | 'location';
 
 export interface LibraryLocation {
   readonly libraryRoot: string;
@@ -70,6 +83,8 @@ export interface LibraryRuntimeDeps {
   readonly openPath: (path: string) => Promise<string>;
   /** Electron's `shell.trashItem`. Without it a deleted meeting's files are unlinked. */
   readonly discard?: (path: string) => Promise<void>;
+  /** Extracts the text of a context file (PDF, Word and PowerPoint run in a worker thread). */
+  readonly extractor: DocumentExtractor;
   /** Shows a folder picker. Null when the user cancels. */
   readonly pickFolder: (defaultPath: string) => Promise<string | null>;
   readonly version: string;
@@ -127,6 +142,26 @@ export class LibraryRuntime {
 
   get folders(): JsonFolderRepository {
     return this.ready().folders;
+  }
+
+  get projects(): ProjectRepository {
+    return this.ready().projects;
+  }
+
+  get projectService(): ProjectService {
+    return this.ready().projectService;
+  }
+
+  get projectFiles(): ProjectFileStore {
+    return this.ready().projectFiles;
+  }
+
+  get chatThreads(): ChatThreadRepository {
+    return this.ready().chatThreads;
+  }
+
+  get projectContext(): ProjectContextSource {
+    return this.ready().projectContext;
   }
 
   get paths(): AppPaths {
@@ -295,7 +330,50 @@ export class LibraryRuntime {
       clock: this.deps.clock,
       newId: this.deps.newId,
     });
-    this.services = { paths, folders, meetings, service };
+    const layout = createStorageLayout(this.libraryRoot, nodePath);
+    const state = new StorageStateHolder();
+    const projects = createProjectRepository({
+      libraryRoot: this.libraryRoot,
+      logger: this.deps.logger,
+      clock: this.deps.clock,
+      newId: this.deps.newId,
+      state,
+      ...(this.deps.discard ? { discard: this.deps.discard } : {}),
+    });
+    const projectFiles = createProjectFileStore({
+      layout,
+      extractor: this.deps.extractor,
+      state,
+      logger: this.deps.logger,
+      clock: this.deps.clock,
+      newId: this.deps.newId,
+    });
+    const chatThreads = createChatThreadStore({
+      layout,
+      state,
+      logger: this.deps.logger,
+      clock: this.deps.clock,
+      ...(this.deps.discard ? { discard: this.deps.discard } : {}),
+    });
+    const projectContext = createProjectContextSource({ projects, files: projectFiles });
+    const projectService = new ProjectService({
+      projects,
+      meetings,
+      files: projectFiles,
+      threads: chatThreads,
+      busy: this.deps.busy,
+    });
+    this.services = {
+      paths,
+      folders,
+      meetings,
+      service,
+      projects,
+      projectService,
+      projectFiles,
+      chatThreads,
+      projectContext,
+    };
 
     await ensureDirectoriesExist(paths);
     const result = await runStartupMigrations({
@@ -305,6 +383,15 @@ export class LibraryRuntime {
       logger: this.deps.logger,
     });
     this.startupError = result.error;
+    state.set(
+      await migrateStorage({
+        libraryRoot: this.libraryRoot,
+        appDataRoot: this.deps.roots.appData,
+        layout,
+        logger: this.deps.logger,
+        clock: this.deps.clock,
+      }),
+    );
   }
 }
 
@@ -313,4 +400,9 @@ interface Services {
   readonly folders: JsonFolderRepository;
   readonly meetings: MarkdownMeetingRepository;
   readonly service: LibraryService;
+  readonly projects: ProjectRepository;
+  readonly projectService: ProjectService;
+  readonly projectFiles: ProjectFileStore;
+  readonly chatThreads: ChatThreadRepository;
+  readonly projectContext: ProjectContextSource;
 }

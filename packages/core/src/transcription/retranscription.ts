@@ -30,7 +30,7 @@ export interface RecordingPipelineRequest {
   /** Null so the offline pass becomes the transcript. */
   readonly liveDraft: string | null;
   readonly pausedSeconds: number;
-  readonly folderId: string | null;
+  readonly projectId: string | null;
   /** Elapsed milliseconds of the starred lines of the old transcript (B8). */
   readonly highlightsMs: readonly number[];
   readonly calendarEventId: string | null;
@@ -60,7 +60,7 @@ export function createRetranscriptionRequest(
     title: record.title,
     liveDraft: null,
     pausedSeconds: 0,
-    folderId: record.folderId,
+    projectId: record.projectId,
     highlightsMs: starredLineStarts(record.transcript ?? ''),
     calendarEventId: record.calendarEventId,
     calendarId: record.calendarId,

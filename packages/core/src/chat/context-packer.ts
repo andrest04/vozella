@@ -71,6 +71,10 @@ export interface LiveContextSnapshot {
   readonly digest?: string | null;
   readonly title?: string | null;
   readonly notes?: string | null;
+  /** The project of the take; null or unset when it has none. */
+  readonly projectId?: string | null;
+  /** The project block (instructions and files), already packed by `packProjectContext`. */
+  readonly project?: string | null;
 }
 
 /** Heads the rolling digest in Live scope; the model learns it may lag the tail. */
@@ -92,7 +96,7 @@ const MEETING_TRANSCRIPT_MIN_SHARE = 0.3;
 /** Only these fields can reach the model (spec 3.3). */
 export type ContextMeeting = Pick<
   MeetingRecord,
-  'id' | 'title' | 'recordedAt' | 'folderId' | 'summary' | 'notes' | 'transcript' | 'actionItems'
+  'id' | 'title' | 'recordedAt' | 'projectId' | 'summary' | 'notes' | 'transcript' | 'actionItems'
 > & {
   /**
    * Set by the reader on a meeting it chose for matching the question (0 is the best). Ranked
@@ -176,17 +180,17 @@ function sharedBlock(m: ContextMeeting, summaryMax: number, notesMax: number): s
 }
 
 function packMany(
-  kind: 'Folder' | 'AllMeetings',
-  folderId: string | null,
+  kind: 'Project' | 'AllMeetings',
+  projectId: string | null,
   meetings: readonly ContextMeeting[],
   folders: readonly ContextFolder[],
   t: ChatStringLookup,
   summaryMax: number,
 ): string {
   let out = '';
-  if (kind === 'Folder') {
-    if (folderId === null) return t('ChatFolderNotSelected');
-    const key = guidKey(folderId);
+  if (kind === 'Project') {
+    if (projectId === null) return t('ChatFolderNotSelected');
+    const key = guidKey(projectId);
     const found = folders.find((f) => guidKey(f.id) === key);
     if (!found) out += `${t('ChatFolderNotFound')}${NL}`;
     else {
@@ -197,12 +201,12 @@ function packMany(
     out += `All meetings:${NL}`;
   }
 
-  const folderKey = folderId === null ? null : guidKey(folderId);
+  const folderKey = projectId === null ? null : guidKey(projectId);
   const matching =
     kind === 'AllMeetings'
       ? [...meetings]
       : meetings.filter(
-          (m) => folderKey !== null && m.folderId !== null && guidKey(m.folderId) === folderKey,
+          (m) => folderKey !== null && m.projectId !== null && guidKey(m.projectId) === folderKey,
         );
   matching.sort((a, b) => {
     const diff = recordedMs(b.recordedAt) - recordedMs(a.recordedAt);
@@ -218,7 +222,7 @@ function packMany(
   const selected = [...ranked, ...recent].slice(0, MEETING_CAP);
 
   if (selected.length === 0) {
-    out += t(kind === 'Folder' ? 'ChatNoMeetingsInFolder' : 'ChatNoMeetingsSaved');
+    out += t(kind === 'Project' ? 'ChatNoMeetingsInFolder' : 'ChatNoMeetingsSaved');
     return out.trimEnd();
   }
   if (selected.length < matching.length) {
@@ -276,7 +280,7 @@ function packLive(live: LiveContextSnapshot, budget: ContextBudget, t: ChatStrin
   );
   if (text === null && digest === null) return t('ChatLiveTranscriptEmpty');
   const parts: string[] = [];
-  const session = packLiveSession(live, budget);
+  const session = packLiveSession(live, budget, live.project);
   if (session !== null) parts.push(session);
   if (text !== null) parts.push(`Live transcript:${NL}${neutralizeStructure(text)}`);
   return parts.join(`${NL}${NL}`);
@@ -286,19 +290,22 @@ const liveDigest = (digest: string | null | undefined): string | null =>
   isBlank(digest) ? null : cutPrefix(digest, LIVE_DIGEST_MAX_CHARS);
 
 /**
- * The part of the Live context that is not the transcript: title, notes and the rolling digest,
- * packed exactly as the Live chat scope does. The live ask reuses it so the pill and the dock see
- * what the chat sees. Null when there is nothing to say.
+ * The part of the Live context that is not the transcript: title, notes, the project block and
+ * the rolling digest, in that order, packed exactly as the Live chat scope does. The live ask
+ * reuses it so the pill and the dock see what the chat sees. Null when there is nothing to say.
+ * `projectBlock` is already packed (and neutralized) by `packProjectContext`.
  */
 export function packLiveSession(
   live: Pick<LiveContextSnapshot, 'title' | 'notes' | 'digest'>,
   budget: ContextBudget,
+  projectBlock?: string | null,
 ): string | null {
   const parts: string[] = [];
   const session: string[] = [];
   if (!isBlank(live.title)) session.push(`Meeting: ${singleLine(live.title.trim())}`);
   if (!isBlank(live.notes)) session.push(`Notes: ${capPrefix(live.notes, budget.liveNotesChars)}`);
   if (session.length > 0) parts.push(session.join(NL));
+  if (!isBlank(projectBlock)) parts.push(projectBlock);
   const digest = liveDigest(live.digest);
   if (digest !== null) parts.push(`${LIVE_DIGEST_LABEL}${NL}${neutralizeStructure(digest)}`);
   return parts.length === 0 ? null : parts.join(`${NL}${NL}`);
@@ -312,7 +319,7 @@ export function packLiveSession(
  */
 export function packContext(
   kind: ChatScopeKind,
-  folderId: string | null,
+  projectId: string | null,
   meetingId: string | null,
   liveTranscript: string | LiveContextSnapshot | null | undefined,
   meetings: readonly ContextMeeting[] | null,
@@ -338,9 +345,9 @@ export function packContext(
       if (!found) return t('ChatMeetingNotFound');
       return packMeeting(found, budget, options.query ?? '', t);
     }
-    case 'Folder':
+    case 'Project':
     case 'AllMeetings':
-      return packMany(kind, folderId, meetings, folders, t, budget.summaryChars);
+      return packMany(kind, projectId, meetings, folders, t, budget.summaryChars);
     default:
       throw new RangeError(`Unknown chat scope: ${String(kind)}`);
   }

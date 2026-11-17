@@ -21,7 +21,7 @@ const rec = (id: string, patch: Partial<MeetingRecord> = {}): MeetingRecord => (
   endedAt: null,
   audioFilePath: '',
   sourcePath: null,
-  folderId: 'folder-1',
+  projectId: 'folder-1',
   summaryProvider: 'codex',
   calendarEventId: 'evt-1',
   calendarId: 'cal-1',
@@ -226,10 +226,10 @@ describe('saveNotes (item 102)', () => {
   it('writes changed notes on a freshly read record and keeps every other field', async () => {
     const { service, repo } = setup([rec('a')]);
     // The page copy is stale: the stored record got a new summary after the page loaded.
-    repo.records.set('a', rec('a', { summary: 'newer summary', folderId: 'moved' }));
+    repo.records.set('a', rec('a', { summary: 'newer summary', projectId: 'moved' }));
     expect(await service.saveNotes('a', 'hello')).toEqual({ status: 'saved' });
     expect(repo.records.get('a')).toEqual(
-      rec('a', { summary: 'newer summary', folderId: 'moved', notes: 'hello' }),
+      rec('a', { summary: 'newer summary', projectId: 'moved', notes: 'hello' }),
     );
   });
 

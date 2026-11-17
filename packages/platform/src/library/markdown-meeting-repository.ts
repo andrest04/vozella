@@ -73,7 +73,7 @@ const noAudioProbe = { fileExists: (): boolean => false };
 /**
  * Meetings as Markdown files under the Library root (spec 3.6).
  *
- * The folder tree on disk is a write-only mirror: a meeting's folder is the `folderId` in its
+ * The folder tree on disk is a write-only mirror: a meeting's folder is the `projectId` in its
  * frontmatter. A small in-memory index (id, title, date, snippet per file, keyed by modified
  * time and size) means a Save, Delete or lookup costs one stat per file instead of a parse of
  * every file (B19), and a Library list never re-reads a transcript it has already seen (B28).
@@ -193,7 +193,7 @@ export class MarkdownMeetingRepository implements MeetingRepository {
 
   private async saveLocked(record: MeetingRecord): Promise<MeetingRecord> {
     const folders = await this.folderList();
-    const directory = directoryFor(this.root, folders, record.folderId);
+    const directory = directoryFor(this.root, folders, record.projectId);
     const desiredStem = fileStem(record.recordedAt, record.title);
 
     const existing = await this.pick(record.id);
@@ -295,7 +295,7 @@ export class MarkdownMeetingRepository implements MeetingRepository {
    */
   private async isUserFolderDirectory(path: string, record: MeetingRecord): Promise<boolean> {
     const first = nodePath.relative(this.root, path).split(/[\\/]/)[0]?.toLowerCase();
-    const top = folderChain(await this.folderList(), record.folderId)[0];
+    const top = folderChain(await this.folderList(), record.projectId)[0];
     return top !== undefined && sanitizeName(top.name).toLowerCase() === first;
   }
 

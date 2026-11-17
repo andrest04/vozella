@@ -10,7 +10,7 @@ const record = (over: Partial<MeetingRecord> = {}): MeetingRecord =>
     audioFilePath: 'C:\\a.wav',
     recordedAt: '2026-11-03T10:00:00+00:00',
     endedAt: '2026-11-03T10:30:00+00:00',
-    folderId: null,
+    projectId: null,
     transcript: '[00:01.00-00:02.00] ★ hi',
     calendarEventId: 'e1',
     attendees: ['Ana'],

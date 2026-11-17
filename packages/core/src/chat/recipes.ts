@@ -160,7 +160,7 @@ export function availabilityFor(kind: ChatScopeKind): RecipeAvailability {
     case 'Meeting':
     case 'Live':
       return 'single';
-    case 'Folder':
+    case 'Project':
     case 'AllMeetings':
       return 'multiple';
     default:
