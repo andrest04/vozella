@@ -48,17 +48,17 @@ Screaming architecture: folders name features (`recording`, `library`, `chat`), 
 - App data: `%LOCALAPPDATA%\Vozella`. Meetings default: `Documents\Vozella`. Neither is the existing `MeetingLive` location.
 - The user's real folder (`Documents\MeetingLive`) is used only if they pick it in Settings. Agents never pick it, read it, or test against it.
 - All runs set `VOZELLA_DATA_ROOT` to a temp folder. A guard refuses to start in dev or test if the resolved path is under the real `MeetingLive` folders.
-- The file formats stay byte-compatible with `docs/port/specs/library-storage.md` so the folder can be opened later. Writes are atomic: temp file then rename.
+- Meetings are plain Markdown files that any editor opens; the meeting format is described in `docs/port/specs/library-storage.md` (sections 3.8 and 3.9) and its readers stay tolerant (BOM, CRLF, any key case, dates with any fraction length). The app's own files are plain UTF-8 JSON with LF and an explicit `schemaVersion`, under `<Library>/.vozella`, with forward migrations (`docs/design/projects.md`, section 4). Writes are atomic: temp file then rename.
 - No use of the user's Claude, Codex, xAI, or TypeSafe accounts. Provider tests use doubles. Whatever stayed unverified goes in the parity ledger as `pending-real-validation`.
 
 ## Design direction
 
 Reference points: Granola and Notion. The app should feel like a quiet document tool that happens to record. Load the `frontend-design` skill, and take tokens from `website/index.html` and `docs/brand`.
 
-- **Color:** only the tokens: `paper`, `paper-raised`, `ink`, `on-ink`, `ink-muted`, `ink-faint`, `border-control`, `hairline`, plus light and dark values. `signal` red means live recording and nothing else; errors use ink with an icon and clear words. Folder accents stay as user-chosen content, muted.
+- **Color:** only the tokens: `paper`, `paper-raised`, `ink`, `on-ink`, `ink-muted`, `ink-faint`, `border-control`, `hairline`, plus light and dark values. `signal` red means live recording and nothing else; errors use ink with an icon and clear words. Projects have no accent colors or icons.
 - **Type:** Schibsted Grotesk for UI and notes, IBM Plex Mono for timestamps, durations, and data. Bundled locally through `@fontsource`, never a CDN. Scale is small and tight: 13/14 UI, 15/16 reading, a large title only on the document.
 - **Shape:** hairlines over shadows. Radius 4 to 6. Shadows only on real overlays. No gradients, glass, glows, emoji, or purple. No cards inside cards.
-- **Layout:** narrow sidebar with the library tree; the meeting is a centered document column around 720 px with generous margins; chat and transcript are panes that resize. Custom title bar with `titleBarOverlay`, solid background.
+- **Layout:** narrow sidebar rail (Record, Projects, Library, Settings); the meeting is a centered document column around 720 px with generous margins; chat and transcript are panes that resize. Custom title bar with `titleBarOverlay`, solid background.
 - **Motion:** 120 to 160 ms ease-out, opacity and small translate only; honor `prefers-reduced-motion`.
 - **Empty and loading:** quiet one-line copy, skeletons of real layout, no illustrations.
 - **Copy:** sentence case, plain words, no exclamation marks, nothing about AI magic. The product speaks as a tool.
