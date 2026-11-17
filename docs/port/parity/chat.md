@@ -12,7 +12,7 @@ Reason for every item below: owner decision 2026-11-03, may return later. Audito
 - Calendar: Coming up, reminder toasts, event-started takes, event metadata linking, Calendar settings, the pre-meeting brief (items 143 to 151). Meeting call detection and its prompt popup stay.
 - xAI/Grok provider: OAuth, API key, credential store, settings expander. Claude Code, Codex and the local provider stay. A settings file that selects Xai must still load.
 - Suggest-title button, custom note template, nav-pane resize grip, meeting-app suggestion bar on Record.
-- Chat thread history and user recipes (items 93 to 101, 113 to 116; item 105 keeps only the built-in part). The chat itself and built-in recipe chips stay.
+- Chat thread history and user recipes (items 93 to 101, 113 to 116; item 105 keeps only the built-in part). The chat itself and built-in recipe chips stay. Thread history is superseded by the Projects feature: see "Projects: persisted chat history and project context" at the end of this file.
 - On-disk compatibility still applies: Jev frontmatter, event frontmatter keys and the Brief section of existing meetings are read and rewritten without loss.
 
 ## Where things are
@@ -483,3 +483,26 @@ Real CLI and local-model answers remain unverified for every row that depends on
 | B8 mid-session language switch test | kept | Call-time proof is `recipes.test.ts`; the component re-derives from `t`. |
 | B10 packer test could not fail | fixed | Inputs now put the raw tail cut on a low surrogate for Live and Meeting, and the test asserts that precondition. |
 | Flyout layout and cramped Record page | deferred | Visual polish for the final review. |
+
+## Projects: persisted chat history and project context
+
+Design: `docs/design/projects.md` sections 5, 6 and 7. This section changes or improves earlier rows; where a row above and a row here disagree, this one wins. The Projects feature replaces library folders with flat projects, so the "Folder" scope is now the "Project" scope.
+
+| # | Item | Package | Status | Notes |
+| --- | --- | --- | --- | --- |
+| P1 | Chat history is persisted: every successful turn is saved as a thread of the project that owns it, or of no project. Threads can be listed, reopened and deleted. | L2 | improved | Replaces the owner cut of items 93 to 101. `ChatService` (`openThread`, `listThreads`, `renameThread`, `deleteThread`), `createChatThreadStore`; `chat-service.threads.test.ts`, `chat-thread-store.test.ts`. |
+| P2 | A thread is created lazily on the first successful turn and saved after every successful turn. A cancelled, failed or empty send saves nothing. | L2 | improved | `ChatService.commitTurn`. |
+| P3 | A failed save is logged and the chat goes on in memory; `chat.state.historySaved` is false until a save succeeds. `threadId` is null until the first save. | L2 | improved | Also the case while the storage is migrating, read-only or newer (`storage-*`). |
+| P4 | Owner of a thread: Project scope is its project, Meeting is the project of the meeting, Live is the project of the take, All meetings is no project. It is fixed when the thread is created. | L2 | improved | A thread stays with its owner when the meeting moves. |
+| P5 | Title is the first user message on one line cut at 60 characters; a thread can be renamed (up to 200 characters) and the new title survives later saves. | L2 | improved | `threadTitleOf`. Replaces `thread-title.ts` of the old plan. |
+| P6 | `send` continues the open thread only when `matchesOpenThread` holds; otherwise it starts a new thread and the old one stays in the history. New chat clears the open thread without deleting anything. | L2 | changed | Row 22 still holds; the comparison now uses the project id. |
+| P7 | A reopened thread comes back with its messages, its full scope (`projectId` is the owner) and a `scopeStatus`: `meeting-missing` for a deleted meeting, `live-ended` for a Live thread. A thread in that state refuses a send with `scope-gone`. Opening is refused while an answer runs. | L2 | improved | The page shows it read-only. The failure sentence reuses `Chat_SendFailed` with `ChatMeetingNotFound` until a dedicated string exists. |
+| P8 | Deleting the open thread resets the chat; renaming or deleting the thread being written while an answer runs is refused. | L2 | improved | `ChatService.deleteThread`, `renameThread`. |
+| P9 | Threads are stored as `chats/<id>.json` under the owner (project directory, or `no-project`): plain JSON with `schemaVersion`, atomic writes, one lock per owner, a list parsed from mtime-cached headers. | L2 | improved | Corrupt files and files newer than the app are reported, skipped and never deleted or written. Unknown keys are carried through. Every write is refused unless the storage is ready. |
+| P10 | The chat channels `chat.threads.list`, `open`, `rename`, `delete` and the event `chat.threads.changed`. | L2 | improved | `ChatController`, `registerChatHandlers`. A failure is a value, never a throw. |
+| P11 | Scope: the Projects surface with a project id is the Project scope; `/projects` and `/projects/none` (no id) are All meetings. History, Record and Settings behave as before. | L2 | changed | Row 16 replaced; `resolveScope`. |
+| P12 | Project scope header is `Project: {name}` (single line, B12) and the project's meetings. The folder note is gone: instructions and files come from the project block. | L2 | changed | Replaces rows 57 and 58's header and note. |
+| P13 | The project block (name, instructions, files) comes first in the chat context: Project scope before the meetings, Meeting scope before the meeting (project of the meeting), Live scope between the title and notes and the digest (project of the take). All meetings has none. | L2 | improved | `packProjectContext` with `projectBudgetFor('chat', engine)`; the query is the user text plus the last user turn. |
+| P14 | On the local engine the size of the block is taken out of the meeting and live budgets, so the prompt does not grow; remote engines are not reduced. | L2 | improved | `carveProjectBlock`. |
+| P15 | Forged `Id:` and `# ` lines in the instructions and in the files are neutralized (B12). A project that cannot be read leaves the block out and the answer runs. | L2 | improved | `context-packer.test.ts`, `chat-service.threads.test.ts`. |
+| P16 | `LibraryChatReader` reads `meetingsInProject` and `listProjects` (id and name only). | L2 | changed | Replaces `meetingsInFolder` and `listFolders`. |

@@ -32,7 +32,7 @@ import { promptLogEntry, recordingProviderSource } from './chat-prompt-log';
 import { ChatPromptsController } from './chat-prompts-controller';
 
 export interface ComposeChatDeps {
-  readonly library: Pick<LibraryRuntime, 'meetings' | 'folders' | 'paths'>;
+  readonly library: Pick<LibraryRuntime, 'meetings' | 'projects' | 'paths'>;
   readonly resolver: SummaryProviderResolver;
   /** Already scoped to the chat (`logger.child('chat')`). */
   readonly logger: Logger;
@@ -69,10 +69,11 @@ export interface ComposedChat {
 /** The chat and its saved prompts, with their IPC handlers. */
 export function composeChat(deps: ComposeChatDeps): ComposedChat {
   const { library, logger, translate, broadcast } = deps;
-  // Chat: one in-memory conversation; the engine is whichever one the summaries resolver picks.
+  // Chat: one open conversation, saved as a thread of its project; the engine is whichever one the
+  // summaries resolver picks.
   const chatReader = new LibraryChatReader({
     meetings: liveRepository(() => library.meetings),
-    folders: liveRepository(() => library.folders),
+    projects: liveRepository(() => library.projects),
   });
   // Attached files: paths stay here; the page holds ids. Image copies for one send go to temp.
   const chatAttachments = new ChatAttachmentStore({
@@ -98,6 +99,8 @@ export function composeChat(deps: ComposeChatDeps): ComposedChat {
     newId: () => randomUUID(),
     logger,
     uiLanguage: deps.uiLanguage,
+    threads: deps.threads,
+    projects: deps.projectContext,
   });
   const chat = new ChatController({
     service: chatService,

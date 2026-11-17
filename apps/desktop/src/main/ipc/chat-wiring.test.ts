@@ -1,5 +1,11 @@
 import { requestChannels, type RequestName } from '@vozella/contracts';
-import { ChatService, type ChatMeetingReader, type Logger } from '@vozella/core';
+import {
+  ChatService,
+  InMemoryChatThreadRepository,
+  InMemoryProjectContextSource,
+  type ChatMeetingReader,
+  type Logger,
+} from '@vozella/core';
 import { describe, expect, it, vi } from 'vitest';
 import { ChatController } from '../chat/chat-controller';
 import type { IpcEventLike } from '../security/trusted-origin';
@@ -11,13 +17,19 @@ const event: IpcEventLike = {
   sender: { id: 1 },
   senderFrame: { url: 'vozella://app/index.html', parent: null },
 };
-const scope = (kind: string) => ({ isVisible: true, kind, projectId: null, meetingId: null });
+const scope = (kind: string, projectId: string | null = null) => ({
+  isVisible: true,
+  kind,
+  projectId,
+  meetingId: null,
+});
+const PROJECT = '9f1c2d3e-0000-4000-8000-000000000001';
 
 const reader: ChatMeetingReader = {
   meetingById: () => Promise.resolve(null),
-  meetingsInFolder: () => Promise.resolve([]),
+  meetingsInProject: () => Promise.resolve([]),
   listRecent: () => Promise.resolve([]),
-  listFolders: () => Promise.resolve([]),
+  listProjects: () => Promise.resolve([]),
 };
 
 /** The real ChatService behind the real controller and handlers; only the edges are doubles. */
@@ -25,7 +37,6 @@ function wire() {
   const handlers = new Map<string, (event: never, ...args: unknown[]) => unknown>();
   const ipc: IpcMainLike = { handle: (name, listener) => void handlers.set(name, listener) };
   const events: { name: string; payload: unknown }[] = [];
-  let id = 0;
   const service = new ChatService({
     meetings: reader,
     providers: {
@@ -41,7 +52,9 @@ function wire() {
     },
     clock: { now: () => new Date('2026-01-01T00:00:00.000Z'), nowMs: () => 0 } as never,
     translate: (key: string) => key,
-    newId: () => `id-${String((id += 1))}`,
+    newId: () => crypto.randomUUID(),
+    threads: new InMemoryChatThreadRepository(),
+    projects: new InMemoryProjectContextSource(),
   });
   const controller = new ChatController({
     service,
@@ -87,5 +100,72 @@ describe('chat scope mismatch through the real service (B24)', () => {
     await call('chat.newChat', {});
     const cleared = (await call('chat.state', {})) as { value: { showScopeMismatch: boolean } };
     expect(cleared.value.showScopeMismatch).toBe(false);
+  });
+});
+
+describe('chat history through the real service', () => {
+  it('saves a turn, lists it, reopens it, renames it and deletes it', async () => {
+    const { call, events } = wire();
+    await call('chat.send', {
+      requestId: 'r1',
+      draft: 'What is a limit?',
+      scope: scope('Project', PROJECT),
+      liveTranscript: null,
+    });
+    expect(events.filter((e) => e.name === 'chat.threads.changed').map((e) => e.payload)).toEqual([
+      { projectId: PROJECT },
+    ]);
+
+    const listed = (await call('chat.threads.list', { projectId: PROJECT })) as {
+      value: { threads: { id: string; title: string; messageCount: number }[] };
+    };
+    expect(listed.value.threads).toHaveLength(1);
+    const thread = listed.value.threads[0];
+    expect(thread).toMatchObject({ title: 'What is a limit?', messageCount: 2 });
+    const threadId = thread?.id ?? '';
+    const state = (await call('chat.state', {})) as { value: { threadId: string | null } };
+    expect(state.value.threadId).toBe(threadId);
+
+    await call('chat.newChat', {});
+    const opened = (await call('chat.threads.open', { projectId: PROJECT, id: threadId })) as {
+      value: {
+        ok: boolean;
+        state: { threadId: string; hasMessages: boolean };
+        thread: { scope: unknown; scopeStatus: string; messages: { text: string }[] };
+      };
+    };
+    expect(opened.value.ok).toBe(true);
+    expect(opened.value.state).toMatchObject({ threadId, hasMessages: true });
+    expect(opened.value.thread.scope).toEqual({
+      kind: 'Project',
+      projectId: PROJECT,
+      meetingId: null,
+    });
+    expect(opened.value.thread.scopeStatus).toBe('ok');
+    expect(opened.value.thread.messages.map((m) => m.text)).toEqual(['What is a limit?', 'ok']);
+
+    expect(
+      await call('chat.threads.rename', { projectId: PROJECT, id: threadId, title: 'Midterm' }),
+    ).toMatchObject({ value: { ok: true } });
+    expect(await call('chat.threads.delete', { projectId: PROJECT, id: threadId })).toMatchObject({
+      value: { ok: true },
+    });
+    const after = (await call('chat.state', {})) as {
+      value: { threadId: string | null; hasMessages: boolean };
+    };
+    expect(after.value).toMatchObject({ threadId: null, hasMessages: false });
+    expect(await call('chat.threads.list', { projectId: PROJECT })).toMatchObject({
+      value: { threads: [] },
+    });
+  });
+
+  it('a thread that is not there is not-found, not an error', async () => {
+    const { call } = wire();
+    expect(
+      await call('chat.threads.open', {
+        projectId: null,
+        id: '7a000000-0000-4000-8000-000000000001',
+      }),
+    ).toMatchObject({ value: { ok: false, reason: 'not-found' } });
   });
 });
