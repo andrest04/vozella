@@ -287,7 +287,7 @@ describe('Settings page', () => {
     );
   });
 
-  it('offers Set up when no model is active, and it opens the wizard on the hardware step (S20)', async () => {
+  it('offers Set up when no model is active, and it opens the wizard on the hardware step', async () => {
     let closed = 0;
     install({
       'settings.getPage': () => {
@@ -364,7 +364,7 @@ describe('Settings page', () => {
     expect(within(group).getByRole('button', { name: 'Delete Old model' })).toBeVisible();
   });
 
-  it('hides Set up once a model is active, and for the CLI providers (S20)', async () => {
+  it('hides Set up once a model is active, and for the CLI providers', async () => {
     install({
       'settings.getPage': () =>
         pageDto({
@@ -1532,7 +1532,7 @@ describe('Settings tabs', () => {
   });
 });
 
-describe('Settings page (engine link, C3)', () => {
+describe('Settings page (engine link)', () => {
   const scrolled = vi.fn();
   beforeEach(() => {
     // jsdom has no layout, so it has no scrollIntoView.

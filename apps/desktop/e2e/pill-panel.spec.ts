@@ -4,7 +4,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { installEngine, launchApp, readyEnv, type LaunchedApp } from './launch';
 import { os, pixels, sleep } from './os/os';
 
-// The chat panel of the pill window (spec 2.8) on the fake native build: a fake take, the panel
+// The chat panel of the pill window on the fake native build: a fake take, the panel
 // growing toward the screen center, asks through the chips and the typed box against the fake
 // summary provider (no real CLI, no real account), the web badge, the error path, collapse on
 // drag and close on stop. The panel surface, its 28 DIP corner and the transparent gutter are

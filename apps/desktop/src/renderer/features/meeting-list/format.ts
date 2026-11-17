@@ -1,6 +1,6 @@
 import { parseOffsetDate } from '@vozella/core';
 
-/** Short date and short time in the user's locale, in local time (spec 2.7, the "g" format). */
+/** Short date and short time in the user's locale, in local time. */
 export function formatMeetingDate(recordedAt: string, locale: string): string {
   const parsed = parseOffsetDate(recordedAt);
   if (!parsed) return '';

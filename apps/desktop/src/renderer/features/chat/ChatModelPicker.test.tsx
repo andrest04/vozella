@@ -13,7 +13,7 @@ import { DialogHost } from '../../app/dialog-service';
 import { takeEngineFocus } from '../settings/engine-focus';
 import { ChatBody } from './ChatBody';
 
-// C2: the model picker beside Send. The choice lives for the conversation and never writes Settings.
+// The model picker beside Send. The choice lives for the conversation and never writes Settings.
 
 vi.mock('../ai-provider/ProviderGateDialogs', () => ({ ProviderGateDialogs: () => null }));
 

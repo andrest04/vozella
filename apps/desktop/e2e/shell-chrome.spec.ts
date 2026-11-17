@@ -98,14 +98,14 @@ async function seriousViolations(): Promise<{ id: string; nodes: string[] }[]> {
     }));
 }
 
-test('a failed startup migration is told once, in a window dialog with the message (item 9, bug 7)', async () => {
+test('a failed startup migration is told once, in a window dialog with the message', async () => {
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
   await expect(
     dialog.getByRole('heading', { name: 'Meeting history migration failed' }),
   ).toBeVisible();
   await expect(dialog).toContainText('Your original data was left untouched.');
-  // The exception message is the detail line WinUI dropped.
+  // The exception message is shown as the detail line.
   await expect(dialog).toContainText(/JSON/);
   await expect(dialog.getByRole('button', { name: 'OK' })).toBeFocused();
   expect(await seriousViolations()).toEqual([]);
@@ -140,7 +140,7 @@ test('the startup notice in dark', async () => {
   await useTheme('light');
 });
 
-test('the rail has Record, Projects, Library and Settings with their automation ids (items 20, 21, 23)', async () => {
+test('the rail has Record, Projects, Library and Settings with their automation ids', async () => {
   const nav = page.getByRole('navigation', { name: 'Main' });
   await expect(nav.getByRole('link')).toHaveText(['Record', 'Projects', 'Library', 'Settings']);
   await expect(page.locator('#NavItemRecording')).toBeVisible();
@@ -153,11 +153,11 @@ test('the rail has Record, Projects, Library and Settings with their automation 
   await page.reload();
   await expect(page.locator('#NavItemRecording')).toHaveAttribute('aria-current', 'page');
   await expect(page).toHaveURL(/#\/record$/);
-  // Title bar area: the mark and the name over the rail (item 14).
+  // Title bar area: the mark and the name over the rail.
   await expect(page.locator('aside').getByText('Vozella', { exact: true })).toBeVisible();
 });
 
-test('the Settings label follows the app language, not the OS (item 21)', async () => {
+test('the Settings label follows the app language, not the OS', async () => {
   await page.getByRole('link', { name: 'Settings' }).click();
   await openSettingsTab(page, 'general');
   await page.getByRole('combobox', { name: 'App language' }).click();
@@ -171,7 +171,7 @@ test('the Settings label follows the app language, not the OS (item 21)', async 
   await expect(page.locator('#NavItemSettings')).toHaveText('Settings');
 });
 
-test('selecting navigates and publishes the tag; the same page is a no-op; Session keeps the rail on Library (items 24 to 27)', async () => {
+test('selecting navigates and publishes the tag; the same page is a no-op; Session keeps the rail on Library', async () => {
   await page.locator('#NavItemHistory').click();
   await expect(page).toHaveURL(/#\/library$/);
   const state = () => page.evaluate(() => window.vozella.invoke('workspace.getState', {}));
@@ -195,7 +195,7 @@ test('selecting navigates and publishes the tag; the same page is a no-op; Sessi
   await expect(page.getByRole('heading', { level: 1, name: 'Library' })).toBeVisible();
 });
 
-test('a navigation request from elsewhere moves the rail and the page together (item 28)', async () => {
+test('a navigation request from elsewhere moves the rail and the page together', async () => {
   await page.evaluate(() => {
     window.location.hash = '#/record';
   });
@@ -214,7 +214,7 @@ test('a navigation request from elsewhere moves the rail and the page together (
   await expect(page.locator('#NavItemHistory')).toHaveAttribute('aria-current', 'page');
 });
 
-test('the call bar closes by itself when the call ends, and is offered again for the next call (bug 5, items 35 to 38)', async () => {
+test('the call bar closes by itself when the call ends, and is offered again for the next call', async () => {
   test.skip(packaged, NO_TEST_HOOKS);
   await page.locator('#NavItemSettings').click();
   fs.writeFileSync(flag, '');
@@ -241,7 +241,7 @@ test('the call bar closes by itself when the call ends, and is offered again for
   await page.waitForTimeout(5500);
 });
 
-test('the call bar closes when a recording starts (item 38)', async () => {
+test('the call bar closes when a recording starts', async () => {
   test.skip(packaged, NO_TEST_HOOKS);
   await page.locator('#NavItemRecording').click();
   await installEngine(page);
@@ -254,7 +254,7 @@ test('the call bar closes when a recording starts (item 38)', async () => {
   await expect(bar).toHaveCount(0);
 });
 
-test('Ctrl+P pauses, Ctrl+R stops, and the tooltips show key caps (items 138, 139)', async () => {
+test('Ctrl+P pauses, Ctrl+R stops, and the tooltips show key caps', async () => {
   // It continues the take that the previous test starts from a detected call.
   test.skip(packaged, NO_TEST_HOOKS);
   await expect(page.getByTestId('recording-bar')).toBeVisible();
@@ -286,7 +286,7 @@ test('Ctrl+P pauses, Ctrl+R stops, and the tooltips show key caps (items 138, 13
   fs.rmSync(flag, { force: true });
 });
 
-test('the AI panel opens and its Send tooltip names Enter and Ctrl+Enter (items 116, 123, bug 23)', async () => {
+test('the AI panel opens and its Send tooltip names Enter and Ctrl+Enter', async () => {
   await page.locator('#NavItemHistory').click();
   const launcher = page.getByRole('button', { name: 'Ask AI' });
   await expect(launcher).toBeVisible();
@@ -325,7 +325,7 @@ for (const theme of ['light', 'dark'] as const) {
   });
 }
 
-test('keyboard focus draws the 2 px ink ring with a 2 px offset (item 164)', async () => {
+test('keyboard focus draws the 2 px ink ring with a 2 px offset', async () => {
   await useTheme('light');
   await page.locator('#NavItemSettings').click();
   // Tab to the first link: the focus ring is an outline of 2 px with a 2 px offset.

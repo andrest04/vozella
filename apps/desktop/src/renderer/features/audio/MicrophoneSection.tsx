@@ -4,7 +4,7 @@ import { useT } from '../../i18n/I18nProvider';
 import { Meter, SectionHeader, SettingRow, Select } from '../../ui';
 import { useMicrophonePreview } from './use-microphone-preview';
 
-/** The "System default" row has the empty id in the spec (2.5); the select needs a non-empty value for it. */
+/** The "System default" row has the empty id; the select needs a non-empty value for it. */
 const DEFAULT_VALUE = '__system-default__';
 
 /**

@@ -11,7 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import type { ApiKeyAnswer } from '../ai-provider/ApiKeyField';
 
-/** How long the saved-feedback bar stays (spec 2.5: one non-repeating 4 second timer). */
+/** How long the saved-feedback bar stays (one non-repeating 4 second timer). */
 export const FEEDBACK_MS = 4000;
 
 type CliProvider = 'claude' | 'codex';
@@ -70,7 +70,7 @@ export interface SettingsPageModel {
 
 /**
  * The last snapshot, kept so a revisit paints it at once and refreshes without the skeleton
- * (spec 8.4). Only the first visit shows the loading state.
+ *. Only the first visit shows the loading state.
  */
 let lastPage: SettingsPageDto | null = null;
 
@@ -148,7 +148,7 @@ export function useSettingsPage(): SettingsPageModel {
     }, FEEDBACK_MS);
   }, []);
 
-  // Overlapping loads: only the newest request may apply its answer (spec 7.17).
+  // Overlapping loads: only the newest request may apply its answer.
   const loadSeq = useRef(0);
   const load = useCallback(async (): Promise<void> => {
     loadSeq.current += 1;
@@ -171,7 +171,7 @@ export function useSettingsPage(): SettingsPageModel {
   }, [load]);
 
   // A new data folder holds other settings: drop the kept snapshot and read again behind the
-  // skeleton, so nothing from the previous folder can be acted on (spec 8.4).
+  // skeleton, so nothing from the previous folder can be acted on.
   useEffect(() => {
     return window.vozella.on('library.changed', (event) => {
       if (event.reason !== 'location') return;

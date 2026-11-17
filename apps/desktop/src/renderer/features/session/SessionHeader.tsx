@@ -36,7 +36,7 @@ export function SessionHeader({
   readonly onRename: () => void;
   readonly onCopy: () => void;
   readonly onOpenLocation: () => void;
-  /** B4: a run for this meeting is going, so the title cannot change now. */
+  /** a run for this meeting is going, so the title cannot change now. */
   readonly renameDisabled?: boolean;
   /** Move to project: a popover trigger the page owns. */
   readonly moveControl?: ReactNode;

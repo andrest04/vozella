@@ -71,7 +71,7 @@ function rowOf(name: RegExp): HTMLElement {
 }
 
 describe('loading', () => {
-  it('item 96: the skeleton shows and the body is hidden during the first load', async () => {
+  it('the skeleton shows and the body is hidden during the first load', async () => {
     let release: () => void = () => undefined;
     const gate = new Promise<void>((resolve) => {
       release = resolve;
@@ -96,7 +96,7 @@ describe('loading', () => {
 });
 
 describe('the meeting row', () => {
-  it('item 114: right click and the more button both open Open summary, Move to project, Delete in that order', async () => {
+  it('right click and the more button both open Open summary, Move to project, Delete in that order', async () => {
     const { user } = await mount(seed);
     const names = (): (string | null)[] =>
       screen.getAllByRole('menuitem').map((item) => item.textContent);
@@ -115,7 +115,7 @@ describe('the meeting row', () => {
     expect(names()).toEqual(['Open summary', 'Move to project', 'Delete']);
   });
 
-  it('item 111: the row shows the local time, with the short date and time on hover', async () => {
+  it('the row shows the local time, with the short date and time on hover', async () => {
     await mount(seed);
     const expected = formatMeetingDate('2026-09-01T09:00:00.0000000+00:00', 'en');
     expect(expected).not.toBe('');
@@ -124,7 +124,7 @@ describe('the meeting row', () => {
 });
 
 describe('status messages and startup', () => {
-  it('item 123: the status notice has a Close that clears the message', async () => {
+  it('the status notice has a Close that clears the message', async () => {
     const { api, user } = await mount(seed);
     api.meetings.lockedIds.add('c');
     await user.click(within(rowOf(/Review/)).getByRole('button', { name: 'More actions' }));
@@ -136,7 +136,7 @@ describe('status messages and startup', () => {
     expect(screen.queryByText(/The meeting was not deleted/)).not.toBeInTheDocument();
   });
 
-  it('item 141: a startup migration error is shown in the page', async () => {
+  it('a startup migration error is shown in the page', async () => {
     await mount(seed, { startupError: 'meetings.json is damaged' });
     expect(
       await screen.findByText(/could not be moved yet\. meetings\.json is damaged/),

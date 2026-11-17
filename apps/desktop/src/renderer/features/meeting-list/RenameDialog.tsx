@@ -4,8 +4,8 @@ import { useT } from '../../i18n/I18nProvider';
 import { Button, Dialog, Field, Input } from '../../ui';
 
 /**
- * Rename a meeting (spec 2.3). Primary is the default button and stays disabled while the name is
- * blank; a short hint says why instead of the old silent refusal (B13). `problem` is a refusal
+ * Rename a meeting. Primary is the default button and stays disabled while the name is
+ * blank; a short hint says why instead of the old silent refusal. `problem` is a refusal
  * from main, such as a run in progress, shown under the field.
  */
 export function RenameDialog({

@@ -516,6 +516,6 @@ test('stopping the take hides the pill and saves the dock', async () => {
     Object.entries(settings).find(([k]) => k.toLowerCase() === name.toLowerCase())?.[1];
   expect(key('liveCopilotPillEdge')).toBe('Right');
   expect(typeof key('liveCopilotPillAlong')).toBe('number');
-  // The provider selection written by the seed survives the dock write (bug 12).
+  // The provider selection written by the seed survives the dock write.
   expect(key('selectedSummaryProvider')).toBe('Local');
 });

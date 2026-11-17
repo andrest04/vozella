@@ -54,7 +54,7 @@ describe('CliSetupDialog', () => {
     ).toEqual(['https://github.com/openai/codex']);
   });
 
-  it('a Retry that misses keeps the dialog open with the still-missing line (item 140)', async () => {
+  it('a Retry that misses keeps the dialog open with the still-missing line', async () => {
     const onFinished = vi.fn();
     const api = installProviderApi({ 'summaries.checkCli': () => checkAnswer(false) });
     render(

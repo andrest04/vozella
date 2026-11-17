@@ -10,7 +10,7 @@ export interface LiveCanvasProps {
   readonly heading: string;
   /** The LIVE badge: recording and not paused. */
   readonly live: boolean;
-  /** The canvas text with the highlight stars already applied (main caches the pass, B-22). */
+  /** The canvas text with the highlight stars already applied (main caches the pass). */
   readonly text: string;
   /** Lines from the top that the engine will not rewrite; `Infinity` for a finished text. */
   readonly committedLines: number;
@@ -28,7 +28,7 @@ export interface LiveCanvasProps {
   readonly notice?: { readonly title: string; readonly body: string } | null;
   /** The "Copied" bar is showing. */
   readonly copied: boolean;
-  /** A text Copy button in the heading row, for the finished transcript (spec 2.6). */
+  /** A text Copy button in the heading row, for the finished transcript. */
   readonly onCopy: (() => void) | null;
   /** Lets e2e tell the live surface from the finished one. */
   readonly surfaceTestId?: string;
@@ -48,7 +48,7 @@ interface RowProps {
 
 /**
  * One transcript line. Every prop is a primitive, so `memo` skips the lines that did not change:
- * an update re-renders the interim tail and the new line, never the whole meeting (item 111).
+ * an update re-renders the interim tail and the new line, never the whole meeting.
  */
 const Row = memo(function Row({
   kind,
@@ -105,7 +105,7 @@ interface BlockProps {
 /**
  * Fifty lines of the transcript, parsed and drawn together. Its props are two strings and two
  * numbers, so memo skips every block whose text did not change: only the block holding the
- * interim tail renders when text arrives (item 111).
+ * interim tail renders when text arrives.
  */
 const Block = memo(function Block({ text, committed, starLabel, youLabel }: BlockProps) {
   const lines = useMemo(() => liveLinesFrom(text, committed), [text, committed]);
@@ -147,10 +147,10 @@ export function toBlocks(text: string, committedLines: number): BlockSpec[] {
 }
 
 /**
- * The transcript surface (spec 2.7): a heading row, then a bordered scroll area with the text at
+ * The transcript surface: a heading row, then a bordered scroll area with the text at
  * 16 px / 26 px, content capped at 760. Calm by construction: committed lines are memoized by
- * index, the display holds still while the reader has focus or a selection in it (item 106), the
- * view follows the end until the reader scrolls away (item 107), and nothing moves layout.
+ * index, the display holds still while the reader has focus or a selection in it, the
+ * view follows the end until the reader scrolls away, and nothing moves layout.
  */
 export function LiveCanvas({
   heading,

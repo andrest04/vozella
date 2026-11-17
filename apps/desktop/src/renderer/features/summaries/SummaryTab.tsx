@@ -22,9 +22,9 @@ export function SummaryTab({
   copySourceRef,
 }: {
   readonly meetingId: string | null;
-  /** The session page's Copy button asks this tab for its text (spec 2.6): notes or summary. */
+  /** The session page's Copy button asks this tab for its text: notes or summary. */
   readonly copySourceRef?: RefObject<(() => Promise<string | null>) | null>;
-  /** Opens the engine or CLI setup when a run needs it (S18 and S19 plug in here). */
+  /** Opens the engine or CLI setup when a run needs it. */
   readonly runSetup?: RunSetup;
 }) {
   const { t, locale } = useI18n();

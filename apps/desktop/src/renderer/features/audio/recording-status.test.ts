@@ -7,7 +7,7 @@ import {
   startFailureMessage,
 } from './recording-status';
 
-describe('recordingStatus (spec 2.2)', () => {
+describe('recordingStatus', () => {
   it('names the four mic and output combinations', () => {
     expect(recordingStatus({ microphone: true, appName: null })).toEqual({
       key: 'Status_Recording',
@@ -28,7 +28,7 @@ describe('recordingStatus (spec 2.2)', () => {
   });
 });
 
-describe('noticeMessage (spec 2.3.3)', () => {
+describe('noticeMessage', () => {
   it('maps a lost microphone, a lost output and an empty mix', () => {
     expect(noticeMessage({ kind: 'source-lost', source: 'Microphone', remaining: 1 })).toEqual({
       key: 'Warning_MicrophoneLost',

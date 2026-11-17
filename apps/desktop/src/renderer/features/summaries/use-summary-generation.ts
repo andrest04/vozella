@@ -18,7 +18,7 @@ export interface DraftMessageState {
   readonly text: string;
 }
 
-/** A success message goes away by itself after this long (B16). */
+/** A success message goes away by itself after this long. */
 export const DRAFT_SUCCESS_MS = 4000;
 
 export interface SummaryGeneration {
@@ -55,7 +55,7 @@ export interface UseSummaryGenerationInput {
 const errorText = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
-/** The one status line a finished run leaves behind (item 93, B28, B34). */
+/** The one status line a finished run leaves behind. */
 export function describeOutcome(outcome: GenerateOutcomeDto, t: Translate): GenerationStatus {
   switch (outcome.status) {
     case 'generated':
@@ -80,7 +80,7 @@ export function describeOutcome(outcome: GenerateOutcomeDto, t: Translate): Gene
 /**
  * Generate, regenerate, cancel, the template pick and the copy of action items for the open
  * meeting. Main owns the run (one per meeting); this hook shows it and never writes the picked
- * template back on its own: the pick travels with the generate request (item 105).
+ * template back on its own: the pick travels with the generate request.
  */
 export function useSummaryGeneration(input: UseSummaryGenerationInput): SummaryGeneration {
   const { state, mode, loading, runningAtLoad, t } = input;
@@ -126,7 +126,7 @@ export function useSummaryGeneration(input: UseSummaryGenerationInput): SummaryG
   );
 
   // After a load the picker shows the record's template; a dropped or unknown id reads as Auto.
-  // This only sets local state: nothing is sent to main (item 105). A reload that changes
+  // This only sets local state: nothing is sent to main. A reload that changes
   // neither the meeting nor its stored template leaves the user's pick alone.
   const storedTemplate = state?.noteTemplateId ?? 'auto';
   const templateKey = (state?.templates ?? []).map((option) => option.id).join('|');
@@ -205,7 +205,7 @@ export function useSummaryGeneration(input: UseSummaryGenerationInput): SummaryG
           askedSetup = true;
           const result = await runSetup({ kind: outcome.kind, reason: outcome.reason });
           // Cancelling the dialogs says so. A download that failed already showed its own
-          // error inside the dialog, so this line is not used for it (B34).
+          // error inside the dialog, so this line is not used for it.
           if (result === 'completed') continue;
           final = { text: tr('Status_SetupCancelled'), tone: 'info' };
           break;

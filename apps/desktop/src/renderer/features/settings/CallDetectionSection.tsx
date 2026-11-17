@@ -3,7 +3,7 @@ import { useT } from '../../i18n/I18nProvider';
 import { SectionHeader, SettingRow, Switch } from '../../ui';
 
 /**
- * The call detection block of Settings (calendar-detection spec 2.4, popup toggle only). It reads
+ * The call detection block of Settings (popup toggle only). It reads
  * the saved value and never writes it back on first paint. A change patches only this field, so
  * the rest of the settings file, calendar fields included, is kept as it is. Main broadcasts the
  * "Never again" choice of the popup, and the toggle follows it.

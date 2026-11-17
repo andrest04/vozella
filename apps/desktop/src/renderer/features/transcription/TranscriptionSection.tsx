@@ -73,7 +73,7 @@ function keepsModel(kind: CloudTranscriptionKind, saved: string | null | undefin
 }
 
 /**
- * Settings, Transcription (spec 2.6, 2.6.1): where meetings are transcribed (this PC or a cloud
+ * Settings, Transcription: where meetings are transcribed (this PC or a cloud
  * engine with the user's API key), the setup of the cloud engine in use, the engine on this PC
  * (download, delete, which processor it runs on), the live preview, and speaker labels with their
  * model in one row. Labels are plain words; model names stay in descriptions and in the buttons'

@@ -16,7 +16,7 @@ export function elapsedAt(input: ElapsedInput, nowMs: number): number {
   return Math.max(0, input.elapsedMs + extra);
 }
 
-/** The `mm:ss` of the bar, redrawn once a second only while the clock runs (spec 3.6). */
+/** The `mm:ss` of the bar, redrawn once a second only while the clock runs. */
 export function useElapsed(input: ElapsedInput | null): string {
   const [now, setNow] = useState(() => Date.now());
   const ticking = input?.isTicking ?? false;

@@ -63,7 +63,7 @@ afterEach(() => {
 
 const flush = () => act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 
-describe('useTakeNotesRequest (items 93, 94, 96)', () => {
+describe('useTakeNotesRequest', () => {
   it('R17: a request remembered before the page opened starts a take on mount', async () => {
     install({ pending: true });
     const start = vi.fn();

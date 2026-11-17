@@ -7,7 +7,7 @@ export type Availability = 'Available' | 'NoAudio' | 'Busy';
 export interface RetranscriptionOptions {
   /** Called after a run for this meeting has ended, so the page can reload its tabs. */
   readonly onFinished?: (result: RetranscriptionResultDto) => void;
-  /** Called when a fresh check finds no audio, so the page can refresh what it knows (item 100). */
+  /** Called when a fresh check finds no audio, so the page can refresh what it knows. */
   readonly onAudioChanged?: () => void;
 }
 
@@ -21,7 +21,7 @@ export interface RetranscriptionModel {
   readonly engineReady: boolean;
   /** How the last run for this meeting ended, until dismissed or the next run starts. */
   readonly result: RetranscriptionResultDto | null;
-  /** Asks again whether this meeting can be re-transcribed now (items 96 and 100). */
+  /** Asks again whether this meeting can be re-transcribed now. */
   readonly recheck: () => Promise<boolean>;
   /** Re-checks, then starts. Nothing starts when the meeting is no longer available. */
   readonly start: () => void;
@@ -76,7 +76,7 @@ export function useRetranscription(
         const current = await window.vozella.invoke('retranscription.getState', {});
         if (!flags.alive) return;
         setState(current);
-        // A run that ended while the page was elsewhere left its result behind (B7): show it once.
+        // A run that ended while the page was elsewhere left its result behind: show it once.
         const kept = current.lastResults.find((entry) => entry.meetingId === meetingId);
         if (kept) {
           setResult(kept);
@@ -91,7 +91,7 @@ export function useRetranscription(
       setState(next);
       void loadAvailability();
     });
-    // A take or a summary run makes this meeting busy in main; when either ends, ask again (B16).
+    // A take or a summary run makes this meeting busy in main; when either ends, ask again.
     const offRecording = window.vozella.on('recording.state', () => {
       if (flags.alive) void loadAvailability();
     });

@@ -25,7 +25,7 @@ export interface EnsureReady {
 }
 
 /**
- * EnsureReady (spec 2.4, items 14 to 17): ready returns at once; otherwise the checklist dialog
+ * EnsureReady: ready returns at once; otherwise the checklist dialog
  * asks, "Set up" runs the missing steps in order (engine, then the summary chooser, then the CLI
  * for a chosen CLI engine), and the snapshot is read again until it can record. A step the user
  * cancels ends that pass and shows the checklist again; Cancel on the checklist ends the loop.

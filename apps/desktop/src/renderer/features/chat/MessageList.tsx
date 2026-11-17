@@ -21,7 +21,7 @@ export function MessageList({
   const t = useT();
   const scroller = useRef<HTMLDivElement>(null);
 
-  // Every new row and every streamed change moves the view to the end (spec 2.7).
+  // Every new row and every streamed change moves the view to the end.
   useLayoutEffect(() => {
     const el = scroller.current;
     if (el) el.scrollTop = el.scrollHeight;

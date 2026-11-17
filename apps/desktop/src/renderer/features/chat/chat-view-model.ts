@@ -134,5 +134,5 @@ export type KeyIntent = ComposerIntent;
 export type KeyInput = ComposerKeyInput;
 export const keyIntent = composerIntent;
 
-/** The text a screen reader reads for a message (parity 126). */
+/** The text a screen reader reads for a message. */
 export const accessibleMessageText = (role: string, text: string): string => `${role}: ${text}`;

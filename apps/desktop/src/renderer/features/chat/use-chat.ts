@@ -169,7 +169,7 @@ export function useChat(
         setDraft(restoreDraft(draftRef.current, raw));
       };
       const request = async (): Promise<ChatSendOutcomeDto> => {
-        // B5: the live transcript is read once, when the user presses send.
+        // the live transcript is read once, when the user presses send.
         const workspace = await window.vozella.invoke('workspace.getState', {});
         if (stopEarly.current) return { status: 'cancelled', originalDraft: raw };
         return window.vozella.invoke('chat.send', {

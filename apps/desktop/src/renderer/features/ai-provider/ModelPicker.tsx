@@ -16,7 +16,7 @@ const FIT_ICON = {
 } as const;
 
 /**
- * Ink-based badge: the icon and the words carry the rating, never a color (item 189). A poor fit
+ * Ink-based badge: the icon and the words carry the rating, never a color. A poor fit
  * gets the full ink border so it stands out without the red that belongs to recording.
  */
 function FitBadge({ fit }: { readonly fit: Fit }): ReactNode {
@@ -47,14 +47,14 @@ function RecommendedBadge(): ReactNode {
 const shownFit = (row: ModelRowDto): Fit | null =>
   row.fit && !(row.recommended && row.fit === 'Recommended') ? row.fit : null;
 
-/** "Detected: 16 GB RAM, GPU X (8 GB VRAM)" or the no-GPU line (item 129). */
+/** "Detected: 16 GB RAM, GPU X (8 GB VRAM)" or the no-GPU line. */
 export function hardwareLine(hardware: HardwareSummaryDto, t: Translate): string {
   return hardware.gpuVramGb !== null && hardware.gpuVramGb > 0
     ? t('Hardware_WithGpu', hardware.totalRamGb, hardware.gpuName ?? '', hardware.gpuVramGb)
     : t('Hardware_NoGpu', hardware.totalRamGb);
 }
 
-/** The model list: name and vendor, use case, speed and quality line, size and fit (item 130). */
+/** The model list: name and vendor, use case, speed and quality line, size and fit. */
 export function ModelPicker({
   hardware,
   rows,

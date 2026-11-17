@@ -375,7 +375,7 @@ test('a capture failure mid-take ends as a typed error and keeps the audio', asy
   const { launched, page } = await open({ VOZELLA_FAKE_CAPTURE_LOST_MS: '3000' });
   try {
     await record(page, 'Capture fail');
-    // The lost source is reported as a typed notice and the take waits for Stop (spec 3.9).
+    // The lost source is reported as a typed notice and the take waits for Stop.
     await expect(page.getByText(/Nothing is being captured/)).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId('BtnStop')).toBeEnabled();
     await page.getByTestId('BtnStop').click();

@@ -19,7 +19,7 @@ export const answerErrorMessage = (
 };
 
 /**
- * The typed question under the live transcript (spec 2.8, items 2 and 3). Ctrl+Enter inside the
+ * The typed question under the live transcript. Ctrl+Enter inside the
  * box asks; the web toggle is enabled only when the provider can search the web and keeps its
  * state between takes. Answers appear in the side panel (`AnswerCard`). A detected question card
  * sits above the box; while the dock is on screen the AI panel leaves its copy out.

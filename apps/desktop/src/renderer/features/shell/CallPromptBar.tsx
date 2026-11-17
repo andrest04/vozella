@@ -3,10 +3,10 @@ import { useT } from '../../i18n/I18nProvider';
 import { Button, Notice } from '../../ui';
 
 /**
- * The in-app call bar (calendar-detection items 111 and 112). Main offers it whenever a call is
+ * The in-app call bar. Main offers it whenever a call is
  * detected, even if the popup setting is off. It closes when the user closes it, when Take notes is
  * pressed (which also asks for a blank take), and by itself when main reports the call ended or a
- * recording started (bug 5, item 38).
+ * recording started.
  */
 export function CallPromptBar() {
   const t = useT();

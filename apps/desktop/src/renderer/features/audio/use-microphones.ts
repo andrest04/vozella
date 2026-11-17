@@ -20,7 +20,7 @@ export interface MicrophonesModel {
 }
 
 /**
- * The Record page microphone list (spec 2.1). A reload that yields the same list keeps the
+ * The Record page microphone list. A reload that yields the same list keeps the
  * current array so an open dropdown is not rebuilt, a stale answer (a newer reload started, or
  * the page left) is dropped, and a failed load leaves only None and System default.
  */
@@ -47,7 +47,7 @@ export function useMicrophones(): MicrophonesModel {
         accept(loaded.options, loaded.selected);
       },
       () => {
-        // A picked device is not in the shrunken list: fall back to System default (spec 102).
+        // A picked device is not in the shrunken list: fall back to System default.
         accept(
           FALLBACK_OPTIONS,
           touched.current?.kind === 'None' ? touched.current : SYSTEM_DEFAULT,

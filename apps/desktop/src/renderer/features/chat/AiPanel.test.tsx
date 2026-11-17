@@ -171,7 +171,7 @@ function installResizeObserver() {
   };
 }
 
-describe('AiPanel scope chip (items 6 to 11)', () => {
+describe('AiPanel scope chip', () => {
   it('shows All meetings on an idle Record page', async () => {
     install();
     mount();
@@ -290,7 +290,7 @@ describe('AiPanel scope chip (items 6 to 11)', () => {
     expect(markup.size).toBe(4);
   });
 
-  it('discards a name lookup that finishes after the scope moved on (item 18)', async () => {
+  it('discards a name lookup that finishes after the scope moved on', async () => {
     let release: () => void = () => undefined;
     const api = install({ currentShellTag: 'Session', selectedMeetingId: MEETING });
     api.titles[MEETING] = {
@@ -315,7 +315,7 @@ describe('AiPanel scope chip (items 6 to 11)', () => {
   });
 });
 
-describe('scope delivery (items 18 to 20)', () => {
+describe('scope delivery', () => {
   const setScopes = (api: ReturnType<typeof install>) =>
     api.calls.filter((c) => c.name === 'chat.setScope').map((c) => c.input);
 
@@ -349,7 +349,7 @@ describe('scope delivery (items 18 to 20)', () => {
     expect(sent.at(-1)?.scope.kind).toBe('AllMeetings');
   });
 
-  it('does not refresh when only the live transcript changes (item 20)', async () => {
+  it('does not refresh when only the live transcript changes', async () => {
     const api = install({ isCaptureActive: true });
     mount();
     await waitFor(() => {

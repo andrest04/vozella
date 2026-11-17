@@ -12,7 +12,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('isStuck (item 107)', () => {
+describe('isStuck', () => {
   const area = (scrollTop: number, scrollHeight = 1000, clientHeight = 200) => ({
     scrollTop,
     scrollHeight,
@@ -33,7 +33,7 @@ describe('isStuck (item 107)', () => {
   });
 });
 
-describe('useHeldValue (item 106)', () => {
+describe('useHeldValue', () => {
   it('passes the value through while not held', () => {
     const { result, rerender } = renderHook(({ v, h }) => useHeldValue(v, h), {
       initialProps: { v: 'a', h: false },
@@ -93,7 +93,7 @@ describe('elapsed time', () => {
   });
 });
 
-describe('useTimedValue (items 68 and 70)', () => {
+describe('useTimedValue', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -131,7 +131,7 @@ describe('useTimedValue (items 68 and 70)', () => {
   });
 });
 
-describe('accelerators (spec 2.6)', () => {
+describe('accelerators', () => {
   const key = (init: Partial<KeyboardEventInit> & { key: string }) => ({
     ctrlKey: false,
     shiftKey: false,

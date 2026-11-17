@@ -8,7 +8,7 @@ export interface EngineStatusState {
 }
 
 /**
- * The engine status the main process keeps (spec 2.6): read once, then replaced whenever main
+ * The engine status the main process keeps: read once, then replaced whenever main
  * pushes a change (backend used, live drops, downloads, deletes). No polling.
  */
 export function useEngineStatus(): EngineStatusState {

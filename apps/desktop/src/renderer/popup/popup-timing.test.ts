@@ -3,7 +3,7 @@ import path from 'node:path';
 import { POPUP_ENTRANCE_MS, POPUP_EXIT_MS, POPUP_SLIDE_DIP } from '@vozella/core';
 import { describe, expect, it } from 'vitest';
 
-// Items 55 and 56: the CSS is the copy that renders, so it must match the core constants that the
+// The CSS is the copy that renders, so it must match the core constants that the
 // main process uses for its exit timer.
 const css = readFileSync(path.join(__dirname, 'popup.css'), 'utf8');
 

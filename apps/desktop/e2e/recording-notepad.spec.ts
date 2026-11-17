@@ -143,7 +143,7 @@ for (const theme of ['light', 'dark'] as const) {
   });
 }
 
-test('discard clears the notes and the next take starts empty (B-10)', async () => {
+test('discard clears the notes and the next take starts empty', async () => {
   const discarded = await page.evaluate(
     async () => (await window.vozella.invoke('recording.discard', {})).discarded,
   );

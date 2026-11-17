@@ -1,7 +1,7 @@
 import type { StringKey } from '../../i18n/translate';
 
 /**
- * The derived view flags of the Record page (spec 2.1). Nothing here is stored: the page computes
+ * The derived view flags of the Record page. Nothing here is stored: the page computes
  * them from main's state on every render.
  */
 
@@ -38,7 +38,7 @@ export function deriveRecordLayout(input: RecordLayoutInput): RecordLayoutFlags 
   };
 }
 
-/** The window width from which the side panel is a right column (spec 2.1). */
+/** The window width from which the side panel is a right column. */
 export const SIDE_PANEL_MIN_WIDTH = 1100;
 export const SIDE_PANEL_WIDTH = 320;
 export const STACKED_NOTES_MAX_HEIGHT = 200;
@@ -61,7 +61,7 @@ export interface StatusMessage {
 }
 
 /**
- * The error bars follow the typed severity main sends (B-12), never the first letters of the text.
+ * The error bars follow the typed severity main sends, never the first letters of the text.
  */
 export const hasStatusError = (messages: readonly StatusMessage[]): boolean =>
   messages.some((message) => message.severity === 'error');

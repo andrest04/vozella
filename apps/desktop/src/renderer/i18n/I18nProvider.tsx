@@ -48,7 +48,7 @@ export function I18nProvider({
     document.documentElement.lang = locale;
   }, [locale]);
 
-  // Main saves the choice first, then tells every window to switch (settings-i18n B11).
+  // Main saves the choice first, then tells every window to switch.
   useEffect(() => {
     if (typeof window === 'undefined' || !('vozella' in window)) return undefined;
     return window.vozella.on('i18n.localeChanged', (event) => {

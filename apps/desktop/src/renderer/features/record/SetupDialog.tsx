@@ -5,9 +5,9 @@ import { needsCloudKey } from './needs-cloud-key';
 import { SetupCards } from './SetupCards';
 
 /**
- * The modal of the same checklist (spec 2.4b), opened by Record or Import when something is
+ * The modal of the same checklist, opened by Record or Import when something is
  * missing. "Set up" runs the missing steps; "Cancel", Escape and the close button all decline. The
- * "Done" state of the earlier dialog is never reachable there (B-17), so it is not drawn.
+ * "Done" state of the earlier dialog is never reachable there, so it is not drawn.
  *
  * With a cloud transcription engine that has no key, the step is not an install: the dialog says
  * which key is missing and its one action reads "Add API key" (it opens Settings on the field).

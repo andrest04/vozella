@@ -4,7 +4,7 @@ import { useT } from '../../i18n/I18nProvider';
 import { Button, Icon } from '../../ui';
 
 /**
- * The card after a take is saved (spec 2.13): a check, the title and Open. A quiet ink edge marks
+ * The card after a take is saved: a check, the title and Open. A quiet ink edge marks
  * it; an accent colour is not used because only live recording is red.
  */
 export function ResultCard({
@@ -14,7 +14,7 @@ export function ResultCard({
 }: {
   readonly title: string;
   readonly onOpen: () => void;
-  /** Set while the summary runs in the background (B-21): a quiet way to stop it. */
+  /** Set while the summary runs in the background: a quiet way to stop it. */
   readonly onCancelSummary?: (() => void) | null;
 }) {
   const t = useT();

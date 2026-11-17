@@ -3,7 +3,7 @@ import { useT } from '../../i18n/I18nProvider';
 import type { StringKey } from '../../i18n/translate';
 import { SectionHeader, Select, SettingRow } from '../../ui';
 
-/** Transcription language and summary language: two single-field settings (spec 2.6). */
+/** Transcription language and summary language: two single-field settings. */
 export function MeetingLanguageSection({
   transcription,
   summary,

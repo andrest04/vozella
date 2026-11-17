@@ -24,7 +24,7 @@ const partClass = {
   text: '',
 } as const;
 
-/** Off-screen lines skip layout and paint, so a multi-megabyte transcript stays responsive (B20). */
+/** Off-screen lines skip layout and paint, so a multi-megabyte transcript stays responsive. */
 /** How long a revealed line stays highlighted (T3). */
 export const REVEAL_HIGHLIGHT_MS = 2400;
 
@@ -83,7 +83,7 @@ const Line = memo(function Line({
 });
 
 /**
- * Transcript tab (spec 2.6): the stored text, line by line, as written. Stamps are muted and
+ * Transcript tab: the stored text, line by line, as written. Stamps are muted and
  * starred lines get a quiet marker, but every character stays in the DOM, so selecting and
  * copying gives back the stored transcript. The one exception is the local user label `[ You ]`,
  * shown in the UI language; Copy still gives the stored text.

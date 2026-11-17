@@ -8,7 +8,7 @@ export interface PulseProps {
   readonly className?: string;
 }
 
-/** Halo opacity: 0.15 to 0.45 over 1.2 s (items 63, 193). Static 0.3 under reduced motion. */
+/** Halo opacity: 0.15 to 0.45 over 1.2 s. Static 0.3 under reduced motion. */
 export const PULSE_STATIC_OPACITY = 0.3;
 export const PULSE_PERIOD = '1.2s';
 

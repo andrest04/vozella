@@ -60,7 +60,7 @@ describe('CapsuleView', () => {
   });
   afterEach(cleanup);
 
-  it('lays the six items out in the spec order with the AutomationIds', () => {
+  it('lays the six items out in their fixed order with the AutomationIds', () => {
     render(<CapsuleView {...props()} />);
     const capsule = screen.getByTestId('LiveCopilotCapsule');
     const order = Array.from(capsule.querySelectorAll('[data-item]')).map((n) =>
@@ -129,7 +129,7 @@ describe('CapsuleView', () => {
     expect(barHeights()[2]).toBeCloseTo(13.5, 1);
   });
 
-  it('the bars run only while running is true (item 59)', () => {
+  it('the bars run only while running is true', () => {
     vi.useFakeTimers();
     try {
       const { rerender } = render(<CapsuleView {...props({ running: true, level: 100 })} />);

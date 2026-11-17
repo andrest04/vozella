@@ -132,7 +132,7 @@ test('typing /action filters, a click fills the draft without sending', async ()
   }
 });
 
-test('a chip click sends and streams the answer (item 107)', async () => {
+test('a chip click sends and streams the answer', async () => {
   const { launched, page } = await open();
   try {
     await openMeeting(page);

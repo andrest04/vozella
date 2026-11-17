@@ -46,12 +46,12 @@ afterEach(() => {
   Reflect.deleteProperty(window, 'vozella');
 });
 
-describe('one dB scale on every page (B-14)', () => {
+describe('one dB scale on every page', () => {
   // The audio worker applies toMeterPercent to the idle preview and to the recording level, so
   // the same voice reads the same on Settings and on the Record bar. Neither page rescales.
   const speech = toMeterPercent(0.05);
 
-  it('is the spec value for typical speech: about 56', () => {
+  it('is the expected value for typical speech: about 56', () => {
     expect(Math.round(speech)).toBe(57);
     expect(toMeterPercent(10 ** (-30 / 20))).toBeCloseTo(50, 5);
     expect(toMeterPercent(0)).toBe(0);

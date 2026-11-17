@@ -21,7 +21,7 @@ export interface AudioBarsProps {
 }
 
 /**
- * Five rounded bars that follow a level (spec 3.5, item 103). While running they ease toward the
+ * Five rounded bars that follow a level. While running they ease toward the
  * target on a 33 ms timer with a little per-bar wobble; at rest, when paused, or under reduced
  * motion they snap to the target. Decorative: the level has its own named meter.
  */

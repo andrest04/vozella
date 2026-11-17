@@ -216,7 +216,7 @@ describe('SessionRoute', () => {
     const fake = install({ state: { selectedMeetingId: A, sessionTab: 'Summary' } });
     mount();
     expect(await screen.findByTestId('summary-stub')).toBeTruthy();
-    // Applying the stored tab never writes it back (item 11).
+    // Applying the stored tab never writes it back.
     expect(fake.calls.filter((c) => c.name === 'workspace.dispatch')).toEqual([]);
     await userEvent.click(screen.getByRole('tab', { name: 'Transcript' }));
     expect(fake.calls.at(-1)).toEqual({
@@ -247,7 +247,7 @@ describe('SessionRoute', () => {
     expect(fake.calls.at(-1)?.input).toEqual({ action: { type: 'navigateTo', tag: 'History' } });
   });
 
-  it('clears loading and offers Retry when the load throws (8, B9)', async () => {
+  it('clears loading and offers Retry when the load throws', async () => {
     const fake = install({ failLoad: true });
     mount();
     expect(await screen.findByText(/could not be opened/i)).toBeTruthy();
@@ -257,7 +257,7 @@ describe('SessionRoute', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Weekly sync' })).toBeTruthy();
   });
 
-  it('re-reads the workspace state on Retry when getState itself failed (B9)', async () => {
+  it('re-reads the workspace state on Retry when getState itself failed', async () => {
     const fake = install({ failState: true });
     mount();
     expect(await screen.findByText(/could not be opened/i)).toBeTruthy();
@@ -267,7 +267,7 @@ describe('SessionRoute', () => {
     expect(fake.calls.filter((c) => c.name === 'workspace.getState')).toHaveLength(2);
   });
 
-  it('applies slide directions to the panel and clears them on reload (21, B15)', async () => {
+  it('applies slide directions to the panel and clears them on reload', async () => {
     install();
     mount();
     await screen.findByRole('heading', { level: 1 });
@@ -313,7 +313,7 @@ describe('SessionRoute', () => {
     expect(heading.closest('section')?.className).not.toMatch(/max-w-/);
   });
 
-  it('falls to the empty state when the open meeting is deleted (B20)', async () => {
+  it('falls to the empty state when the open meeting is deleted', async () => {
     const fake = install();
     mount();
     await screen.findByRole('heading', { level: 1 });
@@ -342,7 +342,7 @@ describe('SessionRoute', () => {
     ).toBeTruthy();
   });
 
-  it('drops a stale load when the selection changes meanwhile (14, B6)', async () => {
+  it('drops a stale load when the selection changes meanwhile', async () => {
     let release: () => void = () => undefined;
     const slow = new Promise<void>((resolve) => {
       release = resolve;
@@ -363,11 +363,11 @@ describe('SessionRoute', () => {
       await slow;
     });
     expect(screen.getByRole('heading', { level: 1, name: 'Other talk' })).toBeTruthy();
-    // B6: the tab receives the same id as the header.
+    // the tab receives the same id as the header.
     expect(screen.getByTestId('transcript-stub').textContent).toBe(B);
   });
 
-  it('B9: a quiet refresh that fails while the first load is in flight ends in Retry, not empty', async () => {
+  it('a quiet refresh that fails while the first load is in flight ends in Retry, not empty', async () => {
     let release: () => void = () => undefined;
     const slow = new Promise<void>((resolve) => {
       release = resolve;
@@ -410,7 +410,7 @@ describe('SessionRoute', () => {
   });
 
   describe('rename', () => {
-    it('prefills, disables Rename while blank with a hint, and saves trimmed (27 to 35, B13)', async () => {
+    it('prefills, disables Rename while blank with a hint, and saves trimmed', async () => {
       const fake = install();
       mount();
       await screen.findByRole('heading', { level: 1 });
@@ -554,7 +554,7 @@ describe('SessionRoute', () => {
       expect(screen.queryByText(/could not open/i)).toBeNull();
     });
 
-    it('shows a quiet notice when the file cannot be opened (62, B13)', async () => {
+    it('shows a quiet notice when the file cannot be opened', async () => {
       install({ revealed: false });
       mount();
       await screen.findByRole('heading', { level: 1 });
@@ -578,7 +578,7 @@ describe('SessionRoute', () => {
       expect(await within(header).findByTestId('BtnSessionRetranscribe')).toBeEnabled();
     });
 
-    it('disables rename while this meeting is being re-transcribed, not for another one (B4)', async () => {
+    it('disables rename while this meeting is being re-transcribed, not for another one', async () => {
       const fake = install({
         run: { isRunning: true, meetingId: A, status: 'Transcribing audio... 3%' },
         availability: 'Busy',
@@ -599,7 +599,7 @@ describe('SessionRoute', () => {
       expect(screen.queryByTestId('TextSessionRetranscribeStatus')).toBeNull();
     });
 
-    it('shows the kept result when the page opens after the run ended elsewhere (B7)', async () => {
+    it('shows the kept result when the page opens after the run ended elsewhere', async () => {
       install({ lastResults: [{ meetingId: A, outcome: 'Completed', message: null }] });
       mount();
       expect(await screen.findByTestId('InfoSessionRetranscribeNotice')).toHaveTextContent(

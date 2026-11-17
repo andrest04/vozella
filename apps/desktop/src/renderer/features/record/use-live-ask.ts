@@ -3,9 +3,9 @@ import { create } from 'zustand';
 import { readStored, writeStored } from '../../app/preference-storage';
 
 /**
- * The live ask of the Record page (spec 2.8, typed part). Main streams the answer through
+ * The live ask of the Record page (typed part). Main streams the answer through
  * `recording.answer`; the page keeps the last one and the state of the web toggle, which outlives
- * a take (item 114). Armed questions and auto-detection were dropped by the owner on 2026-11-03.
+ * a take. Armed questions and auto-detection were dropped by the owner on 2026-11-03.
  */
 
 const WEB_KEY = 'vozella.liveWebSearch';

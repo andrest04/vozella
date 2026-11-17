@@ -2,7 +2,7 @@ import { useEffect, useState, type RefObject } from 'react';
 
 /**
  * Holds `value` back while `held` is true and shows the newest again the moment it turns false
- * (spec 2.7, item 106): a reader selecting text must not have it replaced under the cursor, and
+ *: a reader selecting text must not have it replaced under the cursor, and
  * the display catches up on blur. While not held the value passes straight through.
  */
 export function useHeldValue<T>(value: T, held: boolean): T {

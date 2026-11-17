@@ -4,7 +4,7 @@ import es from './locales/es.json';
 import uiEn from './locales/ui.en.json';
 import uiEs from './locales/ui.es.json';
 
-// Item 144 (D4): every key the call detection screens use has an English and a Spanish value.
+// every key the call detection screens use has an English and a Spanish value.
 const KEYS = [
   'CallPrompt_Title',
   'CallPrompt_Body',
@@ -24,7 +24,7 @@ const catalog = (value: unknown): Record<string, string> => value as Record<stri
 const enAll = { ...catalog(en), ...catalog(uiEn) };
 const esAll = { ...catalog(es), ...catalog(uiEs) };
 
-describe('call detection strings (item 144)', () => {
+describe('call detection strings', () => {
   it.each(KEYS)('%s has a non empty English and Spanish value', (key) => {
     expect(enAll[key]?.trim()).toBeTruthy();
     expect(esAll[key]?.trim()).toBeTruthy();

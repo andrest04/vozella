@@ -16,7 +16,7 @@ async function answer(requestId: string, accepted: boolean): Promise<void> {
 }
 
 /**
- * The dialogs of the app close flow (spec 2.16, item 165). Main decides which one shows and in
+ * The dialogs of the app close flow. Main decides which one shows and in
  * which order; this only draws it and sends the answer. The defaults are the safe side: Keep
  * recording while a take runs, Close anyway never receives the focus.
  */

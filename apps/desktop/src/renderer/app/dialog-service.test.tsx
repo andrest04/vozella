@@ -24,7 +24,7 @@ const mount = () =>
 
 const confirm = { title: 'Delete it?', primaryText: 'Delete', closeText: 'Cancel' };
 
-describe('dialog service (AppDialogFactory, items 133 to 135)', () => {
+describe('dialog service (AppDialogFactory)', () => {
   it('confirm has a primary and a close button and resolves true for the primary', async () => {
     mount();
     let result: Promise<boolean> | undefined;
@@ -99,7 +99,7 @@ describe('dialog service (AppDialogFactory, items 133 to 135)', () => {
     expect(screen.getByLabelText<HTMLInputElement>('Reason').value).toBe('x');
   });
 
-  it('a second request waits for the first and never throws (item 134)', async () => {
+  it('a second request waits for the first and never throws', async () => {
     mount();
     let first: Promise<boolean> | undefined;
     let second: Promise<void> | undefined;

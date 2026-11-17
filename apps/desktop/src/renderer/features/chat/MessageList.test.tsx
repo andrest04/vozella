@@ -15,7 +15,7 @@ const rowsWith = (text: string): readonly ChatRow[] => [
   { id: 'a', role: 'assistant', text, pending: text === '' },
 ];
 
-describe('auto-scroll (item 36)', () => {
+describe('auto-scroll', () => {
   it('moves the view to the end on every streamed text change, not only when settled', () => {
     // jsdom has no layout: the content height grows with the streamed text.
     let height = 0;

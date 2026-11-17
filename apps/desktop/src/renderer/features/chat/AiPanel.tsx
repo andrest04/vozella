@@ -75,7 +75,7 @@ function useObservedWidth(ref: RefObject<HTMLElement | null>): number | null {
 }
 
 /**
- * The page and the AI panel beside it (spec 2.1). A launcher at the bottom right opens the panel;
+ * The page and the AI panel beside it. A launcher at the bottom right opens the panel;
  * Ctrl+J toggles it. It docks on the right and resizes, or floats over the page when docking
  * would leave the page too narrow. It stays open across pages, remembers its width and open
  * state, and disappears on Settings, where the chat has no scope.

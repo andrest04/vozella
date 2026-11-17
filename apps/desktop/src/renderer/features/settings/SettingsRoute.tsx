@@ -61,7 +61,7 @@ export function SettingsRoute() {
   const model = useSettingsPage();
   const { page } = model;
   const [tab, setTab] = useSettingsTab();
-  // The fade belongs to the first reveal; a revisit paints the kept snapshot silently (spec 8.5).
+  // The fade belongs to the first reveal; a revisit paints the kept snapshot silently.
   const revealed = useRef(model.page === null).current;
   const appearanceBuilt = SETTINGS_SECTIONS.some(
     (section) => section.id === 'appearance' && section.status === 'built',

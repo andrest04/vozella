@@ -3,7 +3,7 @@ import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { launchApp, type LaunchedApp } from './launch';
 
-// Playing the saved audio from the Transcript tab (recorded improvement, spec 7 item 21 / B21).
+// Playing the saved audio from the Transcript tab.
 // The audio is a generated three second wav; the library is a throwaway data root.
 // Screenshots are rewritten only with VOZELLA_SCREENSHOTS=1.
 

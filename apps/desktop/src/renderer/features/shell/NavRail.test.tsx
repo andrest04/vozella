@@ -51,7 +51,7 @@ const current = () =>
     .filter((link) => link.getAttribute('aria-current') === 'page')
     .map((link) => link.id);
 
-describe('navigation shell (items 20 to 28)', () => {
+describe('navigation shell', () => {
   it('lists Record, Projects, Library and Settings with the automation ids', async () => {
     await mount('/record');
     expect(screen.getAllByRole('link').map((link) => [link.textContent, link.id])).toEqual([
@@ -64,7 +64,7 @@ describe('navigation shell (items 20 to 28)', () => {
     expect(current()).toEqual(['NavItemRecording']);
   });
 
-  it('labels follow the app language, Settings included (item 21)', async () => {
+  it('labels follow the app language, Settings included', async () => {
     await mount('/record', 'es');
     expect(screen.getAllByRole('link').map((link) => link.textContent)).toEqual([
       'Grabar',
@@ -74,14 +74,14 @@ describe('navigation shell (items 20 to 28)', () => {
     ]);
   });
 
-  it('selecting an entry navigates and moves the selection (item 24)', async () => {
+  it('selecting an entry navigates and moves the selection', async () => {
     const router = await mount('/record');
     await userEvent.click(screen.getByRole('link', { name: 'Settings' }));
     expect(router.state.location.pathname).toBe('/settings');
     expect(current()).toEqual(['NavItemSettings']);
   });
 
-  it('selecting the page already showing is a no-op (item 25)', async () => {
+  it('selecting the page already showing is a no-op', async () => {
     const router = await mount('/library');
     const before = router.history.length;
     await userEvent.click(screen.getByRole('link', { name: 'Library' }));
@@ -97,7 +97,7 @@ describe('navigation shell (items 20 to 28)', () => {
     },
   );
 
-  it('the rail stays on Library while a session shows, and Library returns to the list (items 26, 27)', async () => {
+  it('the rail stays on Library while a session shows, and Library returns to the list', async () => {
     const router = await mount('/session');
     expect(current()).toEqual(['NavItemHistory']);
     await userEvent.click(screen.getByRole('link', { name: 'Library' }));
@@ -105,7 +105,7 @@ describe('navigation shell (items 20 to 28)', () => {
     expect(screen.getByText('page /library')).toBeTruthy();
   });
 
-  it('a programmatic navigation moves the rail with the page (item 28)', async () => {
+  it('a programmatic navigation moves the rail with the page', async () => {
     const router = await mount('/record');
     await act(async () => {
       await router.navigate({ to: '/session' });

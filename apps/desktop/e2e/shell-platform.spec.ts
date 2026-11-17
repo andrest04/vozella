@@ -138,7 +138,7 @@ const closeMain = (app: ElectronApplication) =>
   });
 
 // ---------------------------------------------------------------------------------------------
-// Single instance and activation (items 10, 11, 7.3a)
+// Single instance and activation
 
 test('a second launch on the same data root exits and the first window comes back from minimized', async () => {
   const root = newRoot();
@@ -178,7 +178,7 @@ test('a second launch on the same data root exits and the first window comes bac
 });
 
 // ---------------------------------------------------------------------------------------------
-// Window state (items 16, 17, 7.3c)
+// Window state
 
 test('moved and resized bounds come back on the next launch, and the minimum size holds', async () => {
   const root = newRoot();
@@ -299,7 +299,7 @@ test('the tray has Open and Quit, Open restores a minimized window, Quit still a
 });
 
 // ---------------------------------------------------------------------------------------------
-// Recording handoff (items 76 to 78, 62, 77)
+// Recording handoff
 
 test('starting a take minimizes the main window once, dismisses the popup and tells the pill seam', async () => {
   test.skip(packaged, NO_TEST_HOOKS);
@@ -364,7 +364,7 @@ test('starting a take minimizes the main window once, dismisses the popup and te
 });
 
 // ---------------------------------------------------------------------------------------------
-// Close gate (items 90 to 101, bug 8)
+// Close gate
 
 test('closing during Recording asks, Keep recording keeps the take, Stop and save saves it', async () => {
   const root = newRoot();
@@ -392,7 +392,7 @@ test('closing during Recording asks, Keep recording keeps the take, Stop and sav
 
 // The Preparing window of a fake start is a few milliseconds, so this close races the start. Either
 // ordering must end in the same safe place: the guard waits for the start, then saves (or asks
-// first when the take is already recording), and the take is on disk. The deterministic Preparing proof is the unit set in recording-service.test.ts (item 101).
+// first when the take is already recording), and the take is on disk. The deterministic Preparing proof is the unit set in recording-service.test.ts.
 test('closing right after Record never loses the take', async () => {
   const root = newRoot();
   seedReady(root);
@@ -410,7 +410,7 @@ test('closing right after Record never loses the take', async () => {
       .not.toBe('Idle');
     await closeMain(app);
     const dialog = page.getByRole('dialog', { name: 'Stop recording before closing?' });
-    // Preparing saves without a question (sp2-D1); if the start won the race the usual question
+    // Preparing saves without a question; if the start won the race the usual question
     // comes first. Both end with the app closed and the take on disk.
     const first = await Promise.race([
       exited(app).then(() => 'closed' as const),
@@ -446,7 +446,7 @@ test('closing while the take is stopping waits for the save and keeps the take',
 });
 
 // ---------------------------------------------------------------------------------------------
-// Menu (item 140)
+// Menu
 
 test('no application menu, and Ctrl+R on Record toggles the take without reloading', async () => {
   const root = newRoot();
@@ -497,7 +497,7 @@ test('screenshots: the shell, the tray menu model and the startup notice, light 
   fs.mkdirSync(outDir, { recursive: true });
   const root = newRoot();
   seedReady(root);
-  // A damaged legacy file makes the startup migration fail, which gives the startup notice.
+  // A damaged older file makes the startup migration fail, which gives the startup notice.
   fs.writeFileSync(path.join(root, 'app', 'meetings.json'), '{ not json', 'utf8');
   const app = await launchAppInRoot(root, {
     ...readyEnv,

@@ -37,7 +37,7 @@ afterEach(() => {
   Reflect.deleteProperty(window, 'vozella');
 });
 
-describe('StartupNotice (item 9, bug 7)', () => {
+describe('StartupNotice', () => {
   it('shows one OK dialog with the title, the text and the exception message', async () => {
     install('EPERM: operation not permitted');
     mount();

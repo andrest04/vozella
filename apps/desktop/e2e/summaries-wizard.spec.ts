@@ -129,7 +129,7 @@ test.describe('with a GPU and a slow download', () => {
     expect(await serious(page)).toEqual([]);
   });
 
-  test('Cancel download returns to the list and saves nothing (B6)', async () => {
+  test('Cancel download returns to the list and saves nothing', async () => {
     const { page, settings } = session;
     await page.getByTestId('BtnDownloadModel').click();
     const status = page.getByTestId('TxtDownloadStatus');
@@ -241,7 +241,7 @@ test.describe('a download that fails once', () => {
     await session.launched.close();
   });
 
-  test('shows the error on the list with Try again, and the retry completes (B7)', async () => {
+  test('shows the error on the list with Try again, and the retry completes', async () => {
     const { page, settings } = session;
     await openWizard(page, 'Open on the model step');
     await page.getByTestId('BtnDownloadModel').click();

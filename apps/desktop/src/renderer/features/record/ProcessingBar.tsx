@@ -3,7 +3,7 @@ import { useT } from '../../i18n/I18nProvider';
 import { Button, Progress } from '../../ui';
 
 /**
- * The bar while a run processes (spec 2.10 and 2.11): the status in one strong line that screen
+ * The bar while a run processes: the status in one strong line that screen
  * readers hear politely, an indeterminate bar, and Cancel. Cancel is enabled only while there is a
  * run to cancel; the take is already saved by then, so it never loses the audio.
  */
@@ -45,7 +45,7 @@ export function ProcessingBar({
   );
 }
 
-/** B-11: the first save failed, the audio is kept; this runs the pipeline on it again. */
+/** the first save failed, the audio is kept; this runs the pipeline on it again. */
 export function RetryAction({ onRetry }: { readonly onRetry: () => void }) {
   const t = useT();
   return (

@@ -8,7 +8,7 @@ import { ModelPicker } from './ModelPicker';
 import { useSetupWizard, type SetupWizard } from './use-setup-wizard';
 import type { WizardMode, WizardResult } from './wizard-state';
 
-/** What the CLI check panel (S19) gets: the CLI to check and the two ways out of the panel. */
+/** What the CLI check panel gets: the CLI to check and the two ways out of the panel. */
 export interface CliPanelContext {
   readonly kind: 'ClaudeCode' | 'Codex';
   readonly onBack: () => void;
@@ -18,7 +18,7 @@ export interface CliPanelContext {
 
 export interface SetupWizardDialogProps {
   readonly open: boolean;
-  /** `choose` starts at the chooser; `local-only` opens straight on the hardware step (B33). */
+  /** `choose` starts at the chooser; `local-only` opens straight on the hardware step. */
   readonly mode: WizardMode;
   /** Called once: the engine that is ready, or null when the user leaves. */
   readonly onFinished: (result: WizardResult | null) => void;
@@ -29,9 +29,9 @@ export interface SetupWizardDialogProps {
 }
 
 /**
- * "Set up summary generation" (spec 2.6): pick an engine, or pick and download a local model.
+ * "Set up summary generation": pick an engine, or pick and download a local model.
  * Cancel, Escape and the close button all leave the wizard; a running download is cancelled
- * through the shared model service and nothing is saved afterwards (B6).
+ * through the shared model service and nothing is saved afterwards.
  */
 const defaultCliPanel = (context: CliPanelContext): ReactNode => <CliCheckPanel {...context} />;
 

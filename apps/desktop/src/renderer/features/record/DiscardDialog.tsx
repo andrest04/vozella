@@ -3,7 +3,7 @@ import { useT } from '../../i18n/I18nProvider';
 import { Button, Dialog } from '../../ui';
 
 /**
- * The confirmation before a take is thrown away (item 71). The default and the focus are on
+ * The confirmation before a take is thrown away. The default and the focus are on
  * Keep recording; only Discard runs the command. Escape and the close button keep the take.
  */
 export function DiscardDialog({

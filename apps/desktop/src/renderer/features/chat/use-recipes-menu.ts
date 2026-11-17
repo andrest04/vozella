@@ -9,13 +9,13 @@ import {
   type RefObject,
 } from 'react';
 
-/** Where the flyout was opened from: the button shows everything, the slash filters (item 111). */
+/** Where the flyout was opened from: the button shows everything, the slash filters. */
 export type RecipesOpenMode = 'button' | 'slash';
 
 export interface UseRecipesMenuInput {
   readonly draft: string;
   readonly onDraftChange: (value: string) => void;
-  /** Every built-in recipe of the scope, already named in the current language (B8). */
+  /** Every built-in recipe of the scope, already named in the current language. */
   readonly recipes: readonly ChatRecipe[];
   readonly field: RefObject<HTMLTextAreaElement | null>;
   /** Told about every pick, after the draft is filled (a saved prompt arms its engine). */
@@ -35,7 +35,7 @@ export interface RecipesMenuState {
 }
 
 /**
- * Behavior of the Recipes flyout (spec 2.5). Focus never leaves the composer: arrows only move the
+ * Behavior of the Recipes flyout. Focus never leaves the composer: arrows only move the
  * highlight after the first ArrowDown, so Enter keeps sending until the user picks a row.
  */
 export function useRecipesMenu({

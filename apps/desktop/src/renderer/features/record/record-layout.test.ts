@@ -13,7 +13,7 @@ const base = {
   hasCanvasTranscript: false,
 };
 
-describe('deriveRecordLayout (spec 2.1)', () => {
+describe('deriveRecordLayout', () => {
   it('idle and ready shows the hero and Import, no setup panel, no canvas', () => {
     expect(deriveRecordLayout(base)).toEqual({
       isSessionActive: false,
@@ -52,7 +52,7 @@ describe('deriveRecordLayout (spec 2.1)', () => {
   });
 });
 
-describe('arrangePanels (spec 2.1, item 191)', () => {
+describe('arrangePanels', () => {
   it('puts the side panel in a right column from 1100 wide', () => {
     expect(arrangePanels(1100)).toEqual({ sideBySide: true, notesMaxHeight: null });
     expect(arrangePanels(1920).sideBySide).toBe(true);
@@ -62,7 +62,7 @@ describe('arrangePanels (spec 2.1, item 191)', () => {
   });
 });
 
-describe('status errors (B-12, item 98)', () => {
+describe('status errors', () => {
   const info = { key: 'Status_Transcribing', args: [], severity: 'info' as const };
   const error = { key: 'Error_StopRecording', args: ['x'], severity: 'error' as const };
   it('decides by the typed severity, not by the text', () => {

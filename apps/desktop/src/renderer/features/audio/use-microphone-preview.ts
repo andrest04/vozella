@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 /**
  * The idle level of a microphone, 0..100. It runs only while `enabled` (page visible, not
  * recording, microphone not None) and stops on the way out, so a recording can open the device.
- * `deviceId` null is the system default. The page that starts the meter owns it (B-32).
+ * `deviceId` null is the system default. The page that starts the meter owns it.
  */
 export function useMicrophonePreview(
   deviceId: string | null,

@@ -25,7 +25,7 @@ const errorText = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
 /**
- * What the Settings engine row does (spec 2.6): download through the shared install, delete the
+ * What the Settings engine row does: download through the shared install, delete the
  * engine files, and switch live captions. Keeps the failure text the row shows under the engine.
  */
 export function useEngineActions({

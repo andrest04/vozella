@@ -12,7 +12,7 @@ export interface Message {
 
 export type RecordingNotice = CaptureEvent;
 
-/** The message for a notice from the capture service (spec 2.3.3). */
+/** The message for a notice from the capture service. */
 export function noticeMessage(notice: RecordingNotice): Message {
   const { key, args } = captureNotice(notice);
   return { key: key as StringKey, args };

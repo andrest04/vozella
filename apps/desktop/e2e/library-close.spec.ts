@@ -29,7 +29,7 @@ public class W {
 [W]::Close(${String(pid)})
 `;
 
-// B16: instructions saved just before the last window closes must have reached the project's file.
+// instructions saved just before the last window closes must have reached the project's file.
 /** Saves instructions on a new project's page, and returns where the project keeps them. */
 async function saveInstructions(
   page: Page,
@@ -89,7 +89,7 @@ test('instructions saved right before the window closes are kept', async () => {
   }
 });
 
-// Item 110: the window's own close button sends WM_CLOSE to the window. `Process.CloseMainWindow`
+// the window's own close button sends WM_CLOSE to the window. `Process.CloseMainWindow`
 // posts exactly that message to the process's main window, so this is the same path as a
 // click on the title bar's X, unlike BrowserWindow.close() which skips the OS message.
 test('instructions saved right before the close button is pressed are kept', async () => {

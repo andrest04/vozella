@@ -21,7 +21,7 @@ export interface SetupWizard {
   readonly chooseModel: (fileName: string) => void;
   /** Stops the transfer and returns to the list. Nothing is saved. */
   readonly cancelDownload: () => void;
-  /** The CLI panel (S19) calls this when its executable is found and saved. */
+  /** The CLI panel calls this when its executable is found and saved. */
   readonly cliReady: () => void;
   /** Closes the wizard: cancels a running transfer and reports no result. */
   readonly close: () => void;

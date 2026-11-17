@@ -25,7 +25,7 @@ test.describe.configure({ mode: 'serial', timeout: 90_000 });
 
 const settingsPath = (root: string): string => path.join(root, 'app', 'settings.json');
 
-/** One key of the settings file, found without regard to case (the file may use the C# casing). */
+/** One key of the settings file, found without regard to case (the file may use any key casing). */
 function settingKey(file: string, key: string): unknown {
   const entries = Object.entries(
     JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>,

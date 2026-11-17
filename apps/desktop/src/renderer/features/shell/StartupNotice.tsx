@@ -5,8 +5,8 @@ import { useDialogs } from '../../app/dialog-service';
 const SHOWN_KEY = 'vozella.startupNoticeShown';
 
 /**
- * Spec 2.1 step 8 (item 9): once the window is up, a failed startup migration is told in a
- * one-button dialog. It carries the exception message, which the old dialog dropped (bug 7).
+ * Once the window is up, a failed startup migration is told in a
+ * one-button dialog. It carries the exception message, which the old dialog dropped.
  * Shown once per launch; the Library page keeps its own notice. Opening the notice is read only,
  * so there is no extra IPC.
  */
