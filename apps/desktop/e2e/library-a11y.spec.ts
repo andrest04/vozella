@@ -5,7 +5,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { launchApp, type LaunchedApp } from './launch';
 import { writeMeeting } from './library-data';
 
-// Axe over the grid and the tree, in every state that changes their roles or their colors. Rows use
+// Axe over the grid, in every state that changes its roles or its colors. Rows use
 // colors on tinted fills, so contrast is checked with hover, cursor, checks and marks all showing.
 
 test.describe.configure({ timeout: 150_000 });
@@ -53,7 +53,7 @@ function seedLibrary(dataRoot: string): void {
   });
 }
 
-/** Every violation inside the grid and the tree, and the serious ones anywhere on the page. */
+/** Every violation inside the grid, and the serious ones anywhere on the page. */
 async function expectNoViolations(target: Page): Promise<void> {
   await target.evaluate(axe.source);
   const report = await target.evaluate(async () => {
@@ -64,19 +64,19 @@ async function expectNoViolations(target: Page): Promise<void> {
         impact: violation.impact,
         nodes: violation.nodes.slice(0, 3).map((node) => node.target.join(' ')),
       }));
-    const scoped = await run.run({ include: [['[role="grid"]'], ['[role="tree"]']] });
+    const scoped = await run.run({ include: [['[role="grid"]']] });
     const whole = await run.run(document);
     return {
       scoped: summarize(scoped.violations),
       whole: summarize(whole.violations).filter(
         (violation) => violation.impact === 'serious' || violation.impact === 'critical',
       ),
-      gridAndTreeChecked: scoped.passes.length,
+      gridChecked: scoped.passes.length,
     };
   });
   expect(report.scoped).toEqual([]);
   expect(report.whole).toEqual([]);
-  expect(report.gridAndTreeChecked).toBeGreaterThan(0);
+  expect(report.gridChecked).toBeGreaterThan(0);
 }
 
 async function useLook(theme: 'light' | 'dark', tag: 'en-US' | 'es'): Promise<void> {
@@ -92,7 +92,6 @@ async function useLook(theme: 'light' | 'dark', tag: 'en-US' | 'es'): Promise<vo
   await page.evaluate(() => {
     window.location.hash = '#/library';
   });
-  await page.getByRole('tree').getByRole('treeitem').first().click();
   await expect(page.locator('[data-row-id]').first()).toBeVisible();
 }
 
@@ -112,7 +111,7 @@ test.afterAll(async () => {
 });
 
 for (const theme of ['light', 'dark'] as const) {
-  test(`grid and tree, with a cursor, a hover, checks and marks, in ${theme}`, async () => {
+  test(`grid, with a cursor, a hover, checks and marks, in ${theme}`, async () => {
     await useLook(theme, 'en-US');
     const rows = page.locator('[data-row-id]');
     await expect(rows.nth(0)).toHaveAttribute('data-cursor', 'true');
@@ -137,13 +136,12 @@ for (const theme of ['light', 'dark'] as const) {
     await expectNoViolations(page);
     await page.getByRole('searchbox').fill('');
 
-    // A folder open in the tree, selected, with its own header.
-    const clients = page.getByRole('treeitem', { name: /Clients/ });
-    await clients.click();
-    await clients.focus();
-    await page.keyboard.press('ArrowRight');
-    await page.getByRole('treeitem', { name: /Acme/ }).click();
-    await expect(page.locator('[data-row-id]').first()).toBeVisible();
+    // One project of the library, picked in the filter above the grid.
+    await page.getByTestId('library-project-filter').click();
+    await page.getByRole('option', { name: 'Acme', exact: true }).click();
+    await expect(page.locator('[data-row-id]')).toHaveCount(1);
+    // The list of options is gone before the page is read.
+    await expect(page.getByRole('listbox')).toHaveCount(0);
     await expectNoViolations(page);
   });
 }

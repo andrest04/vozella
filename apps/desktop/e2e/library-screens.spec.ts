@@ -221,8 +221,6 @@ async function openLibrary(page: Page): Promise<void> {
   await page.evaluate(() => {
     window.location.hash = '#/library';
   });
-  // The view outlives a reload, so go back to All from wherever the last test ended.
-  await page.getByRole('tree').getByRole('treeitem').first().click();
   await expect(page.locator('[role="grid"] [role="row"][data-row-id]').first()).toBeVisible();
 }
 
@@ -310,8 +308,8 @@ test.describe('seeded library', () => {
       const bar = page.getByRole('toolbar', { name: 'Checked meetings' });
       await expect(bar).toBeVisible();
       await shot(page, `library-bulk-${theme}`);
-      await bar.getByRole('button', { name: 'Move' }).click();
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await bar.getByRole('button', { name: 'Move to project' }).click();
+      await expect(page.getByRole('dialog', { name: 'Move to project' })).toBeVisible();
       await shot(page, `library-bulk-move-${theme}`);
       await page.keyboard.press('Escape');
       await bar.getByRole('button').last().click();
@@ -325,41 +323,26 @@ test.describe('seeded library', () => {
       await shot(page, `library-row-menu-${theme}`);
       await page.keyboard.press('Escape');
 
-      // A folder: path, icon, note, and a move that can be undone.
-      await page.getByRole('treeitem', { name: /Universidad/ }).click();
-      await expect(page.getByRole('textbox', { name: 'Folder notes' })).toBeVisible();
-      await page.keyboard.press('ArrowRight');
-      await page.getByRole('treeitem', { name: /Calculo/ }).click();
+      // One project of the library, picked in the filter above the grid.
+      await page.getByTestId('library-project-filter').click();
+      await page.getByRole('option', { name: 'Calculo', exact: true }).click();
       await expect(row(page, 'Limits and continuity')).toBeVisible();
-      await shot(page, `library-folder-${theme}`);
+      await shot(page, `library-project-${theme}`);
+      await page.getByTestId('library-project-filter').click();
+      await page.getByRole('option', { name: 'All projects', exact: true }).click();
 
-      await page.getByRole('treeitem', { name: /Trabajo/ }).click();
+      // A move to another project that can be undone.
       await row(page, 'Budget sync').getByRole('button', { name: 'More actions' }).click();
-      await page.getByRole('menuitem', { name: 'Move' }).click();
-      const moveDialog = page.getByRole('dialog');
-      await moveDialog.getByRole('radio', { name: /Inbox/ }).click();
-      await moveDialog.getByRole('button', { name: 'Move', exact: true }).click();
+      await page.getByRole('menuitem', { name: 'Move to project' }).click();
+      await expect(page.getByRole('dialog', { name: 'Move to project' })).toBeVisible();
+      await shot(page, `library-move-${theme}`);
+      await page.getByRole('option', { name: 'No project', exact: true }).click();
       const undo = page.getByRole('button', { name: 'Undo' });
       await expect(undo).toBeVisible();
       await undo.hover();
       await shot(page, `library-undo-${theme}`);
       await undo.click();
       await expect(row(page, 'Budget sync')).toBeVisible();
-
-      // New folder, personality and delete dialogs.
-      await page.getByRole('button', { name: 'New folder' }).click();
-      await expect(page.getByRole('dialog', { name: 'New folder' })).toBeVisible();
-      await page.getByRole('textbox', { name: 'Name' }).fill('Research');
-      await shot(page, `library-new-folder-${theme}`);
-      await page.keyboard.press('Escape');
-
-      await page.getByRole('button', { name: 'Folder actions' }).click();
-      await page.getByRole('menuitem', { name: 'Personality' }).click();
-      await expect(page.getByRole('dialog', { name: 'Folder personality' })).toBeVisible();
-      await page.getByRole('radio', { name: 'purple' }).click();
-      await page.getByRole('radio', { name: 'star' }).click();
-      await shot(page, `library-personality-${theme}`);
-      await page.keyboard.press('Escape');
 
       await row(page, 'Budget sync').getByRole('button', { name: 'More actions' }).click();
       await page.getByRole('menuitem', { name: 'Delete' }).click();

@@ -60,7 +60,6 @@ test('browse, search, open a meeting and its summary', async () => {
   });
   await goTo('Settings');
   await goTo('Library');
-  await page.getByRole('treeitem', { name: /Inbox/ }).click();
 
   const list = page.getByRole('grid', { name: 'Library' });
   const rows = list.locator('[data-row-id]');
@@ -109,118 +108,6 @@ test('browse, search, open a meeting and its summary', async () => {
   });
 });
 
-test('folders: create, note, move a meeting into it, rename, restyle, keep a full one', async () => {
-  await goTo('Library');
-  await page.getByRole('button', { name: 'New folder' }).click();
-  const dialog = page.getByRole('dialog', { name: 'New folder' });
-  await expect(dialog.getByRole('button', { name: 'Create' })).toBeDisabled();
-  await dialog.getByRole('textbox', { name: 'Name' }).fill('Universidad');
-  await dialog.getByRole('textbox', { name: 'Name' }).press('Enter');
-  await expect(dialog).toBeHidden();
-  await expect(page.getByRole('treeitem', { name: /Universidad/ })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
-  expect(fs.existsSync(path.join(libraryRoot, 'Universidad'))).toBe(true);
-  await expect(page.getByText('This folder is empty.')).toBeVisible();
-
-  // A child folder is created inside the selected one; a repeated name is refused in place.
-  await page.getByRole('button', { name: 'New folder' }).click();
-  const child = page.getByRole('dialog', { name: 'New folder in Universidad' });
-  await child.getByRole('textbox', { name: 'Name' }).fill('Calculo');
-  await child.getByRole('button', { name: 'Create' }).click();
-  await expect(page.getByRole('treeitem', { name: /Calculo/ })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
-  await page.getByRole('treeitem', { name: /^Universidad/ }).click();
-  await page.getByRole('button', { name: 'New folder' }).click();
-  const dup = page.getByRole('dialog', { name: 'New folder in Universidad' });
-  await dup.getByRole('textbox', { name: 'Name' }).fill('calculo');
-  await dup.getByRole('button', { name: 'Create' }).click();
-  await expect(dup.getByText('A folder with this name already exists here.')).toBeVisible();
-  await dup.getByRole('button', { name: 'Cancel' }).click();
-  await expect(dup).toBeHidden();
-
-  // The folder note is saved when the selection changes.
-  await page.getByRole('textbox', { name: 'Folder notes' }).fill('  Fall term  ');
-  await page.getByRole('treeitem', { name: /Inbox/ }).click();
-  await expect
-    .poll(() => fs.readFileSync(path.join(libraryRoot, 'folders.json'), 'utf8'))
-    .toContain('"note": "Fall term"');
-
-  // Move Planning into Calculo: the files move on disk.
-  const row = page.getByRole('row').filter({ hasText: 'Planning' });
-  await row.getByRole('button', { name: 'More actions' }).click();
-  await page.getByRole('menuitem', { name: 'Move' }).click();
-  const move = page.getByRole('dialog', { name: 'Move meeting' });
-  await expect(move.getByRole('radio').first()).toBeChecked();
-  await move.getByText('Universidad / Calculo').click();
-  await move.getByRole('button', { name: 'Move' }).click();
-  await expect(page.getByRole('row').filter({ hasText: 'Planning' })).toHaveCount(0);
-  const moved = path.join(libraryRoot, 'Universidad', 'Calculo', '2026-09-03 Planning.md');
-  await expect.poll(() => fs.existsSync(moved)).toBe(true);
-  expect(fs.existsSync(path.join(libraryRoot, 'Inbox', '2026-09-03 Planning.md'))).toBe(false);
-
-  // Rename from the context menu: the directory follows.
-  await page.getByRole('treeitem', { name: /^Universidad/ }).click({ button: 'right' });
-  await page.getByRole('menuitem', { name: 'Rename' }).click();
-  const rename = page.getByRole('dialog', { name: 'Rename folder' });
-  await rename.getByRole('textbox', { name: 'Name' }).fill('Estudios');
-  await rename.getByRole('button', { name: 'Rename' }).click();
-  await expect(page.getByRole('treeitem', { name: /Estudios/ })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
-  await expect
-    .poll(() =>
-      fs.existsSync(path.join(libraryRoot, 'Estudios', 'Calculo', '2026-09-03 Planning.md')),
-    )
-    .toBe(true);
-
-  // Personality.
-  await page.getByRole('button', { name: 'Folder actions' }).click();
-  await page.getByRole('menuitem', { name: 'Personality' }).click();
-  const look = page.getByRole('dialog', { name: 'Folder personality' });
-  await look.getByRole('radio', { name: 'purple' }).click();
-  await look.getByRole('radio', { name: 'book' }).click();
-  await look.getByRole('button', { name: 'Save' }).click();
-  await expect
-    .poll(() => fs.readFileSync(path.join(libraryRoot, 'folders.json'), 'utf8'))
-    .toMatch(/"colorKey": "purple"[\s\S]*"iconKey": "book"/);
-
-  // A folder with contents cannot be deleted.
-  await page.getByRole('button', { name: 'Folder actions' }).click();
-  await page.getByRole('menuitem', { name: 'Delete folder' }).click();
-  await expect(
-    page.getByText('This folder still has subfolders or meetings. Empty it before deleting.'),
-  ).toBeVisible();
-});
-
-test('an empty folder is deleted after confirming', async () => {
-  await goTo('Library');
-  await page.getByRole('treeitem', { name: /Inbox/ }).click();
-  await page.getByRole('button', { name: 'New folder' }).click();
-  const dialog = page.getByRole('dialog', { name: 'New folder' });
-  await dialog.getByRole('textbox', { name: 'Name' }).fill('Temporal');
-  await dialog.getByRole('button', { name: 'Create' }).click();
-  await expect(page.getByRole('treeitem', { name: /Temporal/ })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
-  await page.getByRole('button', { name: 'Folder actions' }).click();
-  await page.getByRole('menuitem', { name: 'Delete folder' }).click();
-  const confirm = page.getByRole('dialog', { name: 'Delete this folder?' });
-  await expect(confirm.getByRole('button', { name: 'Cancel' })).toBeFocused();
-  await confirm.getByRole('button', { name: 'Delete' }).click();
-  await expect(page.getByRole('treeitem', { name: /Temporal/ })).toHaveCount(0);
-  await expect(page.getByRole('treeitem', { name: /Inbox/ })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
-  expect(fs.existsSync(path.join(libraryRoot, 'Temporal'))).toBe(false);
-});
-
 test('a meeting is deleted only after confirming, with Cancel focused', async () => {
   writeMeeting(libraryRoot, {
     id: ID_C,
@@ -229,7 +116,6 @@ test('a meeting is deleted only after confirming, with Cancel focused', async ()
   });
   await goTo('Settings');
   await goTo('Library');
-  await page.getByRole('treeitem', { name: /Inbox/ }).click();
   const row = page.getByRole('row').filter({ hasText: 'Retro' });
   await row.getByRole('button', { name: 'More actions' }).click();
   await page.getByRole('menuitem', { name: 'Delete' }).click();
@@ -303,9 +189,15 @@ test('the library is panes that scroll on their own, under the title bar and ove
   await resize(1180, 760);
   const preview = page.getByTestId('library-preview');
   await expect(preview).toBeVisible();
-  // clamp(340px, 38%, 440px) of the 948 px beside the 232 px sidebar.
+  // clamp(340px, 38%, 440px) of the width the two panes share.
   const list = page.getByTestId('library-list-pane');
-  await expect.poll(async () => (await list.boundingBox())?.width).toBeCloseTo(360.24, 0);
+  await expect
+    .poll(async () => {
+      const pane = (await list.boundingBox())?.width ?? 0;
+      const shared = (await list.locator('xpath=..').boundingBox())?.width ?? 0;
+      return Math.abs(pane - Math.min(440, Math.max(340, shared * 0.38)));
+    })
+    .toBeLessThan(1);
   // The panes start inside the content area; the AI panel docks beside it, never over it.
   const paneBottom = (await list.boundingBox())?.y ?? 0;
   const mainBox = await main.boundingBox();
@@ -363,11 +255,17 @@ test('no serious accessibility violations on the library, its dialogs and the da
     await page.evaluate(() => document.fonts.ready);
     await check();
 
-    await page.getByRole('button', { name: 'New folder' }).click();
-    await expect(page.getByRole('dialog', { name: 'New folder' })).toBeVisible();
+    // The Move to project popover, opened from the row of the meeting.
+    await page
+      .getByRole('row', { name: /Accessibility check/ })
+      .getByRole('button', { name: 'More actions' })
+      .click();
+    await page.getByRole('menuitem', { name: 'Move to project' }).click();
+    await expect(page.getByRole('combobox', { name: 'Search projects' })).toBeVisible();
+    await expect(page.getByRole('menu')).toHaveCount(0);
     await check();
     await page.keyboard.press('Escape');
-    await expect(page.getByRole('dialog', { name: 'New folder' })).toHaveCount(0);
+    await expect(page.getByRole('combobox', { name: 'Search projects' })).toHaveCount(0);
 
     await goTo('Settings');
     await openSettingsTab(page, 'general');

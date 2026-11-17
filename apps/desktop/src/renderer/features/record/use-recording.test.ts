@@ -129,6 +129,18 @@ describe('the recording store', () => {
     expect(api.calls.filter((name) => name === 'recording.start')).toHaveLength(1);
   });
 
+  it('does not notify subscribers when the destination is set to the one it already is', () => {
+    // A page that sets the destination from an effect would otherwise render in a loop.
+    setProjectId('f1');
+    const seen = vi.fn();
+    const stop = useRecordingStore.subscribe(seen);
+    setProjectId('f1');
+    expect(seen).not.toHaveBeenCalled();
+    setProjectId(null);
+    expect(seen).toHaveBeenCalledTimes(1);
+    stop();
+  });
+
   it('sends the destination with an import and says nothing when the picker is cancelled', async () => {
     const api = install({ 'audio.import.pickFile': () => null });
     setProjectId('f1');

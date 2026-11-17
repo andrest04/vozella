@@ -92,7 +92,6 @@ async function backToAllWithNoFilters(): Promise<void> {
   await page.evaluate(() => {
     window.location.hash = '#/library';
   });
-  await page.getByRole('tree').getByRole('treeitem').first().click();
   await page.getByRole('searchbox').fill('');
   const clear = chips().getByRole('button', { name: 'Clear filters' });
   if (await clear.isVisible()) await clear.click();
@@ -240,10 +239,11 @@ test('the list, its days and Ctrl+A work on what is left, and Esc keeps its orde
   await expect(bar).toHaveCount(0);
 });
 
-test('they stay through folders and a meeting, and leave with one quiet line', async () => {
+test('they stay through projects and a meeting, and leave with one quiet line', async () => {
   await backToAllWithNoFilters();
   await choose('Last 7 days');
-  await page.getByRole('treeitem', { name: /Clients/ }).click();
+  await page.getByTestId('library-project-filter').click();
+  await page.getByRole('option', { name: 'Clients', exact: true }).click();
   await expect(rows()).toHaveCount(1);
   await expect(count()).toHaveText('1 of 1');
 

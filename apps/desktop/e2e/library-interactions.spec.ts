@@ -5,7 +5,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { launchApp, type LaunchedApp } from './launch';
 import { writeMeeting } from './library-data';
 
-// Checking, keyboard and drag in the real renderer, with files on disk behind them. Each test seeds
+// Checking, keyboard and moving in the real renderer, with files on disk behind them. Each test seeds
 // its own meetings and refreshes by leaving the route, so the order of the tests does not matter.
 
 test.describe.configure({ timeout: 150_000 });
@@ -31,7 +31,6 @@ const onDisk = (folder: string, title: string, day: string): string =>
 async function reopenLibrary(): Promise<void> {
   await page.getByRole('navigation').getByRole('link', { name: 'Settings' }).click();
   await page.getByRole('navigation').getByRole('link', { name: 'Library' }).click();
-  await page.getByRole('treeitem', { name: /Inbox/ }).click();
   await expect(grid).toBeVisible();
 }
 
@@ -98,17 +97,15 @@ test('checked meetings move and go to the bin together, and the files follow', a
       })),
   ).toEqual([]);
 
-  await bar.getByRole('button', { name: 'Move' }).click();
-  const move = page.getByRole('dialog', { name: 'Move 2 meetings' });
-  await move.getByText('Clients').click();
-  await move.getByRole('button', { name: 'Move' }).click();
+  await bar.getByRole('button', { name: 'Move to project' }).click();
+  await page.getByRole('option', { name: 'Clients', exact: true }).click();
   await expect(bar).toHaveCount(0);
   await expect.poll(() => fs.existsSync(onDisk('Clients', 'Bulk one', '11'))).toBe(true);
   expect(fs.existsSync(onDisk('Clients', 'Bulk two', '10'))).toBe(true);
   expect(fs.existsSync(onDisk('Inbox', 'Bulk one', '11'))).toBe(false);
-  await expect(row('Bulk one')).toHaveCount(0);
+  // The list shows every meeting, so they are still on it, now in the project.
+  await expect(row('Bulk one')).toBeVisible();
 
-  await page.getByRole('treeitem', { name: /Clients/ }).click();
   await row('Bulk one').getByRole('checkbox').click();
   await row('Bulk two').getByRole('checkbox').click();
   await bar.getByRole('button', { name: 'Delete' }).click();
@@ -116,7 +113,7 @@ test('checked meetings move and go to the bin together, and the files follow', a
   await expect(remove.getByRole('button', { name: 'Cancel' })).toBeFocused();
   await remove.getByRole('button', { name: 'Delete' }).click();
   await expect.poll(() => fs.existsSync(onDisk('Clients', 'Bulk one', '11'))).toBe(false);
-  expect(fs.existsSync(onDisk('Clients', 'Bulk two', '10'))).toBe(false);
+  await expect.poll(() => fs.existsSync(onDisk('Clients', 'Bulk two', '10'))).toBe(false);
   await expect(bar).toHaveCount(0);
 });
 
@@ -188,15 +185,16 @@ test('the keyboard reaches everything: find, move, check, rename, delete', async
   await page.getByRole('button', { name: 'Back' }).click();
 });
 
-test('a meeting dragged to a folder moves on disk, and Undo brings it back', async () => {
+test('a meeting moved to a project from its row moves on disk, and Undo brings it back', async () => {
   seed('Drag one', '29');
   seed('Drag two', '28');
   await reopenLibrary();
-  const clients = page.getByRole('treeitem', { name: /Clients/ });
 
-  await row('Drag one').dragTo(clients);
+  await row('Drag one').getByRole('button', { name: 'More actions' }).click();
+  await page.getByRole('menuitem', { name: 'Move to project' }).click();
+  await page.getByRole('option', { name: 'Clients', exact: true }).click();
   await expect.poll(() => fs.existsSync(onDisk('Clients', 'Drag one', '29'))).toBe(true);
-  await expect(row('Drag one')).toHaveCount(0);
+  expect(fs.existsSync(onDisk('Inbox', 'Drag one', '29'))).toBe(false);
   await expect(page.getByText('Moved "Drag one" to Clients.')).toBeVisible();
 
   await page.getByRole('button', { name: 'Undo' }).click();
@@ -227,7 +225,7 @@ test('with forced colors, what is selected keeps its text on the canvas, inside 
           };
         });
     // Chromium draws a Canvas backplate behind text, so light text on a Highlight fill disappears.
-    for (const selector of ['[role="treeitem"][aria-selected="true"]', '[data-cursor="true"]']) {
+    for (const selector of ['[data-cursor="true"]']) {
       await expect.poll(() => look(selector)).toEqual({ filled: false, outlined: true });
     }
     await page.getByRole('navigation').getByRole('link', { name: 'Settings' }).click();

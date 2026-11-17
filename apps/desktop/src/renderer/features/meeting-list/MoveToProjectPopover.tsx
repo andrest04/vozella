@@ -63,6 +63,8 @@ export function MoveToProjectPopover({
     [directory.projects, from, query, locale, t],
   );
   const usable = directory.storage.status === 'ready';
+  // The list is drawn only when there is something to list; aria-controls must name a real element.
+  const listShown = directory.status !== 'loading' && options.length > 0;
   const current = options[Math.min(active, options.length - 1)];
   const optionId = (index: number): string => `${listId}-${String(index)}`;
 
@@ -113,8 +115,8 @@ export function MoveToProjectPopover({
           <Input
             type="text"
             role="combobox"
-            aria-expanded="true"
-            aria-controls={listId}
+            aria-expanded={listShown}
+            {...(listShown ? { 'aria-controls': listId } : {})}
             aria-autocomplete="list"
             {...(current ? { 'aria-activedescendant': optionId(options.indexOf(current)) } : {})}
             aria-label={t('Ui_MoveToProjectSearch')}

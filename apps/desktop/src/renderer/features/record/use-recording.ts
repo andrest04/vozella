@@ -120,6 +120,8 @@ export const setTitle = (title: string): void => {
   set({ title });
 };
 export const setProjectId = (projectId: string | null): void => {
+  // Unchanged means unnotified: the Record page sets it from an effect that must not re-run itself.
+  if (get().projectId === projectId) return;
   set({ projectId });
 };
 export const setNotice = (notice: RecordingMessageDto | null): void => {

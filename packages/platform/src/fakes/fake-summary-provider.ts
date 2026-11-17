@@ -1,6 +1,8 @@
+import fs from 'node:fs';
 import {
   CancelledError,
   CliToolError,
+  buildSummaryPrompt,
   summaryResultFromResponse,
   type CancelSignal,
   type CliFailureKind,
@@ -17,6 +19,8 @@ export interface FakeSummaryOptions {
   readonly failWith: string | null;
   /** Replaces the reply of chat prompts only (VOZELLA_FAKE_CHAT_REPLY), so e2e can script citations. */
   readonly chatReply?: string;
+  /** Appends the prompt of each summary run (VOZELLA_FAKE_SUMMARY_PROMPT_LOG), so e2e can read it. */
+  readonly promptLogFile?: string;
 }
 
 const KINDS: readonly CliFailureKind[] = [
@@ -37,6 +41,9 @@ export function fakeSummaryOptionsFromEnv(
     delayMs: Number.isFinite(delay) && delay > 0 ? delay : 0,
     failWith: env.VOZELLA_FAKE_SUMMARY_FAIL?.trim() ? env.VOZELLA_FAKE_SUMMARY_FAIL.trim() : null,
     ...(env.VOZELLA_FAKE_CHAT_REPLY ? { chatReply: env.VOZELLA_FAKE_CHAT_REPLY } : {}),
+    ...(env.VOZELLA_FAKE_SUMMARY_PROMPT_LOG
+      ? { promptLogFile: env.VOZELLA_FAKE_SUMMARY_PROMPT_LOG }
+      : {}),
   };
 }
 
@@ -73,6 +80,9 @@ export class FakeSummaryProvider implements SummaryProvider {
 
   async summarize(request: SummarizeRequest, cancel: CancelSignal): Promise<SummaryResult> {
     this.requests.push(request);
+    if (this.options.promptLogFile !== undefined) {
+      fs.appendFileSync(this.options.promptLogFile, `${buildSummaryPrompt(request)}\n\n`, 'utf8');
+    }
     return summaryResultFromResponse(this.id, await this.reply(cancel));
   }
 

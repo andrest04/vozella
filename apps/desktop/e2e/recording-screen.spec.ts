@@ -105,7 +105,7 @@ test('Set up to record asks, installs the engine and shows Record', async () => 
   await expect(page.getByText('Ready to record.')).toHaveCount(0);
 });
 
-test('the destination lists the Inbox first, then the folders as paths', async () => {
+test('the destination lists No project first, then the projects by name', async () => {
   await page.evaluate(async () => {
     await window.vozella.invoke('projects.create', { name: 'Clients' });
     await window.vozella.invoke('projects.create', { name: 'Acme' });
@@ -115,16 +115,16 @@ test('the destination lists the Inbox first, then the folders as paths', async (
   await page.getByRole('link', { name: 'Library' }).click();
   await page.getByRole('link', { name: 'Record' }).click();
   const combo = page.getByRole('combobox', { name: 'Save to' });
-  await expect(combo).toContainText('Inbox');
+  await expect(combo).toContainText('No project');
   await combo.click();
   const options = page.getByRole('option');
-  await expect(options).toHaveText(['Inbox', 'archive', 'Clients', 'Clients / Acme']);
-  await page.getByRole('option', { name: 'Clients / Acme' }).click();
-  await expect(combo).toContainText('Clients / Acme');
+  await expect(options).toHaveText(['No project', 'Acme', 'archive', 'Clients']);
+  await page.getByRole('option', { name: 'Acme' }).click();
+  await expect(combo).toContainText('Acme');
   // The choice survives leaving the page.
   await page.getByRole('link', { name: 'Library' }).click();
   await page.getByRole('link', { name: 'Record' }).click();
-  await expect(page.getByRole('combobox', { name: 'Save to' })).toContainText('Clients / Acme');
+  await expect(page.getByRole('combobox', { name: 'Save to' })).toContainText('Acme');
 });
 
 test('the default title follows the pattern and the idle page has no serious violations', async () => {

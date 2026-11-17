@@ -90,6 +90,21 @@ describe('MoveToProjectPopover', () => {
     expect(within(popover).getByText('No project matches.')).toBeInTheDocument();
   });
 
+  it('points aria-controls at a list only while the list is on screen', async () => {
+    const { user, popover } = await mount([null]);
+    const field = within(popover).getByRole('combobox', { name: 'Search projects' });
+    await waitFor(() => {
+      expect(within(popover).getAllByRole('listbox')).toHaveLength(1);
+    });
+    expect(field).toHaveAttribute('aria-controls', within(popover).getByRole('listbox').id);
+    expect(field).toHaveAttribute('aria-expanded', 'true');
+    await user.type(field, 'zzz');
+    // No list, so nothing to control: a reference to a missing id is an invalid ARIA value.
+    expect(within(popover).queryByRole('listbox')).toBeNull();
+    expect(field).not.toHaveAttribute('aria-controls');
+    expect(field).toHaveAttribute('aria-expanded', 'false');
+  });
+
   it('moves with the arrows and Enter, keeping the focus in the field', async () => {
     const { user, popover, onMove } = await mount([null]);
     const field = within(popover).getByRole('combobox', { name: 'Search projects' });
