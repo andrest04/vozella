@@ -1,4 +1,4 @@
-//! Process queries for app grouping (spec 3.4.5) and the liveness check of process capture.
+//! Process queries for app grouping and the liveness check of process capture.
 
 use napi_derive::napi;
 use windows::core::{PCWSTR, PWSTR};
@@ -133,7 +133,7 @@ fn details_for(pid: u32) -> Option<ProcessDetails> {
     }
     unsafe {
         let Ok(handle) = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) else {
-            // Protected process: fall back to the name by pid, as the C# provider does.
+            // Protected process: fall back to the name by pid.
             let name = snapshot_name(pid)?;
             return Some(ProcessDetails {
                 process_id: pid,

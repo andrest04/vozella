@@ -1,5 +1,5 @@
-//! Audio file decoding through Media Foundation (spec 2.8, 5): any file the OS can read
-//! comes out as 16 kHz mono PCM16, whatever the source channel count (fixes C2).
+//! Audio file decoding through Media Foundation: any file the OS can read
+//! comes out as 16 kHz mono PCM16, whatever the source channel count.
 
 use super::resample::Downsampler48to16;
 use napi::bindgen_prelude::*;
