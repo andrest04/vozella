@@ -1,11 +1,10 @@
-import type { FolderRecord } from './folder';
 import type { MeetingListItem } from './meeting';
 import { parseOffsetDate } from './offset-date';
 import { foldText, foldedWords, hasAllWords } from './text-fold';
 
 /** Everything the Library page shows, as of the last load. */
 export interface LibrarySnapshot {
-  readonly folders: readonly FolderRecord[];
+  readonly projects: readonly { readonly id: string }[];
   readonly meetings: readonly MeetingListItem[];
 }
 
@@ -14,36 +13,36 @@ export function meetingInstant(item: Pick<MeetingListItem, 'recordedAt'>): numbe
   return parseOffsetDate(item.recordedAt)?.ms ?? 0;
 }
 
-/** What the Library is showing: every meeting, the Inbox, or one folder's own meetings. */
+/** What the Library is showing: every meeting, the ones with no project, or one project's own. */
 export type LibraryView =
   | { readonly kind: 'all' }
-  | { readonly kind: 'inbox' }
-  | { readonly kind: 'folder'; readonly id: string };
+  | { readonly kind: 'none' }
+  | { readonly kind: 'project'; readonly id: string };
 
 export const ALL_VIEW: LibraryView = { kind: 'all' };
-export const INBOX_VIEW: LibraryView = { kind: 'inbox' };
-export const folderView = (id: string): LibraryView => ({ kind: 'folder', id });
+export const NO_PROJECT_VIEW: LibraryView = { kind: 'none' };
+export const projectView = (id: string): LibraryView => ({ kind: 'project', id });
 
-/** The Inbox also holds meetings whose folder id is not in the folder set. */
+/** "No project" also holds meetings whose project id is not in the project set. */
 export function isInLibraryView(
   view: LibraryView,
-  knownFolderIds: ReadonlySet<string>,
+  knownProjectIds: ReadonlySet<string>,
   meeting: Pick<MeetingListItem, 'projectId'>,
 ): boolean {
   switch (view.kind) {
     case 'all':
       return true;
-    case 'inbox':
-      return meeting.projectId === null || !knownFolderIds.has(meeting.projectId);
-    case 'folder':
+    case 'none':
+      return meeting.projectId === null || !knownProjectIds.has(meeting.projectId);
+    case 'project':
       return meeting.projectId === view.id;
   }
 }
 
 export interface MeetingSelection {
   readonly meetings: readonly MeetingListItem[];
-  /** Meetings in the selected container before the search filter. */
-  readonly inFolderCount: number;
+  /** Meetings in the selected view before the search filter. */
+  readonly inViewCount: number;
 }
 
 /**
@@ -55,24 +54,22 @@ export function selectMeetings(
   view: LibraryView,
   query: string,
 ): MeetingSelection {
-  const known = new Set(snapshot.folders.map((f) => f.id));
-  const inContainer = snapshot.meetings.filter((m) => isInLibraryView(view, known, m));
+  const known = new Set(snapshot.projects.map((p) => p.id));
+  const inView = snapshot.meetings.filter((m) => isInLibraryView(view, known, m));
   const words = foldedWords(query);
   const matching =
-    words.length === 0
-      ? inContainer
-      : inContainer.filter((m) => hasAllWords(foldText(m.title), words));
+    words.length === 0 ? inView : inView.filter((m) => hasAllWords(foldText(m.title), words));
   return {
     meetings: [...matching].sort((a, b) => meetingInstant(b) - meetingInstant(a)),
-    inFolderCount: inContainer.length,
+    inViewCount: inView.length,
   };
 }
 
 export interface EmptyFlagsInput {
   readonly isLoading: boolean;
-  readonly isInboxSelected: boolean;
-  readonly inFolderCount: number;
-  readonly folderCount: number;
+  readonly isNoProjectSelected: boolean;
+  readonly inViewCount: number;
+  readonly projectCount: number;
   readonly totalMeetings: number;
   readonly displayedCount: number;
   readonly query: string;
@@ -80,44 +77,30 @@ export interface EmptyFlagsInput {
 
 export interface EmptyFlags {
   readonly showLibraryEmpty: boolean;
-  readonly showInboxEmpty: boolean;
-  readonly showFolderEmpty: boolean;
-  /** B15: a search matched nothing in a container that has meetings. */
+  readonly showNoProjectEmpty: boolean;
+  readonly showProjectEmpty: boolean;
+  /** B15: a search matched nothing in a view that has meetings. */
   readonly showNoMatches: boolean;
   readonly hasMeetings: boolean;
   readonly isEmpty: boolean;
 }
 
-/** Spec 2.9, plus the no-matches message the WinUI page lacked. */
+/** Spec 2.9, plus the no-matches message the first version of the page lacked. */
 export function emptyFlags(input: EmptyFlagsInput): EmptyFlags {
-  const inboxEmpty = input.isInboxSelected && input.inFolderCount === 0;
+  const noProjectEmpty = input.isNoProjectSelected && input.inViewCount === 0;
   const showLibraryEmpty =
-    !input.isLoading && inboxEmpty && input.folderCount === 0 && input.totalMeetings === 0;
+    !input.isLoading && noProjectEmpty && input.projectCount === 0 && input.totalMeetings === 0;
   const hasMeetings = input.displayedCount > 0;
   return {
     showLibraryEmpty,
-    showInboxEmpty: !input.isLoading && inboxEmpty && !showLibraryEmpty,
-    showFolderEmpty: !input.isLoading && !input.isInboxSelected && input.inFolderCount === 0,
+    showNoProjectEmpty: !input.isLoading && noProjectEmpty && !showLibraryEmpty,
+    showProjectEmpty: !input.isLoading && !input.isNoProjectSelected && input.inViewCount === 0,
     showNoMatches:
       !input.isLoading &&
       input.query.trim() !== '' &&
-      input.inFolderCount > 0 &&
+      input.inViewCount > 0 &&
       input.displayedCount === 0,
     hasMeetings,
     isEmpty: !input.isLoading && !hasMeetings,
   };
-}
-
-export type DeleteFolderCheck =
-  | { readonly allowed: true }
-  | { readonly allowed: false; readonly reason: 'not-empty' | 'not-found' };
-
-/** A folder can go only when it has no child folders and no meetings filed in it. */
-export function canDeleteFolder(snapshot: LibrarySnapshot, projectId: string): DeleteFolderCheck {
-  if (!snapshot.folders.some((f) => f.id === projectId))
-    return { allowed: false, reason: 'not-found' };
-  const busy =
-    snapshot.folders.some((f) => f.parentId === projectId) ||
-    snapshot.meetings.some((m) => m.projectId === projectId);
-  return busy ? { allowed: false, reason: 'not-empty' } : { allowed: true };
 }

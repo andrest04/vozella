@@ -1,17 +1,15 @@
 /**
- * .NET `DateTimeOffset` as it appears in the library files. JavaScript dates have no offset and
- * only millisecond precision, so the files' own text is the stored form: seven fraction digits
- * and a numeric offset, written back unchanged.
+ * A date with its own UTC offset, as the library files store it. JavaScript dates have no offset,
+ * so the stored text is parsed into this shape. Any fractional length is read (files written
+ * earlier have seven digits); the writer always emits millisecond precision.
  */
 export interface OffsetDate {
   /** The instant, in milliseconds since the epoch. */
   readonly ms: number;
   readonly offsetMinutes: number;
-  /** Exactly seven digits, the .NET tick resolution. */
+  /** Exactly seven digits: whatever the text had, padded or cut. */
   readonly fraction: string;
 }
-
-export type OffsetDateStyle = 'round-trip' | 'json';
 
 const PATTERN =
   /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:[.,](\d{1,9}))?)?)?\s*(Z|[+-]\d{2}(?::?\d{2})?)?$/i;
@@ -83,25 +81,27 @@ export function parseOffsetDate(
   return { ms, offsetMinutes, fraction };
 }
 
-export function formatOffsetDate(date: OffsetDate, style: OffsetDateStyle): string {
+/**
+ * How a date is written. `iso` is ISO-8601 with milliseconds and a numeric offset, e.g.
+ * `2026-09-01T12:00:00.000-05:00`: what every stored file gets. `round-trip` keeps seven fraction
+ * digits (`...00.0000000-05:00`) for the prompts that already carry that shape.
+ */
+export type OffsetDateStyle = 'iso' | 'round-trip';
+
+export function formatOffsetDate(date: OffsetDate, style: OffsetDateStyle = 'iso'): string {
   const local = new Date(date.ms + date.offsetMinutes * 60_000);
   const day = `${pad(local.getUTCFullYear(), 4)}-${pad(local.getUTCMonth() + 1)}-${pad(local.getUTCDate())}`;
   const time = `${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())}:${pad(local.getUTCSeconds())}`;
   const sign = date.offsetMinutes < 0 ? '-' : '+';
   const offset = `${sign}${pad(Math.trunc(Math.abs(date.offsetMinutes) / 60))}:${pad(Math.abs(date.offsetMinutes) % 60)}`;
-  const fraction = style === 'round-trip' ? `.${date.fraction}` : trimmedFraction(date.fraction);
-  return `${day}T${time}${fraction}${offset}`;
+  const fraction = style === 'round-trip' ? date.fraction : date.fraction.slice(0, 3);
+  return `${day}T${time}.${fraction}${offset}`;
 }
 
-function trimmedFraction(fraction: string): string {
-  const trimmed = fraction.replace(/0+$/, '');
-  return trimmed === '' ? '' : `.${trimmed}`;
-}
-
-/** The round-trip ("O") text for any accepted input, or null when it is not a date. */
+/** The written form (`formatOffsetDate`) of any accepted input, or null when it is not a date. */
 export function normalizeOffsetDate(text: string): string | null {
   const parsed = parseOffsetDate(text);
-  return parsed ? formatOffsetDate(parsed, 'round-trip') : null;
+  return parsed ? formatOffsetDate(parsed) : null;
 }
 
 /** Now, as an OffsetDate in the machine's zone. */

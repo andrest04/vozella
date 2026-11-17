@@ -1,11 +1,9 @@
 import { MeetingTrashError } from './errors';
-import type { FolderRecord } from './folder';
 import type { MeetingListItem, MeetingRecord } from './meeting';
 import { foldSearchText, meetingSearchText, type MeetingBody } from './meeting-search';
 import { meetingListItem } from './snippet';
 import { applySettingsPatch, readSettings, type AppSettings, type RawSettings } from './settings';
 import type {
-  FolderRepository,
   MeetingDeleteMode,
   MeetingList,
   MeetingRepository,
@@ -23,7 +21,7 @@ export class InMemoryMeetingRepository implements MeetingRepository {
 
   list(): Promise<MeetingList> {
     const items = [...this.records.values()].map(meetingListItem);
-    return Promise.resolve({ items, skipped: [] });
+    return Promise.resolve({ items, skipped: [], shadowed: [] });
   }
 
   get(id: string): Promise<MeetingRecord | null> {
@@ -60,26 +58,6 @@ export class InMemoryMeetingRepository implements MeetingRepository {
 
   batch<T>(run: () => Promise<T>): Promise<T> {
     return run();
-  }
-}
-
-export class InMemoryFolderRepository implements FolderRepository {
-  folders: FolderRecord[] = [];
-
-  getAll(): Promise<FolderRecord[]> {
-    return Promise.resolve([...this.folders]);
-  }
-
-  save(folder: FolderRecord): Promise<void> {
-    const index = this.folders.findIndex((f) => f.id === folder.id);
-    if (index >= 0) this.folders[index] = folder;
-    else this.folders.push(folder);
-    return Promise.resolve();
-  }
-
-  delete(id: string): Promise<void> {
-    this.folders = this.folders.filter((f) => f.id !== id);
-    return Promise.resolve();
   }
 }
 
