@@ -13,6 +13,8 @@ import {
   DIGEST_INPUT_LOCAL_CHARS,
   LiveAskSession,
   LiveQuestionTracker,
+  type Logger,
+  type ProjectContextSource,
   RollingDigest,
   buildLiveQa,
   liveAnswerLanguageName,
@@ -33,12 +35,19 @@ type Broadcast = <C extends EventChannel>(channel: C, payload: PayloadInputOf<C>
 export interface LiveAskDeps {
   readonly settings: Pick<SettingsStore, 'load'>;
   readonly resolver: Pick<SummaryProviderResolver, 'resolveSummaryProvider'>;
-  /** Asking is allowed only while a take records; title and notes feed the session context. */
+  /**
+   * Asking is allowed only while a take records; title and notes feed the session context and the
+   * project of the take feeds the project block (instructions and files).
+   */
   readonly recording: () => {
     readonly recording: boolean;
     readonly title: string;
     readonly notes?: string;
+    readonly projectId: string | null;
   };
+  /** The instructions and files of a project. Unset: the ask has no project block. */
+  readonly projectContext?: Pick<ProjectContextSource, 'get'>;
+  readonly logger?: Pick<Logger, 'warn'>;
   /**
    * True while the local model is already loaded. The rolling digest uses the local engine only
    * then: it never loads the model by itself. Unset counts as not loaded.
@@ -100,6 +109,10 @@ export class LiveAsk {
       committedText: () => this.committedText,
       // The same title, notes and rolling digest the live chat packs (chatContext).
       sessionContext: () => this.chatContext(),
+      // Resolved per question: a project edited mid-take, or deleted, applies to the next ask.
+      projectId: () => this.deps.recording().projectId,
+      ...(deps.projectContext ? { projectContext: deps.projectContext } : {}),
+      ...(deps.logger ? { logger: deps.logger } : {}),
       publish: (state) => {
         deps.broadcast(recordingAnswer, state);
       },
@@ -181,8 +194,7 @@ export class LiveAsk {
       digest: this.digest.current,
       title: blankToNull(take.title),
       notes: blankToNull(take.notes),
-      // Filled in from the take once the recording lane exposes its project.
-      projectId: null,
+      projectId: take.projectId,
     };
   }
 

@@ -292,3 +292,10 @@ Rows marked `dropped` are not missing. The armed question card, badge and Answer
 - Rejected, no change: pill closed through the main window `closed` handler instead of `registerSecondary` (same effect, no keep-alive). The shell ledger rows 79 to 89 that read `pending-real-validation (owned by live-copilot)` stay that way until reconciliation.
 - Rejected, no change: two minimize paths on recording start (idempotent, no race found).
 - Not verified: taskbar and Alt+Tab, mixed DPI, high contrast, animation switch, real drag with snap; still `pending-real-validation`.
+
+## Projects: live copilot project context
+
+| Item | Status | Evidence or note |
+| ---- | ------ | ---------------- |
+| The pill, the dock and the Live chat see the instructions and files of the take's project (the Live scope used to ignore folders). The block is resolved for every question with the question as the relevance query, budgets from `projectBudgetFor('live', provider.id)`, and sits between the session lines and the digest. | improved | `packages/core/src/live-ask/live-ask-session.ts` and its test; `apps/desktop/src/main/recording/live-ask-handlers.ts` (`chatContext().projectId`) and its test |
+| A failing project read is logged and the ask goes on without the block; the digest, question detection and the rule that the local model is never loaded mid-take are unchanged. | unchanged | `live-ask-session.test.ts` (source failure), `live-ask-handlers.test.ts` |

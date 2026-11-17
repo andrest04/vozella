@@ -1,5 +1,10 @@
 import { recordingAnswer, recordingAnswerSchema, requestChannels } from '@vozella/contracts';
-import { DIGEST_INTERVAL_MS, type Logger } from '@vozella/core';
+import {
+  DIGEST_INTERVAL_MS,
+  InMemoryProjectContextSource,
+  type Logger,
+  type ProjectContextSource,
+} from '@vozella/core';
 import { describe, expect, it, vi } from 'vitest';
 import type { IpcMainLike } from '../ipc/ipc-server';
 import { LiveAsk, registerLiveAskHandlers } from './live-ask-handlers';
@@ -14,6 +19,8 @@ function setup(
     now?: () => number;
     localModelLoaded?: () => boolean;
     liveQuestions?: string | null;
+    projectId?: string | null;
+    projectContext?: Pick<ProjectContextSource, 'get'>;
   } = {},
 ) {
   const handlers = new Map<string, (event: never, ...args: unknown[]) => unknown>();
@@ -46,13 +53,19 @@ function setup(
         } as never);
       },
     },
-    recording: () => ({ recording, title: 'Algebra', notes: 'ask about limits' }),
+    recording: () => ({
+      recording,
+      title: 'Algebra',
+      notes: 'ask about limits',
+      projectId: extra.projectId ?? null,
+    }),
     broadcast: (channel, payload) => {
       sent.push({ channel: channel.name, payload });
     },
     formatFailure: String,
     nowMs: extra.now ?? (() => 0),
     ...(extra.localModelLoaded ? { localModelLoaded: extra.localModelLoaded } : {}),
+    ...(extra.projectContext ? { projectContext: extra.projectContext } : {}),
   });
   registerLiveAskHandlers({ ipc, logger: logger(), isTrusted: () => true }, liveAsk);
   const call = (name: string, input: unknown): Promise<unknown> => {
@@ -236,7 +249,7 @@ describe('live question detection', () => {
             },
           } as never),
       },
-      recording: () => ({ recording: true, title: 'Agile' }),
+      recording: () => ({ recording: true, title: 'Agile', projectId: null }),
       broadcast: (channel, payload) => {
         sent.push({ channel: channel.name, payload });
       },
@@ -401,6 +414,39 @@ describe('rolling digest (T2)', () => {
     });
     t.liveAsk.hooks.cancel();
     expect(t.liveAsk.chatContext().digest).toBeNull();
+  });
+
+  it('chatContext carries the project of the take, for the live chat', () => {
+    const t = setup(true, 'Codex', { projectId: 'p1' });
+    expect(t.liveAsk.chatContext()).toMatchObject({ title: 'Algebra', projectId: 'p1' });
+  });
+
+  it('the pill and dock ask sees the instructions of the project of the take', async () => {
+    const source = new InMemoryProjectContextSource();
+    source.set({
+      projectId: 'p1',
+      name: 'Calculus',
+      instructions: 'Answer like a tutor.',
+      documents: [],
+    });
+    const t = setup(true, 'Codex', { projectId: 'p1', projectContext: source });
+    t.liveAsk.hooks.reset();
+    expect(t.liveAsk.ask('What is a limit?', false, false)).toBe(true);
+    await settle();
+    await settle();
+    expect(t.prompts.at(-1)).toContain('Project: Calculus');
+    expect(t.prompts.at(-1)).toContain('Answer like a tutor.');
+  });
+
+  it('a take without a project asks without a project block', async () => {
+    const source = new InMemoryProjectContextSource();
+    source.set({ projectId: 'p1', name: 'Calculus', instructions: 'Hidden.', documents: [] });
+    const t = setup(true, 'Codex', { projectId: null, projectContext: source });
+    t.liveAsk.hooks.reset();
+    t.liveAsk.ask('What is a limit?', false, false);
+    await settle();
+    await settle();
+    expect(t.prompts.at(-1)).not.toContain('Project:');
   });
 
   it('never loads the local model for a digest', async () => {
