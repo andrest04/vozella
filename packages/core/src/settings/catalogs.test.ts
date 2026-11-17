@@ -87,7 +87,7 @@ describe('engine locale mapper', () => {
   });
 });
 
-describe('B6: the picker and the engine agree on case and space variants', () => {
+describe('the picker and the engine agree on case and space variants', () => {
   it.each(['ES', ' en ', 'Pt', 'AUTO'])('transcription %j', (stored) => {
     const code = resolveMeetingLanguageCode(stored);
     expect(TRANSCRIPTION_LANGUAGES.some((l) => l.code === code)).toBe(true);
@@ -169,7 +169,7 @@ describe('summary model catalog', () => {
     }
   });
 
-  it('B18: pins the exact byte size and the SHA-256 of every file', () => {
+  it('pins the exact byte size and the SHA-256 of every file', () => {
     expect(SUMMARY_MODELS.map((m) => m.sizeBytes)).toEqual([
       807_694_464, 2_019_377_696, 2_099_502_528, 4_977_171_584, 2_497_281_120, 5_027_783_488,
       7_121_861_440,
@@ -218,10 +218,10 @@ describe('summary model catalog', () => {
     expect(SUMMARY_MODELS.every((m) => m.legacy !== true)).toBe(true);
   });
 
-  it('B20: the catalog holds label keys, never translated text', () => {
+  it('the catalog holds label keys, never translated text', () => {
     for (const model of known) {
       for (const key of [model.speedKey, model.qualityKey, model.useCaseKey]) {
-        // Ported WinUI keys, or hand written Ui_ keys for the models added after the port.
+        // Base catalog keys, or Ui_ keys for the models added later.
         expect(key).toMatch(/^(Ui_)?Model(Speed|Quality|UseCase)[A-Za-z0-9]+$/);
         expect(key).not.toContain(' ');
       }
@@ -229,7 +229,7 @@ describe('summary model catalog', () => {
     for (const key of Object.values(FIT_LABEL_KEYS)) expect(key).toMatch(/^Ui_Fit[A-Za-z]+$/);
   });
 
-  it('labels the fit as hardware fit, not as a pick (settings polish T2)', () => {
+  it('labels the fit as hardware fit, not as a pick', () => {
     expect(FIT_LABEL_KEYS).toEqual({
       Recommended: 'Ui_FitRunsWell',
       MayBeSlow: 'Ui_FitMayBeSlow',
@@ -237,7 +237,7 @@ describe('summary model catalog', () => {
     });
   });
 
-  it('pins every URL to the commit verified in C1, and every catalog key', () => {
+  it('pins every URL to the commit verified, and every catalog key', () => {
     expect(known.map((m) => [m.downloadUrl, m.speedKey, m.qualityKey, m.useCaseKey])).toEqual([
       [
         'https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/067b946cf014b7c697f3654f621d577a3e3afd1c/Llama-3.2-1B-Instruct-Q4_K_M.gguf',
@@ -386,7 +386,7 @@ describe('fit rating', () => {
   });
 });
 
-describe('fit rating by runtime backend (B17)', () => {
+describe('fit rating by runtime backend', () => {
   const model: SummaryModelInfo = { ...SUMMARY_MODELS[3]!, minRamGb: 16 };
   const gpu: HardwareProfile = { totalRamGb: 8, gpuName: 'GPU', gpuVramGb: 8 };
 
@@ -459,7 +459,7 @@ describe('note templates', () => {
   });
 });
 
-describe('B13: stored values that are not in the list', () => {
+describe('stored values that are not in the list', () => {
   it('the options keep the stored value so the control is never blank', () => {
     expect(optionsIncluding(CLAUDE_MODELS, 'gpt-9')).toEqual([...CLAUDE_MODELS, 'gpt-9']);
     expect(optionsIncluding(CLAUDE_MODELS, 'opus')).toEqual([...CLAUDE_MODELS]);

@@ -13,7 +13,7 @@ const c = (
   seriesId,
 });
 
-describe('findRelated (item 103)', () => {
+describe('findRelated', () => {
   const current = c('cur', 'Weekly sync', 20, 'series-1');
 
   it('matches the exact trimmed title, case-sensitive', () => {
@@ -35,12 +35,12 @@ describe('findRelated (item 103)', () => {
     expect(findRelated(cur, [c('a', 'Y', 1, null), c('b', 'Z', 2, '')])).toEqual([]);
   });
 
-  it('B11: blank titles never relate two meetings', () => {
+  it('blank titles never relate two meetings', () => {
     expect(findRelated(c('cur', '', 20), [c('a', '  ', 1), c('b', '', 2)])).toEqual([]);
     expect(findRelated(c('cur', '  ', 20), [c('a', '', 1)])).toEqual([]);
   });
 
-  it('B11: a shared series still relates meetings whose titles are blank', () => {
+  it('a shared series still relates meetings whose titles are blank', () => {
     const cur = c('cur', '', 20, 's1');
     expect(findRelated(cur, [c('a', '', 1, 's1'), c('b', '', 2)]).map((r) => r.id)).toEqual(['a']);
   });

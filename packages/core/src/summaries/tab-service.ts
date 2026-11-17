@@ -18,7 +18,7 @@ import { deriveTabFlags, type TabState } from './tab-state';
 
 export type CopyMode = 'notes' | 'summary';
 
-/** Notes or summary for the session-level copy command; null when blank (item 104). */
+/** Notes or summary for the session-level copy command; null when blank. */
 export function copyTextFor(
   mode: CopyMode,
   source: { readonly notes: string | null; readonly summary: string | null },
@@ -94,7 +94,7 @@ export interface SummaryTabServiceDeps {
   readonly translate: TranslateFn;
   /** The workspace's selected meeting id. */
   readonly getSelectedMeetingId: () => string | null;
-  /** Tells the workspace to select the loaded meeting (item 79). */
+  /** Tells the workspace to select the loaded meeting. */
   readonly selectMeeting: (id: string) => void;
   /** Shared with other writers of the same meeting so their patches stay ordered. */
   readonly queue?: PatchQueue;
@@ -113,7 +113,7 @@ interface ListedMeeting {
 const errorText = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
-/** Spec 2.2 as a service the renderer drives over IPC. Every method returns a value. */
+/** The tab as a service the renderer drives over IPC. Every method returns a value. */
 export class SummaryTabService {
   private readonly queue: PatchQueue;
 
@@ -121,7 +121,7 @@ export class SummaryTabService {
     this.queue = deps.queue ?? new PatchQueue();
   }
 
-  /** Items 78 to 81. Given id, else the workspace selection, else the most recent meeting. */
+  /** Given id, else the workspace selection, else the most recent meeting. */
   async loadTab(request: { readonly meetingId: string | null }): Promise<TabLoadResult> {
     try {
       const id = request.meetingId ?? this.deps.getSelectedMeetingId();
@@ -222,7 +222,7 @@ export class SummaryTabService {
     }
   }
 
-  /** Item 102: re-read, blank becomes null, skip the write when unchanged, field patch only. */
+  /** Re-read, blank becomes null, skip the write when unchanged, field patch only. */
   saveNotes(meetingId: string, text: string): Promise<SaveNotesResult> {
     return this.queue
       .run(meetingId, async (): Promise<SaveNotesResult> => {
@@ -236,7 +236,7 @@ export class SummaryTabService {
       .catch((error: unknown): SaveNotesResult => ({ status: 'failed', detail: errorText(error) }));
   }
 
-  /** Item 98 and B5: saves are queued per meeting, each on a freshly read record. */
+  /** Saves are queued per meeting, each on a freshly read record. */
   toggleActionItem(meetingId: string, index: number, done: boolean): Promise<ToggleResult> {
     return this.queue
       .run(meetingId, async (): Promise<ToggleResult> => {
@@ -263,7 +263,7 @@ export class SummaryTabService {
 
   /**
    * Sets or clears (null) the confirmed date of one action item. An item without a deadline gets a
-   * hand-picked one (blank quote, `date` kind). Clearing keeps the quote and kind. Queued (B5).
+   * hand-picked one (blank quote, `date` kind). Clearing keeps the quote and kind. Queued.
    */
   setActionItemDate(
     meetingId: string,
@@ -290,7 +290,7 @@ export class SummaryTabService {
   /**
    * Answers "when is the next session?": remembers the date for the meeting title and fills it on
    * this meeting's `next_meeting` items that have no date yet. The date must be after the meeting
-   * day. Queued (B5); the meeting is only written when an item changed.
+   * day. Queued; the meeting is only written when an item changed.
    */
   setNextSessionDate(meetingId: string, date: string): Promise<SetNextSessionDateResult> {
     if (!isIsoDay(date)) return Promise.resolve({ status: 'invalid-date' });
@@ -334,9 +334,9 @@ export class SummaryTabService {
   }
 
   /**
-   * T4: replaces the summary and action items with a chat answer, or puts back what an earlier
+   * Replaces the summary and action items with a chat answer, or puts back what an earlier
    * replace returned (undo). Answers the previous content so the caller can offer the undo.
-   * Queued with the other writes (B5); every other field of the record stays.
+   * Queued with the other writes; every other field of the record stays.
    */
   replaceSummary(meetingId: string, request: ReplaceSummaryRequest): Promise<ReplaceSummaryResult> {
     return this.queue
@@ -407,7 +407,7 @@ export class SummaryTabService {
     return { status: 'ready', text, count, fileName: icsFileName(record.title) };
   }
 
-  /** Item 99. The clipboard write belongs to the shell. */
+  /** The clipboard write belongs to the shell. */
   async copyActionItems(meetingId: string): Promise<CopyActionItemsResult> {
     try {
       const record = await this.deps.meetings.get(meetingId);
@@ -421,7 +421,7 @@ export class SummaryTabService {
     }
   }
 
-  /** Item 104 for a stored meeting; the Copy button on the Summary tab calls it through `summaries.copyText`. */
+  /** The copy text for a stored meeting; the Copy button on the Summary tab calls it through `summaries.copyText`. */
   async copyText(meetingId: string, mode: CopyMode): Promise<string | null> {
     try {
       const record = await this.deps.meetings.get(meetingId);

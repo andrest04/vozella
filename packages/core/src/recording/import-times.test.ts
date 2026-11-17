@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { importTimes } from './import-times';
 
-describe('importTimes (B-19)', () => {
+describe('importTimes', () => {
   it('treats the file time as the end and derives the start', () => {
     expect(importTimes(10_000_000, 60_000, 99)).toEqual({
       recordedAtMs: 9_940_000,

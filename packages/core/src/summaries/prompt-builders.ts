@@ -1,7 +1,7 @@
 import { formatOffsetDate, type OffsetDate } from '../library/offset-date';
 
 /**
- * Prompt builders, spec 3.1, 3.2 and 3.5. The port intentionally diverges from the WinUI text: the
+ * Prompt builders. The
  * summary infers the content type and picks its own ### sections (adaptive structure), and the
  * map-reduce notes keep the content type and type-relevant material. Newlines are LF.
  */
@@ -333,7 +333,7 @@ function enhancementBlocks(enhancement: SummaryEnhancementContext): string {
   return blocks;
 }
 
-/** Spec 3.5: notes for one part of a long transcript. `language` is the English language name. */
+/** Notes for one part of a long transcript. `language` is the English language name. */
 export function buildPartPrompt(
   part: string,
   number: number,
@@ -360,7 +360,7 @@ ${part}
 </transcript_part>`;
 }
 
-/** Spec 3.5: combines consecutive part notes into one shorter set. */
+/** Combines consecutive part notes into one shorter set. */
 export function buildMergePrompt(notes: string, language: string): string {
   return `These are consecutive notes on a recording, in time order. Combine them into one shorter set.
 

@@ -63,7 +63,7 @@ export interface RecognizerFactoryDeps {
   readonly status?: AsrBackendStatus;
 }
 
-/** Picks CUDA or CPU and builds the recognizer (spec 3.4). */
+/** Picks CUDA or CPU and builds the recognizer. */
 export class NemoSpeechRecognizerFactory implements RecognizerSource {
   constructor(private readonly deps: RecognizerFactoryDeps) {}
 

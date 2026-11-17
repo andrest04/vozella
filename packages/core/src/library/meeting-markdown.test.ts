@@ -115,7 +115,7 @@ describe('render', () => {
     expect(text).not.toMatch(/apiKey|secret/i);
   });
 
-  it('orders frontmatter as the spec says and omits unset optional fields', () => {
+  it('orders frontmatter in the documented order and omits unset optional fields', () => {
     const text = renderMeetingMarkdown(
       meeting({
         endedAt: '2026-09-01T13:00:00.000+00:00',
@@ -169,7 +169,7 @@ describe('render', () => {
     expect(text.endsWith('"analyzedAt":"2026-09-01T13:00:00.000+00:00"}\n')).toBe(true);
   });
 
-  it('writes the id lowercase and the dates in round-trip form whatever the caller passed (item 14)', () => {
+  it('writes the id lowercase and the dates in round-trip form whatever the caller passed', () => {
     const text = renderMeetingMarkdown(
       meeting({
         id: 'ABCDEF12-1111-4111-8111-ABCDEFABCDEF',
@@ -184,7 +184,7 @@ describe('render', () => {
     expect(text).toContain('folderId: 7d1e0a52-33c4-4f6b-8a90-0c1d2e3f4a5b\n');
   });
 
-  it('skips whitespace-only brief, follow-up, plan, optional fields and an empty provider (items 16, 17, 22)', () => {
+  it('skips whitespace-only brief, follow-up, plan, optional fields and an empty provider', () => {
     const text = renderMeetingMarkdown(
       meeting({
         brief: '  ',
@@ -201,7 +201,7 @@ describe('render', () => {
     expect(text).toBe(renderMeetingMarkdown(meeting()));
   });
 
-  it('skips whitespace-only sections consistently (B21)', () => {
+  it('skips whitespace-only sections consistently', () => {
     const text = renderMeetingMarkdown(meeting({ transcript: '   \n', summary: '\n', notes: ' ' }));
     expect(text).not.toContain('## Transcript');
     expect(text).not.toContain('## Summary');
@@ -209,7 +209,7 @@ describe('render', () => {
     expect(renderMeetingMarkdown(parse(text))).toBe(text);
   });
 
-  it('replaces newlines in the single-line fields (B3)', () => {
+  it('replaces newlines in the single-line fields', () => {
     const text = renderMeetingMarkdown(
       meeting({
         title: 'Line one\n---\nline two',
@@ -232,7 +232,7 @@ describe('render', () => {
     expect(back.attendees).toEqual(['Ana  Perez', 'Luis']);
   });
 
-  it('keeps action item text on one line (B22)', () => {
+  it('keeps action item text on one line', () => {
     const back = parse(
       renderMeetingMarkdown(
         meeting({ actionItems: [{ text: 'one\n## Summary\ntwo', isDone: false }] }),
@@ -352,7 +352,7 @@ describe('header escaping', () => {
     },
   );
 
-  it('reads a legacy file without the key literally and splits the old way', () => {
+  it('reads a file written by an earlier version without the key literally and splits it the earlier way', () => {
     const text =
       `---\nid: ${ID}\ntitle: Standup\nrecordedAt: 2026-09-01T12:00:00.000+00:00\naudioFilePath: \n---\n` +
       '\n## Personal Notes\n\nBefore\n## Summary\nAfter\n';
@@ -456,7 +456,7 @@ describe('parse', () => {
     expect(back.brief).toBeNull();
   });
 
-  it('parses action items with the spec regex and ignores other lines', () => {
+  it('parses action items with the action item regex and ignores other lines', () => {
     const back = parse(
       `${head}---\n\n## Action Items\n\n- [ ] one\n  - [X]   two  \n- [ ]\nnot an item\n-[ ] bad\n`,
     );
@@ -478,7 +478,7 @@ describe('parse', () => {
     });
   });
 
-  it('raises a format error for a Jev block that is not JSON (the file is skipped, B4)', () => {
+  it('raises a format error for a Jev block that is not JSON (the file is skipped)', () => {
     expect(() => parse(`${head}---\n\n## Jev\n\n{oops\n`)).toThrow(MeetingFormatError);
   });
 
@@ -487,7 +487,7 @@ describe('parse', () => {
   });
 });
 
-describe('golden sample (spec 4.1, every field)', () => {
+describe('golden sample', () => {
   const jev =
     '{"meetingType":"standup","meetingTypeConfidence":0.85,"spokenLanguage":"en","urgencyScore":1,' +
     '"urgencyConfidence":0.9,"containsDecisions":0.8,"containsCommitments":0.2,"piiRisk":0.01,' +
@@ -500,7 +500,7 @@ describe('golden sample (spec 4.1, every field)', () => {
     'title: Weekly sync: planning\n' +
     'recordedAt: 2026-09-01T12:00:00.000-05:00\n' +
     'endedAt: 2026-09-01T13:45:00.000-05:00\n' +
-    'audioFilePath: C:\\Users\\ana\\Documents\\MeetingLive\\Universidad\\2026-09-01 Weekly sync planning.wav\n' +
+    'audioFilePath: C:\\Users\\ana\\Documents\\Vozella\\Calculo\\2026-09-01 Weekly sync planning.wav\n' +
     'folderId: 7d1e0a52-33c4-4f6b-8a90-0c1d2e3f4a5b\n' +
     'summaryProvider: local\n' +
     'calendarEventId: AAMkAGI2\n' +
@@ -530,13 +530,13 @@ describe('golden sample (spec 4.1, every field)', () => {
     expect(renderMeetingMarkdown(parse(text, 'a.md'))).toBe(text);
   });
 
-  it('reads an older file (escaped plus signs, seven fraction digits) and writes it plain', () => {
+  it('reads a file written by an earlier version (escaped plus signs, seven fraction digits) and writes it plain', () => {
     const raw = parse(older(sample(olderJev)), 'a.md');
     expect(raw).toEqual(parse(sample(jev), 'a.md'));
     expect(renderMeetingMarkdown(raw)).toBe(sample(jev));
   });
 
-  it('a BOM and CRLF copy of an older file reads and rewrites to the plain form', () => {
+  it('a BOM and CRLF copy of a file written by an earlier version reads and rewrites to the plain form', () => {
     const text = `\uFEFF${older(sample(olderJev)).replace(/\n/g, '\r\n')}`;
     expect(renderMeetingMarkdown(parse(text, 'a.md'))).toBe(sample(jev));
   });
@@ -599,7 +599,7 @@ describe('action item owner and deadline (## Action Item Data)', () => {
     );
   });
 
-  it('loads a legacy file without the section unchanged', () => {
+  it('loads a file written by an earlier version without the section unchanged', () => {
     const head = `---\nid: ${ID}\nrecordedAt: 2026-09-01T12:00:00Z\n---\n`;
     const back = parse(
       `${head}\n## Action Items\n\n- [ ] Send the deck — Owner: Ana — Due: Friday\n`,

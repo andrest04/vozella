@@ -59,7 +59,7 @@ describe('parseActionItems owner and deadline suffixes', () => {
     });
   });
 
-  it('keeps a legacy free-text deadline as an unknown kind with no date', () => {
+  it('keeps a free-text deadline from earlier versions as an unknown kind with no date', () => {
     expect(one('- [ ] Send the deck — Owner: Ana — Due: Friday')).toEqual({
       text: 'Send the deck',
       isDone: false,
@@ -72,7 +72,7 @@ describe('parseActionItems owner and deadline suffixes', () => {
     });
   });
 
-  it('drops an empty owner, a `none` deadline and an empty legacy deadline', () => {
+  it('drops an empty owner, a `none` deadline and an empty free-text deadline', () => {
     expect(one('- [ ] A — Owner: — Due: none')).toEqual({ text: 'A', isDone: false });
     expect(one('- [ ] A — Due:   ')).toEqual({ text: 'A', isDone: false });
   });

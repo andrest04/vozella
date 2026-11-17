@@ -7,7 +7,7 @@ import { RuntimeInUseError, type EngineModelStore, type RuntimeStore } from './p
 
 /**
  * Which download is running. The page turns this into words in the user's language
- * (`Ui_EngineStage*`), because the English literals of the WinUI app were never translated (B25).
+ * (`Ui_EngineStage*`), because the English stage names are not translated.
  */
 export type InstallStage = 'runtime-cuda' | 'runtime-cpu' | 'runtime-cpu-fallback' | 'model';
 
@@ -15,7 +15,7 @@ export interface InstallProgress {
   readonly stage: InstallStage;
   /** 0 to 100 inside the stage; resets to 0 at each stage. */
   readonly percent: number;
-  /** Position of the stage in the plan and the plan size, so one overall bar is possible (B21). */
+  /** Position of the stage in the plan and the plan size, so one overall bar is possible. */
   readonly stepIndex: number;
   readonly stepCount: number;
 }
@@ -28,7 +28,7 @@ export interface InstallerDeps {
   readonly hardware: () => Promise<Pick<HardwareProfile, 'gpuName'>>;
 }
 
-/** Decides what the transcription engine needs on disk and fetches it (spec 3.8). */
+/** Decides what the transcription engine needs on disk and fetches it. */
 export class TranscriptionEngineInstaller {
   constructor(private readonly deps: InstallerDeps) {}
 
@@ -99,7 +99,7 @@ export class TranscriptionEngineInstaller {
   }
 
   /**
-   * Removes the runtime first (it can refuse), then the ASR model and the speaker model (B6).
+   * Removes the runtime first (it can refuse), then the ASR model and the speaker model.
    * `RuntimeInUse` keeps everything; `Incomplete` means something stayed behind.
    */
   async deleteEngine(): Promise<EngineDeletion> {
@@ -109,7 +109,7 @@ export class TranscriptionEngineInstaller {
       if (error instanceof RuntimeInUseError) return 'RuntimeInUse';
       return 'Incomplete';
     }
-    // Both are attempted: a locked ASR file must not keep the speaker model on disk (B6).
+    // Both are attempted: a locked ASR file must not keep the speaker model on disk.
     let complete = true;
     try {
       await this.deps.models.deleteModel();

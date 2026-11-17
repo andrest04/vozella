@@ -59,7 +59,7 @@ export interface AudioFrameReader {
 
 /**
  * Port: when the local user spoke in a recording (`mic-activity.ts`). Adapter reads the sidecar
- * next to the WAV. Null for a legacy recording, an import, a take without a microphone, or an
+ * next to the WAV. Null for a recording made before the sidecar existed, an import, a take without a microphone, or an
  * unreadable sidecar: never throws, so the offline pass never fails on it.
  */
 export interface MicActivityReader {

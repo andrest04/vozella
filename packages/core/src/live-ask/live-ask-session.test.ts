@@ -300,7 +300,7 @@ describe('LiveAskSession', () => {
   });
 });
 
-describe('LiveAskSession take context (live chat parity)', () => {
+describe('LiveAskSession take context (live chat)', () => {
   const stampAt = (s: number): string => {
     const mm = String(Math.floor(s / 60)).padStart(2, '0');
     const ss = String(s % 60).padStart(2, '0');

@@ -4,7 +4,7 @@ import { roundHalfEven } from './round';
 
 export { roundHalfEven } from './round';
 
-/** Spec live-copilot 2.3. DIP unless a name says otherwise. */
+/** DIP unless a name says otherwise. */
 export const CAPSULE_SHORT_DIP = 64;
 export const CAPSULE_VERTICAL_LONG_DIP = 240;
 export const CAPSULE_HORIZONTAL_LONG_DIP = 272;

@@ -6,7 +6,7 @@ import {
 } from '../transcription/committed-line';
 
 /**
- * Finds a newly committed direct question (port of WinUI `LiveQuestionDetector`). Pure: the
+ * Finds a newly committed direct question. Pure: the
  * caller keeps the previous committed text and the keys it has already shown or dismissed.
  *
  * A line counts when it has `¿`, ends with `?`, or starts with an interrogative word ("por qué"
@@ -30,7 +30,7 @@ const INTERROGATIVE_WORDS: ReadonlySet<string> = new Set([
   'dónde',
   'quién',
   'quiénes',
-  // Port extra: only the accented forms, "cuanto antes" starts statements.
+  // Only the accented forms, "cuanto antes" starts statements.
   'cuánto',
   'cuánta',
   'cuántos',
@@ -42,7 +42,7 @@ const INTERROGATIVE_WORDS: ReadonlySet<string> = new Set([
   'where',
   'who',
   'which',
-  // Port extra: contractions, as Nemotron writes "What's the budget…" with no "?" (T3).
+  // Contractions, as Nemotron writes "What's the budget…" with no "?".
   "what's",
   "how's",
   "why's",
@@ -52,7 +52,7 @@ const INTERROGATIVE_WORDS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Port extra (T3): live ASR often drops the "?" of an English yes/no question, which has no
+ * Live ASR often drops the "?" of an English yes/no question, which has no
  * interrogative word. An auxiliary followed by a subject still marks one ("is the…", "do we…").
  * "do/does/did" need a pronoun, since "do the review" is an order.
  */
@@ -102,7 +102,7 @@ const DETERMINER_SUBJECTS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Port extra (T3): Spanish yes/no questions read like statements once ASR drops "¿?". Only
+ * Spanish yes/no questions read like statements once ASR drops "¿?". Only
  * openers that ask the listener for something count: "puedes…", "podrías…", "alguien sabe…".
  */
 const SPANISH_REQUEST_OPENERS: readonly string[] = [
@@ -317,11 +317,11 @@ const TAIL_TAGS: ReadonlySet<string> = new Set([
   'ahora',
 ]);
 
-/** "por qué" is WinUI; "por que" is a port extra (ASR drops the accent). "porque" never counts. */
+/** "por qué" is the standard form; "por que" is an extra (ASR drops the accent). "porque" never counts. */
 const INTERROGATIVE_PHRASES: readonly string[] = ['por qué', 'por que'];
 
 const RHETORICAL_BODIES: ReadonlySet<string> = new Set([
-  // WinUI list.
+  // Interrogative words.
   'se entiende',
   'ok',
   'okay',
@@ -344,7 +344,7 @@ const RHETORICAL_BODIES: ReadonlySet<string> = new Set([
   'listo',
   'estan',
   'están',
-  // Port extras: checks that the room follows or hears, not questions that expect an answer.
+  // Checks that the room follows or hears, not questions that expect an answer.
   'me escuchan',
   'me escuchan bien',
   'se escucha',
@@ -452,7 +452,7 @@ function trimEdges(value: string): string {
 
 const collapseWhitespace = (value: string): string => value.split(/\s+/u).filter(Boolean).join(' ');
 
-/** WinUI `Normalize`: trimmed, edge punctuation off, lower case, single spaces. */
+/** Normalization: trimmed, edge punctuation off, lower case, single spaces. */
 function normalize(body: string): string {
   return collapseWhitespace(trimEdges(body.trim()).trim().toLowerCase());
 }
@@ -553,7 +553,7 @@ function isRhetorical(body: string): boolean {
   return core === '' || RHETORICAL_BODIES.has(core);
 }
 
-/** WinUI `IsDirectQuestion`. Whole-body rhetorical match only: "¿no es ese…?" still counts. */
+/** Whole-body rhetorical match only: "¿no es ese…?" still counts. */
 export function isDirectQuestion(body: string): boolean {
   const trimmed = body.trim();
   if (trimmed === '' || !hasQuestionSignal(trimmed)) return false;

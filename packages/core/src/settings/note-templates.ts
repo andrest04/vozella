@@ -1,4 +1,4 @@
-/** Note templates. Spec 2.7. The instruction texts are prompts: they are copied verbatim. */
+/** Note templates. The instruction texts are prompts: they are copied verbatim. */
 
 export interface NoteTemplateOption {
   readonly id: string;

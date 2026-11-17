@@ -3,7 +3,7 @@ import { formatEnded, formatHeader, formatLine } from '../transcription/stamp-fo
 import { NEMOTRON_EN_LINES, NEMOTRON_ES_LINES } from './fixtures/nemotron-live-lines';
 import { detectNewQuestion, questionKey } from './question-detector';
 
-/** Ported from the original WinUI app's LiveQuestionDetectorTests, plus es/en extras. */
+/** Question detector cases, plus es/en extras. */
 
 const AGILE_ES = '¿Cuál es el tercer principio del manifiesto ágil?';
 const AGILE_EN = 'what is the third principle of the agile manifesto?';
@@ -11,7 +11,7 @@ const none = new Set<string>();
 const body = (previous: string | null, current: string | null, seen = none) =>
   detectNewQuestion(previous, current, seen)?.body ?? null;
 
-describe('detectNewQuestion (WinUI LiveQuestionDetector cases)', () => {
+describe('detectNewQuestion (question detector cases)', () => {
   it('returns the body of a new Spanish question under the headers', () => {
     const current = [
       formatHeader(Date.UTC(2026, 8, 21, 15)),

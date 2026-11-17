@@ -144,7 +144,7 @@ describe('emptyFlags truth table', () => {
     });
   });
 
-  it('B15: a search with no matches reports it', () => {
+  it('a search with no matches reports it', () => {
     const flags = emptyFlags({ ...base, inViewCount: 4, totalMeetings: 4, query: 'zzz' });
     expect(flags.showNoMatches).toBe(true);
     expect(flags.showNoProjectEmpty).toBe(false);

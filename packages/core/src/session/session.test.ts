@@ -91,7 +91,7 @@ describe('busy and availability', () => {
     return w;
   }
 
-  it('busyReason: capture, run or null (B16)', () => {
+  it('busyReason: capture, run or null', () => {
     expect(busyReason(idle, ws(false))).toBeNull();
     expect(busyReason(running('x'), ws(false))).toBe('run');
     expect(busyReason(idle, ws(true))).toBe('capture');
@@ -112,7 +112,7 @@ describe('busy and availability', () => {
     expect(canRename(view, 'm1', running('other'))).toBe(true);
   });
 
-  it('canRename is blocked while a run targets this meeting (B4)', () => {
+  it('canRename is blocked while a run targets this meeting', () => {
     expect(canRename(view, 'm1', running('m1'))).toBe(false);
     expect(canRename(view, 'm1', idle)).toBe(true);
     expect(canRename({ hasMeeting: false }, null, idle)).toBe(false);
@@ -131,7 +131,7 @@ describe('renameMeeting', () => {
     return { meetings, changed, save, deps };
   }
 
-  it('trims, saves the whole record and raises meetingChanged (B11)', async () => {
+  it('trims, saves the whole record and raises meetingChanged', async () => {
     const { meetings, changed, save, deps } = setup();
     expect(await renameMeeting(deps, 'm1', '  New name  ')).toBe('renamed');
     expect(save).toHaveBeenCalledTimes(1);
@@ -155,7 +155,7 @@ describe('renameMeeting', () => {
     expect(save).not.toHaveBeenCalled();
   });
 
-  it('is blocked while a run targets the meeting, allowed for others (B4)', async () => {
+  it('is blocked while a run targets the meeting, allowed for others', async () => {
     const blocked = setup({ isRunning: true, meetingId: 'm1' });
     expect(await renameMeeting(blocked.deps, 'm1', 'x')).toBe('blocked');
     expect(blocked.save).not.toHaveBeenCalled();
@@ -251,7 +251,7 @@ describe('tabs', () => {
     expect(slideDirection(1, 1)).toBe('FromLeft');
   });
 
-  it('tracks the previous index on every navigation, starting at the opened tab (B15)', () => {
+  it('tracks the previous index on every navigation, starting at the opened tab', () => {
     const summaryFirst = createSlideTracker('Summary');
     expect(summaryFirst.navigate('Summary')).toBe('FromLeft');
     expect(summaryFirst.navigate('Transcript')).toBe('FromLeft');

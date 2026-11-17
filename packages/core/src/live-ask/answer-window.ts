@@ -1,4 +1,4 @@
-/** The recent part of the committed transcript a live answer reads (recording spec 3.12). */
+/** The recent part of the committed transcript a live answer reads. */
 import {
   isTranscriptHeader,
   parseCommittedLineEnd,
@@ -18,12 +18,12 @@ export function takeRecentWindow(
   windowMs: number = DEFAULT_ANSWER_WINDOW_MS,
 ): string {
   if (committedText === null || committedText === undefined || committedText === '') return '';
-  // Bug 17: one newline kind in the output (the prompt is \n joined), whatever mix came in.
+  // One newline kind in the output (the prompt is \n joined), whatever mix came in.
   const lines = splitCommittedLines(committedText);
   const ends = lines.map(parseCommittedLineEnd);
   let latest: number | null = null;
   for (const end of ends) if (end !== null && (latest === null || end > latest)) latest = end;
-  // Bug 16: the cut keeps whole surrogate pairs.
+  // The cut keeps whole surrogate pairs.
   if (latest === null) return takeTail(lines.join('\n'), UNSTAMPED_FALLBACK_CHARS);
   const cutoff = latest - windowMs;
   const inSpan = (end: number | null): boolean => end !== null && end >= cutoff && end <= latest;

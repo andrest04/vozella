@@ -62,7 +62,7 @@ describe('formatFailure', () => {
     );
   });
 
-  it('formats a stable code with its arguments (B28)', () => {
+  it('formats a stable code with its arguments', () => {
     expect(formatFailure(new SummaryError('TranscriptTooLong', [70, 64]), en)).toBe(
       'Too long (70 parts, limit 64).',
     );

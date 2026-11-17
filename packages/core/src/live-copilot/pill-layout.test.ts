@@ -20,7 +20,7 @@ import {
   roundHalfEven,
 } from './pill-layout';
 
-describe('constants (spec 2.3)', () => {
+describe('constants', () => {
   it('match the table', () => {
     expect([CAPSULE_SHORT_DIP, CAPSULE_VERTICAL_LONG_DIP, CAPSULE_HORIZONTAL_LONG_DIP]).toEqual([
       64, 240, 272,

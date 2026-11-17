@@ -11,7 +11,7 @@ export interface TabFlagInput {
   readonly isGenerating: boolean;
 }
 
-/** The derived flags of spec 2.2. The renderer recomputes them when the mode or run state changes. */
+/** The derived flags. The renderer recomputes them when the mode or run state changes. */
 export interface TabFlags {
   readonly hasSummary: boolean;
   readonly canGenerate: boolean;

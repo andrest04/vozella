@@ -73,7 +73,7 @@ describe('AudioCaptureService start', () => {
     expect(r.port.sessions).toHaveLength(0);
   });
 
-  it('C7: refuses a process capture with a clear error before any device opens', async () => {
+  it('refuses a process capture with a clear error before any device opens', async () => {
     const r = rig();
     const gated = new AudioCaptureService({
       sources: r.port,
@@ -131,7 +131,7 @@ describe('AudioCaptureService start', () => {
     ]);
   });
 
-  it('cleans up, deletes the file and rethrows when a device fails to start (C1)', async () => {
+  it('cleans up, deletes the file and rethrows when a device fails to start', async () => {
     const r = rig();
     r.port.failOn = 'system';
     await expect(r.service.start('a.wav', withMic)).rejects.toThrow('device failed');
@@ -279,7 +279,7 @@ describe('mixing and file output', () => {
   });
 });
 
-describe('microphone level (fixes C4)', () => {
+describe('microphone level', () => {
   it('reports the microphone alone, once per 100 ms, and never from the output', async () => {
     const r = rig();
     const levels: number[] = [];
@@ -565,7 +565,7 @@ describe('level window and teardown proof', () => {
     expect(levels).toEqual([0, 0]);
   });
 
-  it('stops feeding the writer once an output fails (item 87)', async () => {
+  it('stops feeding the writer once an output fails', async () => {
     const r = rig();
     await r.service.start('a.wav', processTreeSources(true, null, 4242));
     await r.clock.advance(1000);
@@ -577,7 +577,7 @@ describe('level window and teardown proof', () => {
     await expect(r.service.stop()).rejects.toThrow('process capture died');
   });
 
-  it('lets a device that fails during start cancel the pump (item 36)', async () => {
+  it('lets a device that fails during start cancel the pump', async () => {
     const r = rig();
     const original = r.port.start.bind(r.port);
     r.port.start = (source, onFrame, onStopped) => {
@@ -590,7 +590,7 @@ describe('level window and teardown proof', () => {
     expect(r.writer.chunks.length).toBeLessThanOrEqual(1);
   });
 
-  it('tears down in the spec order: devices, pump, flush, close (item 42)', async () => {
+  it('tears down in order: devices, pump, flush, close', async () => {
     const r = rig();
     await r.service.start('a.wav', withMic);
     const order: string[] = [];
@@ -620,7 +620,7 @@ describe('level window and teardown proof', () => {
     expect(order).toEqual(['mic', 'output', 'flush', 'close']);
   });
 
-  it('does not write after the pump is awaited: nothing lands once flush has run (item 42)', async () => {
+  it('does not write after the pump is awaited: nothing lands once flush has run', async () => {
     const r = rig();
     await r.service.start('a.wav', systemOnly);
     await r.clock.advance(300);
@@ -634,7 +634,7 @@ describe('level window and teardown proof', () => {
     expect(r.writer.chunks).toHaveLength(afterFlush);
   });
 
-  it('swallows a throwing microphone or output stop and a throwing file removal when a start aborts (item 35)', async () => {
+  it('swallows a throwing microphone or output stop and a throwing file removal when a start aborts', async () => {
     const r = rig();
     const original = r.port.start.bind(r.port);
     r.port.start = async (source, onFrame, onStopped) => {

@@ -34,7 +34,7 @@ export interface LiveServiceDeps {
   readonly stopWait?: (ms: number, cancel: CancelSignal) => Promise<void>;
 }
 
-/** Frames waiting for the engine. The capture side never waits (spec 3.10). */
+/** Frames waiting for the engine. The capture side never waits. */
 export const LIVE_QUEUE_CAPACITY = 8;
 
 /**
@@ -76,7 +76,7 @@ const frameMs = (frame: Frame): number =>
 /**
  * Live recognition while recording. `pushFrame` only queues; one loop feeds the engine, so a slow
  * backend drops the oldest audio instead of slowing the recording. Start and Stop are serialized
- * (B12). The stream is closed without `finish` (spec 5.3).
+ *. The stream is closed without `finish`.
  */
 export class LiveTranscriptionService {
   private session: Session | null = null;
@@ -272,7 +272,7 @@ export class LiveTranscriptionService {
       try {
         listener(update);
       } catch (error) {
-        // A throwing subscriber must not fault the loop and leave the engine open (B4).
+        // A throwing subscriber must not fault the loop and leave the engine open.
         this.deps.onError?.(error);
       }
     }

@@ -77,7 +77,7 @@ describe('planSnap', () => {
       area,
       scale: 1,
     });
-    // center (932, 130): top is nearest
+    // center: top is nearest
     expect(plan.edge).toBe('Top');
     expect(plan.flip).toBe(true);
     expect(plan.target.width).toBe(272);
@@ -93,7 +93,7 @@ describe('planSnap', () => {
       area: { x: 0, y: 0, width: 2400, height: 1300 },
       scale: 1.25,
     });
-    // center = (1000 + trunc(40.5), 500 + trunc(150.5)) = (1040, 650); bottom (650) beats top (650) on the tie.
+    // center = (1000 + trunc(40.5), 500 + trunc(150.5)) = (1040, 650); bottom beats top on the tie.
     expect(plan.edge).toBe('Bottom');
     expect(plan.flip).toBe(true);
     expect(plan.target.width).toBe(340);

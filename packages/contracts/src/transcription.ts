@@ -137,7 +137,7 @@ export const transcriptionSetLiveEnabled = defineRequest('transcription.setLiveE
 
 /**
  * Turning it on without the speaker model downloads the model first. If that fails the setting
- * stays off and `message` says why (B7).
+ * stays off and `message` says why.
  */
 export const transcriptionSetSpeakerLabels = defineRequest('transcription.setSpeakerLabels', {
   input: z.object({ enabled: z.boolean() }),
@@ -232,7 +232,7 @@ export const retranscriptionCancel = defineRequest('retranscription.cancel', {
   output: z.object({ cancelled: z.literal(true) }),
 });
 
-/** The run state plus the last result of each meeting not yet dismissed (B7). */
+/** The run state plus the last result of each meeting not yet dismissed. */
 export const retranscriptionGetState = defineRequest('retranscription.getState', {
   input: empty,
   output: retranscriptionStateSchema.extend({ lastResults: z.array(retranscriptionResultSchema) }),

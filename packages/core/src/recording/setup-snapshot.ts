@@ -37,13 +37,13 @@ export interface SetupSnapshot {
   readonly summary: SetupCard;
   /** The xAI provider is gone but the settings file still selects it: ask for another one. */
   readonly summaryProviderRemoved: boolean;
-  /** Shown only when idle (spec 2.4). */
+  /** Shown only when idle. */
   readonly idleStatus: TextRef;
 }
 
 const ref = (key: string, ...args: string[]): TextRef => ({ key, args });
 
-/** Spec 2.4 summary caption. `Xai` and anything unknown read as "Not chosen". */
+/** The summary caption. `Xai` and anything unknown read as "Not chosen". */
 export function summaryCaption(provider: SetupFacts['provider'], modelId: string | null): TextRef {
   switch (provider) {
     case 'Local': {

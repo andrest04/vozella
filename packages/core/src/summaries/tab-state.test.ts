@@ -10,7 +10,7 @@ const base: TabFlagInput = {
   isGenerating: false,
 };
 
-describe('deriveTabFlags (spec 2.2 table, item 81)', () => {
+describe('deriveTabFlags', () => {
   it('transcript without summary can generate', () => {
     const f = deriveTabFlags(base);
     expect(f).toMatchObject({

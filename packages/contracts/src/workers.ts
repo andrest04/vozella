@@ -12,7 +12,7 @@ export const audioSourceSchema = z.discriminatedUnion('kind', [
   }),
 ]);
 
-/** The capture request of the audio-capture module (spec 4.3). Core re-checks its rules. */
+/** The capture request of the audio-capture module. Core re-checks its rules. */
 export const captureSourcesSchema = z.object({
   captureMicrophone: z.boolean(),
   microphoneDeviceId: z.string().nullable(),

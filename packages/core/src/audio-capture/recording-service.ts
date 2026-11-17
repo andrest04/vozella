@@ -19,7 +19,7 @@ import {
 import { AudioMixer, type MixerInput } from './mixer';
 import { FILE_BYTES_PER_SECOND, WavHeaderFlushCadence } from './wav-format';
 
-/** Spec 3.1.2. 200 ms of 16 kHz mono PCM16. */
+/** 200 ms of 16 kHz mono PCM16. */
 export const PUMP_CHUNK_BYTES = FILE_BYTES_PER_SECOND / 5;
 export const PUMP_CHUNK_SAMPLES = PUMP_CHUNK_BYTES / 2;
 export const PAUSED_PUMP_SLEEP_MS = 50;
@@ -50,7 +50,7 @@ export interface SourceLostEvent {
   readonly error: Error;
 }
 
-/** A mixed frame: the same stream as the file, as float32 (spec 2.2.6). */
+/** A mixed frame: the same stream as the file, as float32. */
 export interface PcmFrame {
   readonly samples: Float32Array;
   readonly sampleRate: number;
@@ -74,7 +74,7 @@ export interface RecordingServiceDeps {
   /** Repairs the header of a file whose writer failed to flush or close. */
   readonly repairWav: (path: string) => void;
   readonly clock: PumpClock;
-  /** Runs after validation and before any device opens; throws to refuse the request (C7). */
+  /** Runs after validation and before any device opens; throws to refuse the request. */
   readonly preflight?: (sources: RecordingCaptureSources) => void;
   /**
    * Saves when the microphone dominated, next to the WAV, at stop. Called only for takes that
@@ -92,7 +92,7 @@ export interface RecordingListeners {
   onFaulted?(error: Error): void;
   /**
    * Peak RMS (0..1) of the microphone over the last 100 ms while recording, not paused.
-   * The bar shows the microphone, not the mix (fixes C4); it never moves with no microphone.
+   * The bar shows the microphone, not the mix; it never moves with no microphone.
    */
   onMicrophoneLevel?(level: number): void;
 }
@@ -113,7 +113,7 @@ interface Handles {
 }
 
 /**
- * Records the microphone and one output to a 16 kHz mono PCM16 WAV (spec 2.2 and 2.3).
+ * Records the microphone and one output to a 16 kHz mono PCM16 WAV.
  * Sources deliver 20 ms frames already at 16 kHz mono; the pump mixes them in 200 ms
  * chunks paced by the wall clock.
  */
@@ -205,7 +205,7 @@ export class AudioCaptureService {
           this.onOutputStopped(error);
         },
       );
-      // As in C#: the pump runs once the devices are open, so the file gets no silent prefix
+      // The pump runs once the devices are open, so the file gets no silent prefix
       // as long as a slow device activation.
       pump = this.runPump(mixer, writer, cancel, measured);
       this.pump = pump;
@@ -337,7 +337,7 @@ export class AudioCaptureService {
       try {
         this.deps.removeFile(opened.path);
       } catch {
-        // Fixes C1: a failed start no longer leaves a header-only file behind.
+        // A failed start no longer leaves a header-only file behind.
       }
     }
     this.cancel = undefined;

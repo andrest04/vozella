@@ -6,7 +6,7 @@ import { meetingRecordSchema } from './library';
 
 const guid = z.string().min(1);
 
-/** B20: a missing, unreadable or zero-byte audio file is "no audio". */
+/** A missing, unreadable or zero-byte audio file is "no audio". */
 export const sessionGetView = defineRequest('session.getView', {
   input: z.object({ id: guid }),
   output: z.object({
@@ -23,7 +23,7 @@ export const sessionRename = defineRequest('session.rename', {
   output: z.object({ status: renameOutcomeSchema }),
 });
 
-/** False when the meeting, its path or its file is missing; the page picks the message (B13). */
+/** False when the meeting, its path or its file is missing; the page picks the message. */
 export const sessionRevealFile = defineRequest('session.revealFile', {
   input: z.object({ id: guid }),
   output: z.object({ revealed: z.boolean() }),

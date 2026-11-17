@@ -38,7 +38,7 @@ describe('markLocalSpeaker', () => {
     expect(tags(markLocalSpeaker(words, mic))).toEqual([LOCAL_SPEAKER_TAG, 0]);
   });
 
-  it('returns the same words when there is no microphone activity (legacy recording)', () => {
+  it('returns the same words when there is no microphone activity (a recording made before the sidecar existed)', () => {
     const words = [w(1000, 1400, 1)];
     expect(markLocalSpeaker(words, null)).toBe(words);
     expect(markLocalSpeaker(words, new MicActivityTimeline([]))).toBe(words);

@@ -5,7 +5,7 @@ import { API_PROVIDER_IDS } from '../settings/api-engine-table';
 import type { SummaryEnhancementContext } from './prompt-builders';
 import { splitSummaryResponse } from './summary-splitter';
 
-/** Spec 2.1. xAI is gone (S07). Local, the two CLI engines, then the API key engines' ids. */
+/** xAI is gone. Local, the two CLI engines, then the API key engines' ids. */
 export const PROVIDER_IDS = ['local', 'claude-code', 'codex', ...API_PROVIDER_IDS] as const;
 export type ProviderId = (typeof PROVIDER_IDS)[number];
 
@@ -14,12 +14,12 @@ export interface SummarizeRequest {
   readonly title: string;
   readonly recordedAt: OffsetDate;
   readonly endedAt?: OffsetDate | null;
-  /** Language code from settings. Blank or unknown means Spanish, as in the WinUI app. */
+  /** Language code from settings. Blank or unknown means Spanish. */
   readonly outputLanguage: string | null | undefined;
   readonly enhancement?: SummaryEnhancementContext | null;
 }
 
-/** What a prompt call tells its caller besides the text (B9). */
+/** What a prompt call tells its caller besides the text. */
 export interface PromptOutcome {
   /** The answer stopped because the output cap was reached, not because the model finished. */
   readonly truncated: boolean;
@@ -61,7 +61,7 @@ export interface SummaryProvider {
 }
 
 /**
- * The shared reply handling: split the three sections of the model text (S02). Pass the request
+ * The shared reply handling: split the three sections of the model text. Pass the request
  * (or just its `recordedAt`) to resolve action-item deadline dates; without it they stay unresolved.
  */
 export function summaryResultFromResponse(

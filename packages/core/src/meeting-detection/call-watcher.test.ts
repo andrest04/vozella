@@ -63,7 +63,7 @@ function setup(opts: { popup?: () => Promise<boolean> } = {}) {
 }
 
 describe('CallWatcher', () => {
-  it('C1: polls every 5 s through the injected scheduler', () => {
+  it('polls every 5 s through the injected scheduler', () => {
     const { watcher, scheduler } = setup();
     expect(CALL_POLL_INTERVAL_MS).toBe(5000);
     watcher.start();
@@ -72,7 +72,7 @@ describe('CallWatcher', () => {
     expect(scheduler.cleared).toBe(true);
   });
 
-  it('C6: offers once per call and re-arms only after no window', async () => {
+  it('offers once per call and re-arms only after no window', async () => {
     const { watcher, scan, ws, events } = setup();
     scan.found = true;
     await watcher.tick();
@@ -88,7 +88,7 @@ describe('CallWatcher', () => {
     expect(events).toEqual(['detected', 'ended', 'detected']);
   });
 
-  it('C7: a call found while recording stays quiet even after recording stops', async () => {
+  it('a call found while recording stays quiet even after recording stops', async () => {
     const { watcher, scan, ws, events } = setup();
     ws.isCaptureActive = true;
     scan.found = true;
@@ -102,7 +102,7 @@ describe('CallWatcher', () => {
     expect(events).toEqual(['ended']);
   });
 
-  it('C8: offers the in-app prompt even when the popup setting is off', async () => {
+  it('offers the in-app prompt even when the popup setting is off', async () => {
     const { watcher, scan, ws, events } = setup({ popup: async () => false });
     scan.found = true;
     await watcher.tick();
@@ -110,7 +110,7 @@ describe('CallWatcher', () => {
     expect(events).toEqual([]);
   });
 
-  it('C9: the popup is raised only if enabled and not recording', async () => {
+  it('the popup is raised only if enabled and not recording', async () => {
     const off = setup({ popup: async () => false });
     off.scan.found = true;
     await off.watcher.tick();
@@ -121,7 +121,7 @@ describe('CallWatcher', () => {
     expect(on.events).toEqual(['detected']);
   });
 
-  it('C9: recording that starts while the setting is read suppresses the popup', async () => {
+  it('recording that starts while the setting is read suppresses the popup', async () => {
     const ctx = setup();
     ctx.scan.found = true;
     const original = ctx.watcher as unknown as { ports: CallWatcherPorts };
@@ -134,7 +134,7 @@ describe('CallWatcher', () => {
     expect(ctx.events).toEqual([]);
   });
 
-  it('C10: ended is raised when windows vanish after an offer, even with the popup off', async () => {
+  it('ended is raised when windows vanish after an offer, even with the popup off', async () => {
     const { watcher, scan, events } = setup({ popup: async () => false });
     scan.found = true;
     await watcher.tick();
@@ -144,13 +144,13 @@ describe('CallWatcher', () => {
     expect(events).toEqual(['ended']);
   });
 
-  it('C10: nothing is raised when no call was ever seen', async () => {
+  it('nothing is raised when no call was ever seen', async () => {
     const { watcher, events } = setup();
     await watcher.tick();
     expect(events).toEqual([]);
   });
 
-  it('C11: a failure after disarming re-arms and the next tick retries', async () => {
+  it('a failure after disarming re-arms and the next tick retries', async () => {
     const { watcher, scan, ws, events } = setup();
     scan.found = true;
     ws.offerThrows = true;
@@ -162,7 +162,7 @@ describe('CallWatcher', () => {
     expect(events).toEqual(['detected']);
   });
 
-  it('C12: a settings read failure defaults the popup to on', async () => {
+  it('a settings read failure defaults the popup to on', async () => {
     const { watcher, scan, events } = setup({
       popup: async () => {
         throw new Error('settings broken');
@@ -173,7 +173,7 @@ describe('CallWatcher', () => {
     expect(events).toEqual(['detected']);
   });
 
-  it('C13: a scanner failure never throws and leaves the watcher armed', async () => {
+  it('a scanner failure never throws and leaves the watcher armed', async () => {
     const { watcher, scan, ws, events } = setup();
     scan.fail = true;
     await expect(watcher.tick()).resolves.toBeUndefined();
@@ -184,7 +184,7 @@ describe('CallWatcher', () => {
     expect(events).toEqual(['detected']);
   });
 
-  it('C13: an overlapping tick is dropped', async () => {
+  it('an overlapping tick is dropped', async () => {
     const { watcher, scan, ws } = setup();
     scan.found = true;
     let release!: () => void;
@@ -196,7 +196,7 @@ describe('CallWatcher', () => {
     expect(ws.offers).toBe(1);
   });
 
-  it('C13: a throwing handler does not crash the tick', async () => {
+  it('a throwing handler does not crash the tick', async () => {
     const { watcher, scan } = setup();
     watcher.on('meetingDetected', () => {
       throw new Error('handler');
@@ -205,7 +205,7 @@ describe('CallWatcher', () => {
     await expect(watcher.tick()).resolves.toBeUndefined();
   });
 
-  it('S6 kept faithful: one missed tick ends the call and the next shows the popup again', async () => {
+  it('kept faithful: one missed tick ends the call and the next shows the popup again', async () => {
     const { watcher, scan, events } = setup();
     scan.found = true;
     await watcher.tick();

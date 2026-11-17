@@ -10,13 +10,13 @@ export interface RenameDeps {
   readonly runnerState: () => RunnerStateLike;
 }
 
-/** The rename dialog confirms only a non-blank name (item 29). */
+/** The rename dialog confirms only a non-blank name. */
 export function canSubmitRename(text: string | null | undefined): boolean {
   return (text ?? '').trim() !== '';
 }
 
 /**
- * Items 29 to 34 and B4/B11. Saves the whole record under its own id, so the file stays
+ * Saves the whole record under its own id, so the file stays
  * `{id}.md`, and raises `meetingChanged` so lists and chat scope refresh. The workspace keeps
  * only the last processed id, not its title, so there is no title to update there.
  */

@@ -40,9 +40,9 @@ export type SummaryStageOutcome =
   /** The background summary was cancelled. The saved transcript is kept. */
   | { readonly kind: 'summary-cancelled'; readonly message: Message };
 
-/** Spec 3.7 steps 5 to 10. The transcript of the take is already saved when this runs. */
+/** The summary steps. The transcript of the take is already saved when this runs. */
 export class SummaryStage {
-  /** The background summaries by meeting. Each has its own cancel source (B-21). */
+  /** The background summaries by meeting. Each has its own cancel source. */
   private readonly background = new Map<string, CancelSource>();
 
   constructor(private readonly deps: SummaryStageDeps) {}
@@ -124,7 +124,7 @@ export class SummaryStage {
   ): SummaryStageOutcome {
     if (outcome.status === 'cancelled' || cancel.cancelled) return this.cancelled(host);
     if (outcome.status === 'generated') {
-      // 9. The Jev step is not ported (owner decision 2026-11-03); the saved Jev section stays.
+      // 9. There is no Jev step; the saved Jev section stays.
       // 10. Completion.
       const message = transcriptionWarning ?? { key: 'Status_DoneWithSummary', args: [] };
       host.onMeetingCompleted(request.meetingId, message);

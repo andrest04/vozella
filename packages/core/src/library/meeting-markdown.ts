@@ -111,7 +111,7 @@ function actionDataToJson(items: readonly ActionItem[]): string {
   );
 }
 
-/** Renders the exact file format of spec 3.8: LF endings, no BOM. */
+/** Renders the exact file format: LF endings, no BOM. */
 export function renderMeetingMarkdown(record: MeetingRecord): string {
   const texts = [
     record.brief,
@@ -337,7 +337,7 @@ function parseJev(text: string): JevAnalysis {
 }
 
 /**
- * Parses a meeting file (spec 3.9). Throws MeetingFormatError for a file that is not a meeting;
+ * Parses a meeting file. Throws MeetingFormatError for a file that is not a meeting;
  * callers skip such files rather than failing the whole library.
  */
 export function parseMeetingMarkdown(

@@ -1,4 +1,4 @@
-/** The one gate that decides what a take may do next (spec 3.1). UI thread only, no I/O. */
+/** The one gate that decides what a take may do next. UI thread only, no I/O. */
 
 export type RecordingPhase = 'Idle' | 'Preparing' | 'Recording' | 'Stopping' | 'Processing';
 

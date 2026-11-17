@@ -16,7 +16,7 @@ export const LOCAL_SPEAKER_MIN_SHARE = 0.5;
  * local user is named reliably and untagged words they spoke are filled. Other words keep their
  * Sortformer tag. Runs before smoothing, which then treats the local user like any speaker.
  *
- * Returns the same array when nothing changes (no activity, a legacy recording). Never mutates.
+ * Returns the same array when nothing changes (no activity, a recording made before the sidecar existed). Never mutates.
  */
 export function markLocalSpeaker(
   words: readonly AsrWord[],

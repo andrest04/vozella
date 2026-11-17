@@ -3,7 +3,7 @@ import type { MeetingRecord } from '../library/meeting';
 import { starredLineStarts } from './highlights';
 
 /**
- * Re-transcription of a saved meeting through the same pipeline used after Stop (spec 2.5).
+ * Re-transcription of a saved meeting through the same pipeline used after Stop.
  * The pipeline itself belongs to the recording module; this file owns the rules around it.
  */
 
@@ -31,7 +31,7 @@ export interface RecordingPipelineRequest {
   readonly liveDraft: string | null;
   readonly pausedSeconds: number;
   readonly projectId: string | null;
-  /** Elapsed milliseconds of the starred lines of the old transcript (B8). */
+  /** Elapsed milliseconds of the starred lines of the old transcript. */
   readonly highlightsMs: readonly number[];
   readonly calendarEventId: string | null;
   readonly calendarId: string | null;
@@ -46,7 +46,7 @@ export interface RecordingPipelineRequest {
 
 /**
  * Builds the pipeline request for a saved meeting. The meeting context is kept so the saved
- * record does not lose it. The old stars become highlights again, so they survive (B8).
+ * record does not lose it. The old stars become highlights again, so they survive.
  */
 export function createRetranscriptionRequest(
   record: MeetingRecord,
@@ -116,7 +116,7 @@ export interface RetranscriptionRunnerDeps {
   readonly formatFailure: (error: unknown) => string;
   /** The status shown as soon as a run starts (Status_Transcribing). */
   readonly startStatus?: string;
-  /** Runs after the pipeline callbacks have been delivered (the UI thread in the old app). */
+  /** Runs after the pipeline callbacks have been delivered. */
   readonly defer: (task: () => void) => void;
   readonly onMeetingChanged: (meetingId: string) => void;
 }
@@ -137,7 +137,7 @@ export class MeetingRetranscriptionRunner {
     return this.state;
   }
 
-  /** The last result of each meeting, kept until its next run starts or the user dismisses it (B7). */
+  /** The last result of each meeting, kept until its next run starts or the user dismisses it. */
   get lastResults(): readonly RetranscriptionResult[] {
     return [...this.results.values()];
   }
@@ -175,7 +175,7 @@ export class MeetingRetranscriptionRunner {
     try {
       const instructions = await this.deps.templateInstructions(record);
       const request = createRetranscriptionRequest(record, instructions);
-      // A cancel before the pipeline starts writes nothing (126).
+      // A cancel before the pipeline starts writes nothing.
       if (!cancel.cancelled)
         await this.deps.pipeline.run(
           request,

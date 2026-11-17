@@ -114,7 +114,7 @@ describe('LiveCopilotPillDockTests', () => {
     expect(positionFor('Right', 0.5, 64, 400, small, margin).y).toBe(margin);
   });
 
-  it('positionFor rounds half to even (item 40)', () => {
+  it('positionFor rounds half to even', () => {
     // travel = 1296 - 240 - 32 = 1024, a power of two, so along = offset / 1024 is exact.
     const tall = { x: 0, y: 0, width: 1920, height: 1296 };
     const at = (offset: number) => positionFor('Left', offset / 1024, 64, 240, tall, 16).y - 16;
@@ -205,7 +205,7 @@ describe('expandedBounds', () => {
     expect(b.height).toBeLessThanOrEqual(300);
   });
 
-  it('spec worked example: Right 1840,400 expands to 1452,270', () => {
+  it('worked example: Right 1840,400 expands to 1452,270', () => {
     const capsule = positionFor('Right', 0.5, 64, 240, area, 16);
     expect(capsule).toEqual({ x: 1840, y: 400 });
     expect(
@@ -213,7 +213,7 @@ describe('expandedBounds', () => {
     ).toEqual({ x: 1452, y: 270, width: 452, height: 500 });
   });
 
-  it('spec worked example: Top along 0.5 is at 824,16', () => {
+  it('worked example: Top along 0.5 is at 824,16', () => {
     expect(positionFor('Top', 0.5, 272, 64, area, 16)).toEqual({ x: 824, y: 16 });
   });
 

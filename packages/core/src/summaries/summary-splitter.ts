@@ -13,7 +13,7 @@ const isActionHeader = (line: string): boolean =>
   key(line) === '## action items' || key(line) === '**action items**';
 const isTitleEnd = (line: string): boolean => line.trim().startsWith('## ') || isActionHeader(line);
 
-/** Drops a wrapping ``` or ```markdown fence around the whole reply (B25). */
+/** Drops a wrapping ``` or ```markdown fence around the whole reply. */
 function stripCodeFence(lines: string[]): string[] {
   let start = 0;
   let end = lines.length;

@@ -12,7 +12,7 @@ export type RecordingStatusKey =
   | 'Status_RecordingMicApp'
   | 'Status_RecordingNoMicApp';
 
-/** The status line while recording (spec 2.2). `appName` is null for all system audio. */
+/** The status line while recording. `appName` is null for all system audio. */
 export function recordingStatus(input: {
   readonly microphone: boolean;
   readonly appName: string | null;
@@ -28,7 +28,7 @@ export function recordingStatus(input: {
 }
 
 /**
- * `RecordingStatusText` (spec 3.6), used at start and on resume: a capture warning key that is
+ * `RecordingStatusText`, used at start and on resume: a capture warning key that is
  * set wins, otherwise the four variants by microphone choice and app.
  */
 export function recordingStatusText(

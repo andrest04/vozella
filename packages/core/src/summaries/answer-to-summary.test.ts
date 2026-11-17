@@ -11,7 +11,7 @@ const stored = {
   ],
 };
 
-describe('summaryFromAnswer (T4)', () => {
+describe('summaryFromAnswer', () => {
   it('a plain answer becomes the summary and keeps the stored action items', () => {
     const result = summaryFromAnswer('  A **longer** summary.\r\n\r\n- point one\n', stored);
     expect(result).toEqual({
@@ -64,7 +64,7 @@ describe('summaryFromAnswer (T4)', () => {
   });
 });
 
-describe('reserved headers inside an applied answer (T4)', () => {
+describe('reserved headers inside an applied answer', () => {
   it('a `## Notes`-like line in the body survives the meeting file round trip', () => {
     const answer = 'Intro\n## Personal Notes\n## Transcript\nEnd';
     const applied = summaryFromAnswer(answer, stored);

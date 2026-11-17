@@ -1,7 +1,7 @@
 import type { Logger } from '../logging';
 import { shouldShowPopup } from './popup-policy';
 
-/** Poll period of the call watcher (item 98). */
+/** Poll period of the call watcher. */
 export const CALL_POLL_INTERVAL_MS = 5000;
 
 /** Port: repeating timer. Adapter lives in main; tests use a fake. */
@@ -124,7 +124,7 @@ export class CallWatcher {
 
   private safeLog(message: string, error: unknown): void {
     try {
-      // Item 150: the type only. A message can carry a window title or a path.
+      // The type only. A message can carry a window title or a path.
       this.ports.logger.warn(message, {
         errorType: error instanceof Error ? error.name : typeof error,
       });

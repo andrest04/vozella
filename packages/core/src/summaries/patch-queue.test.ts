@@ -6,7 +6,7 @@ const tick = async (turns: number): Promise<void> => {
   for (let i = 0; i < turns; i += 1) await Promise.resolve();
 };
 
-describe('PatchQueue (B5)', () => {
+describe('PatchQueue', () => {
   it('runs tasks of one key in order even when earlier ones are slower', async () => {
     const queue = new PatchQueue();
     const order: number[] = [];

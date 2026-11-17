@@ -17,7 +17,7 @@ export interface ProcessedContent {
   readonly summaryProvider: string | null;
   /** The session notes the host holds right now. */
   readonly sessionNotes: string | null;
-  /** The audio path as the repository last returned it (B-28). */
+  /** The audio path as the repository last returned it. */
   readonly audioPath: string;
 }
 
@@ -44,9 +44,9 @@ function dateText(stored: string | undefined, ms: number): string {
 }
 
 /**
- * The record every save writes (spec 3.7). `base` is the stored meeting, if any: fields the
+ * The record every save writes. `base` is the stored meeting, if any: fields the
  * request does not carry come from it, so a save never drops notes, attendees, calendar ids,
- * the template, Jev results, follow-up or project plan (B-6).
+ * the template, Jev results, follow-up or project plan.
  */
 export function buildProcessedRecord(
   request: PipelineRequest,

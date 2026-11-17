@@ -26,10 +26,10 @@ export type ApiProviderBuilder = (
 ) => SummaryProvider | Promise<SummaryProvider>;
 
 export interface SummaryProviderFactoryDeps {
-  /** The single settings reader (B2): every provider is built from `settings.load()`. */
+  /** The single settings reader: every provider is built from `settings.load()`. */
   readonly settings: SettingsStore;
   readonly runner: CliProcessRunner;
-  /** Builds the local provider for a model file. The platform shares one host behind it (B3). */
+  /** Builds the local provider for a model file. The platform shares one host behind it. */
   readonly createLocal: (modelPath: string) => SummaryProvider;
   /** Builds the OpenAI, Anthropic, Gemini and compatible providers (BYOK). */
   readonly apiProviderBuilder: ApiProviderBuilder;
@@ -40,7 +40,7 @@ export interface SummaryProviderFactoryDeps {
 export interface CreateProviderOptions {
   /** Required for Local. */
   readonly modelPath?: string | null;
-  /** The live-answer path only (item 143). Summaries never ask for it. */
+  /** The live-answer path only. Summaries never ask for it. */
   readonly webSearch?: boolean;
   /** Chat's model picker: a model and effort for this provider only. Unset reads Settings. */
   readonly choice?: ModelChoice;

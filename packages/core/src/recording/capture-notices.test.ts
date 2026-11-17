@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { captureNotice, chooseWarning, firstFailure, isHardFailure } from './capture-notices';
 
-describe('captureNotice severity (B-12)', () => {
+describe('captureNotice severity', () => {
   it('output failure and faulted pump are errors, with the message as the argument', () => {
     const out = captureNotice({ kind: 'output-failed', message: 'gone' });
     const fault = captureNotice({ kind: 'faulted', message: 'disk full' });

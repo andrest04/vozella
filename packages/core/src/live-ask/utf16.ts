@@ -1,6 +1,6 @@
 /**
- * UTF-16 safe cuts for the live answer path. The C# code cut by code unit and could split a
- * surrogate pair, leaving a lone surrogate in the prompt (live-copilot bug 16). These cuts take
+ * UTF-16 safe cuts for the live answer path. A cut by code unit could split a
+ * surrogate pair, leaving a lone surrogate in the prompt. These cuts take
  * at most `max` code units and drop a half pair instead of keeping it.
  */
 

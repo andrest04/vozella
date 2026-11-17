@@ -6,7 +6,7 @@ import {
 } from '../settings/inference-options';
 
 /**
- * Spec 3.7, B30. Arguments are built as argv arrays and spawned without a shell, so a value can
+ * Arguments are built as argv arrays and spawned without a shell, so a value can
  * never become a second argument or a shell fragment. Model and effort come from a settings file
  * the user can edit, so they are checked before they reach the command line.
  */

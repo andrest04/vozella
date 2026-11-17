@@ -9,7 +9,7 @@ export interface DockState {
 export const ALONG_SAVE_EPSILON = 0.0005;
 
 /**
- * Edge and along from the settings (spec 4.1). Unknown keys in an old settings file (such as the
+ * Edge and along from the settings. Unknown keys in an old settings file (such as the
  * removed legacy pill position) stay in the file untouched because `dockPatch` names only the
  * two current fields.
  */

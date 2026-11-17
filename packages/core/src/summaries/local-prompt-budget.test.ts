@@ -7,7 +7,7 @@ const wordCounter: TokenCounter = {
 };
 const words = (n: number): string => Array.from({ length: n }, (_, i) => `w${i}`).join(' ');
 
-describe('promptOutputCap (B9)', () => {
+describe('promptOutputCap', () => {
   it('caps a short prompt at 2048', async () => {
     expect(await promptOutputCap(wordCounter, words(10))).toBe(PROMPT_MAX_OUTPUT);
   });

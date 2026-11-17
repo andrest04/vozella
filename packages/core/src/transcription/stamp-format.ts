@@ -1,6 +1,6 @@
 import { LOCAL_SPEAKER_TAG } from './local-speaker';
 
-/** Shared stamp format of the live preview and the offline pass (spec 3.7). */
+/** Shared stamp format of the live preview and the offline pass. */
 
 /**
  * The stored name of the local user, written as `[ You ]`. Like `Speaker-N` and the headers it
@@ -47,7 +47,7 @@ export function formatLine(startMs: number, endMs: number, text: string, speaker
 /**
  * Makes sure line 1 is an `Ended` header after the `Recorded` one. No change for an empty
  * transcript or an unknown time. Idempotent. A transcript that starts with `Ended` and has no
- * `Recorded` line gets a Recorded line in front of it instead of a second pair (B20).
+ * `Recorded` line gets a Recorded line in front of it instead of a second pair.
  */
 export function ensureEndedHeader(
   transcript: string,

@@ -27,7 +27,7 @@ export type IgnoredReason = 'blank' | 'unchanged' | 'invalid';
 
 /**
  * What a settings change did. Failures are values: the page shows them, nothing is thrown at an
- * event handler (B12).
+ * event handler.
  */
 export type CommitOutcome =
   | { readonly status: 'saved'; readonly settings: AppSettings; readonly feedback: Feedback | null }
@@ -74,7 +74,7 @@ const modelAndEffort = (model: string, effort: string): string => `${model} · $
 
 /**
  * The single place the Settings page changes the fields it owns. Every change is a patch applied
- * under the store's lock, so sections cannot overwrite each other (B1). A change that is blank,
+ * under the store's lock, so sections cannot overwrite each other. A change that is blank,
  * unchanged or not one of the offered choices is ignored, as the page ignores such events.
  */
 export class SettingsCommands {
@@ -90,7 +90,7 @@ export class SettingsCommands {
     });
   }
 
-  /** The exact enum name only (B2). A removed provider (Xai) is refused, so the page cannot select it again. */
+  /** The exact enum name only. A removed provider (Xai) is refused, so the page cannot select it again. */
   async setSummaryProvider(kind: string): Promise<CommitOutcome> {
     return this.commit((current) => {
       if (!(SUMMARY_PROVIDERS as readonly string[]).includes(kind)) return ignored('invalid');
@@ -109,7 +109,7 @@ export class SettingsCommands {
     const { provider, field, value } = input;
     return this.commit((current) => {
       if (value.trim() === '') return ignored('blank');
-      // The stored value counts as offered even when hand edited out of the list (B13).
+      // The stored value counts as offered even when hand edited out of the list.
       if (this.currentValue(current, provider, field) === value) return ignored('unchanged');
       const allowed = this.choices(provider, field);
       if (!allowed.includes(value)) return ignored('invalid');

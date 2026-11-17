@@ -15,7 +15,7 @@ export function tweenProgress(elapsedMs: number, durationMs: number): number {
   return Math.min(Math.max(elapsedMs / durationMs, 0), 1);
 }
 
-/** Linear interpolation per component, each rounded half to even like the C# tween. */
+/** Linear interpolation per component, each rounded half to even. */
 export function lerpRect(from: Rect, to: Rect, t: number): Rect {
   const lerp = (a: number, b: number): number => roundHalfEven(a + (b - a) * t);
   return {
@@ -44,7 +44,7 @@ export interface SnapPlan {
   readonly flip: boolean;
 }
 
-/** Spec 2.7 `SnapToNearestEdge`: center by integer division, new orientation size, along from the center. */
+/** Snaps to the nearest edge: center by integer division, new orientation size, along from the center. */
 export function planSnap({ fromEdge, window, area, scale }: SnapInput): SnapPlan {
   const centerX = window.x + Math.trunc(window.width / 2);
   const centerY = window.y + Math.trunc(window.height / 2);

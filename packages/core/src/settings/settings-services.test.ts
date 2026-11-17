@@ -40,7 +40,7 @@ describe('SettingsCommands: summary provider', () => {
     expect(await c.setSummaryProvider('Codex')).toMatchObject({ status: 'saved' });
   });
 
-  it('B2: only the three available exact names are accepted', async () => {
+  it('only the three available exact names are accepted', async () => {
     const { store, commands: c } = commands();
     for (const bad of ['codex', '1', '99', ' Codex', '', 'Local ']) {
       expect(await c.setSummaryProvider(bad)).toEqual({ status: 'ignored', reason: 'invalid' });
@@ -87,7 +87,7 @@ describe('SettingsCommands: Claude and Codex options', () => {
     });
   });
 
-  it('B13: a stored value outside the list counts as the current value', async () => {
+  it('a stored value outside the list counts as the current value', async () => {
     const { store, commands: c } = commands();
     await store.update({ selectedClaudeModelId: 'gpt-9' });
     expect(await c.setCliOption({ provider: 'claude', field: 'model', value: 'gpt-9' })).toEqual({
@@ -125,7 +125,7 @@ describe('SettingsCommands: meeting and summary language', () => {
     });
   });
 
-  it('B6: a stored variant is the current entry, so it is not saved again', async () => {
+  it('a stored variant is the current entry, so it is not saved again', async () => {
     const { store, commands: c } = commands();
     await store.update({ transcriptionLanguage: 'ES' });
     expect(await c.setMeetingLanguage('transcription', 'es')).toEqual({
@@ -177,7 +177,7 @@ describe('SettingsCommands: failures', () => {
     expect(await c.setUiLanguage('es')).toEqual({ status: 'failed', message: 'disk full' });
   });
 
-  it('B1: two sections saving at once do not lose each other', async () => {
+  it('two sections saving at once do not lose each other', async () => {
     const { store, commands: c } = commands();
     await Promise.all([
       c.setSummaryProvider('Codex'),
@@ -246,7 +246,7 @@ describe('LocalModelsService: download', () => {
     expect(service.inFlight()).toEqual([]);
   });
 
-  it('B5: a failure is returned and announced, progress is reset and busy cleared', async () => {
+  it('a failure is returned and announced, progress is reset and busy cleared', async () => {
     const { service, events, store } = models();
     store.failDownload = new Error('HTTP 503');
     expect(await service.download(first.fileName)).toEqual({
@@ -261,7 +261,7 @@ describe('LocalModelsService: download', () => {
     expect(service.inFlight()).toEqual([]);
   });
 
-  it('B18: two concurrent downloads of one file run one transfer and both see its result', async () => {
+  it('two concurrent downloads of one file run one transfer and both see its result', async () => {
     const { service, store, events } = models();
     let release!: () => void;
     store.gate = new Promise<void>((resolve) => {
@@ -280,7 +280,7 @@ describe('LocalModelsService: download', () => {
     expect(service.inFlight()).toEqual([]);
   });
 
-  it('B18: a join that arrives mid transfer gets the cancel and failure outcomes too', async () => {
+  it('a join that arrives mid transfer gets the cancel and failure outcomes too', async () => {
     const { service, store } = models();
     store.failDownload = new Error('HTTP 503');
     const [a, b] = await Promise.all([
@@ -356,7 +356,7 @@ describe('LocalModelsService: select and delete', () => {
     expect(store.files.size).toBe(0);
   });
 
-  it('B5: a file that cannot be removed is reported and the selection is kept', async () => {
+  it('a file that cannot be removed is reported and the selection is kept', async () => {
     const { service, store, settings } = models();
     store.files.add(first.fileName);
     await service.select(first.fileName);
@@ -382,7 +382,7 @@ describe('LocalModelsService: select and delete', () => {
 });
 
 describe('LocalModelsService: rows', () => {
-  it('B7: an active id whose file is missing is not active and is reported as missing', async () => {
+  it('an active id whose file is missing is not active and is reported as missing', async () => {
     const { service, settings, store } = models();
     store.files.add(first.fileName);
     await settings.update({ selectedSummaryModelId: second.fileName });

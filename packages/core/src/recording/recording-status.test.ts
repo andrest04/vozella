@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { NO_MICROPHONE, SYSTEM_DEFAULT_MICROPHONE } from '../audio-capture/source-picker';
 import { recordingStatusText } from './recording-status';
 
-describe('recordingStatusText (spec 3.6)', () => {
+describe('recordingStatusText', () => {
   const device = { kind: 'Device', deviceId: 'mic-1' } as const;
   it('names the four variants', () => {
     expect(recordingStatusText(SYSTEM_DEFAULT_MICROPHONE, null, null)).toEqual({

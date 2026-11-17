@@ -3,7 +3,7 @@ import { withResolvedDeadlines } from './deadline-resolver';
 
 /**
  * Checkbox line: `-`, `*` or `+` bullet, flexible spacing, a box holding a space or x/X,
- * and text after the box (B26). Numbered lists never match.
+ * and text after the box. Numbered lists never match.
  */
 const ACTION_ITEM = /^\s*[-*+]\s*\[([ xX])\]\s*(\S.*)$/;
 
@@ -28,7 +28,7 @@ export function isCheckboxLine(line: string): boolean {
 
 /**
  * Reads a `Due:` value. `<token> "<quote>"` gives a typed kind; `none` or nothing gives no
- * deadline; anything else (legacy `Due: Friday`) is kept as an `unknown` kind with no date.
+ * deadline; anything else (`Due: Friday` from earlier versions) is kept as an `unknown` kind with no date.
  */
 function parseDue(value: string): ActionItemDeadline | undefined {
   const due = value.trim();

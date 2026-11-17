@@ -1,7 +1,7 @@
 import type { ChatScopeKind } from './scope-resolver';
 import type { ChatEngine } from './user-prompts';
 
-/** `live`: only while a take records (T2), listed before the single-meeting recipes. */
+/** `live`: only while a take records, listed before the single-meeting recipes. */
 export type RecipeAvailability = 'single' | 'multiple' | 'live';
 
 /** A recipe of the list: a built-in, or a saved prompt (`owner: 'user'`, see user-prompts.ts). */
@@ -16,7 +16,7 @@ export interface ChatRecipe {
   readonly engine?: ChatEngine | null;
 }
 
-/** Looks a localized string up by key at call time (B8): recipe names and prompts. */
+/** Looks a localized string up by key at call time: recipe names and prompts. */
 export type RecipeNameLookup = (key: string) => string;
 
 interface Entry {
@@ -28,7 +28,7 @@ interface Entry {
 
 const ID_BASE = '11111111-1111-4111-8111-111111111';
 
-/** Catalog order is the list order (spec 3.7). Ids are fixed; names and prompts are stored as keys. */
+/** Catalog order is the list order. Ids are fixed; names and prompts are stored as keys. */
 const CATALOG: readonly Entry[] = [
   {
     id: `${ID_BASE}101`,
@@ -106,7 +106,7 @@ const CATALOG: readonly Entry[] = [
 ];
 
 /**
- * Live recipes (T2): they read the session context, the rolling digest and the recent tail. They
+ * Live recipes: they read the session context, the rolling digest and the recent tail. They
  * lead the Live list, so they are the starter chips while recording.
  */
 const LIVE_CATALOG: readonly Entry[] = [
@@ -145,12 +145,12 @@ const toRecipe =
     availability: e.availability,
   });
 
-/** B8: names and prompts are resolved on every call, so a language change shows up on the next read. */
+/** Names and prompts are resolved on every call, so a language change shows up on the next read. */
 export function builtInRecipes(t: RecipeNameLookup): ChatRecipe[] {
   return CATALOG.map(toRecipe(t));
 }
 
-/** The live recipes, named in the current language (B8). */
+/** The live recipes, named in the current language. */
 export function liveRecipes(t: RecipeNameLookup): ChatRecipe[] {
   return LIVE_CATALOG.map(toRecipe(t));
 }

@@ -1,4 +1,4 @@
-/** Default and minimum size of the main window, in device independent pixels (items 16, 17). */
+/** Default and minimum size of the main window, in device independent pixels. */
 export const DEFAULT_WINDOW_SIZE = { width: 1180, height: 760 } as const;
 export const MIN_WINDOW_SIZE = { width: 960, height: 680 } as const;
 

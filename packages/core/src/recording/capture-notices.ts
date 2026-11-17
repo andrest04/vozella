@@ -1,7 +1,7 @@
 import type { Message } from './recording-status';
 
 /**
- * Capture failures and warnings while recording (spec 2.17). Severity is typed (B-12): the page
+ * Capture failures and warnings while recording. Severity is typed: the page
  * never tells an error from a notice by looking at the start of a string.
  */
 

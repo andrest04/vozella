@@ -9,7 +9,7 @@ export type MissingKeyReport = (key: string, locale: CatalogLocale, fallback: 'e
 export type TranslateFn = (key: string, ...args: FormatArg[]) => string;
 
 /**
- * Looks a key up in the locale, then in English, then falls back to the key itself (B8: never an
+ * Looks a key up in the locale, then in English, then falls back to the key itself (never an
  * empty string). Every miss is reported so a missing translation is visible in the log.
  * The locale is explicit: nothing here reads a global culture.
  */
@@ -29,7 +29,7 @@ export function createLookup(
   };
 }
 
-/** The meeting title the app gives a recording with no calendar title (spec 4.3). */
+/** The meeting title the app gives a recording with no calendar title. */
 export function meetingTitle(translate: TranslateFn, when: Date, locale: CatalogLocale): string {
   return translate(
     'MeetingTitleFormat',

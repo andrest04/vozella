@@ -63,8 +63,8 @@ function failure(error: unknown): Failure {
 }
 
 /**
- * The Library page's use cases (spec 3.13), without any view state. Every call reads fresh data,
- * and no call mutates records it was given, so a failed save leaves nothing half done (B13, B26).
+ * The Library page's use cases, without any view state. Every call reads fresh data,
+ * and no call mutates records it was given, so a failed save leaves nothing half done.
  * Projects have their own use cases in `ProjectService`.
  */
 export class LibraryService {

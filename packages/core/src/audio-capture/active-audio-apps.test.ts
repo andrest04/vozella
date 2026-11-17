@@ -82,7 +82,7 @@ describe('ActiveAudioAppService.refresh', () => {
     expect(service.refresh().map((a) => a.processId)).toEqual([101]);
   });
 
-  it('S6: rolls a differently named helper up into a known meeting app or browser', () => {
+  it('rolls a differently named helper up into a known meeting app or browser', () => {
     const { sessions, processes, service } = rig();
     processes.add(100, 'ms-teams', { start: 1000 });
     processes.add(101, 'msedgewebview2', { parent: 100, start: 2000 });

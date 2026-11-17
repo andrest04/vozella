@@ -237,7 +237,7 @@ describe('LiveQuestionTracker (rules+ai)', () => {
 });
 
 describe('question check prompt', () => {
-  it('carries the WinUI criteria, the line and only the last 90 s of transcript', () => {
+  it('carries the judging criteria, the line and only the last 90 s of transcript', () => {
     const text = lines(
       formatLine(0, 5000, 'old talk about lunch'),
       formatLine(100_000, 110_000, 'we compared the agile principles'),

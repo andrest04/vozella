@@ -1,4 +1,4 @@
-/** Level helpers (spec 2.7, 3.1.6, 3.7). Pure math, no I/O. */
+/** Level helpers. Pure math, no I/O. */
 
 const FLOOR_DECIBELS = -60;
 const MIN_AMPLITUDE = 1e-6;
@@ -19,7 +19,7 @@ export function toMeterPercent(amplitude: number): number {
 export type SampleFormat = 'float32' | 'int16' | 'int32' | 'int24';
 
 /**
- * RMS over all interleaved samples of a raw buffer, clamped to [0, 1] (spec 3.1.6).
+ * RMS over all interleaved samples of a raw buffer, clamped to [0, 1].
  * Non-finite floats are skipped. Depths other than float32, int16 and int32 read as zero.
  */
 export function computeBufferRms(bytes: Uint8Array, format: SampleFormat): number {
@@ -52,7 +52,7 @@ export function computeBufferRms(bytes: Uint8Array, format: SampleFormat): numbe
   return Math.min(1, Math.max(0, Math.sqrt(sum / count)));
 }
 
-/** Live PCM16 little-endian bytes to float32 in [-1, 1) (spec 2.2.6). */
+/** Live PCM16 little-endian bytes to float32 in [-1, 1). */
 export function pcm16ToFloat(bytes: Uint8Array): Float32Array {
   const count = Math.floor(bytes.byteLength / 2);
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -66,7 +66,7 @@ export const NORMALIZER_MAX_GAIN = 16;
 export const NORMALIZER_SILENCE_PEAK = 0.002;
 
 /**
- * Spec 3.7. Not wired into recording (bug C6): kept because the rule is documented and
+ * Not wired into recording: kept because the rule is documented and
  * tested. Run it on a whole recording or a long window, never on 200 ms slices.
  */
 export function resolveNormalizerGain(peakFullScale: number): number {

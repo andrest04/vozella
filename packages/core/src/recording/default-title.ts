@@ -7,8 +7,8 @@ export interface TitleCatalog {
 }
 
 /**
- * `Meeting 2 Nov, 14:05` (spec 2.2). Takes the catalog strings as data and the clock as an
- * argument, so a reset for the next take simply calls it again with the new time (item 189).
+ * `Meeting 2 Nov, 14:05`. Takes the catalog strings as data and the clock as an
+ * argument, so a reset for the next take simply calls it again with the new time.
  */
 export function defaultMeetingTitle(
   now: Date,
@@ -21,7 +21,7 @@ export function defaultMeetingTitle(
 
 /**
  * Both languages' `MeetingTitleFormat`, so a placeholder written in one language is still
- * recognised after the UI language changed (B-1). Feed it to the summaries' title check.
+ * recognised after the UI language changed. Feed it to the summaries' title check.
  */
 export function placeholderFormats(
   catalogs: Readonly<Record<CatalogLocale, Pick<TitleCatalog, 'MeetingTitleFormat'>>>,

@@ -1,4 +1,4 @@
-/** 16-bit little-endian PCM to float samples in -1..1, the form the engine takes (spec 3.1). */
+/** 16-bit little-endian PCM to float samples in -1..1, the form the engine takes. */
 export function pcm16ToFloat32(pcm: Uint8Array): Float32Array {
   const samples = Math.floor(pcm.byteLength / 2);
   const out = new Float32Array(samples);

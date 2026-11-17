@@ -53,7 +53,7 @@ export interface ModelRow {
   /** A model that left the catalog: listed only while on disk, never downloaded again. */
   readonly legacy: boolean;
   readonly downloaded: boolean;
-  /** The selected model, only while its file is there (B7). */
+  /** The selected model, only while its file is there. */
   readonly active: boolean;
   readonly downloading: boolean;
   /** 0 to 100 while downloading, else null. */
@@ -82,7 +82,7 @@ interface Transfer {
 /**
  * The summary models on disk: what the Settings page lists, downloads, selects and deletes.
  * Transfers live here, not in the page, so leaving and coming back keeps their state and a second
- * download of the same file is refused (B17).
+ * download of the same file is refused.
  */
 export class LocalModelsService {
   private readonly transfers = new Map<string, Transfer>();
@@ -132,7 +132,7 @@ export class LocalModelsService {
 
   /**
    * One transfer per file. A second call while it runs joins it and gets the same outcome, so the
-   * wizard and the Settings list can both ask without starting two downloads (B18). Progress
+   * wizard and the Settings list can both ask without starting two downloads. Progress
    * reaches every listener through `notify`.
    */
   download(fileName: string): Promise<DownloadOutcome> {

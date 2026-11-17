@@ -65,7 +65,7 @@ describe('evaluateReadiness (RecordingReadinessEvaluatorTests)', () => {
   });
 });
 
-describe('parseSummaryProvider (B-20, one rule)', () => {
+describe('parseSummaryProvider (one rule)', () => {
   it('accepts only the exact enum names', () => {
     expect(parseSummaryProvider('Local')).toBe('Local');
     expect(parseSummaryProvider('ClaudeCode')).toBe('ClaudeCode');

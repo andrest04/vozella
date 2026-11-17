@@ -1,5 +1,5 @@
 /**
- * The live answer prompt (recording spec 3.12, live-copilot spec 3.1). The Live Copilot module
+ * The live answer prompt . The Live Copilot module
  * imports this same code. With web search off the text never contains the word "web".
  */
 

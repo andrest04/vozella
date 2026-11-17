@@ -5,7 +5,7 @@ import {
   STARTED_HINT_DURATION_MS,
 } from './handoff';
 
-// Ports the nine LiveCopilotRecordingHandoffTests cases (182).
+// Ports the nine LiveCopilotRecordingHandoffTests cases.
 describe('decideRecordingHandoff', () => {
   it('Decide_WhenRecordingStarts_MinimizesAndShowsHint', () => {
     expect(decideRecordingHandoff(false, true)).toEqual({

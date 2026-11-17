@@ -74,7 +74,7 @@ describe('loadTab custom template option', () => {
   });
 });
 
-describe('loadTab resolution (items 78 to 80)', () => {
+describe('loadTab resolution', () => {
   const a = rec('a', { recordedAt: '2026-09-01T12:00:00.0000000+00:00' });
   const b = rec('b', { recordedAt: '2026-09-03T12:00:00.0000000+00:00' });
   const c = rec('c', { recordedAt: '2026-09-02T12:00:00.0000000+00:00' });
@@ -176,7 +176,7 @@ describe('loadTab resolution (items 78 to 80)', () => {
   });
 });
 
-describe('related meetings in the tab (item 103)', () => {
+describe('related meetings in the tab', () => {
   it('matches by title and by a series id read from the files, newest first, max 5', async () => {
     const cur = rec('cur', {
       title: 'Weekly',
@@ -222,7 +222,7 @@ describe('related meetings in the tab (item 103)', () => {
   });
 });
 
-describe('saveNotes (item 102)', () => {
+describe('saveNotes', () => {
   it('writes changed notes on a freshly read record and keeps every other field', async () => {
     const { service, repo } = setup([rec('a')]);
     // The page copy is stale: the stored record got a new summary after the page loaded.
@@ -260,7 +260,7 @@ describe('saveNotes (item 102)', () => {
   });
 });
 
-describe('toggleActionItem (item 98, B5)', () => {
+describe('toggleActionItem', () => {
   const items = Array.from({ length: 3 }, (_, i) => ({ text: `Task ${i}`, isDone: false }));
 
   it('persists the toggle and returns the saved list; other fields stay', async () => {
@@ -325,7 +325,7 @@ describe('toggleActionItem (item 98, B5)', () => {
   });
 });
 
-describe('copy (items 99 and 104)', () => {
+describe('copy', () => {
   it('no action items is empty with the message', async () => {
     const { service } = setup([rec('a')]);
     expect(await service.copyActionItems('a')).toEqual({
@@ -361,7 +361,7 @@ describe('copy (items 99 and 104)', () => {
   });
 });
 
-describe('replaceSummary (T4: apply a chat answer, undo)', () => {
+describe('replaceSummary (apply a chat answer, undo)', () => {
   const items = [{ text: 'Ana sends the deck', isDone: true }];
 
   it('an answer replaces the summary, keeps the action items and returns the previous content', async () => {
@@ -432,7 +432,7 @@ describe('replaceSummary (T4: apply a chat answer, undo)', () => {
   });
 });
 
-describe('replaceSummary resolves deadline dates (action item deadlines T4)', () => {
+describe('replaceSummary resolves deadline dates', () => {
   it('an answer with deadlines gets dates from recordedAt and the remembered next session', async () => {
     // Tuesday 2026-09-01 at +00:00.
     const { repo, service, settings } = setup([rec('a', { title: 'Weekly Sync' })]);
@@ -461,7 +461,7 @@ describe('replaceSummary resolves deadline dates (action item deadlines T4)', ()
   });
 });
 
-describe('setActionItemDate (action item deadlines T4)', () => {
+describe('setActionItemDate', () => {
   const items: ActionItem[] = [
     { text: 'No deadline', isDone: false },
     {
@@ -548,7 +548,7 @@ describe('setActionItemDate (action item deadlines T4)', () => {
   });
 });
 
-describe('setNextSessionDate (action item deadlines T4)', () => {
+describe('setNextSessionDate', () => {
   const next = (text: string, date?: string): ActionItem => ({
     text,
     isDone: false,
@@ -615,7 +615,7 @@ describe('setNextSessionDate (action item deadlines T4)', () => {
   });
 });
 
-describe('actionItemsIcs (action item deadlines T4)', () => {
+describe('actionItemsIcs', () => {
   const now = new Date('2026-11-06T10:00:00.000Z');
   const items: ActionItem[] = [
     {

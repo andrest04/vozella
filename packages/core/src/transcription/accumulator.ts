@@ -29,12 +29,12 @@ interface Window {
 
 /**
  * Builds the transcript from a streaming recognizer: finals become committed stamped lines,
- * interims replace one rewritten suffix (spec 3.6). No `ClockSkew`: it never had an effect (B1).
+ * interims replace one rewritten suffix. No `ClockSkew`: it never had an effect.
  */
 export class StreamingTranscriptAccumulator {
   private readonly committed: string[] = [];
   private interim = '';
-  /** Audio position the bare (unstamped) interim reached, so it can be stamped if it is committed (B18). */
+  /** Audio position the bare (unstamped) interim reached, so it can be stamped if it is committed. */
   private interimBareEndMs: number | null = null;
   private lastEndMs = 0;
   private wroteHeader = false;
@@ -96,7 +96,7 @@ export class StreamingTranscriptAccumulator {
     this.ensureHeader();
     const lines = this.interim.split(/\r\n|\n/).filter((line) => line !== '');
     if (this.interimBareEndMs !== null) {
-      // A bare interim has no stamp; one is added so the saved transcript stays parseable (B18).
+      // A bare interim has no stamp; one is added so the saved transcript stays parseable.
       const text = lines.join(' ');
       this.committed.push(formatLine(this.lastEndMs, this.interimBareEndMs, text));
       this.lastEndMs = this.interimBareEndMs;
@@ -173,7 +173,7 @@ function hasIdeaPause(words: readonly AsrWord[]): boolean {
 /**
  * Engine word texts when they pair one to one with the split text. Text with no spaces at all
  * (Japanese, Chinese) splits into one token while the engine reports many words: then the word
- * texts are used and joined with nothing, so the 30 s, speaker and pause rules still apply (B10).
+ * texts are used and joined with nothing, so the 30 s, speaker and pause rules still apply.
  */
 function resolveTokens(
   words: readonly AsrWord[],
@@ -247,7 +247,7 @@ function buildWindows(
   return windows;
 }
 
-/** Results with no word timings: the tokens are spread evenly over 30 s windows (spec 3.6). */
+/** Results with no word timings: the tokens are spread evenly over 30 s windows. */
 function untimedWindows(startMs: number, endMs: number, text: string): string[] {
   const duration = endMs - startMs;
   if (duration <= WINDOW_MS) return [formatLine(startMs, endMs, text)];

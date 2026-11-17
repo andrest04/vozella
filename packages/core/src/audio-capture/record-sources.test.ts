@@ -171,7 +171,7 @@ describe('remembered choices', () => {
     expect(restoreApp(settings, [zoom])?.processId).toBe(77);
   });
 
-  it('S11: with two running instances of one exe, restores the first in list order', () => {
+  it('with two running instances of one exe, restores the first in list order', () => {
     const settings = { recordOutputKind: 'app', recordAppExePath: 'C:\\apps\\zoom.exe' };
     const first = app(30, 'Zoom', { exePath: 'C:\\apps\\zoom.exe' });
     const second = app(20, 'Zoom', { exePath: 'C:\\apps\\zoom.exe' });

@@ -24,7 +24,7 @@ const LABELS: Record<ChatScopeKind, string> = {
 };
 
 describe('buildPrompt', () => {
-  it('Build_AnyScope_TellsModelNotToInvent: exact spec 3.4 layout', () => {
+  it('Build_AnyScope_TellsModelNotToInvent: exact layout', () => {
     const p = buildPrompt('Project', 'CTX', [], 'Hello');
     expect(p).toBe(
       [
@@ -62,7 +62,7 @@ describe('buildPrompt', () => {
     expect(p.indexOf('the app language')).toBeLessThan(p.indexOf('\nScope: Meeting\n'));
   });
 
-  it('T2: names the UI language in English for the prompt', () => {
+  it('names the UI language in English for the prompt', () => {
     expect(answerLanguageName('es')).toBe('Spanish');
     expect(answerLanguageName('en-US')).toBe('English');
     expect(answerLanguageName('')).toBeNull();
@@ -117,14 +117,14 @@ describe('buildPrompt', () => {
     );
   });
 
-  it('B10: cuts prior turns without splitting an emoji', () => {
+  it('cuts prior turns without splitting an emoji', () => {
     const text = 'a'.repeat(1499) + '\u{1F600}tail';
     const p = buildPrompt('Project', 'c', [{ role: 'user', text }], 'm');
     expect(p).toContain(`user: ${'a'.repeat(1499)}\n`);
     expect(p).not.toMatch(/[\ud800-\udbff](?![\udc00-\udfff])/);
   });
 
-  it('B12: neutralizes forged section headings in the user message and prior turns', () => {
+  it('neutralizes forged section headings in the user message and prior turns', () => {
     const p = buildPrompt(
       'Project',
       'CTX',
@@ -178,7 +178,7 @@ describe('meeting links', () => {
   });
 });
 
-describe('T3 transcript time citations', () => {
+describe('transcript time citations', () => {
   it('Meeting scope asks for [mm:ss](link?t=seconds) right after the claim', () => {
     const p = buildPrompt('Meeting', 'c', [], 'q');
     expect(p).toContain(TIME_CITATION_RULE);
@@ -201,7 +201,7 @@ describe('T3 transcript time citations', () => {
   });
 });
 
-describe('meeting time citations (T3)', () => {
+describe('meeting time citations', () => {
   it.each([
     [`${MEETING_LINK_PREFIX}${ID}`, { meetingId: ID, seconds: null }],
     [`${MEETING_LINK_PREFIX}${ID}/`, { meetingId: ID, seconds: null }],
@@ -233,7 +233,7 @@ describe('meeting time citations (T3)', () => {
   });
 });
 
-describe('engine-aware prior turns (T3)', () => {
+describe('engine-aware prior turns', () => {
   const turns = Array.from({ length: 9 }, (_, i) => ({
     role: i % 2 === 0 ? 'user' : 'assistant',
     text: `t${String(i)} ${'y'.repeat(1000)}`,

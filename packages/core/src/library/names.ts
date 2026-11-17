@@ -17,7 +17,7 @@ function cut(value: string, max: number): string {
 }
 
 /**
- * A file name that is valid on Windows (spec 3.3). Always uses the Windows rule set, so a
+ * A file name that is valid on Windows. Always uses the Windows rule set, so a
  * library synced between systems stays consistent.
  */
 export function sanitizeName(name: string | null | undefined): string {

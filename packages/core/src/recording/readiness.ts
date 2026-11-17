@@ -12,7 +12,7 @@ import {
 } from '../settings/cloud-transcription-engines';
 import { findSummaryModel } from '../settings/summary-models';
 
-/** Readiness gate for Record and Import (spec 3.2). Pure rules plus a fact gatherer behind ports. */
+/** Readiness gate for Record and Import. Pure rules plus a fact gatherer behind ports. */
 
 export interface ReadinessInput {
   readonly liveTranscriptionEnabled: boolean;
@@ -52,7 +52,7 @@ export function evaluateReadiness(input: ReadinessInput): Readiness {
 }
 
 /**
- * The one provider parse rule (B-20): the exact, case-sensitive enum name. Blank, numeric or
+ * The one provider parse rule: the exact, case-sensitive enum name. Blank, numeric or
  * unknown text is "not chosen", for readiness and for everything else.
  */
 export function parseSummaryProvider(value: string | null | undefined): SummaryProviderKind | null {

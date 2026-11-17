@@ -6,7 +6,7 @@ export const SNIPPET_MAX_LENGTH = 140;
 
 const HEADING = /^#{1,6}(?:\s|$)/;
 
-// B15 rule: after the fences (```), double markers and backticks are removed as in the spec,
+// After the fences (```), double markers and backticks are removed,
 // but a single `*` or `_` (and a doubled one) is removed only when it wraps text: the opener is
 // not glued to a word character before it and not followed by a space, the closer is not
 // preceded by a space and not glued to a word character after it. So `snake_case`, file names,
@@ -65,7 +65,7 @@ export function spokenTranscript(transcript: string): string {
     .join('\n');
 }
 
-/** Spec 3.15: the summary when there is one, otherwise the spoken transcript. */
+/** The summary when there is one, otherwise the spoken transcript. */
 export function meetingSnippet(summary: string | null, transcript: string | null): string {
   if (summary !== null && summary.trim() !== '') return snippetFromMarkdown(summary);
   return snippetFromMarkdown(spokenTranscript(transcript ?? ''));

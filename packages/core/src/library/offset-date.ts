@@ -1,7 +1,7 @@
 /**
  * A date with its own UTC offset, as the library files store it. JavaScript dates have no offset,
- * so the stored text is parsed into this shape. Any fractional length is read (files written
- * earlier have seven digits); the writer always emits millisecond precision.
+ * so the stored text is parsed into this shape. Any fractional length is read (files written by
+ * earlier versions have seven digits); the writer always emits millisecond precision.
  */
 export interface OffsetDate {
   /** The instant, in milliseconds since the epoch. */

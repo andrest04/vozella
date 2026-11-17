@@ -4,8 +4,6 @@ import type { SummaryProviderKind } from '../library/settings';
 import { CancelledError } from '../summaries/provider';
 import { LiveAskSession, type LiveAnswerState, type LiveAskDeps } from './live-ask-session';
 
-/** Live copilot parity rows 105-127: the ask state machine against the spec (2.9, 3.8). */
-
 const flush = async (): Promise<void> => {
   for (let i = 0; i < 12; i += 1) await Promise.resolve();
 };
@@ -73,7 +71,7 @@ function rig(
   };
 }
 
-describe('LiveAskSession generations (items 105-108, 126, 127)', () => {
+describe('LiveAskSession generations', () => {
   it('a late chunk of a superseded ask never publishes, and the older one stays silent', async () => {
     const gate = held();
     const t = rig({
@@ -184,7 +182,7 @@ describe('LiveAskSession generations (items 105-108, 126, 127)', () => {
   });
 });
 
-describe('LiveAskSession typed path (items 105, 116; bugs 1-3)', () => {
+describe('LiveAskSession typed path', () => {
   it('trims the question and a blank question does nothing', async () => {
     const t = rig();
     await t.session.ask('   \n ');
@@ -215,7 +213,7 @@ describe('LiveAskSession typed path (items 105, 116; bugs 1-3)', () => {
   });
 });
 
-describe('LiveAskSession web policy (items 112-115, bug 15)', () => {
+describe('LiveAskSession web policy', () => {
   it('the toggle survives reset while answer, error and usedWeb clear', async () => {
     const t = rig({ kind: () => 'Codex' });
     t.session.setForceWebSearch(true);
@@ -297,7 +295,7 @@ describe('LiveAskSession web policy (items 112-115, bug 15)', () => {
   });
 });
 
-describe('LiveAskSession streaming (item 119, spec 3.8)', () => {
+describe('LiveAskSession streaming', () => {
   it('shows nothing for whitespace-only chunks, then the first visible chunk at once, trimmed at the start', async () => {
     const t = rig({
       stream: async function* () {

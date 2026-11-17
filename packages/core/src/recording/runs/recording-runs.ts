@@ -11,14 +11,14 @@ import type { Message } from '../recording-status';
 import type { RecordingSessionGate } from '../session-gate';
 import { PipelineRun, type RunOwner, type StatusLine } from './pipeline-run';
 
-/** The wait for runs to wind down at close (spec 2.16). */
+/** The wait for runs to wind down at close. */
 export const CLOSE_GRACE_MS = 30_000;
 
 export interface RunsWorkspacePort {
   /** Also selects the meeting. */
   setLastProcessed(record: MeetingRecord): void;
   notifyMeetingChanged(meetingId: string): void;
-  /** Mirrors recording or processing (166). */
+  /** Mirrors recording or processing. */
   setCaptureActive(active: boolean): void;
 }
 
@@ -55,7 +55,7 @@ export interface BeginTakeOptions {
 }
 
 /**
- * The gate-aware run state the renderer mirrors (spec 3.9): `runs`, `activeRun`, `latestRun`, the
+ * The gate-aware run state the renderer mirrors: `runs`, `activeRun`, `latestRun`, the
  * status, the live transcript and the last meeting. UI-free.
  */
 export class RecordingRuns implements RunOwner {
@@ -118,11 +118,11 @@ export class RecordingRuns implements RunOwner {
   get isProcessing(): boolean {
     return this.ports.gate.phase === 'Processing';
   }
-  /** The workspace flag: recording or processing (166). */
+  /** The workspace flag: recording or processing. */
   get isCaptureActive(): boolean {
     return this.isRecording || this.isProcessing;
   }
-  /** The meeting the current take writes to. Null once the session is released (B-26). */
+  /** The meeting the current take writes to. Null once the session is released. */
   get currentMeetingId(): string | null {
     return this.linkedMeetingId;
   }
@@ -140,7 +140,7 @@ export class RecordingRuns implements RunOwner {
     };
   }
 
-  /** History refuses to delete a meeting that is recorded now or that a run may re-save (164). */
+  /** History refuses to delete a meeting that is recorded now or that a run may re-save. */
   isMeetingInUse(meetingId: string): boolean {
     if (this.runList.some((run) => run.meetingId === meetingId)) return true;
     return this.linkedMeetingId === meetingId && this.ports.gate.phase !== 'Idle';
@@ -151,7 +151,7 @@ export class RecordingRuns implements RunOwner {
     return this.runList.some((run) => !run.isCompleted);
   }
 
-  /** The deleted meeting is no longer the last one (162). */
+  /** The deleted meeting is no longer the last one. */
   clearLastMeetingIf(meetingId: string): void {
     if (this.last?.id !== meetingId) return;
     this.last = null;
@@ -161,7 +161,7 @@ export class RecordingRuns implements RunOwner {
 
   /**
    * A new take starts. The capture failure and warning of the previous take are cleared, and the
-   * only link is the meeting the caller passes for a re-recording (B-26).
+   * only link is the meeting the caller passes for a re-recording.
    */
   beginTake(options: BeginTakeOptions = {}): void {
     this.takeFailure = null;
@@ -181,10 +181,10 @@ export class RecordingRuns implements RunOwner {
   }
 
   /**
-   * One capture event (spec 2.17). Only the first hard failure per take is handled; null for a
-   * repeat. A warning is shown while recording and kept for the post-stop status (B-24). The
+   * One capture event. Only the first hard failure per take is handled; null for a
+   * repeat. A warning is shown while recording and kept for the post-stop status. The
    * status is always composed as failure first, then the latest base, so the order never depends
-   * on which event arrived first (B-30).
+   * on which event arrived first.
    */
   noteCaptureEvent(event: CaptureEvent): CaptureEventResult | null {
     const notice = captureNotice(event);
@@ -205,7 +205,7 @@ export class RecordingRuns implements RunOwner {
     return { notice: this.takeWarning, stopRecording: false };
   }
 
-  /** A stop error never replaces a capture failure that was already notified (B-30). */
+  /** A stop error never replaces a capture failure that was already notified. */
   reportStopError(message: Message): void {
     this.setTakeStatus(message);
   }
@@ -239,7 +239,7 @@ export class RecordingRuns implements RunOwner {
   }
 
   /**
-   * Close protection (spec 3.9). `stop` ends any capture. Then every run saves its meeting, every
+   * Close protection. `stop` ends any capture. Then every run saves its meeting, every
    * run is cancelled, and the runs get the grace period to wind down. True when every take saved.
    */
   async saveAndFinishForClose(stop: () => Promise<void>): Promise<boolean> {
@@ -293,7 +293,7 @@ export class RecordingRuns implements RunOwner {
 
   /**
    * Gives the page back (idempotent). Only the owning run does anything. Every release clears the
-   * link of the take, so the next unrelated Record never reuses a stale meeting id (B-26); the
+   * link of the take, so the next unrelated Record never reuses a stale meeting id; the
    * title is reset only when asked.
    */
   releaseSession(run: PipelineRun, line: StatusLine, resetTitle: boolean): boolean {

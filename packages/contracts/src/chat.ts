@@ -17,7 +17,7 @@ const requestId = z.string().min(1).max(100);
 
 export const chatScopeKindSchema = z.enum(['AllMeetings', 'Project', 'Meeting', 'Live']);
 
-/** The scope the renderer resolved from the workspace state (spec 3.2). */
+/** The scope the renderer resolved from the workspace state. */
 export const chatScopeSchema = z.object({
   isVisible: z.boolean(),
   kind: chatScopeKindSchema,
@@ -341,7 +341,7 @@ export const chatCancel = defineRequest('chat.cancel', {
   output: z.object({ cancelled: z.boolean() }),
 });
 
-/** New chat. Refused (false) while an answer is running (B1). */
+/** New chat. Refused (false) while an answer is running. */
 export const chatNewChat = defineRequest('chat.newChat', {
   input: empty,
   output: z.object({ started: z.boolean() }),
@@ -362,7 +362,7 @@ export const chatStateChanged = defineEvent('chat.stateChanged', {
   payload: z.object({ state: chatStateSchema }),
 });
 
-/** Does the meeting named by a citation link exist (B21)? The id may be hex without hyphens. */
+/** Does the meeting named by a citation link exist? The id may be hex without hyphens. */
 export const chatMeetingExists = defineRequest('chat.meetingExists', {
   input: z.object({ meetingId: z.string().min(1).max(200) }),
   output: z.object({ exists: z.boolean(), meetingId: z.string().nullable() }),
@@ -376,7 +376,7 @@ export const chatCopyText = defineRequest('chat.copyText', {
   ]),
 });
 
-/** Opens an http or https link in the system browser. Any other scheme is refused (S2). */
+/** Opens an http or https link in the system browser. Any other scheme is refused. */
 export const chatOpenExternal = defineRequest('chat.openExternal', {
   input: z.object({ url: z.string().min(1).max(4_096) }),
   output: z.discriminatedUnion('status', [

@@ -1,6 +1,6 @@
 import type { MicrophoneDevice } from './record-sources';
 
-/** Port: the active capture endpoints (spec 3.1.5). Adapter: the native addon. */
+/** Port: the active capture endpoints. Adapter: the native addon. */
 export interface MicrophoneDeviceSource {
   /** Active capture endpoints. An endpoint that cannot be read is left out, not fatal. */
   list(): MicrophoneDevice[];
@@ -12,9 +12,9 @@ export interface OsBuildProbe {
 }
 
 /**
- * Process loopback first shipped in Windows 10 version 2004 (build 19041), and the C# app,
- * which does not gate, records one app there today. Older builds get the clear message (spec
- * bug C7). Microsoft's page names 20348; the lower bound is the one that keeps Windows 10 working.
+ * Process loopback first shipped in Windows 10 version 2004 (build 19041), and the app
+ * does not gate on the exact feature. Older builds get the clear message.
+ * Microsoft's page names 20348; the lower bound is the one that keeps Windows 10 working.
  */
 export const PROCESS_LOOPBACK_MIN_BUILD = 19041;
 
@@ -28,7 +28,7 @@ export class ProcessLoopbackUnsupportedError extends Error {
   }
 }
 
-/** Throws a clear error where the raw HRESULT of a failed activation would have shown (C7). */
+/** Throws a clear error where the raw HRESULT of a failed activation would have shown. */
 export function assertProcessLoopbackSupported(build: number): void {
   // An unknown build (0) is allowed through: the activation error then speaks for itself.
   if (build > 0 && build < PROCESS_LOOPBACK_MIN_BUILD) {

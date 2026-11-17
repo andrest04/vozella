@@ -3,7 +3,7 @@ export type Weekday = (typeof WEEKDAYS)[number];
 
 /**
  * How a spoken deadline relates to the meeting day. The model only classifies; code computes the
- * date. `unknown` keeps a free-text deadline (legacy `Due: Friday`) that has no kind token.
+ * date. `unknown` keeps a free-text deadline (`Due: Friday` from earlier versions) that has no kind token.
  */
 export type DeadlineKind =
   | { readonly type: 'date'; readonly date: string }
@@ -99,7 +99,7 @@ export interface JevAnalysis {
   readonly analyzedAt: string;
 }
 
-/** One meeting as stored in a Markdown file (spec 4.1). */
+/** One meeting as stored in a Markdown file. */
 export interface MeetingRecord {
   /** Lowercase hyphenated GUID. */
   readonly id: string;

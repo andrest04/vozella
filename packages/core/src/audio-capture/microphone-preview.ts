@@ -2,7 +2,7 @@ import type { AudioCapturePort, CaptureSession } from '../device/audio-capture';
 import { computeBufferRms } from './level-meter';
 
 /**
- * The idle microphone level (spec 3.1.6): opens the mic, raises a 0..1 level per 20 ms
+ * The idle microphone level: opens the mic, raises a 0..1 level per 20 ms
  * frame, writes and persists nothing. It never throws; a later start always works.
  */
 export class MicrophoneLevelPreview {
@@ -37,7 +37,7 @@ export class MicrophoneLevelPreview {
       return;
     }
     if (this.generation !== mine) {
-      // Another start or a stop overtook this one (S4): do not leave a capture running.
+      // Another start or a stop overtook this one: do not leave a capture running.
       stopQuietly(session);
       return;
     }

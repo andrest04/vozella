@@ -14,13 +14,13 @@ export const NOTES_MAX_CHARS = 400;
 export const MEETING_CAP = 12;
 
 /**
- * How much meeting text one send may carry, chosen by engine (T2). `meetingChars` caps the whole
+ * How much meeting text one send may carry, chosen by engine. `meetingChars` caps the whole
  * Meeting scope block; `summaryChars` caps each summary in Project and All meetings.
  */
 export interface ContextBudget {
   /** Live tail when no rolling digest exists yet. */
   readonly liveChars: number;
-  /** Live tail next to a rolling digest: the digest covers what came before (T2). */
+  /** Live tail next to a rolling digest: the digest covers what came before. */
   readonly liveTailWithDigestChars: number;
   /** The take's notes in Live scope. */
   readonly liveNotesChars: number;
@@ -90,7 +90,7 @@ export interface PackOptions {
 }
 
 /**
- * What the chat knows about the take being recorded, fixed when the send starts (B5): the
+ * What the chat knows about the take being recorded, fixed when the send starts: the
  * committed transcript, the rolling digest and the session context (title and notes).
  */
 export interface LiveContextSnapshot {
@@ -120,7 +120,7 @@ const MEETING_NOTES_SHARE = 0.1;
 /** The transcript always gets at least this share, even after a long action item list. */
 const MEETING_TRANSCRIPT_MIN_SHARE = 0.3;
 
-/** Only these fields can reach the model (spec 3.3). */
+/** Only these fields can reach the model. */
 export type ContextMeeting = Pick<
   MeetingRecord,
   'id' | 'title' | 'recordedAt' | 'projectId' | 'summary' | 'notes' | 'transcript' | 'actionItems'
@@ -154,7 +154,7 @@ const guidKey = (id: string): string => id.replace(/[-{}]/g, '').toLowerCase();
 export const compactMeetingId = (id: string): string => guidKey(id);
 
 /**
- * B12 rule. Meeting text is untrusted and is placed inside a line-oriented context. A line of
+ * Meeting text is untrusted and is placed inside a line-oriented context. A line of
  * free text (summary, notes, transcript) is neutralized by prefixing "> " when, ignoring leading
  * spaces and tabs, it starts with `Id` + optional spaces + `:` (any case) or with a single `#`
  * followed by a space, a tab or the end of the line. Those are the only line shapes that
@@ -172,7 +172,7 @@ export function neutralizeStructure(text: string): string {
     .join(NL);
 }
 
-/** B12: single-line fields lose their line breaks (each break becomes one space). */
+/** Single-line fields lose their line breaks (each break becomes one space). */
 export const singleLine = (text: string): string => text.replace(LINE_BREAK, ' ');
 
 const tail = (value: string | null | undefined, max: number): string | null =>
@@ -299,7 +299,7 @@ function packMeeting(
 }
 
 /**
- * Live scope (T2): the session context (title, notes), the rolling digest when there is one, then
+ * Live scope: the session context (title, notes), the rolling digest when there is one, then
  * the recent tail of the live transcript. With a digest the tail is shorter, since the digest
  * covers what came before; without one the tail keeps the full live budget.
  */
@@ -343,9 +343,9 @@ export function packLiveSession(
 }
 
 /**
- * The only meeting text the model sees (spec 3.3). Pure: `liveTranscript` is an argument so the
- * caller snapshots it when the send starts (B5), and `t` supplies the CoreStrings messages.
- * `options.budget` sizes the text for the engine (T2); `options.query` ranks transcript excerpts.
+ * The only meeting text the model sees. Pure: `liveTranscript` is an argument so the
+ * caller snapshots it when the send starts, and `t` supplies the CoreStrings messages.
+ * `options.budget` sizes the text for the engine; `options.query` ranks transcript excerpts.
  * Throws TypeError for null meetings or projects and RangeError for an unknown scope.
  */
 export function packContext(

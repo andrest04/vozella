@@ -8,7 +8,7 @@ import type { Message } from '../recording-status';
 /** A status shown on the page: the renderer joins the messages with a space. */
 export type StatusLine = readonly Message[];
 
-/** What a run needs from the page that owns it (spec 3.9). Implemented by `RecordingRuns`. */
+/** What a run needs from the page that owns it. Implemented by `RecordingRuns`. */
 export interface RunOwner {
   /** The notes box of the page. */
   readonly pageNotes: string;
@@ -34,12 +34,12 @@ export interface PipelineRunInit {
   readonly notesSnapshot: string;
   /** The first hard capture failure of the take, if any. */
   readonly captureFailure: Message | null;
-  /** The soft warning that held when the take ended (B-24). */
+  /** The soft warning that held when the take ended. */
   readonly softWarning: CaptureNotice | null;
 }
 
 /**
- * One take's view of the page (spec 3.9). It owns its cancellation, the first-save and completion
+ * One take's view of the page. It owns its cancellation, the first-save and completion
  * futures, and the snapshots taken at stop. Once it released the session or completed, its late
  * callbacks cannot change a newer take.
  */
@@ -83,8 +83,8 @@ export class PipelineRun implements PipelineHost {
   }
 
   /**
-   * The capture failure of this take comes first (161). The soft warning of the take comes last,
-   * so the user is told the saved audio lacks a side (B-24).
+   * The capture failure of this take comes first. The soft warning of the take comes last,
+   * so the user is told the saved audio lacks a side.
    */
   withCaptureFailure(status: Message): StatusLine {
     return [

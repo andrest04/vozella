@@ -42,7 +42,7 @@ describe('ChatService.send preconditions', () => {
     expect(out.status).toBe('ignored');
   });
 
-  it('ignores a second send while one runs (B1 guard on send)', async () => {
+  it('ignores a second send while one runs (guard on send)', async () => {
     const rig = rigWithMeeting();
     const hold = holdProvider(rig);
     const first = rig.service.send('one', meetingScope, null);
@@ -69,7 +69,7 @@ describe('ChatService.send success', () => {
     expect(hasMessages).toBe(true);
   });
 
-  it('reads only the meeting by id for a meeting scope (B17)', async () => {
+  it('reads only the meeting by id for a meeting scope', async () => {
     const rig = rigWithMeeting();
     await rig.service.send('When?', meetingScope, null);
     expect(rig.reader.calls).toEqual([`byId:${MEETING}`]);
@@ -84,7 +84,7 @@ describe('ChatService.send success', () => {
     expect(rig.reader.calls).toEqual(['recent', 'projects']);
   });
 
-  it('gives the two messages their own timestamps (B7)', async () => {
+  it('gives the two messages their own timestamps', async () => {
     const rig = rigWithMeeting();
     rig.provider.beforeChunk = () => rig.clock.advance(500);
     const out = await rig.service.send('When?', meetingScope, null);
@@ -128,7 +128,7 @@ describe('ChatService.send success', () => {
   });
 });
 
-describe('B5 snapshot', () => {
+describe('snapshot', () => {
   it('packs the live transcript given at send start', async () => {
     const rig = createChatRig();
     rig.provider.chunks = ['ok'];
@@ -136,7 +136,7 @@ describe('B5 snapshot', () => {
     expect(rig.provider.prompts[0]).toContain('first words');
   });
 
-  it('packs the live snapshot given at send start: session, digest and transcript (T2)', async () => {
+  it('packs the live snapshot given at send start: session, digest and transcript', async () => {
     const rig = createChatRig();
     rig.provider.chunks = ['ok'];
     const snapshot = {
@@ -164,7 +164,7 @@ describe('B5 snapshot', () => {
     expect(rig.provider.prompts[0]).toContain('The live transcript is empty.');
   });
 
-  it('passes no output language option to the provider call (S8)', async () => {
+  it('passes no output language option to the provider call', async () => {
     const rig = rigWithMeeting();
     const args: unknown[][] = [];
     const original = rig.provider.streamPrompt.bind(rig.provider);
@@ -190,7 +190,7 @@ describe('B5 snapshot', () => {
 });
 
 describe('failures keep nothing and return the draft', () => {
-  it('provider error: Chat_SendFailed with a mapped message, never the raw one (B14)', async () => {
+  it('provider error: Chat_SendFailed with a mapped message, never the raw one', async () => {
     const rig = rigWithMeeting();
     rig.provider.chunks = [];
     rig.provider.failWith = new CliToolError('Claude Code', 'NotSignedIn', 'raw secret detail');
@@ -285,7 +285,7 @@ describe('provider setup', () => {
   });
 });
 
-describe('cancel (B19, B20)', () => {
+describe('cancel', () => {
   it('a cancelled send is silent, keeps nothing and discards the partial answer', async () => {
     const rig = rigWithMeeting();
     rig.provider.chunks = ['partial ', 'answer', ' more'];
@@ -336,8 +336,8 @@ describe('cancel (B19, B20)', () => {
   });
 });
 
-describe('new chat and scope (B1, B24, parity 18)', () => {
-  it('refuses New chat while sending and exposes the state for the control (B1)', async () => {
+describe('new chat and scope', () => {
+  it('refuses New chat while sending and exposes the state for the control', async () => {
     const rig = rigWithMeeting();
     const hold = holdProvider(rig);
     const send = rig.service.send('hello', meetingScope, null);
@@ -352,7 +352,7 @@ describe('new chat and scope (B1, B24, parity 18)', () => {
     expect(rig.service.state.hasMessages).toBe(false);
   });
 
-  it('recomputes the mismatch banner while sending (B24)', async () => {
+  it('recomputes the mismatch banner while sending', async () => {
     const rig = rigWithMeeting();
     rig.service.applyScope(rig.service.beginScopeRefresh(), meetingScope);
     await rig.service.send('first', meetingScope, null);
@@ -454,7 +454,7 @@ describe('ChatService stream timing', () => {
   });
 });
 
-describe('engine-aware context and answer language (T2)', () => {
+describe('engine-aware context and answer language', () => {
   const stampOf = (ms: number): string => {
     const s = Math.floor(ms / 1000);
     const p = (v: number) => String(v).padStart(2, '0');
@@ -533,7 +533,7 @@ describe('engine-aware context and answer language (T2)', () => {
   });
 });
 
-describe('engine-aware prior turns in the service (T3)', () => {
+describe('engine-aware prior turns in the service', () => {
   it('the local engine sends only the last 4 prior turns, each cut to 600 chars', async () => {
     const rig = rigWithMeeting();
     rig.provider.id = 'local';

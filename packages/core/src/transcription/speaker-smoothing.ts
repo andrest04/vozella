@@ -23,7 +23,7 @@ interface Run {
 }
 
 /**
- * Cleans per-word speaker tags before lines are built (spec 3.6, diarization smoothing).
+ * Cleans per-word speaker tags before lines are built.
  *
  * Works inside pause-free runs only (words closer than {@link IDEA_PAUSE_MS}), so nothing is
  * carried or merged across an idea pause, which is where real turns usually change:

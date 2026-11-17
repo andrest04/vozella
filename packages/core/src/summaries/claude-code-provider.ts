@@ -6,7 +6,7 @@ import { CliToolProvider } from './cli-provider';
 export interface CliProviderOptions {
   readonly model?: string | null;
   readonly effort?: string | null;
-  /** Only the live-answer path asks for this (item 71). Summaries never do. */
+  /** Only the live-answer path asks for this. Summaries never do. */
   readonly webSearch?: boolean;
   /** Defaults to five minutes. */
   readonly timeoutMs?: number;

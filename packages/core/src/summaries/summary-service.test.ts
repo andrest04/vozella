@@ -118,7 +118,7 @@ const run = (
     ...(extra.templateId === undefined ? {} : { templateId: extra.templateId }),
   });
 
-describe('template instructions (items 184, 185 gap)', () => {
+describe('template instructions', () => {
   it('built-ins give their text; auto, blank, unknown and custom give null', () => {
     expect(resolveTemplateInstructions('standup')).toMatch(
       /^Shape the enhanced notes as a standup/,
@@ -247,7 +247,7 @@ describe('SummaryService.generate', () => {
     expect(repo.records.get(ID)!.noteTemplateId).toBe('custom');
   });
 
-  it('B4: a rename made during the run survives the save', async () => {
+  it('a rename made during the run survives the save', async () => {
     const { repo, service } = setup({
       onSummarize: (_seen, r) => {
         r.records.set(ID, {
@@ -271,7 +271,7 @@ describe('SummaryService.generate', () => {
     });
   });
 
-  it('item 91: the request carries title, dates and transcript; a bad date falls back to the clock', async () => {
+  it('the request carries title, dates and transcript; a bad date falls back to the clock', async () => {
     const { service, seen } = setup();
     await run(service);
     const request = seen[0]!.request;
@@ -286,7 +286,7 @@ describe('SummaryService.generate', () => {
     expect(bad.seen[0]!.request.endedAt).toBeNull();
   });
 
-  it('B4/B5: a tab save queued around the generate save is not lost', async () => {
+  it('a tab save queued around the generate save is not lost', async () => {
     const queue = new PatchQueue();
     let release: () => void = () => undefined;
     const gateOpen = new Promise<void>((resolve) => {
@@ -369,7 +369,7 @@ describe('SummaryService.generate', () => {
     expect(await run(service)).toEqual({ status: 'not-found' });
   });
 
-  it('B34: needs-setup is a value, distinct from failed, and nothing runs', async () => {
+  it('needs-setup is a value, distinct from failed, and nothing runs', async () => {
     const { service, seen } = setup({
       gate: { status: 'needs-setup', kind: 'Local', reason: 'model-missing' },
     });
@@ -445,7 +445,7 @@ describe('SummaryService.generate', () => {
   });
 });
 
-describe('deadline dates on save (action item deadlines T4)', () => {
+describe('deadline dates on save', () => {
   const deadlineItems = (): ActionItem[] => [
     {
       text: 'Bring the progress',
@@ -660,7 +660,7 @@ describe('series context', () => {
   });
 });
 
-describe('pipeline options (S15)', () => {
+describe('pipeline options', () => {
   const withBusy = (agenda: string | null, skip: boolean) => {
     const repo = new InMemoryMeetingRepository();
     repo.records.set(ID, record());

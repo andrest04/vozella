@@ -1,5 +1,5 @@
 /**
- * When the local user speaks into the microphone (spec 3.6, "You" speaker label).
+ * When the local user speaks into the microphone.
  *
  * The recording is one mixed stream, so the transcript cannot tell the microphone from the
  * meeting audio by itself. The capture side measures both sources before they are mixed, in
@@ -197,7 +197,7 @@ export function serializeMicActivity(ranges: readonly MicActivityRange[]): strin
   });
 }
 
-/** The ranges, or null when the text is not a valid sidecar (then the recording is legacy). */
+/** The ranges, or null when the text is not a valid sidecar (then the recording is one made before the sidecar existed). */
 export function parseMicActivity(text: string): MicActivityRange[] | null {
   let parsed: unknown;
   try {

@@ -1,7 +1,7 @@
 import type { CancelSignal } from '../cancel';
 import { CancelledError, isCancellation, throwIfCancelled } from './provider';
 
-/** Spec 2.5. */
+/** */
 export const CLI_FAILURE_KINDS = [
   'NotInstalled',
   'NotSignedIn',
@@ -37,7 +37,7 @@ const TIMEOUT_WORD = wholeWord('timeout');
 const ENOENT = wholeWord('ENOENT');
 
 /**
- * B12: "model not found" and "404 Not Found" are API answers about a model or a URL, not a missing
+ * "model not found" and "404 Not Found" are API answers about a model or a URL, not a missing
  * program. They are removed before the not-installed check.
  */
 const API_NOT_FOUND = [
@@ -49,7 +49,7 @@ function stripApiNotFound(text: string): string {
   return API_NOT_FOUND.reduce((acc, pattern) => acc.replace(pattern, ' '), text);
 }
 
-/** The spec 2.5 order over one block of text. Null when nothing matches. */
+/** The classification order over one block of text. Null when nothing matches. */
 function classifyText(raw: string): CliFailureKind | null {
   const text = stripApiNotFound(raw);
   if (NOT_INSTALLED_PHRASES.some((p) => hasPhrase(text, p)) || ENOENT.test(text)) {
@@ -75,7 +75,7 @@ function classifyText(raw: string): CliFailureKind | null {
 }
 
 /**
- * B12: stdout is the model's answer, so a summary that talks about billing or quota must not be
+ * Stdout is the model's answer, so a summary that talks about billing or quota must not be
  * read as a failure. Only phrases a CLI prints to report its own failure count there.
  */
 const STDOUT_SENTINELS: readonly (readonly [CliFailureKind, RegExp])[] = [
@@ -91,7 +91,7 @@ function classifyStdoutSentinel(stdout: string): CliFailureKind | null {
   return null;
 }
 
-/** Spec 2.5 `Classify`, first match wins, with B12 applied: stderr first, stdout sentinels only. */
+/** Classify: first match wins; stderr first, stdout sentinels only. */
 export function classifyFailure(
   exitCode: number,
   stdout: string | null | undefined,
@@ -108,7 +108,7 @@ export function classifyFailure(
 const REDACTION =
   /Bearer\s+\S+|(?:api[_-]?key|secret|password|token)\s*[:=]\s*\S+|\bsk-[A-Za-z0-9_-]{8,}|\beyJ[A-Za-z0-9_-]{20,}/gi;
 
-/** Spec 2.5: redact secrets, collapse whitespace, cap at 120 characters with an ellipsis. */
+/** Redact secrets, collapse whitespace, cap at 120 characters with an ellipsis. */
 export function sanitizeSnippet(text: string | null | undefined, max = 120): string | null {
   if (text === null || text === undefined || text.trim() === '') return null;
   const clean = text.trim().replace(REDACTION, '[redacted]').replace(/\s+/g, ' ');
@@ -116,7 +116,7 @@ export function sanitizeSnippet(text: string | null | undefined, max = 120): str
 }
 
 /**
- * A CLI failure as data (B28): the kind and display name pick the localized text, `detail` is the
+ * A CLI failure as data: the kind and display name pick the localized text, `detail` is the
  * sanitized snippet and exists only for Unknown. The exit code is never kept. `message` is for
  * logs, not for the user.
  */
@@ -166,7 +166,7 @@ export class CliTimeoutError extends Error {
 /** Spawn errors that mean the program cannot be run at all. */
 const CANNOT_RUN_CODES = new Set(['ENOENT', 'ENOTDIR', 'EACCES', 'EPERM']);
 
-/** Spec 2.5 `Classify(Exception)`. */
+/** Classifies a thrown exception. */
 export function classifyException(error: unknown): CliFailureKind {
   if (error instanceof CliToolError) return error.kind;
   if (error instanceof Error) {
@@ -193,7 +193,7 @@ export interface CliRunResult {
   readonly stderr: string;
 }
 
-/** What the failure orchestration needs from a process runner (the Node one is S05). */
+/** What the failure orchestration needs from a process runner (the Node one). */
 export interface CliProcessRunner {
   isOnPath(executable: string): boolean | Promise<boolean>;
   run(
@@ -207,7 +207,7 @@ export interface CliProcessRunner {
 }
 
 /**
- * Spec 2.5 `RunRequiredStdoutAsync`: not on PATH is NotInstalled before any spawn, a non-zero exit
+ * Not on PATH is NotInstalled before any spawn, a non-zero exit
  * is classified, trimmed empty output is EmptyOutput. Returns the trimmed stdout.
  */
 export async function runRequiredStdout(

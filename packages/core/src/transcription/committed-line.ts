@@ -1,7 +1,7 @@
 import { HIGHLIGHT_MARKER_PREFIX } from './highlights';
 import { SPEAKER_LABEL_PATTERN } from './stamp-format';
 
-/** Reads committed transcript lines in the stamp format (spec 3.13). */
+/** Reads committed transcript lines in the stamp format. */
 
 /** Splits on CRLF, LF and lone CR, keeping empty entries. */
 export function splitCommittedLines(transcript: string | null): string[] {
@@ -31,7 +31,7 @@ interface Stamp {
   readonly close: number;
 }
 
-/** A starred line (`* [..]`) is read like the line under the star (B14). */
+/** A starred line (`* [..]`) is read like the line under the star. */
 const unstar = (line: string): string =>
   line.startsWith(HIGHLIGHT_MARKER_PREFIX) ? line.slice(HIGHLIGHT_MARKER_PREFIX.length) : line;
 
