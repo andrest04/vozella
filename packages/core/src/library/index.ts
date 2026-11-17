@@ -15,7 +15,3 @@ export * from './app-paths';
 export * from './in-memory-library';
 export * from './library-service';
 export * from './ports';
-// The pure project helpers of the storage lane are part of the public surface through this barrel,
-// because `projects/index.ts` belongs to the contracts commit.
-export * from '../projects/project-dir';
-export * from '../projects/project-names';

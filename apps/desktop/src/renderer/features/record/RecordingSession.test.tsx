@@ -23,6 +23,7 @@ const recording: RecordingStateDto = {
   captureNotices: [],
   liveNotice: null,
   meetingId: 'm1',
+  projectId: null,
   title: 'Weekly sync',
   recordedAtMs: 1,
   highlightCount: 0,

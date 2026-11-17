@@ -5,13 +5,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SummaryTabService, type MeetingRecord } from '@vozella/core';
 import { createLibraryFixture, type LibraryFixture } from '../library/library-test-kit';
 
-/** S14: tab patches on files written by the WinUI app keep every other field (items 98, 102). */
+/** S14: tab patches on files written by an earlier version of the app keep every other field (items 98, 102). */
 const source = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
   'library',
   'fixtures',
-  'winui-library',
+  'sample-library',
 );
 const WEEKLY = '3f2b8c1e-9a47-4d0e-b1c2-5e6f7a8b9c0d';
 
@@ -20,7 +20,7 @@ beforeEach(() => {
   fx = createLibraryFixture();
   fs.cpSync(source, fx.root, { recursive: true });
   fs.rmSync(path.join(fx.root, '.gitattributes'));
-  fs.renameSync(path.join(fx.root, 'folders.json.fixture'), path.join(fx.root, 'folders.json'));
+  fx.projects.add('8e2f1b63-44d5-4a7c-9ba1-1d2e3f4a5b6c', 'Calculo');
 });
 afterEach(() => {
   fx.cleanup();

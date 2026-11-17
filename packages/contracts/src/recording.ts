@@ -57,6 +57,8 @@ export const recordingStateSchema = z.object({
   liveNotice: recordingMessageSchema.nullable(),
   /** The meeting the take writes to; null while idle. */
   meetingId: z.string().nullable(),
+  /** The project the take files into; null for no project, and while idle. */
+  projectId: projectIdSchema.nullable(),
   title: z.string(),
   recordedAtMs: z.number().nullable(),
   highlightCount: z.number().int(),

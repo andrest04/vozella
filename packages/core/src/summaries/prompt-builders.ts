@@ -190,7 +190,7 @@ export interface SummaryPromptInput {
   readonly enhancement?: SummaryEnhancementContext | null;
 }
 
-const iso = (date: OffsetDate): string => formatOffsetDate(date, 'round-trip');
+const iso = (date: OffsetDate): string => formatOffsetDate(date);
 
 export function buildSummaryPrompt(input: SummaryPromptInput): string {
   const { title, recordedAt, transcript, outputLanguage, endedAt, enhancement } = input;

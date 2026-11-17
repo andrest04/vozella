@@ -33,6 +33,7 @@ const idleState: RecordingStateDto = {
   captureNotices: [],
   liveNotice: null,
   meetingId: null,
+  projectId: null,
   title: '',
   recordedAtMs: null,
   highlightCount: 0,
@@ -1272,6 +1273,21 @@ describe('Start meeting in this project (/record?project=<id>&start=1)', () => {
     });
     await mount();
     expect(await screen.findByTestId('take-destination')).toHaveTextContent('Saving to No project');
+  });
+
+  it('shows the project of a take started elsewhere, as the recording state reports it', async () => {
+    installApi({
+      'recording.getState': () => ({
+        ...idleState,
+        phase: 'Recording',
+        isRecording: true,
+        projectId: P_ALPHA,
+        title: 'Tray take',
+        liveText: '',
+      }),
+    });
+    await mount();
+    expect(await screen.findByTestId('take-destination')).toHaveTextContent('Saving to Alpha');
   });
 
   it('a page opened without parameters starts nothing', async () => {

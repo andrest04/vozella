@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CancelSource } from '../cancel';
 import { InMemorySettingsStore } from '../library/in-memory-library';
+import { parseOffsetDate } from '../library/offset-date';
 import type { AppSettings, SettingsStore } from '../library';
 import { cliExecutableName } from '../settings/cli-providers';
 import type { CliPathProbe } from '../settings/ports';
@@ -79,7 +80,7 @@ const summarize = (p: SummaryProvider) =>
   p.summarize(
     {
       transcript: 'Hello there',
-      recordedAt: { dateTime: '2026-11-03T10:00:00', offsetMinutes: 0 },
+      recordedAt: parseOffsetDate('2026-11-03T10:00:00.000+00:00'),
       outputLanguage: 'en',
     } as never,
     new CancelSource().signal,

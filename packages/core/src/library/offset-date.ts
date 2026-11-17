@@ -82,19 +82,16 @@ export function parseOffsetDate(
 }
 
 /**
- * How a date is written. `iso` is ISO-8601 with milliseconds and a numeric offset, e.g.
- * `2026-09-01T12:00:00.000-05:00`: what every stored file gets. `round-trip` keeps seven fraction
- * digits (`...00.0000000-05:00`) for the prompts that already carry that shape.
+ * Writes a date as ISO-8601 with milliseconds and a numeric offset, e.g. `2026-09-01T12:00:00.000-05:00`:
+ * what every stored file and every prompt gets. Longer fractions are read but never written.
  */
-export type OffsetDateStyle = 'iso' | 'round-trip';
-
-export function formatOffsetDate(date: OffsetDate, style: OffsetDateStyle = 'iso'): string {
+export function formatOffsetDate(date: OffsetDate): string {
   const local = new Date(date.ms + date.offsetMinutes * 60_000);
   const day = `${pad(local.getUTCFullYear(), 4)}-${pad(local.getUTCMonth() + 1)}-${pad(local.getUTCDate())}`;
   const time = `${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())}:${pad(local.getUTCSeconds())}`;
   const sign = date.offsetMinutes < 0 ? '-' : '+';
   const offset = `${sign}${pad(Math.trunc(Math.abs(date.offsetMinutes) / 60))}:${pad(Math.abs(date.offsetMinutes) % 60)}`;
-  const fraction = style === 'round-trip' ? date.fraction : date.fraction.slice(0, 3);
+  const fraction = date.fraction.slice(0, 3);
   return `${day}T${time}.${fraction}${offset}`;
 }
 

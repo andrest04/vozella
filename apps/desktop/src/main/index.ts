@@ -648,6 +648,7 @@ function main(): void {
         server: ipcServer,
         dialogs,
         logger: logger.child('projects'),
+        filterName: locale.t('Ui_ChatAttachFilter'),
       });
 
       // Audio capture: the recording module takes `audioController` to start and stop recordings.
@@ -811,6 +812,8 @@ function main(): void {
         settings: library.settings,
         resolver: summaryRuntime.resolver,
         recording: () => recording.liveAskContext,
+        projectContext: liveRepository(() => library.projectContext),
+        logger: logger.child('live-ask'),
         broadcast,
         formatFailure: (error) => summaries.controller.formatError(error),
         nowMs: () => Date.now(),

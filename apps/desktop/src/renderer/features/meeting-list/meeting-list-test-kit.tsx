@@ -1,7 +1,7 @@
 import type { ProjectListItemDto, WorkspaceActionDto } from '@vozella/contracts';
 import {
-  InMemoryFolderRepository,
   InMemoryMeetingRepository,
+  InMemoryProjectRepository,
   LibraryService,
   MeetingBusyRegistry,
   renameMeeting,
@@ -66,14 +66,12 @@ export const meetingRecord = (
  */
 export function installFakeApi(options: { startupError?: string | null } = {}) {
   const meetings = new InMemoryMeetingRepository();
-  // The service still takes a folder repository until the library purge removes it.
-  const folders = new InMemoryFolderRepository();
+  const projectRepository = new InMemoryProjectRepository();
   const projects: { list: ProjectListItemDto[] } = { list: [] };
   /** Refusals to hand out: the next moves fail with this reason. */
   const failures: { move: string | null } = { move: null };
   const busy = new MeetingBusyRegistry();
   const workspace = new Workspace();
-  let counter = 0;
   // A re-transcription under way blocks a rename of that meeting.
   const runner: { isRunning: boolean; meetingId: string | null } = {
     isRunning: false,
@@ -81,10 +79,8 @@ export function installFakeApi(options: { startupError?: string | null } = {}) {
   };
   const service = new LibraryService({
     meetings,
-    folders,
+    projects: projectRepository,
     busy,
-    clock: { now: () => new Date('2026-09-05T15:00:00.000Z') },
-    newId: () => `00000000-0000-4000-8000-${String((counter += 1)).padStart(12, '0')}`,
   });
   const listeners = new Map<string, Set<Listener>>();
   const calls: { name: string; input: unknown }[] = [];

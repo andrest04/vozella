@@ -391,6 +391,7 @@ export class RecordingService {
           ? typed(this.liveNotice)
           : null,
       meetingId: this.runs.currentMeetingId ?? take?.meetingId ?? null,
+      projectId: take?.projectId ?? null,
       title: take?.title ?? this.title,
       recordedAtMs: take?.recordedAtMs ?? null,
       highlightCount: take?.highlights.length ?? 0,

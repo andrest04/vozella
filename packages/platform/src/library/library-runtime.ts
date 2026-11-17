@@ -417,6 +417,7 @@ export class LibraryRuntime {
       logger: this.deps.logger,
       clock: this.deps.clock,
       newId: this.deps.newId,
+      ...(this.deps.discard ? { discard: this.deps.discard } : {}),
     });
     const chatThreads = createChatThreadStore({
       layout,

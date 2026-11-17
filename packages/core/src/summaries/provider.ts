@@ -71,7 +71,7 @@ export function summaryResultFromResponse(
 ): SummaryResult {
   const split = splitSummaryResponse(
     raw,
-    request ? { recordedAt: formatOffsetDate(request.recordedAt, 'round-trip') } : {},
+    request ? { recordedAt: formatOffsetDate(request.recordedAt) } : {},
   );
   return {
     summaryMarkdown: split.summaryMarkdown,

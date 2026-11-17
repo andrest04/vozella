@@ -30,6 +30,7 @@ function setup() {
     captureNotices: [],
     liveNotice: null,
     meetingId: null,
+    projectId: null,
     title: '',
     recordedAtMs: null,
     highlightCount: 0,

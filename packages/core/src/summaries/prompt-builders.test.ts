@@ -15,8 +15,8 @@ const at = (text: string) => {
   if (!parsed) throw new Error(text);
   return parsed;
 };
-const recordedAt = at('2026-11-02T14:00:00.0000000-05:00');
-const endedAt = at('2026-11-02T15:30:00.0000000-05:00');
+const recordedAt = at('2026-11-02T14:00:00.000-05:00');
+const endedAt = at('2026-11-02T15:30:00.000-05:00');
 
 const base = (over: Partial<Parameters<typeof buildSummaryPrompt>[0]> = {}) =>
   buildSummaryPrompt({
@@ -96,7 +96,7 @@ Rules:
 # Context
 
 <meeting_title>Weekly sync</meeting_title>
-<recorded_at>2026-11-02T14:00:00.0000000-05:00</recorded_at>
+<recorded_at>2026-11-02T14:00:00.000-05:00</recorded_at>
 <transcript>
 hello there
 </transcript>`;
@@ -263,17 +263,17 @@ describe('language mapping', () => {
 });
 
 describe('dates', () => {
-  it('writes recorded_at in round-trip form with seven digits and offset', () => {
+  it('writes recorded_at with milliseconds and offset', () => {
     const instant = offsetDateFromInstant(new Date(Date.UTC(2026, 10, 2, 19, 0, 0, 120)), -300);
     expect(base({ recordedAt: instant })).toContain(
-      '<recorded_at>2026-11-02T14:00:00.1200000-05:00</recorded_at>',
+      '<recorded_at>2026-11-02T14:00:00.120-05:00</recorded_at>',
     );
   });
 
   it('emits ended_at after recorded_at when set, with the never-say-not-recorded rule', () => {
     const text = base({ endedAt });
     expect(text).toContain(
-      '<recorded_at>2026-11-02T14:00:00.0000000-05:00</recorded_at>\n<ended_at>2026-11-02T15:30:00.0000000-05:00</ended_at>\n<transcript>',
+      '<recorded_at>2026-11-02T14:00:00.000-05:00</recorded_at>\n<ended_at>2026-11-02T15:30:00.000-05:00</ended_at>\n<transcript>',
     );
     expect(text).toContain('Never write that the end time was not recorded');
   });

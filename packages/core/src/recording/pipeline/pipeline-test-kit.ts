@@ -37,7 +37,7 @@ export function makeMeeting(patch: Partial<MeetingRecord> = {}): MeetingRecord {
   return {
     id: TEST_MEETING_ID,
     title: 'Standup',
-    recordedAt: '2026-09-01T12:00:00.0000000+00:00',
+    recordedAt: '2026-09-01T12:00:00.000+00:00',
     endedAt: null,
     audioFilePath: 'C:/lib/standup.wav',
     sourcePath: null,

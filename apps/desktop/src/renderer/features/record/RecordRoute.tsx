@@ -203,14 +203,17 @@ export function RecordRoute() {
   }, [state?.status, store.notice, active, setup]);
   const statusText = useStatusText(messages);
   const canvasCopy = useCanvasCopy(store.liveText);
+  // A take under way is saved where main says, which is not the picker's choice when the take
+  // began elsewhere (the tray, a shortcut).
+  const shownProjectId = active && state ? state.projectId : store.projectId;
   const destination = useMemo(() => {
     const noProject = t('Ui_ProjectNone');
     return (
       buildDestinations(directory.projects, noProject, locale).find(
-        (d) => d.projectId === store.projectId,
+        (d) => d.projectId === shownProjectId,
       )?.label ?? noProject
     );
-  }, [directory.projects, store.projectId, locale, t]);
+  }, [directory.projects, shownProjectId, locale, t]);
 
   // Start meeting in this project arrives as /record?project=<id>&start=1. The parameters are read
   // once and the address is replaced before anything async runs, so a refresh never starts again.

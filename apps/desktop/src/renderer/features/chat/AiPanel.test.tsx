@@ -258,15 +258,13 @@ describe('AiPanel scope chip (items 6 to 11)', () => {
   });
 
   it('shows the project name on its page, and Proyecto without a name in Spanish', async () => {
-    // The resolver of this branch still reads the project from the History tag; the lane that moves
-    // it to the Projects tag changes the tag here.
-    install({ currentShellTag: 'History', selectedProjectId: FOLDER });
+    install({ currentShellTag: 'Projects', selectedProjectId: FOLDER });
     mount();
     await waitFor(() => {
       expect(chip().textContent).toBe('Project: Calculo');
     });
     cleanup();
-    install({ currentShellTag: 'History', selectedProjectId: 'missing' });
+    install({ currentShellTag: 'Projects', selectedProjectId: 'missing' });
     mount('es');
     await waitFor(() => {
       expect(chip().textContent).toBe('Proyecto');

@@ -111,9 +111,7 @@ export function composeRecording(deps: ComposeRecordingDeps): RecordingService {
         () => library.libraryRoot,
       ),
       ownsMarkdown: async (meetingId, markdownPath) =>
-        (await library.meetings.locate(meetingId)).some((entry) =>
-          samePath(entry.path, markdownPath),
-        ),
+        samePath((await library.meetings.get(meetingId))?.sourcePath ?? '', markdownPath),
     },
     files: {
       remove: (file) => {

@@ -32,8 +32,7 @@ function withLiveQa(notes: string | null, block: string | null | undefined): str
   return notes.includes(text) ? notes : `${notes}\n\n${text}`;
 }
 
-const roundTrip = (ms: number): string =>
-  formatOffsetDate(offsetDateFromInstant(new Date(ms)), 'round-trip');
+const roundTrip = (ms: number): string => formatOffsetDate(offsetDateFromInstant(new Date(ms)));
 
 /** Keeps the stored text when it names the same instant, so its offset and fraction survive. */
 function dateText(stored: string | undefined, ms: number): string {

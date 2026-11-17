@@ -17,6 +17,8 @@ export interface ComposeProjectsDeps {
   readonly dialogs: WindowDialogs;
   /** Already scoped to the projects (`logger.child('projects')`). */
   readonly logger: Logger;
+  /** The picker's file type name, already translated. */
+  readonly filterName?: string;
 }
 
 /**
@@ -33,5 +35,12 @@ export function composeProjects(deps: ComposeProjectsDeps): void {
     dialogs,
     logger,
   });
-  registerProjectFileHandlers({ server, library, broadcast, dialogs, logger });
+  registerProjectFileHandlers({
+    server,
+    library,
+    broadcast,
+    dialogs,
+    logger,
+    ...(deps.filterName === undefined ? {} : { filterName: deps.filterName }),
+  });
 }
