@@ -3,6 +3,7 @@ import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { installEngine, launchApp, readyEnv, seedReadySettings, type LaunchedApp } from './launch';
 import { os, pixels, sleep } from './os/os';
+import { BACKGROUND, pillPixelsAt } from './pill-pixels';
 
 // The live copilot pill window on the fake native build, checked at the OS level the way the
 // window spike did: a magenta backdrop so transparency is visible, a "work" window that owns
@@ -302,13 +303,17 @@ test('transparent gutter shows the backdrop, the capsule is drawn, the corners a
   await sleep(300);
   const info = await mustPill();
   const b = info.bounds;
-  const points = await physical([
-    { x: b.x + 1, y: b.y + 1 }, // gutter, top left
-    { x: b.x + b.width - 2, y: b.y + b.height - 2 }, // gutter, bottom right
-    { x: b.x + GUTTER + 3, y: b.y + GUTTER + 3 }, // capsule box corner: outside the round end
-    grabPoint(b), // capsule surface beside the buttons
-  ]);
-  const [gutterA, gutterB, corner, inside] = pixels(points);
+  const [gutterA, gutterB, corner, inside] = await pillPixelsAt(
+    launched.app,
+    b,
+    [
+      { x: b.x + 1, y: b.y + 1 }, // gutter, top left
+      { x: b.x + b.width - 2, y: b.y + b.height - 2 }, // gutter, bottom right
+      { x: b.x + GUTTER + 3, y: b.y + GUTTER + 3 }, // capsule box corner: outside the round end
+      grabPoint(b), // capsule surface beside the buttons
+    ],
+    physical,
+  );
   await snapScreenshot('pill-right.png');
   expect(gutterA).toEqual([255, 0, 255]);
   expect(gutterB).toEqual([255, 0, 255]);
@@ -325,6 +330,9 @@ test('docked at the exact work-area position, in the OS own rectangle too', asyn
   // y: capsule at the middle of the free travel (round half to even, as the core does).
   const travel = wa.height - VERTICAL_LONG - 2 * MARGIN;
   expect(Math.abs(info.bounds.y - (wa.y + MARGIN + travel / 2 - GUTTER))).toBeLessThanOrEqual(1);
+  // The OS rectangle is the real window, which is parked at -20000 off-screen: only a visible run
+  // can compare it with the place the app asked for.
+  if (BACKGROUND) return;
   const native = os('rect', info.hwnd).split(',').map(Number);
   const [origin] = await physical([{ x: info.bounds.x, y: info.bounds.y }]);
   expect(Math.abs((native[0] ?? 0) - Math.round(origin?.x ?? 0))).toBeLessThanOrEqual(1);
@@ -368,6 +376,7 @@ test('opening the panel grows the window toward the center; closing restores it 
 });
 
 test('a real mouse drag moves the pill and snaps it to the nearest edge, all four edges', async () => {
+  test.skip(BACKGROUND, 'needs a real OS mouse drag, which does not exist off-screen');
   const sizeBefore = (await mustPill()).bounds;
   // Right to Left: drop near the left edge, middle height.
   await dragBy(-(wa.width - 260), 0);
@@ -410,6 +419,7 @@ test('a real mouse drag moves the pill and snaps it to the nearest edge, all fou
 });
 
 test('dragging with the panel open closes it and the capsule follows the cursor', async () => {
+  test.skip(BACKGROUND, 'needs a real OS mouse drag, which does not exist off-screen');
   test.skip(wa.height < 516, 'the work area is shorter than the panel');
   const page = await pillPage();
   await page.evaluate(() => window.vozella.invoke('pill.setExpanded', { expanded: true }));
@@ -432,6 +442,7 @@ test('dragging with the panel open closes it and the capsule follows the cursor'
 });
 
 test('the pill stays above a normal window that takes focus', async () => {
+  test.skip(BACKGROUND, 'the stacking is read from composed screen pixels, which are off-screen');
   const info = await mustPill();
   await setWork({
     x: info.bounds.x - 150,
@@ -468,6 +479,10 @@ test('pause and resume from the pill keep it up and do not hand off again', asyn
 });
 
 test('clicking the pill activates it so typing works', async () => {
+  test.skip(
+    BACKGROUND,
+    'needs a real OS mouse click and window focus, which do not exist off-screen',
+  );
   await focusWork();
   await sleep(300);
   const info = await mustPill();
@@ -478,6 +493,10 @@ test('clicking the pill activates it so typing works', async () => {
 });
 
 test('bringing the main window forward hides the pill; leaving shows it again without taking focus', async () => {
+  test.skip(
+    BACKGROUND,
+    'the hide and show follow real window focus, which off-screen windows never take',
+  );
   await launched.app.evaluate(({ BrowserWindow, screen }) => {
     const area = screen.getPrimaryDisplay().workArea;
     const mainWindow = BrowserWindow.getAllWindows().find(
@@ -514,8 +533,11 @@ test('stopping the take hides the pill and saves the dock', async () => {
   ) as Record<string, unknown>;
   const key = (name: string): unknown =>
     Object.entries(settings).find(([k]) => k.toLowerCase() === name.toLowerCase())?.[1];
-  expect(key('liveCopilotPillEdge')).toBe('Right');
-  expect(typeof key('liveCopilotPillAlong')).toBe('number');
+  // The dock is written when a drag drops the pill, and the drags are skipped off-screen.
+  if (!BACKGROUND) {
+    expect(key('liveCopilotPillEdge')).toBe('Right');
+    expect(typeof key('liveCopilotPillAlong')).toBe('number');
+  }
   // The provider selection written by the seed survives the dock write.
   expect(key('selectedSummaryProvider')).toBe('Local');
 });

@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { installEngine, launchApp, readyEnv, type LaunchedApp } from './launch';
-import { os, pixels, sleep } from './os/os';
+import { os, sleep } from './os/os';
+import { BACKGROUND, pillPixelsAt } from './pill-pixels';
 
 // The chat panel of the pill window on the fake native build: a fake take, the panel
 // growing toward the screen center, asks through the chips and the typed box against the fake
@@ -77,7 +78,7 @@ async function boxOf(selector: string): Promise<Rect> {
 }
 
 async function pixelsAt(points: { x: number; y: number }[]): Promise<number[][]> {
-  return pixels(await physical(points));
+  return pillPixelsAt(launched.app, await pillBounds(), points, physical);
 }
 
 async function waitSettled(check: (b: Rect) => boolean): Promise<void> {
@@ -376,6 +377,7 @@ async function minimizeApp(): Promise<void> {
 }
 
 test('dragging the capsule collapses the panel at once', async () => {
+  test.skip(BACKGROUND, 'needs a real OS mouse drag, which does not exist off-screen');
   const page = await pillPage();
   await expect(page.getByTestId('LiveCopilotPanel')).toBeVisible();
   const cap = await boxOf('#LiveCopilotCapsule');
@@ -392,6 +394,12 @@ test('dragging the capsule collapses the panel at once', async () => {
 
 test('the panel reopens with the last answer and its web badge', async () => {
   const page = await pillPage();
+  if (BACKGROUND) {
+    // The drag that collapses the panel is skipped off-screen: collapse it with its own button.
+    await page.locator('#BtnLiveCopilotChat').click();
+    await expect(page.getByTestId('LiveCopilotPanel')).toHaveCount(0, { timeout: 5_000 });
+    await waitSettled((r) => r.width < 100);
+  }
   await expand(page);
   await expect(page.getByTestId('MdLiveCopilotAnswer')).toContainText(ANSWER);
   await expect(page.getByTestId('BadgeLiveCopilotWeb')).toBeVisible();

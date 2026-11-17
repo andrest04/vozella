@@ -3,6 +3,7 @@ import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { installEngine, launchApp, readyEnv, seedReadySettings, type LaunchedApp } from './launch';
 import { os, pixels, sleep } from './os/os';
+import { BACKGROUND, capturePill, captureRgb, captureScale, pillPixelsAt } from './pill-pixels';
 
 // The capsule drawn in the pill window, checked on real composed screen pixels the way the window
 // spike did: a magenta backdrop makes transparency visible, so the rounded corners, the single
@@ -65,7 +66,7 @@ async function boxOf(selector: string): Promise<Rect> {
 }
 
 async function pixelsAt(points: { x: number; y: number }[]): Promise<number[][]> {
-  return pixels(await physical(points));
+  return pillPixelsAt(launched.app, await pillBounds(), points, physical);
 }
 
 async function waitSettled(check: (b: Rect) => boolean): Promise<void> {
@@ -228,10 +229,19 @@ test('pixels: transparent gutter, round corner, dark surface, one outline, signa
   expect(near(surface, SURFACE, 2)).toBe(true);
 
   // Exactly one outline ring across the left edge: backdrop, the hairline, then surface only.
-  const [origin] = await physical([{ x: cap.x, y: midY }]);
-  if (!origin) throw new Error('no origin');
-  const line = Array.from({ length: 12 }, (_, i) => ({ x: origin.x - 4 + i, y: origin.y }));
-  const row = pixels(line);
+  let row: number[][];
+  if (BACKGROUND) {
+    // Off-screen there is no screen to read: the same physical row comes from the pill's capture.
+    const capture = await capturePill(launched.app);
+    const pxPerDip = captureScale(capture, b);
+    const x0 = Math.round((cap.x - b.x) * pxPerDip);
+    const y0 = Math.round((midY - b.y) * pxPerDip);
+    row = Array.from({ length: 12 }, (_, i) => captureRgb(capture, { x: x0 - 4 + i, y: y0 }));
+  } else {
+    const [origin] = await physical([{ x: cap.x, y: midY }]);
+    if (!origin) throw new Error('no origin');
+    row = pixels(Array.from({ length: 12 }, (_, i) => ({ x: origin.x - 4 + i, y: origin.y })));
+  }
   const ring = row.map((p) => near(p, HAIRLINE, 4));
   const firstRing = ring.indexOf(true);
   expect(firstRing).toBeGreaterThan(0);
@@ -325,6 +335,7 @@ test('expanded: the capsule radius is 28, a collapsed one is a full round', asyn
 });
 
 test('docked on top the capsule lays out horizontally and keeps one outline', async () => {
+  test.skip(BACKGROUND, 'needs a real OS mouse drag and screen pixels, neither exists off-screen');
   const b = await pillBounds();
   const page = await pillPage();
   // Grab the surface above the buttons' column and drop it near the top edge.
