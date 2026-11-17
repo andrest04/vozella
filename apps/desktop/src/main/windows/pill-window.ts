@@ -34,7 +34,7 @@ export interface PillWindowPort {
   onWillMove(listener: (event: PillMoveEvent) => void): void;
   /** The move loop ended. */
   onMoved(listener: () => void): void;
-  /** Any position or size change, whoever made it (the C# AppWindow.Changed). */
+  /** Any position or size change, whoever made it (a move or a resize). */
   onBoundsChanged(listener: () => void): void;
   onClosed(listener: () => void): void;
 }
@@ -60,9 +60,8 @@ export interface PillWindowOptions {
 }
 
 /**
- * The options the window spike proved at 125% scale (docs/port/specs/live-copilot.md section 2.2):
- * frameless and transparent replaces the WinUI frame stripping, the GDI region and the DWM
- * attributes. `focusable` stays true so a click activates the pill and the ask box can type;
+ * The options the window spike proved at 125% scale: a frameless, transparent window needs no
+ * native frame, region or DWM tweaks. `focusable` stays true so a click activates the pill and the ask box can type;
  * `showInactive()` is what keeps focus where it was when the pill appears.
  */
 export function pillWindowOptions(preloadPath: string, title: string): PillWindowOptions {

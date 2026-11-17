@@ -19,14 +19,14 @@ function build(automated = false) {
 }
 
 describe('StartupSequence', () => {
-  it('keeps the spec order: error hooks first, the migration notice last', () => {
+  it('keeps the startup order: error hooks first, the migration notice last', () => {
     expect(STARTUP_ORDER[0]).toBe('error-hooks');
     expect(STARTUP_ORDER.at(-1)).toBe('startup-notice');
     expect(STARTUP_ORDER.indexOf('watchers')).toBeGreaterThan(STARTUP_ORDER.indexOf('events'));
     expect(STARTUP_ORDER.indexOf('watchers')).toBeGreaterThan(STARTUP_ORDER.indexOf('window'));
   });
 
-  it('index.ts runs the named steps in the order of STARTUP_ORDER (spec 8 item 2)', () => {
+  it('index.ts runs the named steps in the order of STARTUP_ORDER', () => {
     const source = readFileSync(path.resolve(__dirname, '../index.ts'), 'utf8');
     const used = [...source.matchAll(/startup\.run\(\s*'([a-z-]+)'/g)].map((m) => m[1]);
     // The window is created outside a named step; the notice runs last, after the window shows.
@@ -50,7 +50,7 @@ describe('StartupSequence', () => {
     expect(t.showError).not.toHaveBeenCalled();
   });
 
-  it('logs a failing step with its name and shows one clear message (bug 21)', async () => {
+  it('logs a failing step with its name and shows one clear message', async () => {
     const t = build();
     const result = await t.sequence.run('window', () => {
       throw new Error('no gpu');

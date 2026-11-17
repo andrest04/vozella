@@ -17,7 +17,7 @@ describe('resolveIconPath', () => {
     ).toBe(path.join(app, 'build', 'tray.ico'));
   });
 
-  it('is absolute even from relative inputs, so the working directory never matters (bug 14)', () => {
+  it('is absolute even from relative inputs, so the working directory never matters', () => {
     const resolved = resolveIconPath(
       { isPackaged: false, resourcesPath: 'resources', appPath: '.' },
       'icon.ico',

@@ -3,7 +3,7 @@ import type { Logger } from '@vozella/core';
 /** The one dialog the shell shows at a time while the app closes (165). */
 export type CloseDialog = 'confirm-stop' | 'saving' | 'save-failed' | 'done';
 
-/** The recording state the guard reads (spec 2.16). */
+/** The recording state the guard reads. */
 export interface CloseGuardService {
   readonly requiresCloseConfirmation: boolean;
   readonly hasPendingSaves: boolean;

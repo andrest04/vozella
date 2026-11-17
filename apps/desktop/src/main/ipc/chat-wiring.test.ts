@@ -73,7 +73,7 @@ function wire() {
   return { call, events };
 }
 
-describe('chat scope mismatch through the real service (B24)', () => {
+describe('chat scope mismatch through the real service', () => {
   it('shows the banner after a scope change, broadcasts it, and clears it on New chat', async () => {
     expect(Object.keys(requestChannels)).toContain('chat.setScope');
     const { call, events } = wire();

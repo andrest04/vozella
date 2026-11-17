@@ -66,7 +66,7 @@ export interface ComposeTranscriptionDeps {
   /** Already scoped to the transcription (`logger.child('transcription')`). */
   readonly logger: Logger;
   readonly translate: TranslateFn;
-  /** A zero-byte or unreadable recording is no audio (B20). */
+  /** A zero-byte or unreadable recording is no audio. */
   readonly fileExists: (file: string) => boolean;
   readonly queue: PatchQueue;
   /** Re-transcription also regenerates the summary (the recording module reuses the same hook). */
@@ -153,7 +153,7 @@ export function composeTranscription(deps: ComposeTranscriptionDeps): Transcript
       deps.audio.onPush((event) => {
         if (event.type === 'recording-frame') listener(event.pcm, event.levels);
       }),
-    // Same rule as the session view: a zero-byte or unreadable recording is no audio (B20).
+    // Same rule as the session view: a zero-byte or unreadable recording is no audio.
     fileExists: deps.fileExists,
     queue: deps.queue,
     isCaptureActive: () => workspace.state.isCaptureActive,
@@ -188,7 +188,7 @@ export function composeTranscription(deps: ComposeTranscriptionDeps): Transcript
     meetings: liveRepository(() => library.meetings),
     workspace,
     runnerState: () => transcriptionController.retranscription,
-    // A zero-byte or unreadable recording counts as no audio (B20).
+    // A zero-byte or unreadable recording counts as no audio.
     fileExists: deps.fileExists,
     // Explorer selects the file; Finder reveals it.
     reveal: { reveal: deps.reveal },

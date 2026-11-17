@@ -21,7 +21,7 @@ describe('activateMainWindow', () => {
     expect(calls).toEqual(['focus']);
   });
 
-  it('restores a minimized window before focusing it (bug 9)', () => {
+  it('restores a minimized window before focusing it', () => {
     const { window, calls } = fake({ minimized: true });
     activateMainWindow(window);
     expect(calls).toEqual(['restore', 'focus']);

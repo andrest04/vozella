@@ -8,12 +8,12 @@ import {
 import type { PillDockStorePort } from './pill-controller';
 
 /**
- * The dock position in the settings file (spec 4.1). Reads throw so the controller can retry at
+ * The dock position in the settings file. Reads throw so the controller can retry at
  * the next show; writes never throw.
  *
- * Bug 12: `update` is the settings store's own locked read-modify-write and the patch names only
+ * `update` is the settings store's own locked read-modify-write and the patch names only
  * the two dock fields, so a concurrent settings change is not overwritten. The monitor is not
- * persisted (bug 6): after a restart the pill docks on the primary display first, as WinUI did.
+ * persisted: after a restart the pill docks on the primary display first.
  */
 export class PillDockStore implements PillDockStorePort {
   constructor(

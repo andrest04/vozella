@@ -61,7 +61,7 @@ export interface PickedFile {
   readonly recordedAtMs: number;
 }
 
-/** How the recording module places the WAV: its folder's directory and the real id lookup (B-9). */
+/** How the recording module places the WAV: its folder's directory and the real id lookup. */
 export interface StartOptions {
   readonly allocate?: (title: string, atMs: number) => string | Promise<string>;
 }
@@ -70,7 +70,7 @@ export type Phase = 'idle' | 'starting' | 'recording' | 'paused' | 'stopping' | 
 
 /**
  * One take at a time: a recording from Record to Stop, or one import (the capture half of the
- * recording module's spec 2.2 and 2.12). The page never names a file; this class allocates the WAV
+ * recording module). The page never names a file; this class allocates the WAV
  * in the Inbox, keeps the time spent paused for the live transcript clock, and turns failures into
  * the values the page shows. The meeting record and the pipeline that follow belong to the
  * recording module, which takes over `stop` and `importPicked`.
@@ -139,20 +139,20 @@ export class RecordingTakes {
       this.pausedMs = 0;
       this.pausedAt = null;
       this.liveDraft = null;
-      // C# order: the model loads first so no frame is missed and the live clock starts with the audio.
+      // Order: the model loads first so no frame is missed and the live clock starts with the audio.
       liveAttempted = true;
       await this.startLive(requestedAtMs);
       await this.deps.controller.startRecording(file, microphone);
-      // B-4: the take starts when the audio does, not when the model began to load.
+      // The take starts when the audio does, not when the model began to load.
       const recordedAtMs = this.deps.nowMs();
       this.recordedAtMs = recordedAtMs;
       this.phase = 'recording';
       return { started: true, recordedAtMs, path: file };
     } catch (error) {
-      // B-29: a live session that failed midway is stopped, so the next take starts clean.
+      // A live session that failed midway is stopped, so the next take starts clean.
       if (liveAttempted) await this.stopLive();
       this.liveDraft = null;
-      // B-2: the worker opens the file before the devices start; a failed start leaves no WAV.
+      // The worker opens the file before the devices start; a failed start leaves no WAV.
       if (file !== null) removeQuietly(file);
       this.reset();
       return { started: false, code: codeOf(error), message: messageOf(error) };
@@ -195,7 +195,7 @@ export class RecordingTakes {
     return { ...outcome, pausedSeconds, error };
   }
 
-  /** Spec 2.3: if the live pass cannot start, the take fails before any audio is captured. */
+  /** If the live pass cannot start, the take fails before any audio is captured. */
   private async startLive(recordedAtMs: number): Promise<void> {
     await this.deps.live?.start(recordedAtMs);
   }
@@ -257,7 +257,7 @@ export class RecordingTakes {
     this.pausedAt = null;
   }
 
-  /** Spec 3.3 `AllocateFileStem`: the next free number when the Markdown or the WAV exists. */
+  /** The next free number when the Markdown or the WAV exists. */
   private allocate(title: string, atMs: number): string {
     const directory = this.deps.inboxDirectory();
     fs.mkdirSync(directory, { recursive: true });

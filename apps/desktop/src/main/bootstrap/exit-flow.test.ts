@@ -13,7 +13,7 @@ function build(mayExit: () => Promise<boolean>) {
   return { flow, quit, closeWindow, log };
 }
 
-describe('ExitFlow (97, 99, 100)', () => {
+describe('ExitFlow', () => {
   it('holds the quit, asks the gate and quits once approved', async () => {
     const t = build(() => Promise.resolve(true));
     const e = event();
@@ -58,7 +58,7 @@ describe('ExitFlow (97, 99, 100)', () => {
     expect(mayExit).toHaveBeenCalledOnce();
   });
 
-  it('an exception in the gate is logged as close failed and the app stays open (97)', async () => {
+  it('an exception in the gate is logged as close failed and the app stays open', async () => {
     const t = build(() => Promise.reject(new Error('boom')));
     t.flow.windowClose(event());
     await vi.waitFor(() => {
@@ -68,7 +68,7 @@ describe('ExitFlow (97, 99, 100)', () => {
     expect(t.flow.approved).toBe(false);
   });
 
-  it('a restart that the gate approved quits without a second question (99)', () => {
+  it('a restart that the gate approved quits without a second question', () => {
     const mayExit = vi.fn(() => Promise.resolve(true));
     const t = build(mayExit);
     t.flow.approve();

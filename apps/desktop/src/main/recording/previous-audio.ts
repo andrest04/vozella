@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import { micActivityPathFor, type PreviousAudioKeeper } from '@vozella/core';
 
 /**
- * Renames the audio a new take replaces to `<stem> (previous).wav` beside it (B-3). Its
+ * Renames the audio a new take replaces to `<stem> (previous).wav` beside it. Its
  * microphone activity sidecar goes along, so the kept take keeps its `[ You ]` labels and the
  * new take never reads the old activity.
  */

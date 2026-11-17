@@ -21,7 +21,7 @@ export function createRecordingEntryPoints(
         {
           title: options.title ?? '',
           projectId: options.projectId ?? workspace.state.selectedProjectId,
-          // The page never loaded the sources: main restores the remembered ones (B-23).
+          // The page never loaded the sources: main restores the remembered ones.
           microphone: null,
           appName: null,
         },

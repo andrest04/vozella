@@ -33,7 +33,7 @@ const message = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
 /**
- * The ASR utilityProcess (spec 3.5, gaps section 2). It owns every native handle: a recognizer
+ * The ASR utilityProcess. It owns every native handle: a recognizer
  * owns its streams, a stream is closed before its recognizer is destroyed, each dispose runs
  * once, and a library is loaded once per folder and never released.
  */

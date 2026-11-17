@@ -6,15 +6,15 @@ export interface MainWindowOptionsInput {
   readonly theme: ResolvedTheme;
   /** Where the window opens; the defaults when nothing was saved. */
   readonly placement: WindowPlacement;
-  /** Absolute path of the window icon (bug 14). */
+  /** Absolute path of the window icon. */
   readonly iconPath: string;
   readonly preloadPath: string;
 }
 
 /**
  * The constructor options of the main window. Sizes are Electron device independent pixels, so
- * the minimum scales with the monitor the window is on, not the one it was created on (bug 13,
- * items 16 and 17). The background is solid by design (stack.md, item 15): no Mica.
+ * the minimum scales with the monitor the window is on, not the one it was created on.
+ * The background is solid by design: no Mica.
  */
 export function mainWindowOptions(input: MainWindowOptionsInput): BrowserWindowConstructorOptions {
   const { bounds } = input.placement;

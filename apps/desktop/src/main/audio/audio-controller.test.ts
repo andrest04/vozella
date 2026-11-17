@@ -134,7 +134,7 @@ describe('microphones', () => {
     expect(gone.selected).toEqual({ kind: 'SystemDefault', deviceId: null });
   });
 
-  it('S12: an audio service failure gives only None and System default', async () => {
+  it('an audio service failure gives only None and System default', async () => {
     const r = rig();
     r.host.failMics = true;
     const { options } = await r.controller.loadMicrophones(null);
@@ -229,7 +229,7 @@ describe('source polling', () => {
     expect(update).not.toHaveBeenCalled();
   });
 
-  it('a second start while polling is a no-op (item 36)', async () => {
+  it('a second start while polling is a no-op', async () => {
     const r = rig();
     await r.controller.startSources();
     const before = r.host.methods().length;
@@ -237,7 +237,7 @@ describe('source polling', () => {
     expect(r.host.methods().length).toBe(before);
   });
 
-  it('a second start while the first loads shares it (item 36)', async () => {
+  it('a second start while the first loads shares it', async () => {
     const r = rig();
     const first = r.controller.startSources();
     const second = r.controller.startSources();
@@ -245,7 +245,7 @@ describe('source polling', () => {
     expect(r.host.methods().filter((m) => m === 'appsRefresh')).toHaveLength(1);
   });
 
-  it('a stop while the first refresh is in flight drops its result (item 36)', async () => {
+  it('a stop while the first refresh is in flight drops its result', async () => {
     const r = rig();
     const start = r.controller.startSources();
     r.controller.stopSources();
@@ -343,7 +343,7 @@ describe('pushed events', () => {
     ]);
   });
 
-  it('57: keeps the notices of the running take until it stops, and starts each take clean', async () => {
+  it('keeps the notices of the running take until it stops, and starts each take clean', async () => {
     const r = rig();
     await r.controller.startRecording('a.wav', { kind: 'SystemDefault', deviceId: null });
     r.host.push({ type: 'source-lost', source: 'Output', remaining: 1, message: 'gone' });
@@ -385,7 +385,7 @@ describe('import and preview', () => {
   });
 });
 
-describe('preview ownership (B-32)', () => {
+describe('preview ownership', () => {
   const previewCalls = (r: ReturnType<typeof rig>, method: string) =>
     r.host.calls.filter((c) => c.method === method).length;
 

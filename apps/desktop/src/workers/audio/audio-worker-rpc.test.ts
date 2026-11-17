@@ -85,7 +85,7 @@ describe('audio worker rpc', () => {
     expect(level?.type === 'recording-level' && level.level).toBeGreaterThan(0);
   }, 10_000);
 
-  it('stops a running recording on shutdown and finalizes the file (item 47)', async () => {
+  it('stops a running recording on shutdown and finalizes the file', async () => {
     const { rpc, handle } = setup();
     const target = path.join(dir, 'shutdown.wav');
     await rpc({
@@ -107,7 +107,7 @@ describe('audio worker rpc', () => {
     await expect(handle({ type: 'shutdown' })).resolves.toBeUndefined();
   }, 10_000);
 
-  it('answers a refused request with a code the page can map (C7)', async () => {
+  it('answers a refused request with a code the page can map', async () => {
     const base = createNativePorts({ fake: true });
     const { rpc } = setup({ ...base, osBuild: new FakeOsBuild(18_363) });
     const result = await rpc({
@@ -124,7 +124,7 @@ describe('audio worker rpc', () => {
     expect(fs.existsSync(path.join(dir, 'rec.wav'))).toBe(false);
   });
 
-  it('answers a failed device start as a result and leaves no file (C1)', async () => {
+  it('answers a failed device start as a result and leaves no file', async () => {
     const base = createNativePorts({ fake: true });
     const { rpc } = setup({ ...base, audio: new FakeAudioCapture({ failWith: 'no device' }) });
     const result = await rpc({
@@ -249,7 +249,7 @@ describe('audio worker rpc', () => {
 });
 
 describe('own process exclusion', () => {
-  it('165: the main pid given to the worker hides its own audio from the app list', async () => {
+  it('the main pid given to the worker hides its own audio from the app list', async () => {
     const ports = createNativePorts({ fake: true });
     seedFakeAudioApps(ports, [
       { processId: 10, exePath: 'C:\\Apps\\vozella.exe', name: 'Vozella', peak: 0.5 },
@@ -263,7 +263,7 @@ describe('own process exclusion', () => {
     ).toEqual([20]);
   });
 
-  it('165: a missing or invalid VOZELLA_MAIN_PID fails loudly instead of turning the exclusion off', () => {
+  it('a missing or invalid VOZELLA_MAIN_PID fails loudly instead of turning the exclusion off', () => {
     expect(parseMainProcessId('4242')).toBe(4242);
     for (const bad of [undefined, '', 'abc', '0', '-3', '1.5']) {
       expect(() => parseMainProcessId(bad)).toThrow('VOZELLA_MAIN_PID');

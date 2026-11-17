@@ -31,7 +31,7 @@ const catalogs = { en: { ...en, ...uiEn }, es: { ...es, ...uiEs } } as Record<
 const placeholderIndexes = (text: string): string[] =>
   [...text.matchAll(/\{(\d+)/g)].map((m) => m[1] ?? '').sort();
 
-describe('the en/es string catalogs (item 105 to 113)', () => {
+describe('the en/es string catalogs', () => {
   const english = en as Record<string, string>;
   const spanish = es as Record<string, string>;
 
@@ -68,7 +68,7 @@ describe('the en/es string catalogs (item 105 to 113)', () => {
   });
 });
 
-describe('format specifiers (item 109, 110)', () => {
+describe('format specifiers', () => {
   const when = new Date(2026, 10, 3, 15, 4);
 
   it('Model_SpeedQuality renders the size per locale', () => {
@@ -95,7 +95,7 @@ describe('format specifiers (item 109, 110)', () => {
   });
 });
 
-describe('language picker labels are endonyms (item 13)', () => {
+describe('language picker labels are endonyms', () => {
   it('read English and Español in both UI languages', () => {
     for (const catalog of [en, es] as Record<string, string>[]) {
       expect(UI_LANGUAGE_OPTIONS.map((o) => catalog[o.labelKey])).toEqual(['English', 'Español']);
@@ -103,7 +103,7 @@ describe('language picker labels are endonyms (item 13)', () => {
   });
 });
 
-describe('keys the settings domain points at (item 116, 118)', () => {
+describe('keys the settings domain points at', () => {
   const keys = [
     ...UI_LANGUAGE_OPTIONS.map((o) => o.labelKey),
     ...TRANSCRIPTION_LANGUAGES.map((l) => l.labelKey),
@@ -133,7 +133,7 @@ describe('keys the settings domain points at (item 116, 118)', () => {
   });
 });
 
-describe('B9: catalogs hold keys, so a language change relabels them', () => {
+describe('catalogs hold keys, so a language change relabels them', () => {
   it('every language name differs between the locales for the same key', () => {
     const t = (locale: 'en' | 'es') => createLookup(catalogs, locale);
     const differing = [...TRANSCRIPTION_LANGUAGES, ...SUMMARY_LANGUAGES].filter(
@@ -153,7 +153,7 @@ describe('B9: catalogs hold keys, so a language change relabels them', () => {
   });
 });
 
-describe('B16: accessible names are localized', () => {
+describe('accessible names are localized', () => {
   it('the three progress names exist in English and Spanish and differ', () => {
     for (const key of [
       SETTINGS_MESSAGE_KEYS.micLevelName,
@@ -167,7 +167,7 @@ describe('B16: accessible names are localized', () => {
   });
 });
 
-describe('references in the code (item 118, B21)', () => {
+describe('references in the code', () => {
   function sourceFiles(dir: string): string[] {
     return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
       const full = path.join(dir, entry.name);

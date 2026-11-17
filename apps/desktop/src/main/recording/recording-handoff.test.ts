@@ -16,7 +16,7 @@ function setup(destroyed = false) {
   return { handoff, calls, events };
 }
 
-describe('RecordingHandoff (items 76, 77, 78)', () => {
+describe('RecordingHandoff', () => {
   it('on the false to true change: dismisses the popup, minimizes, and shows the hint', () => {
     const { handoff, calls, events } = setup();
     handoff.update(true);
@@ -26,7 +26,7 @@ describe('RecordingHandoff (items 76, 77, 78)', () => {
     ]);
   });
 
-  it('treats the main window as inactive right after minimizing (item 78)', () => {
+  it('treats the main window as inactive right after minimizing', () => {
     const { handoff } = setup();
     expect(handoff.mainWindowActive).toBe(true);
     handoff.update(true);
@@ -95,7 +95,7 @@ describe('RecordingHandoff (items 76, 77, 78)', () => {
     expect(events).toEqual([]);
   });
 
-  it('does not show the pill while idle, whatever the focus (item 79)', () => {
+  it('does not show the pill while idle, whatever the focus', () => {
     const { handoff, events } = setup();
     handoff.setMainWindowActive(false);
     expect(events[0]?.showPill).toBe(false);
@@ -114,7 +114,7 @@ describe('RecordingHandoff seam', () => {
   });
 });
 
-describe('RecordingHandoff secondary windows (item 89)', () => {
+describe('RecordingHandoff secondary windows', () => {
   it('closes every registered window when asked, once', () => {
     const { handoff } = setup();
     const close = vi.fn();

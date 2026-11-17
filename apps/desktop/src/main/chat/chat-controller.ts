@@ -65,7 +65,7 @@ export interface ChatControllerDeps {
   readonly translate?: TranslateFn;
   /**
    * Live scope (T2): the rolling digest and the session context of the take, read when a send
-   * starts, next to the renderer's transcript snapshot (B5). Unset sends the transcript alone.
+   * starts, next to the renderer's transcript snapshot. Unset sends the transcript alone.
    */
   readonly liveContext?: () => {
     readonly digest: string | null;
@@ -89,7 +89,7 @@ export type ChatThreadsOpenOutputDto =
 
 const NO_ENGINE_CHOICES: ChatEngineChoicesDto = { defaultEngine: null, engines: [] };
 
-/** S2: only http and https leave the app. Anything else, or a string that is not a URL, is refused. */
+/** Only http and https leave the app. Anything else, or a string that is not a URL, is refused. */
 export function allowedExternalUrl(raw: string): string | null {
   let url: URL;
   try {
@@ -206,7 +206,7 @@ export class ChatController {
     }
   }
 
-  /** B5: the digest and session context are read once, here, as the send starts. */
+  /** The digest and session context are read once, here, as the send starts. */
   private liveSnapshot(input: {
     readonly scope: ChatScopeDto;
     readonly liveTranscript: string | null;

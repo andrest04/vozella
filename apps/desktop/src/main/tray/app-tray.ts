@@ -24,7 +24,7 @@ export interface AppTrayDeps {
 }
 
 /**
- * The tray icon. The window still closes the app (items 11 and 170), so the tray lives and dies
+ * The tray icon. The window still closes the app, so the tray lives and dies
  * with the window; its use is to bring the window back after the recording start minimized it.
  */
 export class AppTray {

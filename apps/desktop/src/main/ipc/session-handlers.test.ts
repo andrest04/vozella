@@ -102,7 +102,7 @@ describe('session.getView', () => {
     expect((r.value?.record as MeetingRecord).id).toBe(ID_A);
   });
 
-  it('treats a missing or zero-byte audio file as no audio (B20)', async () => {
+  it('treats a missing or zero-byte audio file as no audio', async () => {
     const t = setup(meeting({ transcript: ' ', audioFilePath: 'C:/a.wav' }));
     const r = await t.call('session.getView', { id: ID_A });
     expect(r.value).toMatchObject({ hasTranscript: false, hasAudio: false });
@@ -117,7 +117,7 @@ describe('session.getView', () => {
 });
 
 describe('session.rename', () => {
-  it('saves the trimmed title and raises meetingChanged (B11)', async () => {
+  it('saves the trimmed title and raises meetingChanged', async () => {
     const t = setup(meeting({ title: 'Old' }));
     const r = await t.call('session.rename', { id: ID_A, title: '  New  ' });
     expect(r.value).toEqual({ status: 'renamed' });
@@ -125,7 +125,7 @@ describe('session.rename', () => {
     expect(t.changed).toEqual([ID_A]);
   });
 
-  it('is blocked while a run targets that meeting (B4), not for another one', async () => {
+  it('is blocked while a run targets that meeting, not for another one', async () => {
     const running = { isRunning: true, meetingId: ID_A };
     const blocked = setup(meeting(), { running });
     expect((await blocked.call('session.rename', { id: ID_A, title: 'X' })).value).toEqual({
@@ -160,7 +160,7 @@ describe('session.revealFile', () => {
     expect(t.revealed).toEqual(['C:/m/a.md']);
   });
 
-  it('returns revealed false for a missing meeting, path or file (B13)', async () => {
+  it('returns revealed false for a missing meeting, path or file', async () => {
     for (const t of [
       setup(null),
       setup(meeting({ sourcePath: null })),

@@ -31,7 +31,7 @@ export interface StreamConfigDto {
   readonly diarization: boolean;
 }
 
-/** The C ABI of NeMo-Speech.cpp v0.3.0 as the worker uses it (spec 3.5, gaps section 2). */
+/** The C ABI of NeMo-Speech.cpp v0.3.0 as the worker uses it. */
 export interface NemoLibrary {
   readonly version: string;
   createRecognizer(config: RecognizerConfigDto): NativeHandle;
@@ -132,7 +132,7 @@ function typesOf(koffi: Koffi): Types {
   return types;
 }
 
-/** Sizes of the structs on the running ABI, for the size tests (spec item 101). */
+/** Sizes of the structs on the running ABI, for the size tests. */
 export function structSizes(koffi: Koffi): Record<string, number> {
   const t = typesOf(koffi);
   return {
@@ -157,7 +157,7 @@ export function prepareDllDirectory(koffi: Koffi, binDir: string): void {
 
 /**
  * Loads the library from `binDir` and binds the functions the app uses. The library is never
- * unloaded: freeing it while worker threads of the engine run aborts the process (spec 3.5).
+ * unloaded: freeing it while worker threads of the engine run aborts the process.
  * `stream_finish` is bound nowhere on purpose.
  */
 export function loadNemoLibrary(koffi: Koffi, binDir: string): NemoLibrary {
@@ -218,7 +218,7 @@ export function loadNemoLibrary(koffi: Koffi, binDir: string): NemoLibrary {
     }
   };
 
-  /** Everything is copied before the handle is released (gaps section 2). */
+  /** Everything is copied before the handle is released. */
   function readResult(result: NativeHandle): AsrResultDto {
     try {
       const count = Number(fn.resultWordCount(result, 0));
@@ -260,7 +260,7 @@ export function loadNemoLibrary(koffi: Koffi, binDir: string): NemoLibrary {
         },
         decoder: null,
         vad: null,
-        // Energy based endpointing, 800 ms (spec 3.5): without it no final ever arrives.
+        // Energy based endpointing, 800 ms: without it no final ever arrives.
         endpointing: {
           size: sizeOf(t.endpointing),
           enable: true,

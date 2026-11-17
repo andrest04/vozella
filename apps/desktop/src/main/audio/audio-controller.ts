@@ -40,7 +40,7 @@ export interface Scheduler {
   every(ms: number, task: () => void): () => void;
 }
 
-/** Who started the idle microphone preview. Only the owner (or a take) can stop it (B-32). */
+/** Who started the idle microphone preview. Only the owner (or a take) can stop it. */
 export type PreviewOwner = 'record' | 'settings';
 
 /** A mixed recording frame as the transcription module receives it. */
@@ -57,7 +57,6 @@ export interface AudioControllerDeps {
   readonly scheduler: Scheduler;
 }
 
-/** Spec 3.1.2 */
 export const POLL_TICK_MS = 150;
 export const FULL_REFRESH_EVERY_TICKS = 10;
 
@@ -128,7 +127,7 @@ export class AudioController {
 
   /**
    * The idle level meter is one singleton. The page that started it owns it, so a Settings stop
-   * that arrives late cannot end a preview the Record page started a moment before (B-32), and a
+   * that arrives late cannot end a preview the Record page started a moment before, and a
    * Settings start never takes the meter from Record.
    */
   startPreview(deviceId: string | null, owner: PreviewOwner = 'settings'): void {

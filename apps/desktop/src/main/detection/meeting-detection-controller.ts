@@ -40,16 +40,16 @@ export interface MeetingDetectionDeps {
   readonly scheduler: Scheduler;
   /** One shot timer; returns its cancel function. */
   readonly setTimeout: (callback: () => void, ms: number) => () => void;
-  /** Tells every window the popup setting changed (so an open Settings page refreshes, S9). */
+  /** Tells every window the popup setting changed (so an open Settings page refreshes). */
   readonly broadcastPopupSetting: (enabled: boolean) => void;
-  /** Tells every window the in-app call bar has nothing left to offer (bug 5, item 38). */
+  /** Tells every window the in-app call bar has nothing left to offer. */
   readonly broadcastCallPromptClosed: (reason: 'callEnded' | 'recordingStarted') => void;
   readonly logger: Logger;
 }
 
 /**
  * Main side of meeting call detection: runs the call watcher, shows and hides the floating
- * popup, and answers its three buttons (items 121 to 124).
+ * popup, and answers its three buttons.
  */
 export class MeetingDetectionController {
   readonly watcher: CallWatcher;

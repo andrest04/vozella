@@ -494,7 +494,7 @@ describe('summaries pipeline hook', () => {
     expect(ok(await call('summaries.cancel', { meetingId: ID }))).toEqual({ cancelled: false });
   });
 
-  it('113: an unsatisfied provider gate skips the stage so the run ends with the transcript only', async () => {
+  it('an unsatisfied provider gate skips the stage so the run ends with the transcript only', async () => {
     const { controller } = setup({
       gate: { status: 'needs-setup', kind: 'Local', reason: 'model-missing' },
     });

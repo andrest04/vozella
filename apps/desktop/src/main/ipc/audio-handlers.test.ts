@@ -161,7 +161,7 @@ describe('audio handlers', () => {
     expect(takes.rememberPick).toHaveBeenCalledWith(null);
   });
 
-  it('starts no preview while a take runs (item 92)', async () => {
+  it('starts no preview while a take runs', async () => {
     const { call, takes, controller } = setup();
     Object.assign(takes, { busy: true });
     expect(await call('audio.preview.start', { deviceId: null })).toMatchObject({ ok: true });

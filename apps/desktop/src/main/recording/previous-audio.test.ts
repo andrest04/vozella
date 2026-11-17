@@ -12,7 +12,7 @@ afterEach(() => {
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
-describe('previousAudioKeeper (B-3)', () => {
+describe('previousAudioKeeper', () => {
   it('renames the replaced take beside it, with its microphone activity', async () => {
     const wav = path.join(dir, 'take.wav');
     fs.writeFileSync(wav, 'RIFF');

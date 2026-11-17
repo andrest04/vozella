@@ -58,7 +58,7 @@ describe('struct layout on the running ABI', () => {
   const win = process.platform === 'win32';
   const real = () => createRequire(import.meta.url)('koffi') as Koffi;
 
-  it.skipIf(!win)('matches the v0.3.0 header sizes (spec item 101)', () => {
+  it.skipIf(!win)('matches the v0.3.0 header sizes', () => {
     expect(structSizes(real())).toEqual({
       backend: 16,
       model: 24,

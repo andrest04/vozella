@@ -123,7 +123,7 @@ export class MeetingPromptWindow {
     return win;
   }
 
-  /** S7 fix: the display of the main window, not the one the popup last sat on. */
+  /** The display of the main window, not the one the popup last sat on. */
   private place(): Rect {
     const main = this.deps.getMainWindowBounds();
     const display = main ? this.deps.getDisplayMatching(main) : this.deps.getPrimaryDisplay();

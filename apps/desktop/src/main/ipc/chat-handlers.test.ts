@@ -370,7 +370,7 @@ describe('chat handlers', () => {
     expect(service.sendCalls[1]?.live).toBeNull();
   });
 
-  it('passes the scope and the live transcript snapshot to the service as sent (item 21)', async () => {
+  it('passes the scope and the live transcript snapshot to the service as sent', async () => {
     const { call, service } = setup();
     await call(
       'chat.send',
@@ -514,7 +514,7 @@ describe('chat handlers', () => {
     });
   });
 
-  it('openExternal opens http and https only (S2)', async () => {
+  it('openExternal opens http and https only', async () => {
     const { call, opened } = setup();
     expect(ok(await call('chat.openExternal', { url: 'https://example.com/a?b=1' }))).toEqual({
       status: 'opened',

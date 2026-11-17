@@ -308,7 +308,7 @@ describe('pill visibility rule', () => {
     expect(t.win().win.isVisible()).toBe(true);
   });
 
-  it('bug 14: when the main window cannot be minimized, the pill is re-evaluated at once', async () => {
+  it('when the main window cannot be minimized, the pill is re-evaluated at once', async () => {
     const t = setup({ minimize: false });
     await startRecording(t);
     expect(t.handoff.minimizeMainWindow).toHaveBeenCalledTimes(1);
@@ -426,7 +426,7 @@ describe('show and hide races', () => {
     expect(t.win().win.isVisible()).toBe(true);
   });
 
-  it('bug 13: a failing dock load is logged, the defaults apply, and the next show retries', async () => {
+  it('a failing dock load is logged, the defaults apply, and the next show retries', async () => {
     let attempts = 0;
     const t = setup({
       load: () => {
@@ -471,7 +471,7 @@ describe('show and hide races', () => {
     expect(t.win().states().at(-1)?.edge).toBe('Bottom');
   });
 
-  it('an error in the async path is logged, never unhandled (bug 13)', async () => {
+  it('an error in the async path is logged, never unhandled', async () => {
     const t = setup();
     await startRecording(t);
     t.win().win.setBounds = () => {
@@ -547,7 +547,7 @@ describe('entrance and exit', () => {
     expect(t.win().win.isVisible()).toBe(false);
   });
 
-  it('keeps a hidden window off the neighbouring monitor (bug 11)', async () => {
+  it('keeps a hidden window off the neighbouring monitor', async () => {
     const right: Rect = { x: 1536, y: 0, width: 1536, height: 816 };
     const t = setup({
       animations: true,
@@ -597,7 +597,7 @@ describe('placement', () => {
     expect(t.win().win.getBounds().x).toBeGreaterThanOrEqual(1536);
   });
 
-  it('item 52: the size the OS grants is what the page is told', async () => {
+  it('the size the OS grants is what the page is told', async () => {
     const t = setup();
     await startRecording(t);
     const granted = t.win().win.getBounds();
@@ -955,7 +955,7 @@ describe('drag and snap', () => {
     expect(t.clock.pending).toBe(1); // only the save debounce
   });
 
-  it('ignores a press during the entrance (bug 18) and during a snap', async () => {
+  it('ignores a press during the entrance and during a snap', async () => {
     const t = setup({ animations: true });
     await startRecording(t);
     expect(t.win().drag({ x: 1300, y: 300, width: 80, height: 256 })).toBe(true);

@@ -263,7 +263,7 @@ describe('library handlers', () => {
     expect(t.events.filter((e) => e.name === 'library.changed')).toEqual([]);
   });
 
-  it('lets a quit wait for a move that is still being written (B16)', async () => {
+  it('lets a quit wait for a move that is still being written', async () => {
     const t = await setup();
     await t.runtime.meetings.save(record());
     const created = await t.runtime.projectService.create({ name: 'Trabajo' });

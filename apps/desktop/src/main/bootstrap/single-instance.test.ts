@@ -23,7 +23,7 @@ describe('acquireSingleInstance', () => {
     expect(tries).toBe(1);
   });
 
-  it('B10: after our own restart it waits for the old process to let go', () => {
+  it('after our own restart it waits for the old process to let go', () => {
     let tries = 0;
     const slept: number[] = [];
     const got = acquireSingleInstance({

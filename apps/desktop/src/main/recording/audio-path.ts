@@ -7,7 +7,7 @@ export interface AudioPathRequest {
   readonly directory: string;
   readonly title: string;
   readonly atMs: number;
-  /** True when the Markdown at this path belongs to the meeting the take writes to (B-9). */
+  /** True when the Markdown at this path belongs to the meeting the take writes to. */
   readonly ownsMarkdown: (markdownPath: string) => Promise<boolean>;
   readonly exists?: (file: string) => boolean;
 }
@@ -20,7 +20,7 @@ function localDate(ms: number): string {
 }
 
 /**
- * Spec 3.14 `AllocateFileStem` with the real id lookup (B-9, 187). A Markdown at the dated stem
+ * The file stem with the real id lookup. A Markdown at the dated stem
  * that belongs to this meeting is accepted when no recording sits beside it, so the WAV and the
  * Markdown the repository writes later share one stem; any other Markdown, or any WAV, pushes
  * the take to the next number. A re-recording never writes over the audio of the first take.

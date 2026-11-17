@@ -16,7 +16,7 @@ import { describeError, typed } from './recording-message';
 import { youTubeFailure, type YouTubeAudioPort } from './youtube-import';
 
 export interface ImportConversionDeps {
-  /** Converts any supported file to 16 kHz mono PCM16 WAV (multi-channel is downmixed, B-5). */
+  /** Converts any supported file to 16 kHz mono PCM16 WAV (multi-channel is downmixed). */
   convert(source: string, destination: string): Promise<void>;
   /** Stops a conversion in progress. */
   cancelConversion(): void;
@@ -37,7 +37,7 @@ export type ImportConversion =
   | { readonly ok: false; readonly cancelled: boolean; readonly message: Message };
 
 /**
- * Spec 2.12 step 5 and 6. Converts the file, reads the duration and derives the times (B-19).
+ * Converts the file, reads the duration and derives the times.
  * A failure or a cancel removes the partial WAV; only an error carries a message to show.
  */
 export async function convertForImport(
@@ -173,7 +173,7 @@ export interface ImportRunDeps {
 }
 
 /**
- * The file and YouTube imports (spec 2.12). They change apart from the live capture, so they live
+ * The file and YouTube imports. They change apart from the live capture, so they live
  * here; the session gate stays the one of the service, so an import and a take never overlap.
  */
 export class ImportRun {
@@ -317,7 +317,7 @@ export class ImportRun {
     }
   }
 
-  /** Converts the prepared file to the take WAV (spec 2.12 steps 5 and 6). */
+  /** Converts the prepared file to the take WAV. */
   private convert(
     meetingId: string,
     directory: string,

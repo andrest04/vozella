@@ -5,7 +5,7 @@ export interface IconImage {
 }
 
 /**
- * Icons of the executables behind the app cards (spec 131). Only absolute local `.exe` paths are
+ * Icons of the executables behind the app cards. Only absolute local `.exe` paths are
  * read, each once per run: success and failure are both remembered, and simultaneous callers share
  * one lookup. The adapter is Electron's `app.getFileIcon`.
  */

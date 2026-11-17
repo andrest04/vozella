@@ -68,7 +68,7 @@ const defaultTimer = (run: () => void, ms: number): (() => void) => {
   };
 };
 
-/** What the live chat packs besides the transcript (T2), read when a send starts (B5). */
+/** What the live chat packs besides the transcript (T2), read when a send starts. */
 export interface LiveChatContext {
   readonly digest: string | null;
   readonly title: string | null;
@@ -91,7 +91,7 @@ export class LiveAsk {
     this.session = new LiveAskSession({
       loadSettings: async () => {
         const settings = await deps.settings.load();
-        // B-20: the one parse rule. A blank or unparsable provider is "not chosen", never Local.
+        // The one parse rule. A blank or unparsable provider is "not chosen", never Local.
         const parsed = parseSummaryProvider(settings.selectedSummaryProvider);
         this.providerChosen = parsed !== null;
         return {
@@ -242,7 +242,7 @@ export class LiveAsk {
     return true;
   }
 
-  /** Bug 15: call when the summary provider changed, so the pill toggle follows it. */
+  /** Call when the summary provider changed, so the pill toggle follows it. */
   refreshWebSupport(): void {
     void this.session.refreshWebSupport();
   }

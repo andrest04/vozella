@@ -8,7 +8,7 @@
  *
  * Files come from `VOZELLA_ASR_DL` (default C:\Code\vozella-spikes\asr\dl): `models\nemotron.q8_0.gguf`,
  * `rt-cpu`, `rt-cuda`. Set `VOZELLA_REAL_ASR_NET=1` to also download the Sortformer model and try
- * speaker labels. Results are written to the test output so the parity ledger can quote them.
+ * speaker labels. Results are written to the test output for later reference.
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';

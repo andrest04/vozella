@@ -128,7 +128,7 @@ export interface LibraryWrites {
 export function registerLibraryHandlers(deps: LibraryHandlerDeps): LibraryWrites {
   const { server, runtime, workspace, broadcast } = deps;
   const writes = new Set<Promise<unknown>>();
-  /** Remembers a library write until it ends, so a quit can wait for it (B16). */
+  /** Remembers a library write until it ends, so a quit can wait for it. */
   const track = <T>(write: Promise<T>): Promise<T> => {
     writes.add(write);
     const done = (): void => {

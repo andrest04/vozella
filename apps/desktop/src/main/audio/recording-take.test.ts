@@ -139,7 +139,7 @@ describe('RecordingTakes', () => {
     expect(await takes.start('a', mic)).toMatchObject({ started: true });
   });
 
-  it('adds up the paused time for the live transcript clock (item 34)', async () => {
+  it('adds up the paused time for the live transcript clock', async () => {
     const { takes } = setup();
     await takes.start('a', mic);
     clock += 10_000;
@@ -164,7 +164,7 @@ describe('RecordingTakes', () => {
     expect(controller.pause).toHaveBeenCalledOnce();
   });
 
-  it('returns the stop error and frees the page for the next take (item 49)', async () => {
+  it('returns the stop error and frees the page for the next take', async () => {
     const { takes } = setup({ stop: vi.fn().mockRejectedValue(new Error('disk full')) });
     await takes.start('a', mic);
     const stopped = await takes.stop();
@@ -185,7 +185,7 @@ describe('RecordingTakes', () => {
   });
 
   describe('import', () => {
-    it('converts the picked file and ends the take at recordedAt plus the audio length (item 149)', async () => {
+    it('converts the picked file and ends the take at recordedAt plus the audio length', async () => {
       const { takes, controller } = setup({}, 90.25);
       takes.rememberPick({ path: 'C:\\in\\call.m4a', recordedAtMs: 1_000_000 });
       const result = await takes.importPicked('Call');
@@ -200,7 +200,7 @@ describe('RecordingTakes', () => {
       });
     });
 
-    it('deletes the partial file and reports the error on failure (item 148)', async () => {
+    it('deletes the partial file and reports the error on failure', async () => {
       const failing = vi.fn((_s: string, destination: string) => {
         fs.writeFileSync(destination, 'partial');
         return Promise.reject(new Error('bad codec'));

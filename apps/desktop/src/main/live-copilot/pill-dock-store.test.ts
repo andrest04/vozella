@@ -29,12 +29,12 @@ describe('PillDockStore', () => {
     expect(await store.load()).toEqual({ edge: 'Right', along: 0.5 });
   });
 
-  it('lets a read failure through, so the controller retries at the next show (bug 13)', async () => {
+  it('lets a read failure through, so the controller retries at the next show', async () => {
     const { store } = setup({ liveCopilotPillEdge: null, liveCopilotPillAlong: null }, true);
     await expect(store.load()).rejects.toThrow('locked');
   });
 
-  it('bug 12: saves only the two dock fields through the serialized update', async () => {
+  it('saves only the two dock fields through the serialized update', async () => {
     const { store, settings } = setup({ liveCopilotPillEdge: 'Right', liveCopilotPillAlong: 0.5 });
     await store.save({ edge: 'Top', along: 0.25 });
     expect(settings.update).toHaveBeenCalledWith({
