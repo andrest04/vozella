@@ -1,8 +1,10 @@
 import nodePath from 'node:path';
 
 export const ENV_DATA_ROOT = 'VOZELLA_DATA_ROOT';
-/** Folder name of the existing .NET app. Agents and tests must never touch it. */
-export const LEGACY_FOLDER_NAME = 'MeetingLive';
+/** Folder name of an earlier install's data. Agents and tests must never touch it. */
+export const GUARDED_FOLDER_NAME = 'MeetingLive';
+/** Folder name Vozella itself uses for its real data. */
+const OWN_FOLDER_NAME = 'Vozella';
 
 export type RunMode = 'production' | 'development' | 'test';
 
@@ -50,13 +52,26 @@ export class InvalidDataRootError extends Error {
   }
 }
 
-/** The existing app's folders. */
-export function legacyRoots(input: Pick<DataRootInput, 'localAppData' | 'documents' | 'pathApi'>) {
+/**
+ * The real user data folders of an earlier install and of Vozella itself. Agents and tests
+ * must never touch them.
+ */
+export function protectedRoots(
+  input: Pick<DataRootInput, 'localAppData' | 'documents' | 'pathApi'>,
+  options: { readonly allowOwnFolders?: boolean } = {},
+) {
   const p = input.pathApi ?? nodePath;
-  return [
-    p.join(input.documents, LEGACY_FOLDER_NAME),
-    p.join(input.localAppData, LEGACY_FOLDER_NAME),
+  const roots = [
+    p.join(input.documents, GUARDED_FOLDER_NAME),
+    p.join(input.localAppData, GUARDED_FOLDER_NAME),
   ];
+  if (!options.allowOwnFolders) {
+    roots.push(
+      p.join(input.documents, OWN_FOLDER_NAME),
+      p.join(input.localAppData, OWN_FOLDER_NAME),
+    );
+  }
+  return roots;
 }
 
 /** True when `child` is `parent` or inside it. Windows paths compare case-insensitively. */
@@ -70,10 +85,15 @@ export function isUnderOrEqual(
 }
 
 /**
- * Throws if `candidate` is, or is inside, one of the existing app's folders, or if any
+ * Throws if `candidate` is, or is inside, one of the protected real data folders, or if any
  * of its segments is named MeetingLive (covers a relocated Documents folder).
+ * `allowOwnFolders` lets Vozella's own default folders through (production default only).
  */
-export function assertNotLegacyRoot(candidate: string, input: DataRootInput): void {
+export function assertNotProtectedRoot(
+  candidate: string,
+  input: DataRootInput,
+  options: { readonly allowOwnFolders?: boolean } = {},
+): void {
   const p = input.pathApi ?? nodePath;
   const real = (value: string): string => {
     try {
@@ -84,21 +104,21 @@ export function assertNotLegacyRoot(candidate: string, input: DataRootInput): vo
   };
   const resolved = p.resolve(candidate);
   const variants = new Set([resolved, p.resolve(real(resolved))]);
-  const legacy = legacyRoots(input).flatMap((root) => [p.resolve(root), p.resolve(real(root))]);
+  const protectedPaths = protectedRoots(input, options).flatMap((root) => [
+    p.resolve(root),
+    p.resolve(real(root)),
+  ]);
   for (const path of variants) {
-    for (const root of legacy) {
+    for (const root of protectedPaths) {
       if (isUnderOrEqual(path, root, p)) {
-        throw new ForbiddenDataRootError(
-          candidate,
-          `it is inside the existing app folder "${root}"`,
-        );
+        throw new ForbiddenDataRootError(candidate, `it is inside the real data folder "${root}"`);
       }
     }
     const named = path
       .split(/[\\/]+/)
-      .some((segment) => segment.toLowerCase() === LEGACY_FOLDER_NAME.toLowerCase());
+      .some((segment) => segment.toLowerCase() === GUARDED_FOLDER_NAME.toLowerCase());
     if (named) {
-      throw new ForbiddenDataRootError(candidate, `a path segment is named ${LEGACY_FOLDER_NAME}`);
+      throw new ForbiddenDataRootError(candidate, `a path segment is named ${GUARDED_FOLDER_NAME}`);
     }
   }
 }
@@ -107,7 +127,7 @@ export function assertNotLegacyRoot(candidate: string, input: DataRootInput): vo
  * Where the app keeps its data.
  *
  * - VOZELLA_DATA_ROOT set: `<root>/app` and `<root>/meetings`. Refused, in every mode, when it
- *   points at the existing MeetingLive folders. Used by all agent and test runs.
+ *   points at a real data folder (MeetingLive or Vozella's own). Used by all agent and test runs.
  * - Packaged and unset: `%LOCALAPPDATA%\Vozella` and `Documents\Vozella`.
  * - Dev or test and unset: a throwaway folder in the OS temp directory, never a real one.
  */
@@ -121,7 +141,7 @@ export function resolveDataRoots(input: DataRootInput): DataRoots {
       throw new InvalidDataRootError(fromEnv);
     }
     const root = p.resolve(fromEnv);
-    assertNotLegacyRoot(root, input);
+    assertNotProtectedRoot(root, input);
     roots = { appData: p.join(root, 'app'), meetings: p.join(root, 'meetings'), source: 'env' };
   } else if (input.mode === 'production') {
     roots = {
@@ -138,7 +158,9 @@ export function resolveDataRoots(input: DataRootInput): DataRoots {
     };
   }
 
-  assertNotLegacyRoot(roots.appData, input);
-  assertNotLegacyRoot(roots.meetings, input);
+  // The production default IS Vozella's own folders; every other source must avoid them.
+  const options = { allowOwnFolders: roots.source === 'default' };
+  assertNotProtectedRoot(roots.appData, input, options);
+  assertNotProtectedRoot(roots.meetings, input, options);
   return roots;
 }

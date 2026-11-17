@@ -22,7 +22,7 @@ export interface BootstrappedPaths extends DataRoots {
 }
 
 /**
- * Resolves the data roots (throws ForbiddenDataRootError for the real MeetingLive folders)
+ * Resolves the data roots (throws ForbiddenDataRootError for the real data folders)
  * and points Electron's own folders at them, so nothing is written to the default
  * %APPDATA% location. Must run before the app is ready.
  */

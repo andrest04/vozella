@@ -21,8 +21,7 @@ import { createChatThreadStore } from '../chat/chat-thread-store';
 import { writeFileAtomic } from '../fs/atomic-write';
 import {
   ForbiddenDataRootError,
-  LEGACY_FOLDER_NAME,
-  assertNotLegacyRoot,
+  assertNotProtectedRoot,
   type DataRoots,
   type RunMode,
 } from '../data-root/resolve-data-root';
@@ -47,8 +46,6 @@ export interface LibraryLocation {
   readonly libraryRoot: string;
   readonly appDataRoot: string;
   readonly source: LocationSource;
-  /** True when the Library root is inside a folder named MeetingLive (a legacy data folder). */
-  readonly sharesMeetingLive: boolean;
   readonly version: string;
   /** Why the library storage could not be prepared, if it could not. */
   readonly startupError: string | null;
@@ -119,8 +116,7 @@ const ITERABLE_METHODS: ReadonlySet<string | symbol> = new Set(['bodies']);
  * state, where project writes are refused and meetings stay where they are.
  *
  * Folder choice rules (data safety): the environment override and the dev and test modes refuse
- * the existing MeetingLive folders. Only a production build with no override lets the user pick
- * any folder, including an existing MeetingLive library.
+ * the real data folders. Only a production build with no override lets the user pick any folder.
  */
 export class LibraryRuntime {
   private services: Services | undefined;
@@ -202,9 +198,6 @@ export class LibraryRuntime {
       libraryRoot: this.libraryRoot,
       appDataRoot: this.deps.roots.appData,
       source: this.chosen === null ? this.deps.roots.source : 'chosen',
-      sharesMeetingLive: this.libraryRoot
-        .split(/[\\/]+/)
-        .some((s) => s.toLowerCase() === LEGACY_FOLDER_NAME.toLowerCase()),
       version: this.deps.version,
       startupError: this.startupError,
     };
@@ -328,7 +321,7 @@ export class LibraryRuntime {
     }
     if (!this.permissive) {
       try {
-        assertNotLegacyRoot(nodePath.resolve(path), this.guardInput());
+        assertNotProtectedRoot(nodePath.resolve(path), this.guardInput());
       } catch (error) {
         if (error instanceof ForbiddenDataRootError) {
           return { status: 'refused', reason: 'forbidden', message: error.message };
@@ -363,7 +356,7 @@ export class LibraryRuntime {
     try {
       const value = (JSON.parse(text) as { libraryRoot?: unknown }).libraryRoot;
       if (typeof value !== 'string' || !nodePath.isAbsolute(value)) return null;
-      if (!this.permissive) assertNotLegacyRoot(nodePath.resolve(value), this.guardInput());
+      if (!this.permissive) assertNotProtectedRoot(nodePath.resolve(value), this.guardInput());
       return nodePath.resolve(value);
     } catch (error) {
       this.deps.logger.warn('ignoring the saved library folder', {

@@ -23,7 +23,6 @@
   "Ui_LibraryChooseFolder": "Elegir carpeta",
   "Ui_LibraryResetFolder": "Usar la carpeta predeterminada",
   "Ui_LibraryFolderRefused": "No se puede usar esa carpeta. {0}",
-  "Ui_LibraryFolderShared": "Esta carpeta contiene una biblioteca de una versión anterior. Sus reuniones están aquí y sus carpetas anteriores ahora son proyectos.",
   "Ui_LibraryAll": "Todas",
   "Ui_LibraryToday": "Hoy",
   "Ui_LibraryYesterday": "Ayer",

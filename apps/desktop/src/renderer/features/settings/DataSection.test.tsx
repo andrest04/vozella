@@ -13,7 +13,6 @@ const location = (extra: Record<string, unknown> = {}) => ({
   libraryRoot: MEETINGS,
   appDataRoot: APP_DATA,
   source: 'default',
-  sharesMeetingLive: false,
   version: '1.2.3.4',
   startupError: null,
   ...extra,
@@ -68,18 +67,14 @@ describe('Settings data and about', () => {
     expect(await screen.findByText('The folder could not be opened: access denied')).toBeVisible();
   });
 
-  it('warns about a shared earlier-version folder and offers to go back to the default', async () => {
+  it('offers to go back to the default folder after a chosen one', async () => {
     const { api } = install({
-      'library.getLocation': () => location({ source: 'chosen', sharesMeetingLive: true }),
+      'library.getLocation': () => location({ source: 'chosen' }),
       'library.setLocation': () => ({ status: 'changed', location: location() }),
     });
     mount();
-    expect(await screen.findByText(/holds a library from an earlier version/)).toBeVisible();
-    await userEvent.click(screen.getByRole('button', { name: 'Use the default folder' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Use the default folder' }));
     expect(api.invoke).toHaveBeenCalledWith('library.setLocation', { path: null });
-    await waitFor(() => {
-      expect(screen.queryByText(/holds a library from an earlier version/)).toBeNull();
-    });
   });
 
   it('shows why a picked folder was refused and keeps the old one', async () => {

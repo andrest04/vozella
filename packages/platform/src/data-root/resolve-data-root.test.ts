@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  assertNotLegacyRoot,
+  assertNotProtectedRoot,
   ForbiddenDataRootError,
   InvalidDataRootError,
   isUnderOrEqual,
@@ -73,8 +73,11 @@ describe('resolveDataRoots', () => {
     ['a folder inside it', 'C:\\Users\\ana\\Documents\\MeetingLive\\sandbox'],
     ['the real app data folder', 'C:\\Users\\ana\\AppData\\Local\\MeetingLive'],
     ['a different case', 'c:\\users\\ANA\\documents\\meetinglive'],
-    ['a relocated folder with the legacy name', 'E:\\Backups\\Documents\\MeetingLive\\x'],
+    ['a relocated folder with the protected name', 'E:\\Backups\\Documents\\MeetingLive\\x'],
     ['a parent-relative escape', 'C:\\Users\\ana\\Documents\\tmp\\..\\MeetingLive'],
+    ['the real Vozella documents folder', 'C:\\Users\\ana\\Documents\\Vozella'],
+    ['a folder inside it', 'C:\\Users\\ana\\Documents\\Vozella\\sandbox'],
+    ['the real Vozella app data folder', 'C:\\Users\\ana\\AppData\\Local\\Vozella'],
   ])('refuses %s in dev, test and production', (_label, value) => {
     for (const mode of ['development', 'test', 'production'] as const) {
       expect(() => resolveDataRoots(withEnv(value, mode))).toThrow(ForbiddenDataRootError);
@@ -90,16 +93,30 @@ describe('resolveDataRoots', () => {
     expect(() => resolveDataRoots(input)).toThrow(ForbiddenDataRootError);
   });
 
-  it('allows a folder whose name only starts with the legacy name', () => {
+  it('allows a folder whose name only starts with the protected name', () => {
     expect(() => resolveDataRoots(withEnv('D:\\tmp\\MeetingLive-copy'))).not.toThrow();
+  });
+
+  it('allows an unrelated folder that is merely named Vozella', () => {
+    expect(() => resolveDataRoots(withEnv('D:\\tmp\\Vozella'))).not.toThrow();
+  });
+
+  it('keeps resolving the production default to the real Vozella folders', () => {
+    expect(resolveDataRoots({ ...base, mode: 'production' }).source).toBe('default');
   });
 });
 
-describe('assertNotLegacyRoot', () => {
+describe('assertNotProtectedRoot', () => {
   it('can be reused for other candidates', () => {
-    expect(() => assertNotLegacyRoot('C:\\Users\\ana\\Documents\\MeetingLive', base)).toThrow(
+    expect(() => assertNotProtectedRoot('C:\\Users\\ana\\Documents\\MeetingLive', base)).toThrow(
       ForbiddenDataRootError,
     );
-    expect(() => assertNotLegacyRoot('C:\\Users\\ana\\Documents\\Vozella', base)).not.toThrow();
+    expect(() => assertNotProtectedRoot('C:\\Users\\ana\\Documents\\Vozella', base)).toThrow(
+      ForbiddenDataRootError,
+    );
+    expect(() =>
+      assertNotProtectedRoot('C:\\Users\\ana\\Documents\\Vozella', base, { allowOwnFolders: true }),
+    ).not.toThrow();
+    expect(() => assertNotProtectedRoot('D:\\tmp\\run', base)).not.toThrow();
   });
 });

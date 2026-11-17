@@ -129,7 +129,7 @@ test('a meeting is deleted only after confirming, with Cancel focused', async ()
   expect(fs.existsSync(path.join(libraryRoot, 'Inbox', '2026-09-04 Retro.md'))).toBe(false);
 });
 
-test('Settings shows where data lives, follows a picked folder, and refuses MeetingLive here', async () => {
+test('Settings shows where data lives, follows a picked folder, and refuses a real data folder here', async () => {
   await goTo('Settings');
   await openSettingsTab(page, 'general');
   await expect(page.getByRole('heading', { level: 2, name: 'Data' })).toBeVisible();

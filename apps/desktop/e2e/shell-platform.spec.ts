@@ -14,7 +14,7 @@ import {
 
 // sp-5: the shell end to end on the fake native build. Single instance, window state, tray,
 // recording handoff, close gate and menu, each on its own throwaway data root that survives the
-// app (so a second launch can read it). The real MeetingLive folders are never involved.
+// app (so a second launch can read it). The real data folders are never involved.
 // Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/port/screens/shell-platform.
 
 const desktopDir = path.resolve(__dirname, '..');

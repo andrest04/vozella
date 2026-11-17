@@ -27,7 +27,7 @@ function builtAppArgs(): string[] {
 /**
  * Launches the built app (out/main/index.js, run `pnpm build` first), or the packaged e2e
  * variant when VOZELLA_E2E_EXECUTABLE is set, with fake native
- * adapters and a throwaway data root. The real MeetingLive folders are never involved.
+ * adapters and a throwaway data root. The real data folders are never involved.
  */
 export async function launchApp(
   extraEnv: Record<string, string> = {},

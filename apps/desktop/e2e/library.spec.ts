@@ -64,7 +64,7 @@ test('the library works end to end through the typed API, on a throwaway data ro
   expect(settings).toMatchObject({ uiLanguage: 'en', meetingPopupEnabled: true });
   expect(fs.existsSync(path.join(launched.dataRoot, 'app', 'settings.json'))).toBe(true);
 
-  // The data-root guard: a MeetingLive folder is refused while testing.
+  // The data-root guard: a real data folder is refused while testing.
   const refused = await page.evaluate(
     (target) => window.vozella.invoke('library.setLocation', { path: target }),
     path.join(launched.dataRoot, 'somewhere', 'MeetingLive'),
