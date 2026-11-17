@@ -614,5 +614,8 @@
   "Ui_ProjectDeleteContentOne": "Its 1 meeting moves to No project. Instructions, files and chats of this project are deleted.",
   "Ui_ProjectDeleteContentMany": "Its {0} meetings move to No project. Instructions, files and chats of this project are deleted.",
   "Ui_ProjectDeletePartial": "Moved {0} of {1} meetings. Try again.",
-  "Ui_ProjectNoneSubtitle": "Meetings that are not in a project"
+  "Ui_ProjectNoneSubtitle": "Meetings that are not in a project",
+  "Ui_RecordSavingTo": "Saving to {0}",
+  "Ui_RecordAlreadyRecording": "A meeting is already recording",
+  "Ui_RecordProjectGone": "That project no longer exists. Choose where to save this meeting."
 }

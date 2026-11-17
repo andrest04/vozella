@@ -1,4 +1,3 @@
-import type { FolderRecord } from '@vozella/core';
 import type {
   MicrophoneChoiceDto,
   OutputOf,
@@ -31,8 +30,7 @@ export interface RecordingStore {
   /** The part of the live transcript the engine will not rewrite (the rest is the interim tail). */
   readonly committedText: string;
   readonly setup: RecordingSetupDto | null;
-  readonly folders: readonly FolderRecord[];
-  /** Null is the Inbox. */
+  /** Where the next take is saved, and where the one under way is being saved. Null is No project. */
   readonly projectId: string | null;
   /** What the user typed; null shows the default title for `defaultAtMs`. */
   readonly title: string | null;
@@ -49,7 +47,6 @@ const initial = (): RecordingStore => ({
   liveText: '',
   committedText: '',
   setup: null,
-  folders: [],
   projectId: null,
   title: null,
   defaultAtMs: Date.now(),
@@ -119,25 +116,10 @@ export async function refreshSetup(): Promise<RecordingSetupDto | null> {
   }
 }
 
-/** The destination list reloads on every entry; the choice is kept while its folder exists. */
-export async function loadFolders(): Promise<void> {
-  try {
-    const result = await window.vozella.invoke('library.load', {});
-    if (!result.ok) return;
-    // Folders are gone from the wire: projects replace them in the UI lane.
-    const folders: readonly FolderRecord[] = [];
-    const { projectId } = get();
-    const kept = projectId !== null && folders.some((folder) => folder.id === projectId);
-    set({ folders, projectId: kept ? projectId : null });
-  } catch {
-    // The list stays as it was.
-  }
-}
-
 export const setTitle = (title: string): void => {
   set({ title });
 };
-export const setFolderId = (projectId: string | null): void => {
+export const setProjectId = (projectId: string | null): void => {
   set({ projectId });
 };
 export const setNotice = (notice: RecordingMessageDto | null): void => {
@@ -177,7 +159,6 @@ export function connectRecording(): () => void {
   }
   void loadRecordingState();
   void refreshSetup();
-  void loadFolders();
   return () => {
     connections -= 1;
     if (connections === 0) {

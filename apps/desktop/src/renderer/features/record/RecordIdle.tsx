@@ -1,13 +1,13 @@
-import type { FolderRecord } from '@vozella/core';
 import { useMemo, type ChangeEvent, type ReactNode } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
 import { Field, Input, Select } from '../../ui';
+import type { ProjectChoice } from '../meeting-list/project-order';
 import { buildDestinations, fromOptionValue, toOptionValue } from './destinations';
 
 /**
  * The top of the page: the title, where the take is saved, and whatever the page puts below
  * (sources, the setup panel). The title is editable while a take is processed and locked while it
- * records; the destination is locked while it records (spec 2.2). Before a take the title is the
+ * records; the destination (a project, or no project) is locked while it records (spec 2.2). Before a take the title is the
  * page's heading, as on a blank document; while a take is processed they are two labeled fields.
  */
 export function RecordIdle({
@@ -16,9 +16,9 @@ export function RecordIdle({
   title,
   onTitleChange,
   titleDisabled,
-  folders,
+  projects,
   projectId,
-  onFolderChange,
+  onProjectChange,
   destinationDisabled,
   children,
 }: {
@@ -29,21 +29,21 @@ export function RecordIdle({
   readonly title: string;
   readonly onTitleChange: (title: string) => void;
   readonly titleDisabled: boolean;
-  readonly folders: readonly FolderRecord[];
+  readonly projects: readonly ProjectChoice[];
   readonly projectId: string | null;
-  readonly onFolderChange: (projectId: string | null) => void;
+  readonly onProjectChange: (projectId: string | null) => void;
   readonly destinationDisabled: boolean;
   readonly children?: ReactNode;
 }) {
   const { t, locale } = useI18n();
-  const inbox = t('Library_Inbox');
+  const noProject = t('Ui_ProjectNone');
   const options = useMemo(
     () =>
-      buildDestinations(folders, inbox, locale).map((destination) => ({
+      buildDestinations(projects, noProject, locale).map((destination) => ({
         value: toOptionValue(destination.projectId),
-        label: destination.path,
+        label: destination.label,
       })),
-    [folders, inbox, locale],
+    [projects, noProject, locale],
   );
   const titleLabel = t('RecordPage_MeetingTitle.Header');
   const destinationLabel = t('RecordPage_Destination.Header');
@@ -59,7 +59,7 @@ export function RecordIdle({
       testId="CmbDestination"
       className={asDocument ? 'w-56 max-w-full min-w-0' : 'w-full'}
       onValueChange={(value) => {
-        onFolderChange(fromOptionValue(value));
+        onProjectChange(fromOptionValue(value));
       }}
     />
   );

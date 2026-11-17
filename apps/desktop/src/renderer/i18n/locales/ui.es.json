@@ -614,5 +614,8 @@
   "Ui_ProjectDeleteContentOne": "Su 1 reunión pasa a Sin proyecto. Se eliminan las instrucciones, los archivos y los chats de este proyecto.",
   "Ui_ProjectDeleteContentMany": "Sus {0} reuniones pasan a Sin proyecto. Se eliminan las instrucciones, los archivos y los chats de este proyecto.",
   "Ui_ProjectDeletePartial": "Se movieron {0} de {1} reuniones. Inténtalo de nuevo.",
-  "Ui_ProjectNoneSubtitle": "Reuniones que no están en un proyecto"
+  "Ui_ProjectNoneSubtitle": "Reuniones que no están en un proyecto",
+  "Ui_RecordSavingTo": "Guardando en {0}",
+  "Ui_RecordAlreadyRecording": "Ya hay una reunión grabando",
+  "Ui_RecordProjectGone": "Ese proyecto ya no existe. Elige dónde guardar esta reunión."
 }

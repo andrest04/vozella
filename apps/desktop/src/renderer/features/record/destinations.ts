@@ -1,22 +1,30 @@
-import type { FolderRecord } from '@vozella/core';
-import { flattenFolderPaths } from '@vozella/core';
+import { orderProjectChoices, type ProjectChoice } from '../meeting-list/project-order';
 
 export interface Destination {
-  /** Null is the Inbox. */
+  /** Null is No project. */
   readonly projectId: string | null;
-  readonly path: string;
+  readonly label: string;
 }
 
-/** Inbox first, then the folder tree depth first as `Parent / Child` (spec 2.2, item 190). */
+/**
+ * Where a take can be saved: No project first, then the pinned projects, then the rest by name.
+ * Flat: a project has no parent, so a label is only its name.
+ */
 export function buildDestinations(
-  folders: readonly FolderRecord[],
-  inboxLabel: string,
+  projects: readonly ProjectChoice[],
+  noProjectLabel: string,
   locale: string,
 ): Destination[] {
-  return flattenFolderPaths(folders, inboxLabel, locale);
+  return [
+    { projectId: null, label: noProjectLabel },
+    ...orderProjectChoices(projects, locale).map((project) => ({
+      projectId: project.id,
+      label: project.name,
+    })),
+  ];
 }
 
-/** The reload keeps the chosen folder while it exists and falls back to the Inbox otherwise. */
+/** The reload keeps the chosen project while it exists and falls back to No project otherwise. */
 export function retainDestination(
   projectId: string | null,
   destinations: readonly Destination[],
@@ -24,8 +32,8 @@ export function retainDestination(
   return destinations.some((destination) => destination.projectId === projectId) ? projectId : null;
 }
 
-/** The Select works with strings; the Inbox needs a value of its own. */
-export const INBOX_VALUE = '__inbox__';
-export const toOptionValue = (projectId: string | null): string => projectId ?? INBOX_VALUE;
+/** The Select works with strings; No project needs a value of its own. */
+export const NO_PROJECT_VALUE = '__none__';
+export const toOptionValue = (projectId: string | null): string => projectId ?? NO_PROJECT_VALUE;
 export const fromOptionValue = (value: string): string | null =>
-  value === INBOX_VALUE ? null : value;
+  value === NO_PROJECT_VALUE ? null : value;
