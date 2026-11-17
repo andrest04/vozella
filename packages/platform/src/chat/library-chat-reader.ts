@@ -4,16 +4,16 @@ import {
   pickMeetingsForChat,
   rankMeetingsForQuestion,
   type ChatMeetingReader,
-  type ContextFolder,
   type ContextMeeting,
-  type FolderRepository,
+  type ContextProject,
   type MeetingListItem,
   type MeetingRepository,
+  type ProjectRepository,
 } from '@vozella/core';
 
 export interface LibraryChatReaderDeps {
   readonly meetings: MeetingRepository;
-  readonly folders: Pick<FolderRepository, 'getAll'>;
+  readonly projects: Pick<ProjectRepository, 'list'>;
 }
 
 /** A meeting the packer counts but never prints: not among the meetings picked for the send. */
@@ -42,7 +42,10 @@ export class LibraryChatReader implements ChatMeetingReader {
     return this.deps.meetings.get(id);
   }
 
-  async meetingsInFolder(projectId: string, question?: string): Promise<readonly ContextMeeting[]> {
+  async meetingsInProject(
+    projectId: string,
+    question?: string,
+  ): Promise<readonly ContextMeeting[]> {
     const key = compactMeetingId(projectId);
     const { items } = await this.deps.meetings.list();
     return this.load(
@@ -56,8 +59,10 @@ export class LibraryChatReader implements ChatMeetingReader {
     return this.load(items, question);
   }
 
-  listFolders(): Promise<readonly ContextFolder[]> {
-    return this.deps.folders.getAll();
+  /** The project names the Project scope prints. Instructions and files come from the project context source. */
+  async listProjects(): Promise<readonly ContextProject[]> {
+    const { projects } = await this.deps.projects.list();
+    return projects.map((project) => ({ id: project.id, name: project.name }));
   }
 
   /**

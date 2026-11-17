@@ -2,11 +2,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MEETING_CAP, packContext, type MeetingRecord } from '@vozella/core';
+import {
+  InMemoryProjectRepository,
+  MEETING_CAP,
+  packContext,
+  type MeetingRecord,
+} from '@vozella/core';
 import { createLibraryFixture, type LibraryFixture } from '../library/library-test-kit';
 import { LibraryChatReader } from './library-chat-reader';
 
-/** B17: chat reads by id and by folder, and never loads every transcript. */
+/** B17: chat reads by id and by project, and never loads every transcript. */
 const source = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
@@ -18,7 +23,10 @@ const WEEKLY = '3f2b8c1e-9a47-4d0e-b1c2-5e6f7a8b9c0d';
 const CALCULO = '8e2f1b63-44d5-4a7c-9ba1-1d2e3f4a5b6c';
 
 let fx: LibraryFixture;
-beforeEach(() => {
+let projects: InMemoryProjectRepository;
+beforeEach(async () => {
+  projects = new InMemoryProjectRepository({ newId: () => CALCULO });
+  await projects.create({ name: 'Cálculo' });
   fx = createLibraryFixture();
   fs.cpSync(source, fx.root, { recursive: true });
   fs.rmSync(path.join(fx.root, '.gitattributes'));
@@ -29,9 +37,12 @@ afterEach(() => {
 });
 
 const reader = (): LibraryChatReader =>
-  new LibraryChatReader({ meetings: fx.meetings, folders: fx.folders });
+  new LibraryChatReader({
+    meetings: fx.meetings,
+    projects,
+  });
 
-describe('LibraryChatReader on the WinUI library fixture', () => {
+describe('LibraryChatReader on the sample library', () => {
   it('reads one meeting by id with its transcript, and null for an unknown id', async () => {
     const found = await reader().meetingById(WEEKLY);
     expect(found?.title).toBe('Weekly sync: planning');
@@ -39,12 +50,13 @@ describe('LibraryChatReader on the WinUI library fixture', () => {
     expect(await reader().meetingById('99999999-9999-9999-9999-999999999999')).toBeNull();
   });
 
-  it('reads the meetings of one folder and the folders with their notes', async () => {
-    const inFolder = await reader().meetingsInFolder(CALCULO);
-    expect(inFolder.map((m) => m.id)).toEqual([WEEKLY]);
-    expect((await reader().meetingsInFolder(CALCULO.toUpperCase())).length).toBe(1);
-    const folders = await reader().listFolders();
-    expect(folders.map((f) => f.name).sort()).toEqual(['Universidad', 'Cálculo'].sort());
+  it('reads the meetings of one project and the project names, without any note', async () => {
+    const inProject = await reader().meetingsInProject(CALCULO);
+    expect(inProject.map((m) => m.id)).toEqual([WEEKLY]);
+    expect((await reader().meetingsInProject(CALCULO.toUpperCase())).length).toBe(1);
+    const projects = await reader().listProjects();
+    expect(projects).toEqual([{ id: CALCULO, name: 'Cálculo' }]);
+    expect(Object.keys(projects[0] ?? {}).sort()).toEqual(['id', 'name']);
   });
 
   it('lists every meeting of the library', async () => {
@@ -112,14 +124,14 @@ describe('LibraryChatReader bound (B17)', () => {
     expect(context).toContain('Showing 12 of 22 meetings');
   });
 
-  it('scopes the ranking to the folder', async () => {
+  it('scopes the ranking to the project', async () => {
     const records = await seed(3);
     await fx.meetings.save({
       ...records[0]!,
       transcript: '[00:00.00-00:01.00] Ana: tema integral',
     });
-    const inFolder = await reader().meetingsInFolder(CALCULO, 'integral');
-    expect(inFolder.map((m) => m.id)).toEqual([WEEKLY]);
+    const inProject = await reader().meetingsInProject(CALCULO, 'integral');
+    expect(inProject.map((m) => m.id)).toEqual([WEEKLY]);
   });
 
   it('answers the existence check without parsing a record', async () => {
