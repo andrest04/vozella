@@ -241,10 +241,14 @@ export const recordingLiveText = defineEvent('recording.liveText', {
 
 /**
  * Live ask: a typed question during a take, answered from the recent transcript.
- * `webSearch` is the toggle; main keeps it between takes. `preset` marks a chip prompt.
+ * `webSearch` is the toggle; main keeps it between takes. `preset` names the chip that asked: "missed" reads the whole take, "explain" the last point.
  */
 export const recordingAsk = defineRequest('recording.ask', {
-  input: z.object({ question: z.string(), webSearch: z.boolean(), preset: z.boolean().optional() }),
+  input: z.object({
+    question: z.string(),
+    webSearch: z.boolean(),
+    preset: z.enum(['missed', 'explain']).optional(),
+  }),
   /** False when nothing was asked: blank question or not recording. */
   output: z.object({ accepted: z.boolean() }),
 });

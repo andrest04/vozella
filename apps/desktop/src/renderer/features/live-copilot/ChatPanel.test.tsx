@@ -230,7 +230,14 @@ describe('chips', () => {
       expect(chip).toHaveTextContent(label);
       await userEvent.setup().click(chip);
       expect(asks()).toEqual([
-        { name: 'recording.ask', input: { question: prompt, webSearch: false, preset: true } },
+        {
+          name: 'recording.ask',
+          input: {
+            question: prompt,
+            webSearch: false,
+            preset: id === 'BtnLiveCopilotChipMissed' ? 'missed' : 'explain',
+          },
+        },
       ]);
     },
   );

@@ -59,7 +59,7 @@ export function ChatPanelContainer({
       const prompt = t(
         which === 'missed' ? 'LiveCopilot_PromptMissed' : 'LiveCopilot_PromptExplain',
       );
-      void askLive(prompt, { preset: true });
+      void askLive(prompt, { preset: which });
     },
     [recording, t],
   );

@@ -126,7 +126,11 @@ describe('live ask handlers', () => {
 
   it('a preset question is routed through the preset path and answered', async () => {
     const t = setup();
-    await t.call('recording.ask', { question: 'Summarize so far', webSearch: false, preset: true });
+    await t.call('recording.ask', {
+      question: 'Summarize so far',
+      webSearch: false,
+      preset: 'missed',
+    });
     await settle();
     expect(t.prompts[0]).toContain('Summarize so far');
   });
@@ -160,7 +164,7 @@ describe('live ask handlers', () => {
       await t.call('recording.ask', {
         question: '  What did I miss?  ',
         webSearch: false,
-        preset: true,
+        preset: 'missed',
       }),
     ).toEqual({ accepted: true });
     await settle();
@@ -171,11 +175,11 @@ describe('live ask handlers', () => {
   it('a blank preset and a preset outside a take are no-ops', async () => {
     const rec = setup();
     expect(
-      await rec.call('recording.ask', { question: ' \n', webSearch: false, preset: true }),
+      await rec.call('recording.ask', { question: ' \n', webSearch: false, preset: 'missed' }),
     ).toEqual({ accepted: false });
     const idle = setup(false);
     expect(
-      await idle.call('recording.ask', { question: 'Explain', webSearch: false, preset: true }),
+      await idle.call('recording.ask', { question: 'Explain', webSearch: false, preset: 'missed' }),
     ).toEqual({ accepted: false });
     expect(idle.sent).toHaveLength(0);
   });
@@ -431,7 +435,7 @@ describe('rolling digest (T2)', () => {
     });
     const t = setup(true, 'Codex', { projectId: 'p1', projectContext: source });
     t.liveAsk.hooks.reset();
-    expect(t.liveAsk.ask('What is a limit?', false, false)).toBe(true);
+    expect(t.liveAsk.ask('What is a limit?', false, undefined)).toBe(true);
     await settle();
     await settle();
     expect(t.prompts.at(-1)).toContain('Project: Calculus');
@@ -443,7 +447,7 @@ describe('rolling digest (T2)', () => {
     source.set({ projectId: 'p1', name: 'Calculus', instructions: 'Hidden.', documents: [] });
     const t = setup(true, 'Codex', { projectId: null, projectContext: source });
     t.liveAsk.hooks.reset();
-    t.liveAsk.ask('What is a limit?', false, false);
+    t.liveAsk.ask('What is a limit?', false, undefined);
     await settle();
     await settle();
     expect(t.prompts.at(-1)).not.toContain('Project:');

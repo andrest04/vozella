@@ -12,6 +12,7 @@ import {
   DIGEST_INPUT_CLI_CHARS,
   DIGEST_INPUT_LOCAL_CHARS,
   LiveAskSession,
+  type LiveAskPreset,
   LiveQuestionTracker,
   type Logger,
   type ProjectContextSource,
@@ -235,10 +236,12 @@ export class LiveAsk {
   };
 
   /** Fire and forget: the answer streams out through `recording.answer`. */
-  ask(question: string, webSearch: boolean, preset: boolean): boolean {
+  ask(question: string, webSearch: boolean, preset: LiveAskPreset | undefined): boolean {
     if (!this.deps.recording().recording || question.trim() === '') return false;
     this.session.setForceWebSearch(webSearch);
-    void (preset ? this.session.askPreset(question) : this.session.ask(question));
+    void (preset === undefined
+      ? this.session.ask(question)
+      : this.session.askPreset(question, preset));
     return true;
   }
 
@@ -266,7 +269,7 @@ export class LiveAsk {
 
 export function registerLiveAskHandlers(server: IpcServerDeps, liveAsk: LiveAsk): void {
   registerRequest(server, recordingAsk, ({ question, webSearch, preset }) => ({
-    accepted: liveAsk.ask(question, webSearch, preset === true),
+    accepted: liveAsk.ask(question, webSearch, preset),
   }));
   registerRequest(server, recordingCancelAsk, () => ({ cancelled: liveAsk.cancel() }));
   registerRequest(server, recordingDismissQuestion, ({ id }) => ({

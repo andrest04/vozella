@@ -115,7 +115,7 @@ describe('LiveAskSession', () => {
       },
     });
     await t.session.ask('  Why?  ');
-    await t.session.askPreset('What did I miss?');
+    await t.session.askPreset('What did I miss?', 'missed');
     expect(t.session.exchanges).toEqual([{ question: 'Why?', answer: 'Because.' }]);
     t.session.cancel();
     expect(t.session.exchanges).toHaveLength(1);
@@ -280,9 +280,9 @@ describe('LiveAskSession', () => {
 
   it('preset trims, blank is ignored', async () => {
     const t = setup();
-    await t.session.askPreset('   ');
+    await t.session.askPreset('   ', 'missed');
     expect(t.published).toHaveLength(0);
-    await t.session.askPreset('  What did I miss?  ');
+    await t.session.askPreset('  What did I miss?  ', 'missed');
     expect(t.prompts[0]).toContain('Question:\nWhat did I miss?\n');
   });
 
@@ -333,8 +333,21 @@ describe('LiveAskSession take context (live chat)', () => {
     await typed.session.ask('Why?');
     expect(typed.prompts[0]).not.toContain('cover the whole recording so far');
     const preset = setup({ committed: take, context: () => context });
-    await preset.session.askPreset('What did I miss?');
+    await preset.session.askPreset('What did I miss?', 'missed');
     expect(preset.prompts[0]).toContain('cover the whole recording so far');
+  });
+
+  it('the explain chip reads the recent window and the last point, not the whole take', async () => {
+    const wide = [at(0, 10, 'ancient'), at(1050, 1060, 'inside'), at(1190, 1200, 'tail')].join(
+      '\n',
+    );
+    const t = setup({ committed: wide, context: () => context });
+    await t.session.askPreset('Explain the last point in simple terms.', 'explain');
+    expect(t.prompts[0]).toContain('tail');
+    expect(t.prompts[0]).not.toContain('inside');
+    expect(t.prompts[0]).toContain('missed the last point');
+    expect(t.prompts[0]).not.toContain('cover the whole recording so far');
+    expect(t.session.exchanges).toEqual([]);
   });
 
   it('a typed ask still reads only the last 90 seconds', async () => {
@@ -349,7 +362,7 @@ describe('LiveAskSession take context (live chat)', () => {
       '\n',
     );
     const t = setup({ committed: wide, context: () => context });
-    await t.session.askPreset('What did I miss?');
+    await t.session.askPreset('What did I miss?', 'missed');
     expect(t.prompts[0]).toContain('- Budget agreed (02:10)');
     expect(t.prompts[0]).toContain('inside');
     expect(t.prompts[0]).not.toContain('ancient');
@@ -360,7 +373,7 @@ describe('LiveAskSession take context (live chat)', () => {
       committed: take,
       context: () => ({ title: 'Planning', notes: null, digest: null }),
     });
-    await t.session.askPreset('What did I miss?');
+    await t.session.askPreset('What did I miss?', 'missed');
     expect(t.prompts[0]).toContain('minute five');
     expect(t.prompts[0]).toContain('tail');
     expect(t.prompts[0]).not.toContain('minute zero');
@@ -376,7 +389,7 @@ describe('LiveAskSession take context (live chat)', () => {
       committed: long.join('\n'),
       context: () => ({ title: 'Planning', digest: null }),
     });
-    await t.session.askPreset('What did I miss?');
+    await t.session.askPreset('What did I miss?', 'missed');
     const window = t.prompts[0]?.split('Transcript window:\n')[1] ?? '';
     expect(window.length).toBeLessThanOrEqual(LOCAL_CONTEXT_BUDGET.liveChars);
     expect(window.length).toBeGreaterThan(0);
@@ -506,7 +519,7 @@ describe('LiveAskSession with a project', () => {
 
   it('the preset chips see the project too', async () => {
     const t = setup({ projectId: 'p1', projectContext: context('Be brief.') });
-    await t.session.askPreset('What did I miss?');
+    await t.session.askPreset('What did I miss?', 'missed');
     expect(t.prompts[0]).toContain('Be brief.');
   });
 });
