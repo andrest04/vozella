@@ -14,8 +14,10 @@ import {
   type InferFunction,
   type TokenCounter,
 } from './local-map-reduce';
+import { projectBudgetFor } from '../projects/project-context';
 import { createEnhancementContext } from './prompt-builders';
 import { CancelledError, type SummarizeRequest } from './provider';
+import { buildSeriesContext, packProjectSummaryContext } from './series-context';
 
 const recordedAt = parseOffsetDate('2026-11-02T14:00:00.0000000-05:00')!;
 const NEVER = new CancelSource().signal;
@@ -366,5 +368,91 @@ describe('properties (items 50 and 51)', () => {
       expect(strip(chunks.join('')), `seed ${seed}`).toBe(strip(text));
       for (const chunk of chunks) expect((await charCounter.count(chunk)) <= budget).toBe(true);
     }
+  });
+});
+
+describe('a full local project block', () => {
+  const counterOf = (charsPerToken: number): TokenCounter => ({
+    count: async (text) => Math.ceil(text.length / charsPerToken) + 1,
+  });
+  const instructions = 'Always answer in Spanish and name every owner. '.repeat(80);
+  const file = Array.from({ length: 600 }, (_, i) => `clause ${String(i)} of the contract.`).join(
+    ' ',
+  );
+  const project = packProjectSummaryContext(
+    {
+      instructions,
+      documents: [
+        {
+          name: 'Contract.txt',
+          kind: 'text',
+          pages: null,
+          truncated: false,
+          sections: [{ location: null, text: file }],
+        },
+      ],
+    },
+    projectBudgetFor('summary', 'local'),
+    'contract clause',
+  );
+  const enhancement = createEnhancementContext({
+    rawNotes: 'short notes',
+    seriesContext: buildSeriesContext(project, []),
+  });
+
+  const expectWindowRespected = async (
+    counter: TokenCounter,
+    calls: readonly Call[],
+  ): Promise<void> => {
+    for (const call of calls) {
+      const used = (await counter.count(call.prompt)) + call.maxTokens + SAFETY_MARGIN;
+      expect(used).toBeLessThanOrEqual(CONTEXT_TOKENS);
+    }
+  };
+
+  it('fills both blocks up to the local budget', () => {
+    expect(project.instructions).toHaveLength(1_500);
+    expect(project.files?.length).toBeLessThanOrEqual(1_500);
+    expect(project.files).toContain('Contract.txt');
+  });
+
+  it('keeps both blocks and every call inside the 4096-token window at a normal token density', async () => {
+    const counter = counterOf(3.5);
+    const { calls, infer } = recorder(() => '- note');
+    await summarizeMapReduce(request(lines(500, 20), { enhancement }), counter, infer, NEVER);
+    expect(calls.length).toBeGreaterThan(1);
+    expect(calls.at(-1)?.prompt).toContain('<project_instructions>');
+    expect(calls.at(-1)?.prompt).toContain('<project_files>');
+    await expectWindowRespected(counter, calls);
+  });
+
+  it('drops the files, then the instructions, before it refuses a summary for lack of room', async () => {
+    const counter = counterOf(2.5);
+    const { calls, infer } = recorder(() => '- note');
+    await summarizeMapReduce(request(lines(500, 20), { enhancement }), counter, infer, NEVER);
+    expect(calls.at(-1)?.prompt).not.toContain('<project_files>\n');
+    await expectWindowRespected(counter, calls);
+
+    const tight = counterOf(2.1);
+    const second = recorder(() => '- note');
+    await summarizeMapReduce(request(lines(500, 20), { enhancement }), tight, second.infer, NEVER);
+    expect(second.calls.at(-1)?.prompt).not.toContain('<project_instructions>\n');
+    await expectWindowRespected(tight, second.calls);
+  });
+
+  it('still refuses when the notes alone leave no room', async () => {
+    const hostile = createEnhancementContext({
+      rawNotes: 'n '.repeat(5_000),
+      seriesContext: buildSeriesContext(project, []),
+    });
+    const { infer } = recorder();
+    await expect(
+      summarizeMapReduce(
+        request(lines(500, 20), { enhancement: hostile }),
+        counterOf(3.5),
+        infer,
+        NEVER,
+      ),
+    ).rejects.toMatchObject({ code: 'NotesTooLong' });
   });
 });

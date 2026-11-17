@@ -4,13 +4,19 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   CancelSource,
+  createStorageLayout,
+  InMemoryProjectRepository,
   InMemorySettingsStore,
   SummaryService,
   type JevAnalysis,
   type MeetingRecord,
   type SummaryProvider,
 } from '@vozella/core';
+import { extractDocument } from '../chat/attachment-extractors';
 import { createLibraryFixture, type LibraryFixture } from '../library/library-test-kit';
+import { createProjectContextSource } from '../projects/project-context-source';
+import { createProjectFileStore } from '../projects/project-file-store';
+import { StorageStateHolder } from '../projects/storage-state';
 
 /** Item 112 and 4.2: a generate on files written by the WinUI app keeps every other field. */
 const source = path.join(
@@ -134,5 +140,68 @@ describe('SummaryService over the Markdown repository', () => {
     });
     expect(after.calendarEventId).toBe('evt-9');
     expect(after.brief).toBe('Two open questions.');
+  });
+});
+
+describe('SummaryService with the project context', () => {
+  const PROJECT = '8e2f1b63-44d5-4a7c-9ba1-1d2e3f4a5b6c';
+
+  it('hands the provider the instructions and the stored files of the meeting project', async () => {
+    const layout = createStorageLayout(fx.root, path);
+    fs.mkdirSync(layout.projectDirectory(PROJECT), { recursive: true });
+    fs.writeFileSync(layout.projectJsonFile(PROJECT), '{}');
+    const state = new StorageStateHolder({ status: 'ready' });
+    const files = createProjectFileStore({
+      layout,
+      extractor: extractDocument,
+      state,
+      logger: {
+        debug: () => undefined,
+        info: () => undefined,
+        warn: () => undefined,
+        error: () => undefined,
+      },
+      clock: { now: () => new Date('2026-11-16T10:00:00.000Z') },
+      newId: () => 'aaaaaaaa-0000-4000-8000-000000000001',
+    });
+    const brief = path.join(fx.dir, 'Syllabus.md');
+    fs.writeFileSync(brief, 'The final exam covers limits and derivatives.');
+    expect(await files.add(PROJECT, brief)).toMatchObject({ ok: true });
+    const projects = new InMemoryProjectRepository();
+    projects.records.set(PROJECT, {
+      id: PROJECT,
+      name: 'Calculo',
+      description: '',
+      instructions: 'Answer in Spanish.',
+      pinned: false,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
+    const seen: unknown[] = [];
+    const spy = {
+      id: 'codex',
+      summarize: (request: { enhancement?: unknown }) => {
+        seen.push(request.enhancement);
+        return provider.summarize(request as never, new CancelSource().signal);
+      },
+    } as unknown as SummaryProvider;
+    const withContext = new SummaryService({
+      meetings: fx.meetings,
+      settings: new InMemorySettingsStore(),
+      resolver: {
+        resolveSummaryProvider: () =>
+          Promise.resolve({ status: 'ready', kind: 'Codex', provider: spy }),
+      },
+      clock: { now: () => new Date('2026-09-05T15:00:00.000Z') },
+      notifyMeetingChanged: () => undefined,
+      projectContext: createProjectContextSource({ projects, files }),
+    });
+    expect(await generate(withContext, WEEKLY)).toMatchObject({ status: 'generated' });
+    expect(seen[0]).toMatchObject({
+      projectInstructions: 'Answer in Spanish.',
+    });
+    expect((seen[0] as { projectFiles: string }).projectFiles).toContain(
+      'The final exam covers limits and derivatives.',
+    );
   });
 });
