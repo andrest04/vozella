@@ -24,7 +24,7 @@ function setup(
   }) as Broadcast;
   const controller = new ProjectFilesController({
     files: () => files,
-    dialogs: { showOpenDialog: open as never },
+    dialogs: { showOpenDialog: open },
     broadcast,
     logger: logger(),
     filterName: 'Documents',
