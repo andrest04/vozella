@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CancelSignal } from '../cancel';
 import type { SummaryProviderKind } from '../library/settings';
+import { LIVE_DIGEST_LABEL, LOCAL_CONTEXT_BUDGET } from '../chat/context-packer';
 import { CancelledError } from '../summaries/provider';
 import {
   LiveAskSession,
@@ -28,6 +29,8 @@ function setup(
     resolution?: LiveAskResolution;
     setupWired?: boolean;
     settingsGate?: Gate;
+    committed?: string;
+    context?: () => ReturnType<LiveAskDeps['sessionContext']>;
   } = {},
 ) {
   const published: LiveAnswerState[] = [];
@@ -58,8 +61,8 @@ function setup(
         }
       );
     },
-    committedText: () => '[00:00.00-00:10.00] hello there',
-    sessionContext: () => ({ title: 'Math', brief: '' }),
+    committedText: () => options.committed ?? '[00:00.00-00:10.00] hello there',
+    sessionContext: options.context ?? (() => ({ title: 'Math' })),
     publish: (s) => published.push(s),
     nowMs: () => now,
     formatFailure: (e) => `failed: ${(e as Error).message}`,
@@ -258,5 +261,88 @@ describe('LiveAskSession', () => {
       usedWeb: false,
       canUseWebSearch: true,
     });
+  });
+});
+
+describe('LiveAskSession take context (live chat parity)', () => {
+  const stampAt = (s: number): string => {
+    const mm = String(Math.floor(s / 60)).padStart(2, '0');
+    const ss = String(s % 60).padStart(2, '0');
+    return `${mm}:${ss}.00`;
+  };
+  const at = (start: number, end: number, text: string): string =>
+    `[${stampAt(start)}-${stampAt(end)}] ${text}`;
+  const take = [
+    at(0, 10, 'minute zero'),
+    at(1000, 1010, 'minute five'),
+    at(1190, 1200, 'tail'),
+  ].join('\n');
+  const context = {
+    title: 'Planning',
+    notes: 'Ask about the launch date',
+    digest: '- Budget agreed (02:10)',
+  };
+
+  it('a typed ask carries the notes and the rolling digest next to the title', async () => {
+    const t = setup({ committed: take, context: () => context });
+    await t.session.ask('Why?');
+    expect(t.prompts[0]).toContain('Meeting: Planning');
+    expect(t.prompts[0]).toContain('Notes: Ask about the launch date');
+    expect(t.prompts[0]).toContain(LIVE_DIGEST_LABEL);
+    expect(t.prompts[0]).toContain('- Budget agreed (02:10)');
+  });
+
+  it('only a preset asks for the whole take', async () => {
+    const typed = setup({ committed: take, context: () => context });
+    await typed.session.ask('Why?');
+    expect(typed.prompts[0]).not.toContain('cover the whole recording so far');
+    const preset = setup({ committed: take, context: () => context });
+    await preset.session.askPreset('What did I miss?');
+    expect(preset.prompts[0]).toContain('cover the whole recording so far');
+  });
+
+  it('a typed ask still reads only the last 90 seconds', async () => {
+    const t = setup({ committed: take, context: () => context });
+    await t.session.ask('Why?');
+    expect(t.prompts[0]).toContain('tail');
+    expect(t.prompts[0]).not.toContain('minute five');
+  });
+
+  it('a preset with a digest reads the digest plus about 3 minutes', async () => {
+    const wide = [at(0, 10, 'ancient'), at(1050, 1060, 'inside'), at(1190, 1200, 'tail')].join(
+      '\n',
+    );
+    const t = setup({ committed: wide, context: () => context });
+    await t.session.askPreset('What did I miss?');
+    expect(t.prompts[0]).toContain('- Budget agreed (02:10)');
+    expect(t.prompts[0]).toContain('inside');
+    expect(t.prompts[0]).not.toContain('ancient');
+  });
+
+  it('a preset without a digest falls back to a wider window of about 10 minutes', async () => {
+    const t = setup({
+      committed: take,
+      context: () => ({ title: 'Planning', notes: null, digest: null }),
+    });
+    await t.session.askPreset('What did I miss?');
+    expect(t.prompts[0]).toContain('minute five');
+    expect(t.prompts[0]).toContain('tail');
+    expect(t.prompts[0]).not.toContain('minute zero');
+    expect(t.prompts[0]).not.toContain(LIVE_DIGEST_LABEL);
+  });
+
+  it('the local engine keeps a wide preset window under the local budget', async () => {
+    const long = Array.from({ length: 60 }, (_, i) =>
+      at(i * 5, i * 5 + 5, `line ${i} ${'z'.repeat(200)}`),
+    );
+    const t = setup({
+      kind: 'Local',
+      committed: long.join('\n'),
+      context: () => ({ title: 'Planning', digest: null }),
+    });
+    await t.session.askPreset('What did I miss?');
+    const window = t.prompts[0]?.split('Transcript window:\n')[1] ?? '';
+    expect(window.length).toBeLessThanOrEqual(LOCAL_CONTEXT_BUDGET.liveChars);
+    expect(window.length).toBeGreaterThan(0);
   });
 });

@@ -1,9 +1,20 @@
 import { CancelSource, type CancelSignal } from '../cancel';
+import {
+  CLI_CONTEXT_BUDGET,
+  LOCAL_CONTEXT_BUDGET,
+  packLiveSession,
+  type ContextBudget,
+} from '../chat/context-packer';
 import type { SummaryProviderKind } from '../library/settings';
 import { isCancellation, type SummaryProvider } from '../summaries/provider';
-import { takeRecentWindow } from './answer-window';
+import {
+  DEFAULT_ANSWER_WINDOW_MS,
+  OVERVIEW_WINDOW_NO_DIGEST_MS,
+  OVERVIEW_WINDOW_WITH_DIGEST_MS,
+  takeRecentWindow,
+} from './answer-window';
 import { buildLiveAnswerPrompt } from './prompt-builder';
-import { buildSessionContext } from './session-context';
+import { takeTail } from './utf16';
 import { shouldUseWeb, supportsWebSearch } from './web-policy';
 
 /** At most one publish per this many ms once the first visible text went out. */
@@ -38,13 +49,25 @@ export interface LiveAskDeps {
   }): Promise<LiveAskResolution>;
   /** The committed transcript of the take so far. */
   committedText(): string;
-  sessionContext(): { readonly title: string; readonly brief: string };
+  /** What the live chat packs besides the transcript: title, notes and the rolling digest. */
+  sessionContext(): {
+    readonly title: string | null;
+    readonly notes?: string | null;
+    readonly digest?: string | null;
+  };
   publish(state: LiveAnswerState): void;
   nowMs(): number;
   formatFailure(error: unknown): string;
   /** True when the page can open the provider setup (the message then says it was cancelled). */
   readonly setupWired: boolean;
 }
+
+/** A typed ask reads the last minutes; a preset overview reads the digest and a wider window. */
+export type LiveAskScope = 'recent' | 'overview';
+
+/** Local llama has a small context; every other engine gets the large live budget. */
+const budgetFor = (kind: SummaryProviderKind): ContextBudget =>
+  kind === 'Local' ? LOCAL_CONTEXT_BUDGET : CLI_CONTEXT_BUDGET;
 
 const hasVisible = (text: string): boolean => text.trim() !== '';
 
@@ -75,13 +98,13 @@ export class LiveAskSession {
     return this.forceWeb;
   }
 
-  /** Item 116: the chips use the typed path with the prompt trimmed. */
+  /** Item 116: the chips use the typed path with the prompt trimmed, over the whole take. */
   askPreset(prompt: string): Promise<void> {
     const trimmed = prompt.trim();
-    return trimmed === '' ? Promise.resolve() : this.ask(trimmed);
+    return trimmed === '' ? Promise.resolve() : this.ask(trimmed, 'overview');
   }
 
-  async ask(question: string): Promise<void> {
+  async ask(question: string, scope: LiveAskScope = 'recent'): Promise<void> {
     const text = question.trim();
     if (text === '') return;
     const generation = this.begin();
@@ -105,13 +128,16 @@ export class LiveAskSession {
         this.set({ ...this.state, isAnswering: false, error: { key, text: '' } });
         return;
       }
+      const budget = budgetFor(settings.providerKind);
       const context = this.deps.sessionContext();
+      const hasDigest = (context.digest ?? '').trim() !== '';
       const prompt = buildLiveAnswerPrompt(
         text,
-        takeRecentWindow(this.deps.committedText()),
+        this.transcriptWindow(scope, hasDigest, budget),
         settings.language,
-        buildSessionContext(context.title, context.brief),
+        packLiveSession(context, budget),
         useWeb,
+        scope === 'overview',
       );
       const buffer = await this.stream(resolution.provider, prompt, source.signal, stale);
       if (buffer === null) return;
@@ -134,6 +160,18 @@ export class LiveAskSession {
         error: { key: null, text: this.deps.formatFailure(error) },
       });
     }
+  }
+
+  /**
+   * Typed asks keep the last 90 s. An overview (the chips) reads the digest plus about 3 minutes,
+   * or about 10 minutes when no digest exists yet, never past the engine's live budget.
+   */
+  private transcriptWindow(scope: LiveAskScope, hasDigest: boolean, budget: ContextBudget): string {
+    const committed = this.deps.committedText();
+    if (scope === 'recent') return takeRecentWindow(committed, DEFAULT_ANSWER_WINDOW_MS);
+    const windowMs = hasDigest ? OVERVIEW_WINDOW_WITH_DIGEST_MS : OVERVIEW_WINDOW_NO_DIGEST_MS;
+    const chars = hasDigest ? budget.liveTailWithDigestChars : budget.liveChars;
+    return takeTail(takeRecentWindow(committed, windowMs), chars);
   }
 
   /** Stop and Discard (127). Silent: it only ends the answering state. */

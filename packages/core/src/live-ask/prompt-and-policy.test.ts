@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { buildLiveAnswerPrompt } from './prompt-builder';
-import { MAX_SESSION_CONTEXT_CHARS, buildSessionContext } from './session-context';
 import { shouldUseWeb, supportsWebSearch } from './web-policy';
 
 describe('LiveAnswerPromptBuilder', () => {
@@ -120,21 +119,6 @@ describe('LiveAnswerPromptBuilder layout', () => {
   });
 });
 
-/** A high surrogate without a low one after it, or a low one without a high one before it. */
-function hasLoneSurrogate(text: string): boolean {
-  for (let i = 0; i < text.length; i += 1) {
-    const unit = text.charCodeAt(i);
-    if (unit >= 0xd800 && unit <= 0xdbff) {
-      const next = text.charCodeAt(i + 1);
-      if (!(next >= 0xdc00 && next <= 0xdfff)) return true;
-      i += 1;
-    } else if (unit >= 0xdc00 && unit <= 0xdfff) {
-      return true;
-    }
-  }
-  return false;
-}
-
 describe('LiveAnswerWebPolicy', () => {
   it('only the CLI providers support web search', () => {
     expect(supportsWebSearch('ClaudeCode')).toBe(true);
@@ -148,42 +132,5 @@ describe('LiveAnswerWebPolicy', () => {
     expect(shouldUseWeb(true, false)).toBe(false);
     expect(shouldUseWeb(false, true)).toBe(false);
     expect(shouldUseWeb(false, false)).toBe(false);
-  });
-
-  it.each([
-    [null, null],
-    ['  ', ''],
-    [undefined, '\n'],
-  ])('blank title and brief give null (%j, %j)', (title, brief) => {
-    expect(buildSessionContext(title, brief)).toBeNull();
-  });
-
-  it('title only, brief only and both', () => {
-    expect(buildSessionContext(' Math ', '')).toBe('Meeting: Math');
-    expect(buildSessionContext('', '  about sets ')).toBe('about sets');
-    expect(buildSessionContext('Math', 'sets')).toBe('Meeting: Math\nsets');
-  });
-
-  // Bug 16: the C# cut by code unit could leave half of a surrogate pair in the prompt.
-  it('the 1500 cut never splits a surrogate pair', () => {
-    const text = buildSessionContext('', `${'a'.repeat(1499)}😀tail`);
-    expect(text).toBe('a'.repeat(1499));
-    expect(hasLoneSurrogate(text ?? '')).toBe(false);
-    const fits = `${'a'.repeat(1498)}😀`;
-    expect(buildSessionContext('', fits)).toBe(fits);
-  });
-
-  it('title and brief joined are measured together', () => {
-    const text = buildSessionContext('T', 'b'.repeat(2000));
-    expect(text?.length).toBe(MAX_SESSION_CONTEXT_CHARS);
-    expect(text?.startsWith('Meeting: T\nbbb')).toBe(true);
-  });
-
-  it('a long brief is cut at 1500 and trimmed at the end', () => {
-    const brief = `${'a'.repeat(1490)} ${'b'.repeat(40)}`;
-    const text = buildSessionContext('', brief);
-    expect(text).toBe(brief.slice(0, MAX_SESSION_CONTEXT_CHARS).trimEnd());
-    expect(text?.length).toBeLessThanOrEqual(MAX_SESSION_CONTEXT_CHARS);
-    expect(buildSessionContext('', 'x'.repeat(3000))?.length).toBe(MAX_SESSION_CONTEXT_CHARS);
   });
 });

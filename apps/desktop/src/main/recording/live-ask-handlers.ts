@@ -94,8 +94,8 @@ export class LiveAsk {
           : { status: 'unresolved' };
       },
       committedText: () => this.committedText,
-      // The brief came from the calendar, which was cut (owner decision 2026-11-03).
-      sessionContext: () => ({ title: deps.recording().title, brief: '' }),
+      // The same title, notes and rolling digest the live chat packs (chatContext).
+      sessionContext: () => this.chatContext(),
       publish: (state) => {
         deps.broadcast(recordingAnswer, state);
       },

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_ANSWER_WINDOW_MS, parseStampEnd, takeRecentWindow } from './answer-window';
+import { parseCommittedLineEnd } from '../transcription/committed-line';
+import {
+  DEFAULT_ANSWER_WINDOW_MS,
+  OVERVIEW_WINDOW_NO_DIGEST_MS,
+  OVERVIEW_WINDOW_WITH_DIGEST_MS,
+  takeRecentWindow,
+} from './answer-window';
 
 const stamp = (s: number): string => {
   const mm = String(Math.floor(s / 60)).padStart(2, '0');
@@ -12,6 +18,16 @@ const line = (start: number, end: number, text: string): string =>
 describe('LiveAnswerWindow', () => {
   it('the default window is 90 seconds', () => {
     expect(DEFAULT_ANSWER_WINDOW_MS).toBe(90_000);
+  });
+
+  it('the overview windows are 3 minutes with a digest and 10 without', () => {
+    expect(OVERVIEW_WINDOW_WITH_DIGEST_MS).toBe(180_000);
+    expect(OVERVIEW_WINDOW_NO_DIGEST_MS).toBe(600_000);
+  });
+
+  it('a starred highlight line is read like the line under the star', () => {
+    const text = [line(0, 10, 'old'), `* ${line(200, 210, 'starred')}`].join('\n');
+    expect(takeRecentWindow(text)).toBe(`* ${line(200, 210, 'starred')}`);
   });
 
   it('keeps lines at exactly 90 s before the latest end and drops older ones', () => {
@@ -125,11 +141,11 @@ describe('LiveAnswerWindow', () => {
     ['bracket not first', ' [00:10.00-00:20.00] x'],
     ['a sign', '[+0:10.00-00:20.00] x'],
   ])('a stamp with %s is not a stamp', (_name, text) => {
-    expect(parseStampEnd(text)).toBeNull();
+    expect(parseCommittedLineEnd(text)).toBeNull();
   });
 
   it('minutes are unbounded', () => {
-    expect(parseStampEnd('[100:00.00-123:04.50] x')).toBe((123 * 60 + 4) * 1000 + 500);
+    expect(parseCommittedLineEnd('[100:00.00-123:04.50] x')).toBe((123 * 60 + 4) * 1000 + 500);
   });
 
   // Bug 16: the C# cut could leave half of a surrogate pair at the start.

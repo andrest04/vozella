@@ -75,6 +75,7 @@ describe('live ask handlers', () => {
     await settle();
     expect(t.prompts[0]).toContain('we talked about limits');
     expect(t.prompts[0]).toContain('Meeting: Algebra');
+    expect(t.prompts[0]).toContain('Notes: ask about limits');
     expect(t.resolved).toEqual([{ kind: 'Codex', webSearch: true }]);
     const last = t.sent[t.sent.length - 1];
     expect(last?.channel).toBe('recording.answer');

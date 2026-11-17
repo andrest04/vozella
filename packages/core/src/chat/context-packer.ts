@@ -256,20 +256,39 @@ function packMeeting(
  * covers what came before; without one the tail keeps the full live budget.
  */
 function packLive(live: LiveContextSnapshot, budget: ContextBudget, t: ChatStringLookup): string {
-  const digest = isBlank(live.digest) ? null : cutPrefix(live.digest, LIVE_DIGEST_MAX_CHARS);
+  const digest = liveDigest(live.digest);
   const text = tail(
     live.transcript,
     digest === null ? budget.liveChars : budget.liveTailWithDigestChars,
   );
   if (text === null && digest === null) return t('ChatLiveTranscriptEmpty');
   const parts: string[] = [];
+  const session = packLiveSession(live, budget);
+  if (session !== null) parts.push(session);
+  if (text !== null) parts.push(`Live transcript:${NL}${neutralizeStructure(text)}`);
+  return parts.join(`${NL}${NL}`);
+}
+
+const liveDigest = (digest: string | null | undefined): string | null =>
+  isBlank(digest) ? null : cutPrefix(digest, LIVE_DIGEST_MAX_CHARS);
+
+/**
+ * The part of the Live context that is not the transcript: title, notes and the rolling digest,
+ * packed exactly as the Live chat scope does. The live ask reuses it so the pill and the dock see
+ * what the chat sees. Null when there is nothing to say.
+ */
+export function packLiveSession(
+  live: Pick<LiveContextSnapshot, 'title' | 'notes' | 'digest'>,
+  budget: ContextBudget,
+): string | null {
+  const parts: string[] = [];
   const session: string[] = [];
   if (!isBlank(live.title)) session.push(`Meeting: ${singleLine(live.title.trim())}`);
   if (!isBlank(live.notes)) session.push(`Notes: ${capPrefix(live.notes, budget.liveNotesChars)}`);
   if (session.length > 0) parts.push(session.join(NL));
+  const digest = liveDigest(live.digest);
   if (digest !== null) parts.push(`${LIVE_DIGEST_LABEL}${NL}${neutralizeStructure(digest)}`);
-  if (text !== null) parts.push(`Live transcript:${NL}${neutralizeStructure(text)}`);
-  return parts.join(`${NL}${NL}`);
+  return parts.length === 0 ? null : parts.join(`${NL}${NL}`);
 }
 
 /**
