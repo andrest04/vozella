@@ -341,6 +341,19 @@ describe('delete', () => {
     expect(await fx.repo.get(p.id)).not.toBeNull();
   });
 
+  it('refuses to delete a corrupt or unsafe project, and keeps its files and chats on disk', async () => {
+    fx = createProjectsFixture();
+    fs.mkdirSync(fx.layout.projectDirectory(guid(85)), { recursive: true });
+    fs.writeFileSync(fx.layout.projectJsonFile(guid(85)), '{ not json');
+    fs.mkdirSync(path.join(fx.layout.projectDirectory(guid(85)), 'chats'));
+    writeProjectJson(fx, guid(86), validRecord(guid(86), { dir: '../../outside' }));
+    expect(await fx.repo.delete(guid(85))).toEqual({ ok: false, reason: 'corrupt' });
+    expect(await fx.repo.delete(guid(86))).toEqual({ ok: false, reason: 'corrupt' });
+    expect(fx.discarded).toEqual([]);
+    expect(fs.existsSync(path.join(fx.layout.projectDirectory(guid(85)), 'chats'))).toBe(true);
+    expect(fs.existsSync(fx.layout.projectJsonFile(guid(86)))).toBe(true);
+  });
+
   it('answers not-found for an unknown id and storage-newer for a newer project', async () => {
     fx = createProjectsFixture();
     writeProjectJson(fx, guid(84), { schemaVersion: 8, id: guid(84), dir: 'X' });

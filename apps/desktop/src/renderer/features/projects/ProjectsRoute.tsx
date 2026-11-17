@@ -103,7 +103,7 @@ export function ProjectsRoute() {
         project={project}
         activity={formatActivity(project.lastActivityAt, locale, now)}
         meetings={meetingsText(project.meetingCount)}
-        pinLabel={t('Ui_ProjectPinNamed', project.name)}
+        pinLabel={t(project.pinned ? 'Ui_ProjectUnpinNamed' : 'Ui_ProjectPinNamed', project.name)}
         pinDisabled={!writable}
         onTogglePin={() => {
           togglePin(project.id, project.pinned);
@@ -117,8 +117,8 @@ export function ProjectsRoute() {
     </ul>
   );
   const searching = query.trim() !== '';
-  const noMatches =
-    writable && searching && arrangement.pinned.length === 0 && arrangement.others.length === 0;
+  const matches = arrangement.pinned.length + arrangement.others.length;
+  const noMatches = writable && searching && matches === 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -209,6 +209,13 @@ export function ProjectsRoute() {
                   setSort(PROJECT_SORTS.find((candidate) => candidate === value) ?? 'recent');
                 }}
               />
+              <p role="status" aria-label={t('Ui_ProjectsResultsLabel')} className="sr-only">
+                {searching
+                  ? matches === 1
+                    ? t('Ui_ProjectsResultsOne')
+                    : t('Ui_ProjectsResultsMany', String(matches))
+                  : ''}
+              </p>
             </div>
           ) : null}
 
@@ -250,17 +257,22 @@ export function ProjectsRoute() {
             <>
               {arrangement.pinned.length > 0 ? (
                 <section aria-labelledby="projects-pinned" className="flex flex-col gap-3">
-                  <h2 id="projects-pinned" className="text-heading font-semibold">
+                  <h2 id="projects-pinned" className="text-ui-lg font-semibold">
                     {t('Ui_ProjectsPinned')}
                   </h2>
                   {grid(arrangement.pinned)}
                 </section>
               ) : null}
               {arrangement.others.length > 0 ? (
-                <section aria-labelledby="projects-all" className="flex flex-col gap-3">
-                  <h2 id="projects-all" className="text-heading font-semibold">
-                    {t('Ui_ProjectsAll')}
-                  </h2>
+                <section
+                  aria-labelledby={arrangement.pinned.length > 0 ? 'projects-all' : undefined}
+                  className="flex flex-col gap-3"
+                >
+                  {arrangement.pinned.length > 0 ? (
+                    <h2 id="projects-all" className="text-ui-lg font-semibold">
+                      {t('Ui_ProjectsAll')}
+                    </h2>
+                  ) : null}
                   {grid(arrangement.others)}
                 </section>
               ) : null}

@@ -73,7 +73,7 @@ describe('resolveDataRoots', () => {
     ['a folder inside it', 'C:\\Users\\ana\\Documents\\MeetingLive\\sandbox'],
     ['the real app data folder', 'C:\\Users\\ana\\AppData\\Local\\MeetingLive'],
     ['a different case', 'c:\\users\\ANA\\documents\\meetinglive'],
-    ['a relocated folder with the legacy name', 'E:\\OneDrive\\Documents\\MeetingLive\\x'],
+    ['a relocated folder with the legacy name', 'E:\\Backups\\Documents\\MeetingLive\\x'],
     ['a parent-relative escape', 'C:\\Users\\ana\\Documents\\tmp\\..\\MeetingLive'],
   ])('refuses %s in dev, test and production', (_label, value) => {
     for (const mode of ['development', 'test', 'production'] as const) {

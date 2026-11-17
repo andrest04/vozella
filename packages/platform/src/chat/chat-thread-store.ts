@@ -159,6 +159,10 @@ class FileChatThreadStore implements ChatThreadRepository {
     if (file === null) return { ok: false, reason: 'io-failed' };
     return this.locked(file, async (): Promise<Result<void>> => {
       try {
+        // A project deleted while its chat was open must not be brought back as an orphan directory.
+        if (thread.ownerProjectId !== null && !(await this.projectExists(thread.ownerProjectId))) {
+          return { ok: false, reason: 'not-found' };
+        }
         const existing = await this.load(file);
         if (existing.kind === 'corrupt') return { ok: false, reason: 'corrupt' };
         if (existing.kind === 'unsupported') return { ok: false, reason: 'storage-newer' };
@@ -211,6 +215,15 @@ class FileChatThreadStore implements ChatThreadRepository {
 
   private refusal(): ReturnType<typeof storageFailureOf> {
     return storageFailureOf(this.deps.state.current());
+  }
+
+  private async projectExists(projectId: string): Promise<boolean> {
+    try {
+      await fs.access(this.deps.layout.projectJsonFile(projectId));
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   private ownerKey(owner: ThreadOwner): string {

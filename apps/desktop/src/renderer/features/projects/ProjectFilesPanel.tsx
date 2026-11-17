@@ -5,7 +5,8 @@ import type { StringKey, Translate } from '../../i18n/translate';
 import { Button, Icon, IconButton, Skeleton } from '../../ui';
 import type { FileProblem } from './use-project-files';
 
-const FAILURE_KEYS: Readonly<Record<ProjectFileFailureDto, StringKey>> = {
+const FAILURE_KEYS: Readonly<Record<ProjectFileFailureDto | 'remove-failed', StringKey>> = {
+  'remove-failed': 'Ui_ProjectFileRemoveFailed',
   encrypted: 'Ui_ProjectFileEncrypted',
   duplicate: 'Ui_ProjectFileDuplicate',
   'too-large': 'Ui_ProjectFileTooLarge',
@@ -121,6 +122,7 @@ export function ProjectFilesPanel({
         {problems.map((problem) => (
           <li
             key={problem.id}
+            role="alert"
             className="flex min-h-10 items-start gap-2 border-b border-hairline py-1.5 last:border-b-0"
           >
             <Icon icon={CircleAlert} size={14} className="mt-[3px]" />

@@ -50,6 +50,8 @@ export function sortThreads(
 export interface ChatThreadsModel {
   readonly status: 'loading' | 'ready' | 'failed';
   readonly threads: readonly ChatThreadSummaryDto[];
+  /** Reads the list again, for the retry after a failed load. */
+  readonly reload: () => Promise<void>;
   readonly rename: (id: string, title: string) => Promise<boolean>;
   readonly remove: (id: string) => Promise<boolean>;
 }
@@ -89,6 +91,10 @@ export function useChatThreads(owner: string | null): ChatThreadsModel {
   return {
     status,
     threads,
+    reload: async () => {
+      setStatus('loading');
+      await load();
+    },
     rename: async (id, title) => {
       try {
         const { ok } = await window.vozella.invoke('chat.threads.rename', {

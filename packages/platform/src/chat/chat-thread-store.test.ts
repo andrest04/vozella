@@ -46,6 +46,10 @@ beforeEach(() => {
   state = new StorageStateHolder({ status: 'ready' });
   logger = new RecordingLogger();
   clock = new FakeClock();
+  for (const owner of [PROJECT, OTHER]) {
+    fs.mkdirSync(layout.projectDirectory(owner), { recursive: true });
+    fs.writeFileSync(layout.projectJsonFile(owner), '{}');
+  }
 });
 afterEach(() => {
   vi.restoreAllMocks();
@@ -122,10 +126,17 @@ describe('chat thread store: round trip', () => {
     expect(await s.delete(PROJECT, 'nope')).toBe(false);
   });
 
+  it('refuses to save into a project that no longer exists, and recreates nothing', async () => {
+    const gone = '9f1c2d3e-0000-4000-8000-000000000009';
+    const result = await store().save(thread(1, { ownerProjectId: gone }));
+    expect(result).toEqual({ ok: false, reason: 'not-found' });
+    expect(fs.existsSync(layout.projectDirectory(gone))).toBe(false);
+  });
+
   it('refuses to save a thread whose id is not a guid, without writing', async () => {
     const result = await store().save(thread(1, { id: '../evil' }));
     expect(result).toEqual({ ok: false, reason: 'io-failed' });
-    expect(fs.existsSync(path.join(root, '.vozella'))).toBe(false);
+    expect(fs.existsSync(layout.chatsDirectory(PROJECT))).toBe(false);
   });
 
   it('lists the newest first, with the message count and no messages', async () => {

@@ -94,12 +94,10 @@ describe('ProjectsRoute', () => {
     for (const link of screen.getAllByRole('link')) {
       expect(link.querySelector('button')).toBeNull();
     }
-    const pin = screen.getByRole('button', { name: 'Pin Producto Q4' });
-    expect(pin).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: 'Pin Álgebra' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    );
+    // The state is in the name (Unpin when pinned), so it is announced once and not twice.
+    const pin = screen.getByRole('button', { name: 'Unpin Producto Q4' });
+    expect(pin).not.toHaveAttribute('aria-pressed');
+    expect(screen.getByRole('button', { name: 'Pin Álgebra' })).not.toHaveAttribute('aria-pressed');
     // Tab order: the name link, then the pin.
     const article = cardOf(pin);
     const focusables = within(article)
@@ -114,12 +112,7 @@ describe('ProjectsRoute', () => {
     await waitFor(() => {
       expect(world.details.get(guid(3))?.project.pinned).toBe(true);
     });
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Pin Álgebra' })).toHaveAttribute(
-        'aria-pressed',
-        'true',
-      );
-    });
+    expect(await screen.findByRole('button', { name: 'Unpin Álgebra' })).toBeInTheDocument();
   });
 
   it('sorts by name and by newest, and keeps the pinned group first', async () => {
@@ -344,5 +337,43 @@ describe('migration notice', () => {
     expect(screen.queryByTestId('migration-notice')).not.toBeInTheDocument();
     expect(mock.inputsOf('projects.dismissMigrationReport')).toHaveLength(1);
     expect(world.report).toBeNull();
+  });
+});
+
+describe('ProjectsRoute hierarchy and announcements', () => {
+  it('names the All group only beside a Pinned group, and keeps both below the page title', async () => {
+    await mount(seed);
+    await screen.findAllByRole('article');
+    expect(screen.getByRole('heading', { level: 1, name: 'Projects' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Pinned' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'All projects' })).toBeInTheDocument();
+    for (const heading of screen.getAllByRole('heading', { level: 2 })) {
+      expect(heading.className).toContain('text-ui-lg');
+      expect(heading.className).not.toContain('text-heading');
+    }
+  });
+
+  it('shows a lone group without a heading of its own when nothing is pinned', async () => {
+    await mount((world) => {
+      world.projects = [projectItem(1, 'Universidad'), projectItem(2, 'Producto Q4')];
+    });
+    await screen.findAllByRole('article');
+    expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument();
+  });
+
+  it('announces how many projects match while the search is typed', async () => {
+    const { user } = await mount(seed);
+    await screen.findAllByRole('article');
+    const status = screen.getByRole('status', { name: 'Search results' });
+    expect(status).toHaveTextContent('');
+    await user.type(screen.getByRole('searchbox', { name: 'Search projects' }), 'alg');
+    await waitFor(() => {
+      expect(status).toHaveTextContent('1 project found');
+    });
+    await user.clear(screen.getByRole('searchbox', { name: 'Search projects' }));
+    await user.type(screen.getByRole('searchbox', { name: 'Search projects' }), 'zzz');
+    await waitFor(() => {
+      expect(status).toHaveTextContent('0 projects found');
+    });
   });
 });

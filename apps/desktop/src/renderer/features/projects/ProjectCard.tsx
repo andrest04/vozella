@@ -9,6 +9,7 @@ export interface ProjectCardProps {
   readonly activity: string;
   /** "9 meetings", already worded. */
   readonly meetings: string;
+  /** "Pin X", or "Unpin X" when it is pinned: the state is in the name, so it is read once. */
   readonly pinLabel: string;
   readonly pinDisabled: boolean;
   readonly onTogglePin: () => void;
@@ -61,12 +62,12 @@ export function ProjectCard({
         label={pinLabel}
         icon={Pin}
         size="sm"
-        aria-pressed={project.pinned}
         disabled={pinDisabled}
         onClick={onTogglePin}
         className={cn(
           'absolute end-2 top-2 z-10',
-          project.pinned ? 'text-ink' : 'text-ink-faint hover:text-ink',
+          // A filled pin says "pinned" without colour; the name changes to Unpin as well.
+          project.pinned ? 'text-ink [&_svg]:fill-current' : 'text-ink-faint hover:text-ink',
         )}
       />
     </article>

@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { takeChatRequest } from '../../app/chat-requests';
 import { guid, installProjectsWorld, type ProjectsWorld } from '../../test-support/projects-world';
 import { renderRouted } from '../../test-support/render-with-router';
-import { uninstallVozella } from '../../test-support/vozella-mock';
+import { uninstallVozella, type VozellaMock } from '../../test-support/vozella-mock';
 import { useMeetingListStore } from '../meeting-list/meeting-list-store';
 import { ChatThreadList } from './ChatThreadList';
 
@@ -32,8 +32,12 @@ const thread = (
   messageCount: 2,
 });
 
-async function mount(setup: (world: ProjectsWorld) => void) {
+async function mount(
+  setup: (world: ProjectsWorld) => void,
+  prepare: (mock: VozellaMock) => void = () => undefined,
+) {
   const handles = installProjectsWorld(setup);
+  prepare(handles.mock);
   useMeetingListStore.setState({
     isLoading: false,
     meetings: [
@@ -74,6 +78,22 @@ describe('ChatThreadList', () => {
     expect(
       await screen.findByText("No chats yet. Ask about this project's meetings."),
     ).toBeInTheDocument();
+  });
+
+  it('says the chats could not be loaded instead of claiming there are none, and tries again', async () => {
+    const { mock, world, user } = await mount(seed, (m) => {
+      m.handle('chat.threads.list', () => {
+        throw new Error('disk unavailable');
+      });
+    });
+    expect(await screen.findByText('The chats could not be loaded.')).toBeInTheDocument();
+    expect(screen.queryByText(/No chats yet/)).not.toBeInTheDocument();
+    mock.handle('chat.threads.list', ({ projectId }) => ({
+      threads: world.threads.get(projectId) ?? [],
+    }));
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('About the sync')).toBeInTheDocument();
+    expect(screen.queryByText('The chats could not be loaded.')).not.toBeInTheDocument();
   });
 
   it('lists the newest chat first with its date and a scope badge for each kind', async () => {
@@ -135,6 +155,17 @@ describe('ChatThreadList', () => {
     await waitFor(() => {
       expect(world.threads.get(OWNER)?.map((t) => t.title)).not.toContain('During a call');
     });
+  });
+
+  it('says so when a chat could not be deleted, and keeps it listed', async () => {
+    const { user, mock } = await mount(seed);
+    mock.handle('chat.threads.delete', () => ({ ok: false }));
+    await user.click(await screen.findByRole('button', { name: 'Actions for During a call' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Delete' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Delete this chat?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Delete' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('The chat was not changed.');
+    expect(screen.getByText('During a call')).toBeInTheDocument();
   });
 
   it('follows the list main keeps: a new chat appears when chat.threads.changed arrives', async () => {

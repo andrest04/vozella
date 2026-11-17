@@ -28,13 +28,24 @@ beforeAll(() => {
   stubLayout();
 });
 
+let isWide = true;
+const widthListeners = new Set<() => void>();
+
 /** jsdom has no matchMedia: the page is wide by default, and a test can make it narrow. */
 function mockWidth(wide: boolean): void {
+  isWide = wide;
+  widthListeners.clear();
   const list = (query: string): Partial<MediaQueryList> => ({
-    matches: wide && query.includes('min-width: 960px'),
+    get matches() {
+      return isWide && query.includes('min-width: 960px');
+    },
     media: query,
-    addEventListener: () => undefined,
-    removeEventListener: () => undefined,
+    addEventListener: (_type: string, listener: unknown) => {
+      widthListeners.add(listener as () => void);
+    },
+    removeEventListener: (_type: string, listener: unknown) => {
+      widthListeners.delete(listener as () => void);
+    },
     onchange: null,
     dispatchEvent: () => false,
   });
@@ -42,6 +53,14 @@ function mockWidth(wide: boolean): void {
     configurable: true,
     writable: true,
     value: list,
+  });
+}
+
+/** Crosses the 960 px breakpoint, as resizing the window does. */
+function resizeTo(wide: boolean): void {
+  isWide = wide;
+  act(() => {
+    for (const listener of [...widthListeners]) listener();
   });
 }
 
@@ -189,6 +208,19 @@ describe('the header', () => {
   });
 });
 
+describe('failures that must not pass in silence', () => {
+  it('says so when pinning from the menu fails', async () => {
+    const { user, mock } = await mount();
+    mock.handle('projects.update', () => ({
+      ok: false as const,
+      reason: 'io-failed' as const,
+      message: 'disk is full',
+    }));
+    await menu(user, 'Pin');
+    expect(await screen.findByText('The project was not saved: disk is full')).toBeInTheDocument();
+  });
+});
+
 describe('tabs', () => {
   it('moves between Meetings and Chats with the arrow keys', async () => {
     const { user } = await mount();
@@ -269,9 +301,68 @@ describe('instructions', () => {
       expect(world.details.get(ID)?.project.instructions).toBe('Resumir en español. x');
     });
     await user.click(within(panel()).getByRole('button', { name: 'Edit instructions' }));
-    await user.type(within(panel()).getByRole('textbox', { name: 'Instructions' }), 'zzz{Escape}');
+    await user.type(within(panel()).getByRole('textbox', { name: 'Instructions' }), '{Escape}');
     expect(within(panel()).getByRole('button', { name: 'Edit instructions' })).toHaveFocus();
     expect(world.details.get(ID)?.project.instructions).toBe('Resumir en español. x');
+  });
+
+  it('asks before Escape throws away a draft that was changed, and keeps it on Keep editing', async () => {
+    const { user, world } = await mount();
+    await screen.findByRole('heading', { level: 1 });
+    await user.click(within(panel()).getByRole('button', { name: 'Edit instructions' }));
+    await user.type(within(panel()).getByRole('textbox', { name: 'Instructions' }), ' zzz{Escape}');
+    const dialog = await screen
+      .findByRole('alertdialog', { name: 'Discard your changes?' })
+      .catch(() => screen.findByRole('dialog', { name: 'Discard your changes?' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Keep editing' }));
+    expect(within(panel()).getByRole('textbox', { name: 'Instructions' })).toHaveValue(
+      'Resumir en español. zzz',
+    );
+    await user.type(within(panel()).getByRole('textbox', { name: 'Instructions' }), '{Escape}');
+    await user.click(
+      within(
+        await screen
+          .findByRole('alertdialog', { name: 'Discard your changes?' })
+          .catch(() => screen.findByRole('dialog', { name: 'Discard your changes?' })),
+      ).getByRole('button', { name: 'Discard' }),
+    );
+    await waitFor(() => {
+      expect(
+        within(panel()).getByRole('button', { name: 'Edit instructions' }),
+      ).toBeInTheDocument();
+    });
+    expect(world.details.get(ID)?.project.instructions).toBe('Resumir en español.');
+  });
+
+  it('counts the characters with the separators of the app language', async () => {
+    mockWidth(true);
+    installProjectsWorld(seed);
+    const user = userEvent.setup();
+    await renderRouted(
+      `/projects/${ID}`,
+      [{ path: '/projects/$projectId', component: ProjectRoute }],
+      'es',
+    );
+    await screen.findByRole('heading', { level: 1 });
+    const sidePanel = screen.getByRole('complementary');
+    await user.click(within(sidePanel).getByRole('button', { name: 'Editar instrucciones' }));
+    expect(
+      within(sidePanel).getByRole('textbox', { name: 'Instrucciones' }),
+    ).toHaveAccessibleDescription('19 de 20.000 caracteres');
+  });
+
+  it('keeps an unsaved draft when the window crosses the 960 px breakpoint', async () => {
+    const { user } = await mount();
+    await screen.findByRole('heading', { level: 1 });
+    await user.click(within(panel()).getByRole('button', { name: 'Edit instructions' }));
+    await user.type(within(panel()).getByRole('textbox', { name: 'Instructions' }), ' draft');
+    resizeTo(false);
+    const field = await screen.findByRole('textbox', { name: 'Instructions' });
+    expect(field).toHaveValue('Resumir en español. draft');
+    resizeTo(true);
+    expect(await screen.findByRole('textbox', { name: 'Instructions' })).toHaveValue(
+      'Resumir en español. draft',
+    );
   });
 
   it('Cancel discards the draft', async () => {
@@ -313,6 +404,10 @@ describe('instructions', () => {
     expect(within(panel()).getByRole('textbox', { name: 'Instructions' })).toHaveValue(
       'Resumir en español. keep',
     );
+    // The reason is read with the field, not only announced once.
+    expect(
+      within(panel()).getByRole('textbox', { name: 'Instructions' }),
+    ).toHaveAccessibleDescription(expect.stringContaining('Projects are unavailable right now'));
   });
 });
 
@@ -372,6 +467,25 @@ describe('context files', () => {
     expect(await within(panel()).findByText(`bad.bin: ${words}`)).toBeInTheDocument();
     await user.click(within(panel()).getByRole('button', { name: 'Dismiss' }));
     expect(within(panel()).queryByText(`bad.bin: ${words}`)).not.toBeInTheDocument();
+  });
+
+  it('announces a refused file to a screen reader', async () => {
+    const { user, world } = await mount();
+    world.pickResults = [{ ok: false, name: 'bad.bin', reason: 'unsupported' }];
+    await within(panel()).findByText('Syllabus.pdf');
+    await user.click(within(panel()).getByRole('button', { name: 'Add' }));
+    expect(await within(panel()).findByRole('alert')).toHaveTextContent('bad.bin: Not supported');
+  });
+
+  it('says when a file could not be removed, and keeps it listed', async () => {
+    const { user, mock } = await mount();
+    mock.handle('projects.files.remove', () => ({ removed: false }));
+    await within(panel()).findByText('notas.md');
+    await user.click(within(panel()).getByRole('button', { name: 'Remove notas.md' }));
+    expect(await within(panel()).findByRole('alert')).toHaveTextContent(
+      'notas.md: Could not be removed',
+    );
+    expect(within(panel()).getByText('notas.md')).toBeInTheDocument();
   });
 
   it('keeps the good files when one in the batch is refused', async () => {

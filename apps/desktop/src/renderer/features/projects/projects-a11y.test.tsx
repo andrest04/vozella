@@ -88,14 +88,13 @@ describe('accessibility of the Projects tab', () => {
     }
   });
 
-  it('state is never carried by color alone: pinned is a pressed toggle, errors are words with an icon', async () => {
+  it('state is never carried by color alone: pinned has its own name and a filled icon, errors are words with an icon', async () => {
     installProjectsWorld(seed);
     await renderRouted('/projects', [{ path: '/projects', component: ProjectsRoute }]);
     await screen.findAllByRole('article');
-    expect(screen.getByRole('button', { name: 'Pin Universidad' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    const pinned = screen.getByRole('button', { name: 'Unpin Universidad' });
+    expect(pinned.className).toContain('fill-current');
+    expect(pinned).not.toHaveAttribute('aria-pressed');
     await userEvent.click(screen.getByRole('button', { name: 'New project' }));
     const dialog = await screen.findByRole('dialog', { name: 'New project' });
     await userEvent.click(within(dialog).getByRole('button', { name: 'Create' }));

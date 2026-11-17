@@ -8,7 +8,7 @@ import {
   createRouter,
 } from '@tanstack/react-router';
 import { act, cleanup, render } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { connectProjectDirectory } from '../meeting-list/project-directory';
 import { guid, projectItem } from '../../test-support/project-fixtures';
 import { installVozella, uninstallVozella } from '../../test-support/vozella-mock';
@@ -46,8 +46,12 @@ async function mount(initial: string, projectIds: number[]) {
     render(<RouterProvider router={router} />);
     await router.load();
   });
+  // The list was asked for; let its answer and the publish that follows run their course.
+  await vi.waitFor(() => {
+    expect(mock.inputsOf('projects.list').length).toBeGreaterThan(0);
+  });
   await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    for (let turn = 0; turn < 5; turn += 1) await Promise.resolve();
   });
   return { mock, router, off };
 }

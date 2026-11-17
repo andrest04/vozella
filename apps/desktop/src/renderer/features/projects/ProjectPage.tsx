@@ -64,7 +64,8 @@ export function ProjectNotFound() {
   );
 }
 
-type Deletion =
+/** What the page says above its content: how a delete went, or that a header action failed. */
+type PageNotice =
   | { readonly kind: 'partial'; readonly moved: number; readonly remaining: number }
   | { readonly kind: 'busy' }
   | { readonly kind: 'failed'; readonly text: string };
@@ -79,8 +80,16 @@ export function ProjectPage({ projectId }: { readonly projectId: string }) {
   const sideBySide = useMediaQuery(SIDE_PANEL_QUERY);
   const [editing, setEditing] = useState<Editing>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deletion, setDeletion] = useState<Deletion | null>(null);
+  const [notice, setNotice] = useState<PageNotice | null>(null);
   const files = useProjectFiles(projectId, state.reload);
+  // Held here, not in the panel: the panel is laid out differently on each side of the breakpoint
+  // and would otherwise start over, losing what was typed.
+  const [instructionsEdit, setInstructionsEdit] = useState<{
+    readonly projectId: string;
+    readonly text: string;
+  } | null>(null);
+  const instructionsDraft =
+    instructionsEdit?.projectId === projectId ? instructionsEdit.text : null;
 
   if (state.phase === 'not-found') return <ProjectNotFound />;
   const project = state.project;
@@ -149,21 +158,21 @@ export function ProjectPage({ projectId }: { readonly projectId: string }) {
     }
   };
   const runDelete = async (): Promise<void> => {
-    setDeletion(null);
+    setNotice(null);
     try {
       const result = await window.vozella.invoke('projects.delete', { id: project.id });
       if (result.ok) {
         await refreshProjectDirectory();
         void navigate({ to: '/projects' });
       } else if (result.reason === 'partial') {
-        setDeletion({ kind: 'partial', moved: result.moved, remaining: result.remaining });
+        setNotice({ kind: 'partial', moved: result.moved, remaining: result.remaining });
       } else if (result.reason === 'busy') {
-        setDeletion({ kind: 'busy' });
+        setNotice({ kind: 'busy' });
       } else {
-        setDeletion({ kind: 'failed', text: failure(result.reason, result.message) });
+        setNotice({ kind: 'failed', text: failure(result.reason, result.message) });
       }
     } catch (error) {
-      setDeletion({
+      setNotice({
         kind: 'failed',
         text: failure('io-failed', error instanceof Error ? error.message : String(error)),
       });
@@ -203,7 +212,9 @@ export function ProjectPage({ projectId }: { readonly projectId: string }) {
       icon: Pin,
       disabled: !storageReady,
       onSelect: () => {
-        void update({ pinned: !project.pinned });
+        void update({ pinned: !project.pinned }).then((saved) => {
+          if (!saved.ok) setNotice({ kind: 'failed', text: saved.error });
+        });
       },
     },
     {
@@ -234,6 +245,10 @@ export function ProjectPage({ projectId }: { readonly projectId: string }) {
       instructions={project.instructions}
       onSave={saveInstructions}
       disabled={!storageReady}
+      draft={instructionsDraft}
+      onDraftChange={(text) => {
+        setInstructionsEdit(text === null ? null : { projectId, text });
+      }}
     />
   );
   const filesPanel = (
@@ -246,7 +261,7 @@ export function ProjectPage({ projectId }: { readonly projectId: string }) {
         void files.pick();
       }}
       onRemove={(file) => {
-        void files.remove(file.id);
+        void files.remove(file.id, file.name);
       }}
       onDismissProblem={files.dismiss}
     />
@@ -300,27 +315,27 @@ export function ProjectPage({ projectId }: { readonly projectId: string }) {
           </>
         }
       />
-      {deletion ? (
+      {notice ? (
         <Notice
           tone="warning"
           onDismiss={() => {
-            setDeletion(null);
+            setNotice(null);
           }}
           dismissLabel={t('Ui_Close')}
         >
           <div className="flex flex-col items-start gap-2">
             <p>
-              {deletion.kind === 'partial'
+              {notice.kind === 'partial'
                 ? t(
                     'Ui_ProjectDeletePartial',
-                    String(deletion.moved),
-                    String(deletion.moved + deletion.remaining),
+                    String(notice.moved),
+                    String(notice.moved + notice.remaining),
                   )
-                : deletion.kind === 'busy'
+                : notice.kind === 'busy'
                   ? t('Ui_ProjectDeleteBusy')
-                  : deletion.text}
+                  : notice.text}
             </p>
-            {deletion.kind === 'partial' ? (
+            {notice.kind === 'partial' ? (
               <Button
                 size="sm"
                 onClick={() => {

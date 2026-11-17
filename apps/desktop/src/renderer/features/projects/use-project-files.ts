@@ -4,7 +4,8 @@ import { useCallback, useState } from 'react';
 export interface FileProblem {
   readonly id: number;
   readonly name: string;
-  readonly reason: ProjectFileFailureDto;
+  /** `remove-failed` is a file that could not be taken out; the rest are why an add was refused. */
+  readonly reason: ProjectFileFailureDto | 'remove-failed';
 }
 
 let nextProblemId = 0;
@@ -41,12 +42,20 @@ export function useProjectFiles(projectId: string, reload: () => Promise<void>) 
   }, [projectId, take]);
 
   const remove = useCallback(
-    async (fileId: string): Promise<void> => {
+    async (fileId: string, name: string): Promise<void> => {
+      let removed: boolean;
       try {
-        await window.vozella.invoke('projects.files.remove', { projectId, fileId });
-      } finally {
-        await reload();
+        ({ removed } = await window.vozella.invoke('projects.files.remove', { projectId, fileId }));
+      } catch {
+        removed = false;
       }
+      if (!removed) {
+        setProblems((current) => [
+          ...current,
+          { id: (nextProblemId += 1), name, reason: 'remove-failed' },
+        ]);
+      }
+      await reload();
     },
     [projectId, reload],
   );

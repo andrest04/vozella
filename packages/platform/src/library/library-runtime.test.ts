@@ -166,23 +166,35 @@ describe('start', () => {
 describe('ordering: nothing works before the migration settled', () => {
   const pausedFor = (when: (root: string) => boolean) => {
     let release: () => void = () => undefined;
+    let reached: () => void = () => undefined;
     const gate = new Promise<void>((resolve) => {
       release = resolve;
+    });
+    /** Resolves once the step is parked at the gate, so a test never guesses how long to wait. */
+    const started = new Promise<void>((resolve) => {
+      reached = resolve;
     });
     const step: StorageMigration = {
       id: '001',
       toVersion: 1,
       run: async (context) => {
-        if (when(context.libraryRoot)) await gate;
+        if (when(context.libraryRoot)) {
+          reached();
+          await gate;
+        }
         return foldersToProjects.run(context);
       },
     };
-    return { step, release };
+    return { step, release, started };
   };
-  const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 40));
+  /** The step is parked; let everything that is not gated run its course before asserting. */
+  const parked = async (started: Promise<void>): Promise<void> => {
+    await started;
+    for (let turn = 0; turn < 5; turn += 1) await new Promise<void>((r) => setImmediate(r));
+  };
 
   it('no getter resolves, and a save waits, until the migration is done', async () => {
-    const { step, release } = pausedFor(() => true);
+    const { step, release, started } = pausedFor(() => true);
     const { runtime, roots } = make({ migrations: [step] });
     const settled: string[] = [];
     const starting = runtime.start();
@@ -196,7 +208,7 @@ describe('ordering: nothing works before the migration settled', () => {
       await runtime.meetings.bodies(() => true).next();
       settled.push('bodies');
     })();
-    await tick();
+    await parked(started);
     expect(settled).toEqual([]);
     expect(runtime.storageState).toEqual({ status: 'migrating' });
     expect(fs.existsSync(path.join(roots.meetings, 'Inbox', '2026-09-01 Standup.md'))).toBe(false);
@@ -209,7 +221,7 @@ describe('ordering: nothing works before the migration settled', () => {
 
   it('a location change migrates the new root while the old services keep serving, then swaps', async () => {
     const target = path.join(dir, 'elsewhere');
-    const { step, release } = pausedFor((root) => root === target);
+    const { step, release, started } = pausedFor((root) => root === target);
     const { runtime, roots } = make({ mode: 'production', source: 'default', migrations: [step] });
     await runtime.start();
     await runtime.projectService.create({ name: 'In the old root' });
@@ -226,7 +238,7 @@ describe('ordering: nothing works before the migration settled', () => {
       ]),
     );
     const changing = runtime.setLocation(target);
-    await tick();
+    await parked(started);
     // Still the old root: reads work, and nothing was written under the new root yet.
     expect((await runtime.projects.list()).projects.map((p) => p.name)).toEqual([
       'In the old root',

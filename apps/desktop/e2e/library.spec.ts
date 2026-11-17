@@ -23,7 +23,7 @@ test('the library works end to end through the typed API, on a throwaway data ro
   expect(location).toMatchObject({ libraryRoot, source: 'env', startupError: null });
   expect(fs.existsSync(path.join(libraryRoot, 'Inbox'))).toBe(true);
 
-  // A folder, its directory, and its note.
+  // A project, its directory, and its instructions.
   const created = await page.evaluate(() =>
     window.vozella.invoke('projects.create', { name: 'Universidad' }),
   );
@@ -40,10 +40,21 @@ test('the library works end to end through the typed API, on a throwaway data ro
   );
   expect(duplicate).toMatchObject({ ok: false, reason: 'name-taken' });
 
-  const loaded = await page.evaluate(() => window.vozella.invoke('library.load', {}));
-  expect(loaded).toMatchObject({ ok: true, folders: [{ name: 'Universidad', note: 'Fall term' }] });
-  const folderFile = fs.readFileSync(path.join(libraryRoot, 'folders.json'), 'utf8');
-  expect(folderFile.startsWith('[\r\n  {')).toBe(true);
+  const listed = await page.evaluate(() => window.vozella.invoke('projects.list', {}));
+  expect(listed.projects).toMatchObject([{ id: created.project.id, name: 'Universidad' }]);
+  // One plain JSON file per project under the library's own directory: two-space indent, LF.
+  const projectFile = fs.readFileSync(
+    path.join(libraryRoot, '.vozella', 'projects', created.project.id, 'project.json'),
+    'utf8',
+  );
+  expect(JSON.parse(projectFile)).toMatchObject({
+    name: 'Universidad',
+    instructions: 'Fall term',
+    dir: 'Universidad',
+  });
+  expect(projectFile.startsWith('{\n  "schemaVersion"')).toBe(true);
+  expect(projectFile).not.toContain('\r');
+  expect(fs.existsSync(path.join(libraryRoot, 'folders.json'))).toBe(false);
 
   // Settings: a patch changes one field and the file stays complete.
   await page.evaluate(() =>

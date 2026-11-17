@@ -30,9 +30,27 @@ export interface FoldersToProjectsOps {
   writeText(path: string, text: string): Promise<void>;
 }
 
+/**
+ * Creates the file, writes it and flushes it to disk before it closes. It fails with `EEXIST`
+ * when the file is there, and then touches nothing. The backup is the only record of the old
+ * folder tree, so a copy still in the page cache when power fails is not a backup.
+ */
+export async function writeNewFileDurably(path: string, data: Buffer): Promise<void> {
+  const handle = await fs.open(path, 'wx');
+  try {
+    await handle.writeFile(data);
+    await handle.sync();
+  } catch (error) {
+    await handle.close().catch(() => undefined);
+    await fs.rm(path, { force: true }).catch(() => undefined);
+    throw error;
+  }
+  await handle.close();
+}
+
 const realOps: FoldersToProjectsOps = {
   readFile: (path) => fs.readFile(path),
-  writeNewFile: (path, data) => fs.writeFile(path, data, { flag: 'wx' }),
+  writeNewFile: writeNewFileDurably,
   removeFile: (path) => fs.unlink(path),
   writeText: (path, text) => writeFileAtomic(path, text),
 };

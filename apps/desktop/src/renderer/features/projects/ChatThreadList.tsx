@@ -4,7 +4,7 @@ import { requestChat } from '../../app/chat-requests';
 import { ChatThreadRows } from '../../app/ChatThreadRows';
 import { useChatThreads } from '../../app/chat-threads';
 import { useI18n } from '../../i18n/I18nProvider';
-import { Button, EmptyState, Skeleton } from '../../ui';
+import { Button, EmptyState, Notice, Skeleton } from '../../ui';
 import { useMeetingListStore } from '../meeting-list/meeting-list-store';
 
 export interface ChatThreadListProps {
@@ -41,6 +41,20 @@ export function ChatThreadList({ owner }: ChatThreadListProps) {
           <Skeleton className="h-4 w-2/3" />
           <Skeleton className="h-4 w-1/2" />
         </div>
+      ) : model.status === 'failed' ? (
+        <Notice tone="warning">
+          <div className="flex flex-col items-start gap-2">
+            <p>{t('Ui_ChatHistoryFailed')}</p>
+            <Button
+              size="sm"
+              onClick={() => {
+                void model.reload();
+              }}
+            >
+              {t('Ui_Retry')}
+            </Button>
+          </div>
+        </Notice>
       ) : model.threads.length === 0 ? (
         <EmptyState
           message={owner === null ? t('Ui_ChatThreadsEmptyNone') : t('Ui_ChatThreadsEmpty')}

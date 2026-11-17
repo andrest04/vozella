@@ -130,7 +130,7 @@ describe('focus order and the loading and error states of the grid', () => {
       'Sort projects',
       expect.stringContaining('No project'),
       'Universidad',
-      'Pin Universidad',
+      'Unpin Universidad',
       'Producto',
       'Pin Producto',
     ]);

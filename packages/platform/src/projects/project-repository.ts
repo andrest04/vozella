@@ -257,8 +257,13 @@ export class FileProjectRepository implements ProjectRepository {
         if (parseGuid(id) !== id) return { ok: false, reason: 'not-found' } as const;
         const storage = this.layout.projectDirectory(id);
         const read = await this.readOne(id);
-        if (read.kind === 'skipped' && read.skipped.reason === 'unsupported') {
-          return { ok: false, reason: 'storage-newer' } as const;
+        if (read.kind === 'skipped') {
+          // Never discarded: a damaged or newer file may be all that is left of the project's
+          // context files and chats, so it is reported and left for the user to repair.
+          return {
+            ok: false,
+            reason: read.skipped.reason === 'unsupported' ? 'storage-newer' : 'corrupt',
+          } as const;
         }
         if (read.kind === 'missing' && !(await this.pathExists(storage))) {
           return { ok: false, reason: 'not-found' } as const;

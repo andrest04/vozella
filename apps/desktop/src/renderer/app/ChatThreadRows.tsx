@@ -44,6 +44,7 @@ export function ChatThreadRows({
   const { t, locale } = useI18n();
   const [renaming, setRenaming] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<ChatThreadSummaryDto | null>(null);
+  const [failed, setFailed] = useState(false);
 
   const badgeText = (badge: ThreadBadge): string => {
     switch (badge.kind) {
@@ -62,6 +63,11 @@ export function ChatThreadRows({
 
   return (
     <>
+      {failed ? (
+        <p role="alert" className="px-1 py-2 text-ui text-ink">
+          {t('Ui_ChatThreadFailed')}
+        </p>
+      ) : null}
       <ul className="flex flex-col">
         {threads.map((thread) => (
           <li
@@ -151,7 +157,11 @@ export function ChatThreadRows({
         closeLabel={t('Ui_Close')}
         primaryLabel={t('Ui_ChatThreadDelete')}
         onConfirm={() => {
-          if (deleting) void onRemove(deleting.id);
+          if (!deleting) return;
+          setFailed(false);
+          void onRemove(deleting.id).then((ok) => {
+            if (!ok) setFailed(true);
+          });
         }}
       />
     </>

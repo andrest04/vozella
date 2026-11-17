@@ -1,8 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { migrateStorage } from '../storage-migrator';
-import { createFoldersToProjects, type FoldersToProjectsOps } from './001-folders-to-projects';
+import {
+  createFoldersToProjects,
+  writeNewFileDurably,
+  type FoldersToProjectsOps,
+} from './001-folders-to-projects';
 import {
   F,
   backupFiles,
@@ -395,6 +399,29 @@ describe('malformed lists never lose or overwrite data', () => {
     expect(fs.existsSync(path.join(fx.root, '..', 'evil'))).toBe(false);
   });
 
+  it.each([
+    ['an empty list', '[]'],
+    ['a list with nothing usable', JSON.stringify([null, 7, [], { name: 'No id' }, 'text'])],
+  ])(
+    '%s makes no project but still backs up, notes and removes the source',
+    async (_name, text) => {
+      fx = createMigrationFixture();
+      fs.writeFileSync(fx.foldersInLibrary, text);
+      expect(await run()).toEqual({ status: 'ready' });
+      expect(fs.existsSync(fx.context.layout.projectsDirectory)).toBe(false);
+      const [backup] = backupFiles(fx);
+      expect(backupFiles(fx)).toHaveLength(1);
+      expect(
+        fs.readFileSync(path.join(fx.context.layout.backupsDirectory, backup ?? ''), 'utf8'),
+      ).toBe(text);
+      expect(fs.existsSync(fx.foldersInLibrary)).toBe(false);
+      expect(readManifestFile(fx)).toMatchObject({
+        migrations: [{ report: { source: 'library', projects: 0, backupSha256: sha256(text) } }],
+        pendingNotice: { kind: 'folders-to-projects', projects: 0 },
+      });
+    },
+  );
+
   it('gives a project a fresh directory when its old chain name is unusable', async () => {
     fx = createMigrationFixture();
     fs.mkdirSync(path.join(fx.root, 'Dotted'));
@@ -412,5 +439,44 @@ describe('malformed lists never lose or overwrite data', () => {
     expect(projectJson(fx, F.trabajo).dir).toBe('Dotted');
     expect(projectJson(fx, F.calculoU).dir).toBe('Meetings folder');
     expect(projectJson(fx, F.calculoT).dir).toBe('Inbox folder');
+  });
+});
+
+describe('the backup write', () => {
+  it('creates the file with exactly the bytes and refuses to overwrite an existing one', async () => {
+    fx = createMigrationFixture();
+    const target = path.join(fx.dir, 'backup.json');
+    await writeNewFileDurably(target, Buffer.from('first'));
+    expect(fs.readFileSync(target, 'utf8')).toBe('first');
+    await expect(writeNewFileDurably(target, Buffer.from('second'))).rejects.toMatchObject({
+      code: 'EEXIST',
+    });
+    expect(fs.readFileSync(target, 'utf8')).toBe('first');
+  });
+
+  it('flushes the data to disk before closing the file', async () => {
+    fx = createMigrationFixture();
+    const order: string[] = [];
+    const real = fs.promises.open.bind(fs.promises);
+    const open = vi.spyOn(fs.promises, 'open').mockImplementation(async (...args) => {
+      const handle = await real(...args);
+      const sync = handle.sync.bind(handle);
+      const close = handle.close.bind(handle);
+      handle.sync = async () => {
+        order.push('sync');
+        await sync();
+      };
+      handle.close = async () => {
+        order.push('close');
+        await close();
+      };
+      return handle;
+    });
+    try {
+      await writeNewFileDurably(path.join(fx.dir, 'durable.json'), Buffer.from('x'));
+    } finally {
+      open.mockRestore();
+    }
+    expect(order).toEqual(['sync', 'close']);
   });
 });
