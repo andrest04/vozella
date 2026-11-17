@@ -140,6 +140,7 @@ export function composeSummaries(deps: ComposeSummariesDeps): ComposedSummaries 
         workspace.selectMeeting(id);
       },
       nextSessionDates: library.settings,
+      settings: library.settings,
     }),
     resolver: summaryRuntime.resolver,
     models: deps.settingsModels,

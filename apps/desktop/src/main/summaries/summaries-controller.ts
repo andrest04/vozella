@@ -263,8 +263,11 @@ export class SummariesController {
   }
 
   /** The template text for a record, for the re-transcription request. */
-  templateInstructions(record: { readonly noteTemplateId: string | null }): Promise<string | null> {
-    return Promise.resolve(resolveTemplateInstructions(record.noteTemplateId));
+  async templateInstructions(record: {
+    readonly noteTemplateId: string | null;
+  }): Promise<string | null> {
+    const { customNoteTemplate } = await this.deps.settings.load();
+    return resolveTemplateInstructions(record.noteTemplateId, customNoteTemplate);
   }
 
   /** The sentence for any failure of the summary stage (S03 `formatFailure`). */

@@ -129,9 +129,26 @@ describe('template instructions (items 184, 185 gap)', () => {
     }
   });
 
+  it('custom gives the trimmed user text when there is some; a blank text gives null', () => {
+    expect(resolveTemplateInstructions('custom', '  ## Goals\n## Risks  ')).toBe(
+      '## Goals\n## Risks',
+    );
+    expect(resolveTemplateInstructions('custom', '   ')).toBeNull();
+    expect(resolveTemplateInstructions('custom', null)).toBeNull();
+    expect(resolveTemplateInstructions('standup', 'mine')).toMatch(/standup/);
+    expect(resolveTemplateInstructions('auto', 'mine')).toBeNull();
+  });
+
   it('stores only a built-in id', () => {
     expect(templateIdToStore('one-on-one')).toBe('one-on-one');
     for (const id of ['auto', 'custom', 'nope', '', null]) expect(templateIdToStore(id)).toBeNull();
+  });
+
+  it('keeps custom only when a custom template text exists', () => {
+    expect(templateIdToStore('custom', 'my text')).toBe('custom');
+    expect(templateIdToStore('custom', '  ')).toBeNull();
+    expect(templateIdToStore('custom', null)).toBeNull();
+    expect(templateIdToStore('nope', 'my text')).toBeNull();
   });
 });
 
@@ -220,6 +237,14 @@ describe('SummaryService.generate', () => {
     await run(service);
     expect(seen[0]!.request.enhancement?.templateInstructions).toBeNull();
     expect(repo.records.get(ID)!.noteTemplateId).toBeNull();
+  });
+
+  it('custom template: the saved text is the prompt instructions and the id is kept', async () => {
+    const { repo, service, seen, settings } = setup({ stored: record() });
+    await settings.update({ customNoteTemplate: 'Write a haiku per topic.' });
+    await run(service, { templateId: 'custom' });
+    expect(seen[0]!.request.enhancement?.templateInstructions).toBe('Write a haiku per topic.');
+    expect(repo.records.get(ID)!.noteTemplateId).toBe('custom');
   });
 
   it('B4: a rename made during the run survives the save', async () => {

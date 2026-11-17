@@ -1,6 +1,6 @@
 import type { TranslateFn } from '../i18n/translator';
 import { isIsoDay, type ActionItem, type MeetingRecord } from '../library/meeting';
-import type { MeetingRepository, NextSessionDateStore } from '../library/ports';
+import type { MeetingRepository, NextSessionDateStore, SettingsStore } from '../library/ports';
 import { noteTemplateOptions } from '../settings/note-templates';
 import { renderActionItems } from './action-items';
 import { buildActionItemsIcs, icsFileName } from './action-items-ics';
@@ -100,6 +100,8 @@ export interface SummaryTabServiceDeps {
   readonly queue?: PatchQueue;
   /** Remembered next-session dates per meeting title. Without it nothing is remembered. */
   readonly nextSessionDates?: NextSessionDateStore;
+  /** The user's custom note template. Without it the picker lists only the built-ins. */
+  readonly settings?: Pick<SettingsStore, 'load'>;
 }
 
 interface ListedMeeting {
@@ -137,13 +139,30 @@ export class SummaryTabService {
         this.deps.selectMeeting(record.id);
         related = await this.relatedFor(record, listed);
       }
-      return { status: 'loaded', state: this.stateOf(record, related) };
+      return {
+        status: 'loaded',
+        state: this.stateOf(record, related, await this.hasCustomTemplate()),
+      };
     } catch (error) {
       return { status: 'failed', detail: errorText(error) };
     }
   }
 
-  private stateOf(record: MeetingRecord | null, related: RelatedMeetingItem[]): TabState {
+  /** A failed read of the settings only hides the custom option. */
+  private async hasCustomTemplate(): Promise<boolean> {
+    try {
+      const settings = await this.deps.settings?.load();
+      return (settings?.customNoteTemplate ?? '').trim() !== '';
+    } catch {
+      return false;
+    }
+  }
+
+  private stateOf(
+    record: MeetingRecord | null,
+    related: RelatedMeetingItem[],
+    hasCustomTemplate: boolean,
+  ): TabState {
     const summary = record?.summary ?? '';
     const flags = deriveTabFlags({
       hasMeeting: record !== null,
@@ -162,7 +181,9 @@ export class SummaryTabService {
       summary,
       actionItems: record === null ? [] : record.actionItems.map((item) => ({ ...item })),
       noteTemplateId: templateId === '' ? 'auto' : templateId,
-      templates: noteTemplateOptions(null),
+      templates: noteTemplateOptions(
+        hasCustomTemplate ? { name: this.deps.translate('NoteTemplate_Custom') } : null,
+      ),
       related,
       flags,
       hasTranscript: (record?.transcript ?? '').trim() !== '',

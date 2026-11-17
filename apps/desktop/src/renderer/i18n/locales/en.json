@@ -390,6 +390,7 @@
   "NoteTemplate_Standup": "Standup",
   "NoteTemplate_Sales": "Sales",
   "NoteTemplate_UserInterview": "User interview",
+  "NoteTemplate_Custom": "Custom",
   "NotesMode_MyNotes.Text": "My notes",
   "NotesMode_Enhanced.Text": "Enhanced",
   "SummaryPage_RegenerateLabel.Text": "Regenerate",

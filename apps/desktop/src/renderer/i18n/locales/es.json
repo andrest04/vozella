@@ -390,6 +390,7 @@
   "NoteTemplate_Standup": "Reunión diaria",
   "NoteTemplate_Sales": "Ventas",
   "NoteTemplate_UserInterview": "Entrevista de usuario",
+  "NoteTemplate_Custom": "Personalizada",
   "NotesMode_MyNotes.Text": "Mis notas",
   "NotesMode_Enhanced.Text": "Mejoradas",
   "SummaryPage_RegenerateLabel.Text": "Regenerar",

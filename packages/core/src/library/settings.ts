@@ -54,6 +54,11 @@ export interface AppSettings {
   readonly transcriptionEngine: string | null;
   /** Port addition: the model of the cloud transcription engine; null is the provider's default. */
   readonly cloudTranscriptionModelId: string | null;
+  /**
+   * Port addition: the user's own note template, the text sent as the template instructions when
+   * the `custom` template is picked. Null or blank means there is no custom template.
+   */
+  readonly customNoteTemplate: string | null;
 }
 
 type Kind = 'string' | 'bool-true' | 'bool-false' | 'number';
@@ -95,6 +100,7 @@ const FIELDS: readonly (readonly [keyof AppSettings, Kind])[] = [
   ['selectedGroqModelId', 'string'],
   ['transcriptionEngine', 'string'],
   ['cloudTranscriptionModelId', 'string'],
+  ['customNoteTemplate', 'string'],
 ];
 
 /**
@@ -107,6 +113,7 @@ const OMITTED_WHEN_NULL: ReadonlySet<string> = new Set([
   'openAiCompatibleBaseUrl',
   'transcriptionEngine',
   'cloudTranscriptionModelId',
+  'customNoteTemplate',
 ]);
 
 /** The raw document: every key in the file, known or not. */

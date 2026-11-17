@@ -248,7 +248,7 @@ export class SummaryService {
       agenda: request.agenda ?? null,
       templateInstructions:
         request.templateInstructions === undefined
-          ? resolveTemplateInstructions(requested)
+          ? resolveTemplateInstructions(requested, settings.customNoteTemplate)
           : request.templateInstructions,
     });
     const now = (): OffsetDate => offsetDateFromInstant(this.deps.clock.now());
@@ -285,7 +285,7 @@ export class SummaryService {
           summary: result.summaryMarkdown,
           actionItems,
           summaryProvider: result.providerId,
-          noteTemplateId: templateIdToStore(requested),
+          noteTemplateId: templateIdToStore(requested, settings.customNoteTemplate),
           title: titleChanged ? title : null,
         }),
       );
