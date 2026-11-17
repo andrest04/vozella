@@ -1,4 +1,6 @@
 import {
+  libraryChanged,
+  projectsChanged,
   projectsCreate,
   projectsDelete,
   projectsDismissMigrationReport,
@@ -10,6 +12,7 @@ import {
 } from '@vozella/contracts';
 import type { Logger, Workspace } from '@vozella/core';
 import type { LibraryRuntime } from '@vozella/platform';
+import { createProjectsController, type ProjectsEvent } from '../projects/projects-controller';
 import type { WindowDialogs } from '../window-dialogs';
 import { registerRequest, type IpcServerDeps } from './ipc-server';
 import type { Broadcast } from './library-handlers';
@@ -23,42 +26,37 @@ export interface ProjectHandlerDeps {
   readonly logger: Logger;
 }
 
-const NOT_YET = 'Projects are not available yet.';
-
 /**
- * Wires the project channels. Contracts phase stub: every channel answers with an empty or
- * "not available" value so the app runs; the storage lane replaces the bodies with the
- * controller over `ProjectService`.
+ * Wires the project channels over the controller: one line per channel. A change is announced as
+ * `projects.changed` and `library.changed` (reason `project`, or `meeting` when meetings moved).
  */
 export function registerProjectHandlers(deps: ProjectHandlerDeps): void {
-  const { server } = deps;
-  registerRequest(server, projectsList, () => ({
-    projects: [],
-    noProject: { meetingCount: 0, lastActivityAt: null },
-    skipped: [],
-    storage: { status: 'ready' as const },
-  }));
-  registerRequest(server, projectsGet, () => ({
-    ok: false as const,
-    reason: 'not-found' as const,
-  }));
-  registerRequest(server, projectsCreate, () => ({
-    ok: false as const,
-    reason: 'io-failed' as const,
-    message: NOT_YET,
-  }));
-  registerRequest(server, projectsUpdate, () => ({
-    ok: false as const,
-    reason: 'not-found' as const,
-  }));
-  registerRequest(server, projectsSetInstructions, () => ({
-    ok: false as const,
-    reason: 'not-found' as const,
-  }));
-  registerRequest(server, projectsDelete, () => ({
-    ok: false as const,
-    reason: 'not-found' as const,
-  }));
-  registerRequest(server, projectsMigrationReport, () => ({ report: null }));
-  registerRequest(server, projectsDismissMigrationReport, () => ({}));
+  const { server, library, broadcast } = deps;
+  const notify = (event: ProjectsEvent): void => {
+    if (event.kind === 'project') {
+      broadcast(projectsChanged, { reason: 'project', projectId: event.projectId });
+      broadcast(libraryChanged, { reason: 'project' });
+    } else {
+      broadcast(libraryChanged, { reason: 'meeting' });
+    }
+  };
+  const controller = createProjectsController({
+    service: library.projectService,
+    workspace: deps.workspace,
+    notify,
+    logger: deps.logger,
+  });
+
+  registerRequest(server, projectsList, () => controller.list());
+  registerRequest(server, projectsGet, ({ id }) => controller.get(id));
+  registerRequest(server, projectsCreate, (input) => controller.create(input));
+  registerRequest(server, projectsUpdate, ({ id, ...patch }) => controller.update(id, patch));
+  registerRequest(server, projectsSetInstructions, ({ id, instructions }) =>
+    controller.setInstructions(id, instructions),
+  );
+  registerRequest(server, projectsDelete, ({ id }) => controller.delete(id));
+  registerRequest(server, projectsMigrationReport, () => controller.migrationReport());
+  registerRequest(server, projectsDismissMigrationReport, () =>
+    controller.dismissMigrationReport(),
+  );
 }

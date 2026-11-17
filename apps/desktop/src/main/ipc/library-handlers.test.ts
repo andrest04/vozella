@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EventChannel } from '@vozella/contracts';
 import { MeetingBusyRegistry, Workspace, type Logger, type MeetingRecord } from '@vozella/core';
-import { FakeClock, LibraryRuntime } from '@vozella/platform';
+import { FakeClock, LibraryRuntime, type StorageMigration } from '@vozella/platform';
 import type { IpcEventLike } from '../security/trusted-origin';
 import type { IpcMainLike } from './ipc-server';
 import { applyWorkspaceAction, bridgeWorkspace, registerLibraryHandlers } from './library-handlers';
@@ -27,7 +27,7 @@ afterEach(() => {
 const record = (id: string = ID, title = 'Standup'): MeetingRecord => ({
   id,
   title,
-  recordedAt: '2026-09-01T12:00:00.0000000+00:00',
+  recordedAt: '2026-09-01T12:00:00.000+00:00',
   endedAt: null,
   audioFilePath: '',
   sourcePath: null,
@@ -52,6 +52,7 @@ const record = (id: string = ID, title = 'Standup'): MeetingRecord => ({
 async function setup(
   options: {
     discard?: (path: string) => Promise<void>;
+    migrations?: StorageMigration[];
     onSettingsSaved?: (patch: Record<string, unknown>) => void;
   } = {},
 ) {
@@ -109,8 +110,8 @@ describe('bulk meeting handlers', () => {
     const t = await setup();
     await t.runtime.meetings.save(record());
     await t.runtime.meetings.save(record(OTHER, 'Other'));
-    const created = await t.runtime.service.createFolder({ name: 'Trabajo', parentId: null });
-    const projectId = created.ok ? created.folder.id : '';
+    const created = await t.runtime.projectService.create({ name: 'Trabajo' });
+    const projectId = created.ok ? created.value.id : '';
     t.events.length = 0;
     t.busy.register({ isBusy: (id) => id === OTHER });
 
@@ -232,11 +233,41 @@ describe('library handlers', () => {
     expect(loaded.value).not.toHaveProperty('folders');
   });
 
+  it('loads the duplicate-id copies as shadowed, with the newest kept', async () => {
+    const t = await setup();
+    const inbox = path.join(dir, 'meetings', 'Inbox');
+    fs.mkdirSync(inbox, { recursive: true });
+    const { renderMeetingMarkdown } = await import('@vozella/core');
+    const older = path.join(inbox, 'a.md');
+    const newer = path.join(dir, 'meetings', 'Copy', 'b.md');
+    fs.mkdirSync(path.dirname(newer), { recursive: true });
+    fs.writeFileSync(older, renderMeetingMarkdown(record(ID, 'Older')));
+    fs.writeFileSync(newer, renderMeetingMarkdown(record(ID, 'Newer')));
+    fs.utimesSync(older, new Date('2026-01-01'), new Date('2026-01-01'));
+    fs.utimesSync(newer, new Date('2026-06-01'), new Date('2026-06-01'));
+    const loaded = await t.call('library.load');
+    expect(loaded.value).toMatchObject({
+      ok: true,
+      meetings: [{ id: ID, title: 'Newer' }],
+      shadowed: [{ id: ID, keptPath: newer, shadowedPath: older }],
+    });
+  });
+
+  it('refuses to move a meeting while the storage is not ready, and says why', async () => {
+    const t = await setup({
+      migrations: [{ id: '001', toVersion: 1, run: () => Promise.reject(new Error('boom')) }],
+    });
+    await t.runtime.meetings.save(record());
+    const moved = await t.call('library.moveMeeting', { meetingId: ID, projectId: null });
+    expect(moved.value).toEqual({ ok: false, reason: 'storage-error' });
+    expect(t.events.filter((e) => e.name === 'library.changed')).toEqual([]);
+  });
+
   it('lets a quit wait for a move that is still being written (B16)', async () => {
     const t = await setup();
     await t.runtime.meetings.save(record());
-    const created = await t.runtime.service.createFolder({ name: 'Trabajo', parentId: null });
-    const projectId = created.ok ? created.folder.id : '';
+    const created = await t.runtime.projectService.create({ name: 'Trabajo' });
+    const projectId = created.ok ? created.value.id : '';
     // Not awaited: the window is closing while the write is in flight.
     const inFlight = t.call('library.moveMeeting', { meetingId: ID, projectId });
     await t.writes.settled();
@@ -248,8 +279,8 @@ describe('library handlers', () => {
   it('searches inside a project, inside no project, or everywhere', async () => {
     const t = await setup();
     const second = '22222222-2222-2222-2222-222222222222';
-    const created = await t.runtime.service.createFolder({ name: 'Trabajo', parentId: null });
-    const projectId = created.ok ? created.folder.id : '';
+    const created = await t.runtime.projectService.create({ name: 'Trabajo' });
+    const projectId = created.ok ? created.value.id : '';
     await t.runtime.meetings.save({ ...record(), summary: 'budget review' });
     await t.runtime.meetings.save({ ...record(second, 'Beta'), summary: 'budget plan', projectId });
     const found = async (scope: unknown) => {
@@ -379,6 +410,45 @@ describe('library handlers', () => {
 });
 
 describe('workspace channels', () => {
+  it('publishSelectedProject sets the selected project, null clears it, and every window hears it', async () => {
+    const t = await setup();
+    const projectId = '33333333-3333-3333-3333-333333333333';
+    const published = await t.call('workspace.dispatch', {
+      action: { type: 'publishSelectedProject', projectId },
+    });
+    expect(published.value).toMatchObject({ state: { selectedProjectId: projectId } });
+    expect(t.workspace.state.selectedProjectId).toBe(projectId);
+    const heard = t.events
+      .filter((e) => e.name === 'workspace.changed')
+      .map(
+        (e) =>
+          (e.payload as { state: { selectedProjectId: string | null } }).state.selectedProjectId,
+      );
+    expect(heard).toContain(projectId);
+    const cleared = await t.call('workspace.dispatch', {
+      action: { type: 'publishSelectedProject', projectId: null },
+    });
+    expect(cleared.value).toMatchObject({ state: { selectedProjectId: null } });
+  });
+
+  it('refuses the old folder action and a project id that is not a GUID at the wire', async () => {
+    const t = await setup();
+    expect(
+      (
+        await t.call('workspace.dispatch', {
+          action: { type: 'publishSelectedFolder', folderId: null },
+        })
+      ).error?.code,
+    ).toBe('invalid-input');
+    expect(
+      (
+        await t.call('workspace.dispatch', {
+          action: { type: 'publishSelectedProject', projectId: '../x' },
+        })
+      ).ok,
+    ).toBe(false);
+  });
+
   it('dispatches actions and returns the new state', async () => {
     const t = await setup();
     const result = await t.call('workspace.dispatch', {
