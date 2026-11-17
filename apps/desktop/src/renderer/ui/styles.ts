@@ -1,7 +1,7 @@
 // Shared class recipes. Anything used by more than one component lives here so the
 // kit stays visually consistent. Colors are tokens only (see styles/index.css).
 
-/** Bordered form control surface: Input, Textarea, Select trigger, Combobox. */
+/** Bordered form control surface: Input, Textarea, Select trigger. */
 export const controlSurface =
   'rounded-control border border-border-control bg-paper text-ink text-ui-lg placeholder:text-ink-faint ' +
   'transition-colors duration-150 ease-out-quick hover:not-data-disabled:not-disabled:bg-hover ' +

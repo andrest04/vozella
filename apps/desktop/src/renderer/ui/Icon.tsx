@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react';
 import { cn } from './cn';
 
 /** The one icon treatment: lucide, 1.5 stroke, decorative unless the parent names it. */
-export const ICON_STROKE = 1.5;
+const ICON_STROKE = 1.5;
 
 export interface IconProps {
   readonly icon: LucideIcon;

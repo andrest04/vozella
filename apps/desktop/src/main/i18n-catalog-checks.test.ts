@@ -210,35 +210,16 @@ describe('references in the code (item 118, B21)', () => {
    * (or never was) fails here instead of rotting.
    */
   const OTHER_MODULES = [
-    // Hardware, microphone, transcription engine, recording, calendar and TypeSafe sections.
-    /^Settings_(Acceleration|AsrFallback|Calendar|DeleteEngine|DeleteSpeakers)/,
-    /^Settings_(DownloadEngine|DownloadSpeakers|LiveDrops|LiveTranscription|MeetingPopup|MicLevel)/,
-    /^Settings_(NemotronCard|RecordingDevice|SpeakerLabels|TypeSafe)/,
-    // Used by the setup dialog and by the recording setup summary caption.
-    /^Hardware_(NoGpu|WithGpu)$/,
-    /^Model_Downloaded$/,
+    // The calendar section heading kept from the carried-over catalog.
+    /^Settings_Calendar\.Text$/,
   ];
   /**
    * The Grok (xAI) provider was removed (owner decision 2026-11-03, may return later). Its keys
    * remain in en.json and es.json and nothing reads them. Xai_FeedbackModel is not one of them: the Claude Code and
    * Codex model line still uses it.
    */
-  const REMOVED_PROVIDER_KEYS =
-    /^(Xai_(?!FeedbackModel$)|Settings_Xai|Settings_ProviderXai|Settings_SummaryProviderCard\.Description$)/;
+  const REMOVED_PROVIDER_KEYS = /^(Xai_(?!FeedbackModel$)|Settings_Xai|Settings_ProviderXai)/;
   const UNUSED_BY_DECISION: string[] = [
-    // Settings polish 2026-11-05: About is its own section, headed Ui_About, with a Version row.
-    'Settings_About.Header',
-    // Transcription section in plain words: the Ui_Engine*, Ui_Acceleration*Gpu, Ui_LiveTranscription*,
-    // and Ui_SpeakerLabelsDescription strings replace these.
-    'Settings_NemotronCard.Description',
-    'Settings_AccelerationExpectedCuda',
-    'Settings_AccelerationActiveCuda',
-    'Settings_LiveTranscription.Description',
-    'Settings_SpeakerLabels.Description',
-    // The fit labels read as recommendations; Ui_FitRunsWell, Ui_FitMayBeSlow, Ui_FitTooHeavy say fit.
-    'Fit_Recommended',
-    'Fit_MayBeSlow',
-    'Fit_NotRecommended',
     // The CLI setup dropped the effort help text (the Select lists the values); the carried-over
     // catalog keeps its keys.
     'Settings_ClaudeEffort.Description',

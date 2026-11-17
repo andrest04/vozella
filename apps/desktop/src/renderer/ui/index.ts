@@ -3,11 +3,10 @@ export { Autocomplete, type AutocompleteOption, type AutocompleteProps } from '.
 export { Badge, type BadgeTone } from './Badge';
 export { Button, IconButton, type ButtonProps, type IconButtonProps } from './Button';
 export { Checkbox, type CheckboxProps } from './Checkbox';
-export { Combobox, type ComboboxProps } from './Combobox';
 export { ConfirmDialog, type ConfirmDialogProps } from './ConfirmDialog';
 export { Dialog, type DialogProps } from './Dialog';
 export { Field, type FieldProps } from './Field';
-export { Icon, ICON_STROKE, type IconProps } from './Icon';
+export { Icon, type IconProps } from './Icon';
 export { Input, Textarea } from './Input';
 export { Kbd } from './Kbd';
 export { ShortcutHint, type ShortcutHintProps } from './ShortcutHint';
