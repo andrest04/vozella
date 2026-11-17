@@ -28,9 +28,9 @@ function compose(overrides: Partial<ComposeSummariesDeps> = {}) {
   const publishGpuOffload = vi.fn();
   const loadProcessJob = vi.fn(() => undefined);
   const composed = composeSummaries({
-    library: { meetings: {}, settings: {} } as unknown as Pick<
+    library: { meetings: {}, folders: {}, settings: {} } as unknown as Pick<
       LibraryRuntime,
-      'meetings' | 'settings'
+      'meetings' | 'folders' | 'settings'
     >,
     hardware: machine.hardware,
     models: machine.summaryModels,

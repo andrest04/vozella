@@ -17,6 +17,7 @@ import { AboutSection } from './AboutSection';
 import { CallDetectionSection } from './CallDetectionSection';
 import { DataSection } from './DataSection';
 import { LanguageSection } from './LanguageSection';
+import { CustomTemplateSection } from './CustomTemplateSection';
 import { LiveQuestionsSection } from './LiveQuestionsSection';
 import { MeetingLanguageSection } from './MeetingLanguageSection';
 import { ProviderSection } from './ProviderSection';
@@ -79,6 +80,9 @@ export function SettingsRoute() {
             <ProviderSection page={page} model={model} />
             <div className="mt-2 border-t border-hairline">
               <LiveQuestionsSection selectedProvider={page.provider} />
+            </div>
+            <div className="mt-2 border-t border-hairline">
+              <CustomTemplateSection />
             </div>
           </div>
         );

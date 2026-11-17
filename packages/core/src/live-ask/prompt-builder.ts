@@ -20,12 +20,16 @@ function contextBlock(sessionContext: string | null | undefined): string {
   );
 }
 
+const OVERVIEW_LINE =
+  'The user wants to catch up: cover the whole recording so far, using the running summary for the earlier part and the transcript window for the latest minutes.\n\n';
+
 export function buildLiveAnswerPrompt(
   question: string | null | undefined,
   transcriptWindow: string | null | undefined,
   outputLanguage: string | null | undefined,
   sessionContext: string | null | undefined = null,
   webSearch = false,
+  overview = false,
 ): string {
   const language = liveAnswerLanguageName(outputLanguage);
   return [
@@ -37,7 +41,7 @@ export function buildLiveAnswerPrompt(
     '',
     'If the transcript does not contain the factual answer, answer from knowledge. Do not refuse just because the meeting did not state the fact. Do not say that you only know what was said.',
     '',
-    `${contextBlock(sessionContext)}${webSearch ? WEB_LINE : ''}Question:`,
+    `${contextBlock(sessionContext)}${webSearch ? WEB_LINE : ''}${overview ? OVERVIEW_LINE : ''}Question:`,
     question ?? '',
     '',
     'Transcript window:',

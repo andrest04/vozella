@@ -161,8 +161,11 @@ export function composeTranscription(deps: ComposeTranscriptionDeps): Transcript
       workspace.notifyMeetingChanged(id);
     },
     summarize: deps.summarize,
-    templateInstructions: (record) =>
-      Promise.resolve(resolveTemplateInstructions(record.noteTemplateId)),
+    templateInstructions: async (record) =>
+      resolveTemplateInstructions(
+        record.noteTemplateId,
+        (await library.settings.load()).customNoteTemplate,
+      ),
     // A cloud transcription engine fails with an API failure, which has its own sentence.
     formatFailure: (error) =>
       isApiProviderError(error) ? formatFailure(error, deps.translate) : deps.formatFailure(error),

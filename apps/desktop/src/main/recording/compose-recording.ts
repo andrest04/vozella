@@ -101,6 +101,7 @@ export function composeRecording(deps: ComposeRecordingDeps): RecordingService {
   const service = new RecordingService({
     onRecordingStarted: deps.onRecordingStarted,
     liveAsk: deps.liveAsk,
+    translate: deps.translate,
     takes: deps.takes,
     controller: deps.controller,
     library: {

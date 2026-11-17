@@ -1,3 +1,14 @@
+import type { LiveQaEntry } from '../../live-ask/live-take-output';
+
+/** What the live pass of the take produced, read at Stop before the live state was cleared. */
+export interface PipelineLiveTake {
+  /** The rolling digest of the take, or null when there was none. */
+  readonly digest: string | null;
+  readonly qa: readonly LiveQaEntry[];
+  /** The localized "Live Q&A" markdown block saved with the meeting notes, or null. */
+  readonly notesBlock: string | null;
+}
+
 /**
  * What one take hands the pipeline (spec 3.7). It is built before the first await at Stop, so
  * nothing the user does next can leak into the take. Times are epoch milliseconds.
@@ -23,6 +34,8 @@ export interface PipelineRequest {
   readonly folderId: string | null;
   /** Elapsed milliseconds of the highlights marked during the take. */
   readonly highlightsMs: readonly number[];
+  /** The live digest and Q&A of the take: context for the summary, Q&A saved with the notes. */
+  readonly liveTake?: PipelineLiveTake;
   readonly agenda?: string | null;
   readonly noteTemplateId?: string | null;
   readonly templateInstructions?: string | null;

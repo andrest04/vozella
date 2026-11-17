@@ -36,7 +36,7 @@ import { SummariesController } from './summaries-controller';
 type SummaryRuntimeDeps = ConstructorParameters<typeof SummaryRuntime>[0];
 
 export interface ComposeSummariesDeps {
-  readonly library: Pick<LibraryRuntime, 'meetings' | 'settings'>;
+  readonly library: Pick<LibraryRuntime, 'meetings' | 'folders' | 'settings'>;
   readonly hardware: HardwareProbe;
   readonly models: SummaryRuntimeDeps['models'];
   readonly cli: CliPathProbe;
@@ -111,6 +111,7 @@ export function composeSummaries(deps: ComposeSummariesDeps): ComposedSummaries 
       meetings: liveRepository(() => library.meetings),
       settings: library.settings,
       nextSessionDates: library.settings,
+      folders: liveRepository(() => library.folders),
       resolver: summaryRuntime.resolver,
       clock: new SystemClock(),
       notifyMeetingChanged: (id) => {
@@ -139,6 +140,7 @@ export function composeSummaries(deps: ComposeSummariesDeps): ComposedSummaries 
         workspace.selectMeeting(id);
       },
       nextSessionDates: library.settings,
+      settings: library.settings,
     }),
     resolver: summaryRuntime.resolver,
     models: deps.settingsModels,

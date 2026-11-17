@@ -13,6 +13,8 @@ export const LIVE_QUESTION_CHECK_TIMEOUT_MS = 8000;
 /** The check sees this much of the transcript before the question. */
 export const LIVE_QUESTION_CHECK_WINDOW_MS = 90_000;
 const CHECK_WINDOW_MAX_CHARS = 6000;
+/** The history keeps this many surfaced questions of a take; the oldest go first. */
+export const LIVE_QUESTION_HISTORY_MAX = 50;
 
 /** One card: `confirmed` is false only while the engine check runs. */
 export interface LiveQuestionEvent {
@@ -20,6 +22,16 @@ export interface LiveQuestionEvent {
   readonly body: string;
   readonly atMs: number;
   readonly confirmed: boolean;
+}
+
+/** What happened to a surfaced question: still on screen or never acted on, or dismissed. */
+export type LiveQuestionOutcome = 'unanswered' | 'dismissed';
+
+/** One question the take surfaced, kept until Stop reads it (the answers live in the session). */
+export interface LiveQuestionRecord {
+  readonly body: string;
+  readonly atMs: number;
+  readonly outcome: LiveQuestionOutcome;
 }
 
 export type QuestionCheckVerdict = 'yes' | 'no' | 'failed';
@@ -117,6 +129,7 @@ export class LiveQuestionTracker {
   /** Bumped by every detection, dismissal and reset: older async work sees it and drops out. */
   private generation = 0;
   private counter = 0;
+  private history_: { id: string; body: string; atMs: number; outcome: LiveQuestionOutcome }[] = [];
 
   constructor(private readonly deps: LiveQuestionTrackerDeps) {}
 
@@ -130,9 +143,15 @@ export class LiveQuestionTracker {
     });
   }
 
+  /** The questions the take surfaced so far, oldest first. Cleared by `reset`. */
+  history(): readonly LiveQuestionRecord[] {
+    return this.history_.map(({ body, atMs, outcome }) => ({ body, atMs, outcome }));
+  }
+
   /** True when the id was the card on screen. */
   dismiss(id: string): boolean {
     if (this.current?.id !== id) return false;
+    this.markOutcome(id, 'dismissed');
     this.generation += 1;
     this.cancelCheck();
     this.current = null;
@@ -149,6 +168,7 @@ export class LiveQuestionTracker {
     this.previous = '';
     this.pending = null;
     this.seen.clear();
+    this.history_ = [];
   }
 
   private process(): void {
@@ -184,6 +204,7 @@ export class LiveQuestionTracker {
       key: found.key,
     };
     this.current = card;
+    this.remember(card);
     this.emit(card);
     if (checking) await this.runCheck(card, committed, generation);
   }
@@ -208,6 +229,7 @@ export class LiveQuestionTracker {
     if (this.check === source) this.check = null;
     if (generation !== this.generation || this.current?.id !== card.id) return;
     if (verdict === 'no') {
+      this.history_ = this.history_.filter((entry) => entry.id !== card.id);
       this.current = null;
       this.deps.withdrawn(card.id);
       return;
@@ -215,6 +237,15 @@ export class LiveQuestionTracker {
     const confirmed: Card = { ...card, confirmed: true };
     this.current = confirmed;
     this.emit(confirmed);
+  }
+
+  private remember(card: Card): void {
+    this.history_.push({ id: card.id, body: card.body, atMs: card.atMs, outcome: 'unanswered' });
+    if (this.history_.length > LIVE_QUESTION_HISTORY_MAX) this.history_.shift();
+  }
+
+  private markOutcome(id: string, outcome: LiveQuestionOutcome): void {
+    this.history_ = this.history_.map((entry) => (entry.id === id ? { ...entry, outcome } : entry));
   }
 
   private emit(card: Card): void {

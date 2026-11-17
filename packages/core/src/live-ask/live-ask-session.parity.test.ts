@@ -27,7 +27,7 @@ function rig(
     kind?: () => SummaryProviderKind;
     stream?: (prompt: string, cancel: CancelSignal) => AsyncIterable<string>;
     committed?: () => string;
-    context?: () => { title: string; brief: string };
+    context?: () => { title: string };
   } = {},
 ) {
   const published: LiveAnswerState[] = [];
@@ -54,7 +54,7 @@ function rig(
       };
     },
     committedText: options.committed ?? (() => '[00:00.00-00:10.00] hello'),
-    sessionContext: options.context ?? (() => ({ title: '', brief: '' })),
+    sessionContext: options.context ?? (() => ({ title: '' })),
     publish: (s) => published.push(s),
     nowMs: () => now,
     formatFailure: (e) => `failed: ${(e as Error).message}`,

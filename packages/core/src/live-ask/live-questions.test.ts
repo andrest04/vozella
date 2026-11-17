@@ -3,6 +3,7 @@ import type { CancelSignal } from '../cancel';
 import { formatLine } from '../transcription/stamp-format';
 import {
   LIVE_QUESTION_CHECK_TIMEOUT_MS,
+  LIVE_QUESTION_HISTORY_MAX,
   LiveQuestionTracker,
   buildQuestionCheckPrompt,
   parseQuestionCheckReply,
@@ -61,6 +62,43 @@ const settle = async (): Promise<void> => {
   for (let i = 0; i < 10; i += 1) await Promise.resolve();
 };
 const lines = (...items: string[]): string => items.join('\n');
+
+describe('LiveQuestionTracker history', () => {
+  it('keeps surfaced questions with their outcome until the take resets', async () => {
+    const t = setup();
+    t.tracker.committed(formatLine(4000, 9000, Q1));
+    await settle();
+    expect(t.tracker.history()).toEqual([{ body: Q1, atMs: 4000, outcome: 'unanswered' }]);
+    const [card] = t.detected;
+    t.tracker.dismiss(card?.id ?? '');
+    expect(t.tracker.history()).toEqual([{ body: Q1, atMs: 4000, outcome: 'dismissed' }]);
+    t.tracker.reset();
+    expect(t.tracker.history()).toEqual([]);
+  });
+
+  it('drops a question the engine check rejected', async () => {
+    const t = setup('rules+ai');
+    t.tracker.committed(formatLine(0, 4000, Q1));
+    await settle();
+    expect(t.tracker.history()).toHaveLength(1);
+    t.checks[0]?.resolve('no');
+    await settle();
+    expect(t.tracker.history()).toEqual([]);
+  });
+
+  it('keeps only the most recent questions', async () => {
+    const t = setup();
+    let text = '';
+    for (let i = 0; i < LIVE_QUESTION_HISTORY_MAX + 5; i += 1) {
+      text += `${formatLine(i * 5000, i * 5000 + 4000, `what is the topic number ${String(i)}?`)}\n`;
+      t.tracker.committed(text);
+      await settle();
+    }
+    const history = t.tracker.history();
+    expect(history).toHaveLength(LIVE_QUESTION_HISTORY_MAX);
+    expect(history.at(-1)?.body).toContain(String(LIVE_QUESTION_HISTORY_MAX + 4));
+  });
+});
 
 describe('LiveQuestionTracker (rules)', () => {
   it('emits a new question once, confirmed, with its line start', async () => {

@@ -48,8 +48,22 @@ const isEnglish = (code: string | null | undefined): boolean =>
 const contentKey = (code: string | null | undefined): 'en' | 'es' =>
   isEnglish(code) ? 'en' : 'es';
 
+/** What the live pass of the take produced: the rolling digest and the questions with answers. */
+export interface LiveContextInput {
+  readonly digest: string | null;
+  readonly qa: readonly { readonly question: string; readonly answer?: string }[];
+}
+
+/** Background from the series: the folder note and unfinished items of earlier related meetings. */
+export interface SeriesContextInput {
+  readonly folderNote: string | null;
+  readonly priorOpenItems: string | null;
+}
+
 export interface SummaryEnhancementInput {
   readonly rawNotes?: string | null;
+  readonly liveContext?: LiveContextInput | null;
+  readonly seriesContext?: SeriesContextInput | null;
   readonly attendees?: readonly string[] | null;
   readonly agenda?: string | null;
   readonly templateInstructions?: string | null;
@@ -57,10 +71,17 @@ export interface SummaryEnhancementInput {
 
 export interface SummaryEnhancementContext {
   readonly rawNotes: string | null;
+  readonly liveDigest: string | null;
+  readonly liveQa: LiveContextInput['qa'];
+  readonly folderNote: string | null;
+  readonly priorOpenItems: string | null;
   readonly attendees: readonly string[];
   readonly agenda: string | null;
   readonly templateInstructions: string | null;
   readonly hasRawNotes: boolean;
+  readonly hasLiveContext: boolean;
+  readonly hasFolderNote: boolean;
+  readonly hasPriorOpenItems: boolean;
   readonly hasAttendees: boolean;
   readonly hasAgenda: boolean;
   readonly hasTemplateInstructions: boolean;
@@ -75,19 +96,44 @@ export function createEnhancementContext(
 ): SummaryEnhancementContext {
   const attendees = input.attendees ?? [];
   const hasRawNotes = !isBlank(input.rawNotes);
+  const liveDigest = isBlank(input.liveContext?.digest)
+    ? null
+    : (input.liveContext?.digest ?? null);
+  const liveQa = (input.liveContext?.qa ?? []).filter((entry) => !isBlank(entry.question));
+  const hasLiveContext = liveDigest !== null || liveQa.length > 0;
+  const folderNote = isBlank(input.seriesContext?.folderNote)
+    ? null
+    : (input.seriesContext?.folderNote ?? null);
+  const priorOpenItems = isBlank(input.seriesContext?.priorOpenItems)
+    ? null
+    : (input.seriesContext?.priorOpenItems ?? null);
   const hasAttendees = attendees.some((name) => !isBlank(name));
   const hasAgenda = !isBlank(input.agenda);
   const hasTemplateInstructions = !isBlank(input.templateInstructions);
   return {
     rawNotes: input.rawNotes ?? null,
+    liveDigest,
+    liveQa,
+    folderNote,
+    priorOpenItems,
     attendees,
     agenda: input.agenda ?? null,
     templateInstructions: input.templateInstructions ?? null,
     hasRawNotes,
+    hasLiveContext,
+    hasFolderNote: folderNote !== null,
+    hasPriorOpenItems: priorOpenItems !== null,
     hasAttendees,
     hasAgenda,
     hasTemplateInstructions,
-    hasAny: hasRawNotes || hasAttendees || hasAgenda || hasTemplateInstructions,
+    hasAny:
+      hasRawNotes ||
+      hasLiveContext ||
+      folderNote !== null ||
+      priorOpenItems !== null ||
+      hasAttendees ||
+      hasAgenda ||
+      hasTemplateInstructions,
   };
 }
 
@@ -186,12 +232,19 @@ function enhancementRules(enhancement: SummaryEnhancementContext): string {
   const rawNotesRule = enhancement.hasRawNotes
     ? '\n- Treat the raw notes as important. Include those points. Fix typos. Fill structure from the transcript.'
     : '';
+  const liveRule = enhancement.hasLiveContext
+    ? '\n- Use <live_digest> and <live_qa> as extra context only. They come from the live session while recording; the transcript stays the source of truth.'
+    : '';
+  const seriesRule =
+    enhancement.hasFolderNote || enhancement.hasPriorOpenItems
+      ? '\n- Use <folder_note> and <prior_open_items> as background only. <prior_open_items> are unfinished items from earlier meetings of this series: when the transcript shows one was done, discussed, or is still pending, say so in the summary, but do not copy them as new action items; list an item under Action Items only if this transcript states or agrees it.'
+      : '';
   const templateRule = enhancement.hasTemplateInstructions
     ? '\n- <template_instructions> sets the Summary body structure: it replaces the inferred ### sections. The three ## headings still apply.'
     : '';
   return `Extra rules for the supplied context:
 - Do not invent attendees, dates, quotes, or tasks that are not in the transcript or the supplied context.
-- Still emit exactly "## Title", "## Summary", and "## Action Items" in that order, and nothing else.${rawNotesRule}${templateRule}`;
+- Still emit exactly "## Title", "## Summary", and "## Action Items" in that order, and nothing else.${rawNotesRule}${liveRule}${seriesRule}${templateRule}`;
 }
 
 /** Each block is a newline, the open tag, the value, the close tag, each on its own line. */
@@ -200,6 +253,19 @@ function enhancementBlocks(enhancement: SummaryEnhancementContext): string {
     `\n<${tag}>\n${lf(value.trim())}\n</${tag}>\n`;
   let blocks = '';
   if (enhancement.hasRawNotes) blocks += block('raw_notes', enhancement.rawNotes ?? '');
+  if (enhancement.liveDigest !== null) blocks += block('live_digest', enhancement.liveDigest);
+  if (enhancement.liveQa.length > 0) {
+    const pairs = enhancement.liveQa.map((entry) =>
+      entry.answer === undefined || isBlank(entry.answer)
+        ? `Q: ${entry.question.trim()}`
+        : `Q: ${entry.question.trim()}\nA: ${entry.answer.trim()}`,
+    );
+    blocks += block('live_qa', pairs.join('\n\n'));
+  }
+  if (enhancement.folderNote !== null) blocks += block('folder_note', enhancement.folderNote);
+  if (enhancement.priorOpenItems !== null) {
+    blocks += block('prior_open_items', enhancement.priorOpenItems);
+  }
   if (enhancement.hasAttendees) {
     const names = enhancement.attendees
       .filter((name) => !isBlank(name))

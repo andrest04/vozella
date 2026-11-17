@@ -1,50 +1,30 @@
 /** The recent part of the committed transcript a live answer reads (recording spec 3.12). */
+import {
+  isTranscriptHeader,
+  parseCommittedLineEnd,
+  splitCommittedLines,
+} from '../transcription/committed-line';
 import { takeTail } from './utf16';
 
 export const DEFAULT_ANSWER_WINDOW_MS = 90_000;
+/** A preset overview next to a rolling digest: the digest covers what came before this. */
+export const OVERVIEW_WINDOW_WITH_DIGEST_MS = 180_000;
+/** A preset overview before any digest exists: as much of the take as one prompt can hold. */
+export const OVERVIEW_WINDOW_NO_DIGEST_MS = 600_000;
 export const UNSTAMPED_FALLBACK_CHARS = 2500;
-
-const TIME = /^(\d{2,}):(\d{2})\.(\d{2})$/;
-
-function parseTime(text: string): number | null {
-  const match = TIME.exec(text);
-  if (match === null) return null;
-  const seconds = Number(match[2]);
-  if (seconds > 59) return null;
-  return (Number(match[1]) * 60 + seconds) * 1000 + Number(match[3]) * 10;
-}
-
-/** The end time of a `[mm:ss.ff-mm:ss.ff]` stamp, or null when the line has none. */
-export function parseStampEnd(line: string): number | null {
-  if (!line.startsWith('[')) return null;
-  const close = line.indexOf(']');
-  if (close < 2) return null;
-  const range = line.slice(1, close);
-  const dash = range.indexOf('-');
-  if (dash < 0) return null;
-  const start = parseTime(range.slice(0, dash));
-  const end = parseTime(range.slice(dash + 1));
-  return start === null || end === null ? null : end;
-}
-
-function isHeader(line: string): boolean {
-  const t = line.trimStart();
-  return t.startsWith('Recorded ') || t.startsWith('Ended ');
-}
 
 export function takeRecentWindow(
   committedText: string | null | undefined,
   windowMs: number = DEFAULT_ANSWER_WINDOW_MS,
 ): string {
   if (committedText === null || committedText === undefined || committedText === '') return '';
-  const lines = committedText.split(/\r\n|\n|\r/);
-  const ends = lines.map(parseStampEnd);
+  // Bug 17: one newline kind in the output (the prompt is \n joined), whatever mix came in.
+  const lines = splitCommittedLines(committedText);
+  const ends = lines.map(parseCommittedLineEnd);
   let latest: number | null = null;
   for (const end of ends) if (end !== null && (latest === null || end > latest)) latest = end;
-  if (latest === null) {
-    // Bug 16: the cut keeps whole surrogate pairs. Bug 17: one newline kind, as below.
-    return takeTail(lines.join('\n'), UNSTAMPED_FALLBACK_CHARS);
-  }
+  // Bug 16: the cut keeps whole surrogate pairs.
+  if (latest === null) return takeTail(lines.join('\n'), UNSTAMPED_FALLBACK_CHARS);
   const cutoff = latest - windowMs;
   const inSpan = (end: number | null): boolean => end !== null && end >= cutoff && end <= latest;
   let first = -1;
@@ -57,10 +37,9 @@ export function takeRecentWindow(
   if (first < 0) return '';
   const kept: string[] = [];
   lines.forEach((line, index) => {
-    if (isHeader(line)) return;
+    if (isTranscriptHeader(line)) return;
     const end = ends[index] ?? null;
     if (end !== null ? inSpan(end) : index >= first && index <= last) kept.push(line);
   });
-  // Bug 17: the output always uses \n, whatever mix the input had (the prompt is \n joined).
   return kept.join('\n');
 }

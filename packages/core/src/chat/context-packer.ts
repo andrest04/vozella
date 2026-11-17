@@ -93,7 +93,13 @@ const MEETING_TRANSCRIPT_MIN_SHARE = 0.3;
 export type ContextMeeting = Pick<
   MeetingRecord,
   'id' | 'title' | 'recordedAt' | 'folderId' | 'summary' | 'notes' | 'transcript' | 'actionItems'
->;
+> & {
+  /**
+   * Set by the reader on a meeting it chose for matching the question (0 is the best). Ranked
+   * meetings are packed first, in this order; the others follow, newest first.
+   */
+  readonly relevanceRank?: number;
+};
 export type ContextFolder = Pick<FolderRecord, 'id' | 'name' | 'note'>;
 
 /** String lookup injected by the caller so core stays pure (CoreStrings keys). */
@@ -205,14 +211,21 @@ function packMany(
     const ib = compactMeetingId(b.id);
     return ia < ib ? 1 : ia > ib ? -1 : 0;
   });
-  const selected = matching.slice(0, MEETING_CAP);
+  const ranked = matching
+    .filter((m) => m.relevanceRank !== undefined)
+    .sort((a, b) => (a.relevanceRank ?? 0) - (b.relevanceRank ?? 0));
+  const recent = matching.filter((m) => m.relevanceRank === undefined);
+  const selected = [...ranked, ...recent].slice(0, MEETING_CAP);
 
   if (selected.length === 0) {
     out += t(kind === 'Folder' ? 'ChatNoMeetingsInFolder' : 'ChatNoMeetingsSaved');
     return out.trimEnd();
   }
   if (selected.length < matching.length) {
-    out += `Showing the ${MEETING_CAP} most recent of ${matching.length} meetings. Older meetings were omitted.${NL}`;
+    out +=
+      ranked.length > 0
+        ? `Showing ${selected.length} of ${matching.length} meetings: the most relevant to the question first, then the most recent. The rest were omitted.${NL}`
+        : `Showing the ${MEETING_CAP} most recent of ${matching.length} meetings. Older meetings were omitted.${NL}`;
   }
   selected.forEach((m, index) => {
     if (index > 0) out += NL;
@@ -256,20 +269,39 @@ function packMeeting(
  * covers what came before; without one the tail keeps the full live budget.
  */
 function packLive(live: LiveContextSnapshot, budget: ContextBudget, t: ChatStringLookup): string {
-  const digest = isBlank(live.digest) ? null : cutPrefix(live.digest, LIVE_DIGEST_MAX_CHARS);
+  const digest = liveDigest(live.digest);
   const text = tail(
     live.transcript,
     digest === null ? budget.liveChars : budget.liveTailWithDigestChars,
   );
   if (text === null && digest === null) return t('ChatLiveTranscriptEmpty');
   const parts: string[] = [];
+  const session = packLiveSession(live, budget);
+  if (session !== null) parts.push(session);
+  if (text !== null) parts.push(`Live transcript:${NL}${neutralizeStructure(text)}`);
+  return parts.join(`${NL}${NL}`);
+}
+
+const liveDigest = (digest: string | null | undefined): string | null =>
+  isBlank(digest) ? null : cutPrefix(digest, LIVE_DIGEST_MAX_CHARS);
+
+/**
+ * The part of the Live context that is not the transcript: title, notes and the rolling digest,
+ * packed exactly as the Live chat scope does. The live ask reuses it so the pill and the dock see
+ * what the chat sees. Null when there is nothing to say.
+ */
+export function packLiveSession(
+  live: Pick<LiveContextSnapshot, 'title' | 'notes' | 'digest'>,
+  budget: ContextBudget,
+): string | null {
+  const parts: string[] = [];
   const session: string[] = [];
   if (!isBlank(live.title)) session.push(`Meeting: ${singleLine(live.title.trim())}`);
   if (!isBlank(live.notes)) session.push(`Notes: ${capPrefix(live.notes, budget.liveNotesChars)}`);
   if (session.length > 0) parts.push(session.join(NL));
+  const digest = liveDigest(live.digest);
   if (digest !== null) parts.push(`${LIVE_DIGEST_LABEL}${NL}${neutralizeStructure(digest)}`);
-  if (text !== null) parts.push(`Live transcript:${NL}${neutralizeStructure(text)}`);
-  return parts.join(`${NL}${NL}`);
+  return parts.length === 0 ? null : parts.join(`${NL}${NL}`);
 }
 
 /**

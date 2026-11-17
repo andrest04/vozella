@@ -9,6 +9,7 @@ const strings: Record<string, string> = {
   NoSummariesYet: 'No summaries yet',
   SummaryPage_NoActionItems: 'No action items to copy.',
   Error_SaveActionItem: 'Error saving the action item: {0}',
+  NoteTemplate_Custom: 'Custom',
 };
 const translate: TranslateFn = (key, ...args) =>
   (strings[key] ?? key).replace('{0}', String(args[0] ?? ''));
@@ -50,6 +51,7 @@ function setup(records: MeetingRecord[], selected: string | null = null) {
     getSelectedMeetingId: () => selected,
     selectMeeting: (id) => selections.push(id),
     nextSessionDates: settings,
+    settings,
   });
   return { repo, service, selections, settings };
 }
@@ -59,6 +61,18 @@ async function load(service: SummaryTabService, meetingId: string | null) {
   if (result.status !== 'loaded') throw new Error('load failed');
   return result.state;
 }
+
+describe('loadTab custom template option', () => {
+  it('lists the custom template only once the user wrote one', async () => {
+    const { service, settings } = setup([rec('a')]);
+    expect((await load(service, 'a')).templates.map((o) => o.id)).not.toContain('custom');
+    await settings.update({ customNoteTemplate: '   ' });
+    expect((await load(service, 'a')).templates.map((o) => o.id)).not.toContain('custom');
+    await settings.update({ customNoteTemplate: '## Goals' });
+    const custom = (await load(service, 'a')).templates.find((o) => o.id === 'custom');
+    expect(custom).toEqual({ id: 'custom', labelKey: null, name: 'Custom' });
+  });
+});
 
 describe('loadTab resolution (items 78 to 80)', () => {
   const a = rec('a', { recordedAt: '2026-09-01T12:00:00.0000000+00:00' });

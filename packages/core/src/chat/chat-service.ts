@@ -43,9 +43,13 @@ import type { ChatEngine } from './user-prompts';
  */
 export interface ChatMeetingReader {
   meetingById(id: string): Promise<ContextMeeting | null>;
-  meetingsInFolder(folderId: string): Promise<readonly ContextMeeting[]>;
-  /** Every meeting, in any order: the packer sorts and caps. */
-  listRecent(): Promise<readonly ContextMeeting[]>;
+  /**
+   * `question` lets the reader read the meetings that match it in full (marked with
+   * `relevanceRank`) before the newest ones.
+   */
+  meetingsInFolder(folderId: string, question?: string): Promise<readonly ContextMeeting[]>;
+  /** Every meeting, in any order: the packer sorts and caps. Same `question` rule. */
+  listRecent(question?: string): Promise<readonly ContextMeeting[]>;
   listFolders(): Promise<readonly ContextFolder[]>;
 }
 
@@ -426,9 +430,9 @@ export class ChatService {
       const found = await reader.meetingById(scope.meetingId);
       meetings = found === null ? [] : [found];
     } else if (scope.kind === 'Folder' && scope.folderId !== null) {
-      meetings = await reader.meetingsInFolder(scope.folderId);
+      meetings = await reader.meetingsInFolder(scope.folderId, query);
     } else if (scope.kind === 'AllMeetings') {
-      meetings = await reader.listRecent();
+      meetings = await reader.listRecent(query);
     }
     const folders =
       scope.kind === 'Folder' || scope.kind === 'AllMeetings' ? await reader.listFolders() : [];

@@ -332,6 +332,8 @@ export const appSettingsSchema = z.object({
   transcriptionEngine: z.string().nullable(),
   /** The model of the cloud transcription engine; null takes the provider's default. */
   cloudTranscriptionModelId: z.string().nullable(),
+  /** The user's own note template text; null or blank means none. */
+  customNoteTemplate: z.string().nullable(),
 });
 export type AppSettingsDto = z.infer<typeof appSettingsSchema>;
 

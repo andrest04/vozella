@@ -55,6 +55,7 @@ describe('defaults', () => {
       selectedGroqModelId: null,
       transcriptionEngine: null,
       cloudTranscriptionModelId: null,
+      customNoteTemplate: null,
     });
   });
 
@@ -349,6 +350,14 @@ describe('resolveLiveQuestionsMode', () => {
     expect(
       resolveLiveQuestionsMode({ liveQuestions: 'Rules', selectedSummaryProvider: 'Codex' }),
     ).toBe('rules+ai');
+  });
+
+  it('the custom note template is written only once set and round-trips', () => {
+    expect(serializeSettings({})).not.toContain('customNoteTemplate');
+    const text = serializeSettings(
+      applySettingsPatch({}, { customNoteTemplate: 'Use ## Goals\nthen ## Risks' }),
+    );
+    expect(parseSettingsJson(text).settings.customNoteTemplate).toBe('Use ## Goals\nthen ## Risks');
   });
 
   it('round-trips through the settings file, written last of the known properties once set', () => {

@@ -93,6 +93,35 @@ describe('LibraryChatReader bound (B17)', () => {
     expect(context).not.toContain('Bulk 07');
   });
 
+  it('loads the meetings the question matches in full, then the newest, and no more', async () => {
+    const records = await seed(20);
+    const old = records[1]!;
+    await fx.meetings.save({ ...old, transcript: '[00:00.00-00:01.00] Ana: zanahoria rallada' });
+    const get = vi.spyOn(fx.meetings, 'get');
+    const meetings = await reader().listRecent('zanahoria');
+    expect(get).toHaveBeenCalledTimes(MEETING_CAP);
+    const full = meetings.filter((m) => m.transcript !== null);
+    expect(full).toHaveLength(MEETING_CAP);
+    expect(full.find((m) => m.id === old.id)?.relevanceRank).toBe(0);
+    expect(meetings.filter((m) => m.relevanceRank !== undefined)).toHaveLength(1);
+
+    const context = packContext('AllMeetings', null, null, null, meetings, [], (k) => k);
+    expect(context).toContain('Bulk 01');
+    expect(context).toContain('Bulk 19');
+    expect(context).not.toContain('Bulk 07');
+    expect(context).toContain('Showing 12 of 22 meetings');
+  });
+
+  it('scopes the ranking to the folder', async () => {
+    const records = await seed(3);
+    await fx.meetings.save({
+      ...records[0]!,
+      transcript: '[00:00.00-00:01.00] Ana: tema integral',
+    });
+    const inFolder = await reader().meetingsInFolder(CALCULO, 'integral');
+    expect(inFolder.map((m) => m.id)).toEqual([WEEKLY]);
+  });
+
   it('answers the existence check without parsing a record', async () => {
     await seed(5);
     const get = vi.spyOn(fx.meetings, 'get');
