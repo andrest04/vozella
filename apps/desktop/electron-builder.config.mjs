@@ -3,8 +3,8 @@
 // Two variants of the same app:
 //   release (default)  hardened fuses; this is what ships.
 //   e2e                identical, except the Node inspector CLI fuse stays on, because
-//                      Playwright's _electron.launch drives the app through it
-//                      (docs/port/research/quality-packaging.md). It must never ship.
+//                      Playwright's _electron.launch drives the app through it.
+//                      It must never ship.
 // Select with VOZELLA_PACKAGE_VARIANT=e2e.
 const variant = process.env.VOZELLA_PACKAGE_VARIANT === 'e2e' ? 'e2e' : 'release';
 

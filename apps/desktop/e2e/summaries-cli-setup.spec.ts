@@ -9,7 +9,7 @@ import { writeMeeting } from './library-data';
 // fake native build. VOZELLA_FAKE_CLI_FILES=1 makes the CLI probe read <app data>/fake-cli: a file
 // named claude or codex there means that program is installed, so a test flips the answer while
 // the app runs. The FakeSummaryProvider answers once the gate lets a run through.
-// Screenshots (docs/port/screens/summaries) are rewritten only with VOZELLA_SCREENSHOTS=1.
+// Screenshots (docs/screenshots/summaries) are rewritten only with VOZELLA_SCREENSHOTS=1.
 
 test.describe.configure({ timeout: 150_000 });
 
@@ -108,7 +108,7 @@ const serious = async (page: Page) => {
     }));
 };
 
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/summaries');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/summaries');
 const shoot = async (page: Page, name: string): Promise<void> => {
   if (process.env.VOZELLA_SCREENSHOTS !== '1') return;
   await page.waitForTimeout(350);

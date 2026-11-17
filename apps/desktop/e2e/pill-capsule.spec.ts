@@ -8,9 +8,9 @@ import { os, pixels, sleep } from './os/os';
 // spike did: a magenta backdrop makes transparency visible, so the rounded corners, the single
 // outline, the gutter and the signal red stop button are measured on the screen, not in the DOM.
 // Fake native build, a unique VOZELLA_DATA_ROOT per launch (launch.ts). Windows only.
-// Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/port/screens/live-copilot.
+// Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/screenshots/live-copilot.
 
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/live-copilot');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/live-copilot');
 const shots = process.env.VOZELLA_SCREENSHOTS === '1';
 
 // A run can lose the machine to another worktree's Electron for a moment: retry once.

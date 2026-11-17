@@ -4,13 +4,13 @@ import { expect, test, type Page } from '@playwright/test';
 import { launchApp, openSettingsTab, type LaunchedApp } from './launch';
 import { writeMeeting } from './library-data';
 
-// Regenerates docs/port/screens/library-storage/*.png, the pictures T4.1 is judged from. Opt in with
+// Regenerates docs/screenshots/library-storage/*.png, the pictures T4.1 is judged from. Opt in with
 // VOZELLA_SCREENSHOTS=1 so a normal run does not rewrite tracked images. With
 // VOZELLA_E2E_BACKGROUND=1 the window stays off-screen and the renderer still paints real pixels.
 test.skip(process.env.VOZELLA_SCREENSHOTS !== '1', 'set VOZELLA_SCREENSHOTS=1 to capture');
 test.describe.configure({ timeout: 240_000 });
 
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/library-storage');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/library-storage');
 
 const UNI = '11111111-1111-4111-8111-111111111111';
 const CALC = '22222222-2222-4222-8222-222222222222';

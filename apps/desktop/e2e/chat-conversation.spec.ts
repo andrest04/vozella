@@ -5,10 +5,10 @@ import { launchApp, type LaunchedApp } from './launch';
 import { writeMeeting } from './library-data';
 
 // The chat conversation (chat-7) against the fake summary provider: nothing touches a model, a CLI
-// or the network. Screenshots land in docs/port/screens/chat/ when VOZELLA_SCREENSHOTS=1.
+// or the network. Screenshots land in docs/screenshots/chat/ when VOZELLA_SCREENSHOTS=1.
 test.describe.configure({ timeout: 120_000 });
 
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/chat');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/chat');
 const MEETING = 'a0000000-0000-4000-8000-000000000000';
 
 const seed = (dataRoot: string): void => {

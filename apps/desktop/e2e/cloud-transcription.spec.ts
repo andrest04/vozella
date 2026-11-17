@@ -9,13 +9,13 @@ import { launchApp, openSettingsTab, READY_MODEL, restoreMain, type LaunchedApp 
 // half second of audio) and can be made to fail, and the local engine is never on disk. No
 // request leaves the PC and no account is used.
 //
-// Screenshots are written only with VOZELLA_SCREENSHOTS=1, to docs/port/screens/cloud-transcription
+// Screenshots are written only with VOZELLA_SCREENSHOTS=1, to docs/screenshots/cloud-transcription
 // or to VOZELLA_SCREENSHOT_DIR.
 
 const shots = process.env.VOZELLA_SCREENSHOTS === '1';
 const outDir =
   process.env.VOZELLA_SCREENSHOT_DIR ??
-  path.resolve(__dirname, '../../../docs/port/screens/cloud-transcription');
+  path.resolve(__dirname, '../../../docs/screenshots/cloud-transcription');
 
 const KEY = 'gsk-e2e-SECRET-0123456789';
 

@@ -9,9 +9,9 @@ import { os, pixels, sleep } from './os/os';
 // summary provider (no real CLI, no real account), the web badge, the error path, collapse on
 // drag and close on stop. The panel surface, its 28 DIP corner and the transparent gutter are
 // measured on real composed screen pixels over a magenta backdrop, as the window spike did.
-// Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/port/screens/live-copilot. Windows only.
+// Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/screenshots/live-copilot. Windows only.
 
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/live-copilot');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/live-copilot');
 const shots = process.env.VOZELLA_SCREENSHOTS === '1';
 const MODEL = 'Llama-3.2-1B-Instruct-Q4_K_M.gguf';
 const ANSWER = 'The team went over the plan';

@@ -9,9 +9,9 @@ import { os, pixels, sleep } from './os/os';
 // focus, real composed pixels and real mouse input (e2e/os/os.ps1). Windows only.
 //
 // The pill is driven by the real path: a fake recording starts, the handoff minimizes the main
-// window, the pill slides in. Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/port/screens.
+// window, the pill slides in. Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/screenshots.
 
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/live-copilot');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/live-copilot');
 const shots = process.env.VOZELLA_SCREENSHOTS === '1';
 
 // A run can lose the machine to another worktree's Electron for a moment: retry once.

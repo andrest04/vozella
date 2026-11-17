@@ -9,7 +9,7 @@ import { writeMeeting } from './library-data';
 // The system browser is a double: the fake native build appends each address to a log file.
 test.describe.configure({ timeout: 120_000 });
 
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/chat');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/chat');
 const MEETING = 'a0000000-0000-4000-8000-000000000000';
 const MISSING = 'b0000000-0000-4000-8000-000000000000';
 const hex = (id: string): string => id.replace(/-/g, '');

@@ -4,10 +4,10 @@ import es from './locales/es.json';
 import uiEn from './locales/ui.en.json';
 import uiEs from './locales/ui.es.json';
 
-// Parity item 158: every string of the session page (spec 2.12) exists in English and Spanish with
+// Every string of the session page exists in English and Spanish with
 // the same placeholders. The suggest-title keys are not listed: that feature was dropped by the
 // owner decision of 2026-11-03.
-const SPEC_KEYS = [
+const SESSION_KEYS = [
   'SessionPage_Back.AutomationProperties.Name',
   'SessionPage_TabTranscript.Text',
   'SessionPage_TabSummary.Text',
@@ -47,8 +47,8 @@ const SPEC_KEYS = [
   'Dialog_OK',
 ] as const;
 
-// Strings the port added for states the old app left silent (B9, B13, B16).
-const PORT_KEYS = [
+// Strings for states that would otherwise stay silent.
+const ADDED_KEYS = [
   'Ui_SessionPageOpenLocationFailedText',
   'Ui_SessionPageLoadFailedText',
   'Ui_SessionPageRetryContent',
@@ -61,17 +61,17 @@ const PORT_KEYS = [
 const catalog = (value: unknown): Record<string, string> => value as Record<string, string>;
 const placeholders = (text: string): string[] => (text.match(/\{\d+\}/g) ?? []).sort();
 
-describe('session strings (item 158)', () => {
-  it.each(SPEC_KEYS)('%s has a non empty English and Spanish value', (key) => {
+describe('session strings', () => {
+  it.each(SESSION_KEYS)('%s has a non empty English and Spanish value', (key) => {
     expect(catalog(en)[key]?.trim()).toBeTruthy();
     expect(catalog(es)[key]?.trim()).toBeTruthy();
   });
 
-  it.each(SPEC_KEYS)('%s keeps the same placeholders in both languages', (key) => {
+  it.each(SESSION_KEYS)('%s keeps the same placeholders in both languages', (key) => {
     expect(placeholders(catalog(es)[key] ?? '')).toEqual(placeholders(catalog(en)[key] ?? ''));
   });
 
-  it.each(PORT_KEYS)('%s exists in English and Spanish', (key) => {
+  it.each(ADDED_KEYS)('%s exists in English and Spanish', (key) => {
     expect(catalog(uiEn)[key]?.trim()).toBeTruthy();
     expect(catalog(uiEs)[key]?.trim()).toBeTruthy();
   });
@@ -80,8 +80,8 @@ describe('session strings (item 158)', () => {
     expect(placeholders(catalog(en).SessionRetranscribe_Content ?? '')).toEqual(['{0}']);
   });
 
-  it('the port strings have no em dashes', () => {
-    for (const key of PORT_KEYS) {
+  it('the added strings have no em dashes', () => {
+    for (const key of ADDED_KEYS) {
       expect(catalog(uiEn)[key], key).not.toContain('—');
       expect(catalog(uiEs)[key], key).not.toContain('—');
     }

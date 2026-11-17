@@ -7,7 +7,7 @@ import { launchApp, type LaunchedApp, NO_GALLERY, packaged } from './launch';
 // The summary setup wizard in the real app with the fake native build: the fake hardware probe,
 // the scripted fake model folder (no network, no file) and a settings file on disk that is the
 // truth. The wizard opens from the component gallery, which is the dev entry for the chooser.
-// Screenshots (docs/port/screens/summaries) are rewritten only with VOZELLA_SCREENSHOTS=1.
+// Screenshots (docs/screenshots/summaries) are rewritten only with VOZELLA_SCREENSHOTS=1.
 
 test.skip(packaged, NO_GALLERY);
 test.describe.configure({ timeout: 150_000 });
@@ -259,7 +259,7 @@ test.describe('a download that fails once', () => {
 
 test.describe('screenshots', () => {
   test.skip(process.env.VOZELLA_SCREENSHOTS !== '1', 'set VOZELLA_SCREENSHOTS=1 to capture');
-  const outDir = path.resolve(__dirname, '../../../docs/port/screens/summaries');
+  const outDir = path.resolve(__dirname, '../../../docs/screenshots/summaries');
 
   for (const theme of ['light', 'dark'] as const) {
     test(`wizard in ${theme}`, async () => {

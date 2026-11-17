@@ -7,7 +7,7 @@ import { writeMeeting } from './library-data';
 
 // The Summary tab of the session page, in the real app with fake native adapters and a seeded
 // throwaway library. Files on disk are the truth: ticks and notes are read back from them.
-// Screenshots (docs/port/screens/summaries) are rewritten only with VOZELLA_SCREENSHOTS=1.
+// Screenshots (docs/screenshots/summaries) are rewritten only with VOZELLA_SCREENSHOTS=1.
 
 test.describe.configure({ timeout: 150_000 });
 
@@ -243,7 +243,7 @@ test('no serious accessibility violations in light and dark', async () => {
 
 test.describe('screenshots', () => {
   test.skip(process.env.VOZELLA_SCREENSHOTS !== '1', 'set VOZELLA_SCREENSHOTS=1 to capture');
-  const outDir = path.resolve(__dirname, '../../../docs/port/screens/summaries');
+  const outDir = path.resolve(__dirname, '../../../docs/screenshots/summaries');
 
   const shot = async (name: string): Promise<void> => {
     await page.waitForTimeout(350);

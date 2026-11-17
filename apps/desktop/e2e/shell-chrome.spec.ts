@@ -18,11 +18,11 @@ import { writeMeeting } from './library-data';
 // Shell chrome (sp-4): the startup migration notice, the rail, the call bar closing by itself,
 // the shortcuts and their key caps, the chat dock wiring, and axe in both themes. The call is
 // faked with VOZELLA_FAKE_CALL_FLAG (the watcher polls every 5 s). Screenshots land in
-// docs/port/screens/shell-platform/ when VOZELLA_SCREENSHOTS=1.
+// docs/screenshots/shell-platform/ when VOZELLA_SCREENSHOTS=1.
 
 const flagDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vozella-shell-chrome-flag-'));
 const flag = path.join(flagDir, 'call.flag');
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/shell-platform');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/shell-platform');
 const shots = process.env.VOZELLA_SCREENSHOTS === '1';
 const TICK_WAIT = 20_000;
 const MEETING = 'b0000000-0000-4000-8000-000000000001';

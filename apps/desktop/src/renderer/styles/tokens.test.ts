@@ -2,13 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-// Items 161 to 168, bugs 18, 19, 22, 23. The token table of the spec (section 4.9) is the single
-// palette; this reads it and compares it with tokens.css in both themes, then checks the rules
-// that keep the look quiet: no shadows or gradients outside real overlays, a 4 px radius, one
-// focus ring, forced colors, reduced motion.
+// The palette is held here as one constant; the tests compare it with tokens.css in both themes,
+// then check the rules that keep the look quiet: no shadows or gradients outside real overlays,
+// a 4 px radius, one focus ring, forced colors, reduced motion.
 
-const root = path.resolve(__dirname, '../../../../..');
-const spec = fs.readFileSync(path.join(root, 'docs/port/specs/shell-platform.md'), 'utf8');
 const renderer = path.resolve(__dirname, '..');
 const tokens = fs.readFileSync(path.join(__dirname, 'tokens.css'), 'utf8').replace(/\r\n/g, '\n');
 const indexCss = fs.readFileSync(path.join(__dirname, 'index.css'), 'utf8').replace(/\r\n/g, '\n');
@@ -18,19 +15,19 @@ interface Pair {
   readonly dark: string;
 }
 
-function specTable(): Map<string, Pair> {
-  const start = spec.indexOf('### 4.9 Design tokens');
-  const end = spec.indexOf('Type: sans', start);
-  const table = new Map<string, Pair>();
-  for (const line of spec.slice(start, end).split('\n')) {
-    const cells = line.split('|').map((cell) => cell.trim().replace(/`/g, ''));
-    const name = cells[1];
-    if (name?.startsWith('--') && cells[2]?.startsWith('#') && cells[3]?.startsWith('#')) {
-      table.set(name, { light: cells[2], dark: cells[3] });
-    }
-  }
-  return table;
-}
+const PALETTE: ReadonlyMap<string, Pair> = new Map([
+  ['--paper', { light: '#ffffff', dark: '#0a0a0a' }],
+  ['--paper-raised', { light: '#f5f5f5', dark: '#171717' }],
+  ['--ink', { light: '#0a0a0a', dark: '#ffffff' }],
+  ['--on-ink', { light: '#ffffff', dark: '#0a0a0a' }],
+  ['--ink-muted', { light: '#525252', dark: '#a3a3a3' }],
+  ['--ink-faint', { light: '#6e6e6e', dark: '#8a8a8a' }],
+  ['--on-ink-muted', { light: '#a3a3a3', dark: '#525252' }],
+  ['--border-control', { light: '#8a8a8a', dark: '#6b6b6b' }],
+  ['--hairline', { light: '#e5e5e5', dark: '#262626' }],
+  ['--hairline-on-ink', { light: '#333333', dark: '#d4d4d4' }],
+  ['--signal', { light: '#d92d20', dark: '#ff5a4f' }],
+]);
 
 /** Declarations of a block that starts at `header` (up to its closing brace at the same depth). */
 function block(css: string, header: string): Map<string, string> {
@@ -51,13 +48,13 @@ function block(css: string, header: string): Map<string, string> {
   return declarations;
 }
 
-describe('palette (item 161)', () => {
-  const expected = specTable();
+describe('palette', () => {
+  const expected = PALETTE;
   const light = block(tokens, ':root {');
   const darkOverride = block(tokens, ":root[data-theme='dark']");
   const darkFollowsOs = block(tokens, ":root:not([data-theme='light'])");
 
-  it('the spec table has the eleven tokens', () => {
+  it('the palette has the eleven tokens', () => {
     expect([...expected.keys()]).toEqual([
       '--paper',
       '--paper-raised',
@@ -73,7 +70,7 @@ describe('palette (item 161)', () => {
     ]);
   });
 
-  it.each([...expected])('%s matches the spec in light and dark', (name, pair) => {
+  it.each([...expected])('%s matches the palette in light and dark', (name, pair) => {
     expect(light.get(name)).toBe(pair.light);
     expect(darkOverride.get(name)).toBe(pair.dark);
     expect(darkFollowsOs.get(name)).toBe(pair.dark);
@@ -89,7 +86,7 @@ describe('palette (item 161)', () => {
   });
 });
 
-describe('theme (item 168)', () => {
+describe('theme', () => {
   it('follows the OS and lets data-theme override it, with no third mode', () => {
     expect(tokens).toContain('@media (prefers-color-scheme: dark)');
     expect(tokens).toContain(":root:not([data-theme='light'])");
@@ -97,8 +94,8 @@ describe('theme (item 168)', () => {
   });
 });
 
-describe('geometry and motion (items 163 to 165)', () => {
-  it('uses a 4 px control radius and the spec focus ring', () => {
+describe('geometry and motion', () => {
+  it('uses a 4 px control radius and the focus ring', () => {
     expect(indexCss).toMatch(/--radius-control:\s*4px/);
     expect(indexCss).toMatch(
       /:focus-visible\s*\{\s*outline:\s*2px solid var\(--ink\);\s*outline-offset:\s*2px;/,
@@ -139,7 +136,7 @@ function sources(dir: string): string[] {
   });
 }
 
-describe('no decoration outside overlays (item 163)', () => {
+describe('no decoration outside overlays', () => {
   const files = sources(renderer).map((file) => ({
     file: path.relative(renderer, file).replace(/\\/g, '/'),
     text: fs.readFileSync(file, 'utf8'),
@@ -177,7 +174,7 @@ describe('no decoration outside overlays (item 163)', () => {
 
   it('has no hard-coded colors outside the tokens', () => {
     const offenders = files
-      // The Claude mark keeps its brand orange (_gaps.md section 1).
+      // The Claude mark keeps its brand orange.
       .filter(
         (f) => f.file !== 'styles/tokens.css' && f.file !== 'features/ai-provider/ProviderMark.tsx',
       )
@@ -187,14 +184,14 @@ describe('no decoration outside overlays (item 163)', () => {
   });
 });
 
-describe('the popup stays dark (item 167, bug 19)', () => {
+describe('the popup stays dark', () => {
   it('forces the dark theme before it renders and starts the card hidden', () => {
     const main = fs.readFileSync(path.join(renderer, 'popup/main.tsx'), 'utf8');
     expect(main).toContain("setAttribute('data-theme', 'dark')");
     expect(fs.readFileSync(path.join(renderer, 'meeting-prompt.html'), 'utf8')).toContain(
       'data-theme="dark"',
     );
-    // The card is invisible until the entrance runs, so there is no one-frame flash (bug 19).
+    // The card is invisible until the entrance runs, so there is no one-frame flash.
     const css = fs.readFileSync(path.join(renderer, 'popup/popup.css'), 'utf8');
     expect(css).toMatch(/\.popup-card\[data-phase='hidden'\]\s*\{\s*opacity:\s*0;/);
   });

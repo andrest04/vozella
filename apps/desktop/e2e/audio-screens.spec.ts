@@ -3,10 +3,10 @@ import { expect, test, type Page } from '@playwright/test';
 import { FAKE_APPS } from './fake-audio-apps';
 import { installEngine, launchApp, readyEnv, seedReadySettings, type LaunchedApp } from './launch';
 
-// Regenerates docs/port/screens/audio-capture/*.png. Opt in with VOZELLA_SCREENSHOTS=1.
+// Regenerates docs/screenshots/audio-capture/*.png. Opt in with VOZELLA_SCREENSHOTS=1.
 test.skip(process.env.VOZELLA_SCREENSHOTS !== '1', 'set VOZELLA_SCREENSHOTS=1 to capture');
 
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/audio-capture');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/audio-capture');
 
 let launched: LaunchedApp;
 let page: Page;

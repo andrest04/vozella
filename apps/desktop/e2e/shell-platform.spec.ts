@@ -15,11 +15,11 @@ import {
 // sp-5: the shell end to end on the fake native build. Single instance, window state, tray,
 // recording handoff, close gate and menu, each on its own throwaway data root that survives the
 // app (so a second launch can read it). The real data folders are never involved.
-// Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/port/screens/shell-platform.
+// Screenshots (VOZELLA_SCREENSHOTS=1) go to docs/screenshots/shell-platform.
 
 const desktopDir = path.resolve(__dirname, '..');
 const entry = path.join(desktopDir, 'out', 'main', 'index.js');
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/shell-platform');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/shell-platform');
 const shots = process.env.VOZELLA_SCREENSHOTS === '1';
 const flagDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vozella-shell-flag-'));
 const flag = path.join(flagDir, 'call.flag');

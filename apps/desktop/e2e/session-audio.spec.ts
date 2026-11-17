@@ -173,7 +173,7 @@ test('the media route answers Range with 206, refuses unknown ids and traversal'
 
 test.describe('screenshots', () => {
   test.skip(process.env.VOZELLA_SCREENSHOTS !== '1', 'set VOZELLA_SCREENSHOTS=1 to capture');
-  const outDir = path.resolve(__dirname, '../../../docs/port/screens/session-views');
+  const outDir = path.resolve(__dirname, '../../../docs/screenshots/session-views');
 
   for (const theme of ['light', 'dark'] as const) {
     test(`transcript with audio in ${theme}`, async () => {

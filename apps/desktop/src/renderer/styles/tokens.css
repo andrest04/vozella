@@ -1,8 +1,7 @@
 /*
- * Design tokens. Single source: docs/port/specs/shell-platform.md section 4.9, taken
- * from website/index.html. Light is the default; dark follows the system through
- * prefers-color-scheme (Electron keeps that in step with nativeTheme.themeSource), and
- * data-theme="light|dark" on <html> is the user override.
+ * Design tokens: the single palette for light and dark themes. Light is the default; dark follows
+ * the system through prefers-color-scheme (Electron keeps that in step with
+ * nativeTheme.themeSource), and data-theme="light|dark" on <html> is the user override.
  */
 :root {
   color-scheme: light;

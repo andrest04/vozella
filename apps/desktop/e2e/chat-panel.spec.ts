@@ -4,11 +4,11 @@ import { expect, test, type Page } from '@playwright/test';
 import { launchApp, type LaunchedApp } from './launch';
 import { writeMeeting } from './library-data';
 
-// AI panel in the shell (chat-6): launcher, docked and floating panel, Ctrl+J, persistence. Screenshots land in docs/port/screens/chat/ when
+// AI panel in the shell (chat-6): launcher, docked and floating panel, Ctrl+J, persistence. Screenshots land in docs/screenshots/chat/ when
 // VOZELLA_SCREENSHOTS=1, so a normal run does not rewrite tracked images.
 test.describe.configure({ timeout: 120_000 });
 
-const outDir = path.resolve(__dirname, '../../../docs/port/screens/chat');
+const outDir = path.resolve(__dirname, '../../../docs/screenshots/chat');
 const WORK = '33333333-3333-4333-8333-333333333333';
 
 let launched: LaunchedApp;
