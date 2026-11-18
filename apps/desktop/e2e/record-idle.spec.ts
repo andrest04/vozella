@@ -74,10 +74,6 @@ async function setContentSize(width: number, height: number): Promise<void> {
 /** The largest miss the 125 % scale rounding produces; anything bigger is not rounding. */
 const MAX_ROUNDING_PX = 8;
 
-/** True when the run keeps every window off-screen (VOZELLA_E2E_BACKGROUND=1). */
-const BACKGROUND = process.env.VOZELLA_E2E_BACKGROUND === '1';
-const BACKGROUND_WIDTH_SLACK_PX = 2;
-
 async function resize(width: number, height: number): Promise<void> {
   let ask: [number, number] = [width, height];
   for (let attempt = 0; attempt < 6; attempt += 1) {
@@ -94,12 +90,8 @@ async function resize(width: number, height: number): Promise<void> {
       : [width, height];
   }
   const [finalWidth, finalHeight] = await viewport();
-  // Off-screen (VOZELLA_E2E_BACKGROUND=1), after the main window is shown again from a take, the
-  // parked window's client area sticks at 2 px wider than asked and no further ask moves it (the
-  // outer size stays 1184 while the client reads 1197). Only that width slack is allowed there.
-  const widthSlack = BACKGROUND ? BACKGROUND_WIDTH_SLACK_PX : 0;
   expect(finalHeight).toBe(height);
-  expect(Math.abs(finalWidth - width)).toBeLessThanOrEqual(widthSlack);
+  expect(finalWidth).toBe(width);
 }
 
 async function setTheme(theme: 'light' | 'dark'): Promise<void> {
