@@ -172,6 +172,31 @@ describe('live ask handlers', () => {
     expect(t.resolved).toEqual([{ kind: 'Codex', webSearch: false }]);
   });
 
+  it('the explain chip reaches the session as its own preset with the last-point focus', async () => {
+    const t = setup();
+    t.liveAsk.hooks.committed('[00:00.00-00:05.00] we talked about limits');
+    expect(
+      await t.call('recording.ask', {
+        question: 'Explain that',
+        webSearch: false,
+        preset: 'explain',
+      }),
+    ).toEqual({ accepted: true });
+    await settle();
+    expect(t.prompts[0]).toContain('The user missed the last point');
+    expect(t.prompts[0]).toContain('Question:\nExplain that\n');
+
+    const missed = setup();
+    missed.liveAsk.hooks.committed('[00:00.00-00:05.00] we talked about limits');
+    await missed.call('recording.ask', {
+      question: 'What did I miss?',
+      webSearch: false,
+      preset: 'missed',
+    });
+    await settle();
+    expect(missed.prompts[0]).not.toContain('The user missed the last point');
+  });
+
   it('a blank preset and a preset outside a take are no-ops', async () => {
     const rec = setup();
     expect(
