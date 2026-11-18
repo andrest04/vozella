@@ -67,7 +67,7 @@ export function connectLiveAsk(): () => void {
 /** Returns true when main took the question (it answers through the event). */
 export async function askLive(
   question: string,
-  options: { readonly preset?: boolean } = {},
+  options: { readonly preset?: 'missed' | 'explain' } = {},
 ): Promise<boolean> {
   const text = question.trim();
   if (text === '') return false;
@@ -75,7 +75,7 @@ export async function askLive(
     const result = await window.vozella.invoke('recording.ask', {
       question: text,
       webSearch: get().webSearch,
-      ...(options.preset ? { preset: true } : {}),
+      ...(options.preset === undefined ? {} : { preset: options.preset }),
     });
     return result.accepted;
   } catch {

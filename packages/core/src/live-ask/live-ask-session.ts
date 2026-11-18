@@ -79,6 +79,9 @@ export interface LiveAskDeps {
 /** A typed ask reads the last minutes; a preset overview reads the digest and a wider window. */
 export type LiveAskScope = 'recent' | 'overview';
 
+/** Which chip asked: "missed" catches up on the whole take, "explain" restates the last point. */
+export type LiveAskPreset = 'missed' | 'explain';
+
 /** Local llama has a small context; every other engine gets the large live budget. */
 const budgetFor = (kind: SummaryProviderKind): ContextBudget =>
   kind === 'Local' ? LOCAL_CONTEXT_BUDGET : CLI_CONTEXT_BUDGET;
@@ -127,13 +130,21 @@ export class LiveAskSession {
     return this.forceWeb;
   }
 
-  /** The chips use the typed path with the prompt trimmed, over the whole take. */
-  askPreset(prompt: string): Promise<void> {
+  /**
+   * The chips use the typed path with the prompt trimmed. "missed" reads the whole take;
+   * "explain" reads the recent window like a typed ask, focused on the last point.
+   */
+  askPreset(prompt: string, preset: LiveAskPreset): Promise<void> {
     const trimmed = prompt.trim();
-    return trimmed === '' ? Promise.resolve() : this.ask(trimmed, 'overview');
+    if (trimmed === '') return Promise.resolve();
+    return this.ask(trimmed, preset === 'missed' ? 'overview' : 'recent', preset);
   }
 
-  async ask(question: string, scope: LiveAskScope = 'recent'): Promise<void> {
+  async ask(
+    question: string,
+    scope: LiveAskScope = 'recent',
+    preset: LiveAskPreset | null = null,
+  ): Promise<void> {
     const text = question.trim();
     if (text === '') return;
     const generation = this.begin();
@@ -168,7 +179,7 @@ export class LiveAskSession {
         settings.language,
         packLiveSession(context, budget, projectBlock),
         useWeb,
-        scope === 'overview',
+        preset === 'missed' ? 'overview' : preset === 'explain' ? 'last-point' : null,
       );
       const buffer = await this.stream(resolution.provider, prompt, source.signal, stale);
       if (buffer === null) return;
@@ -184,7 +195,7 @@ export class LiveAskSession {
       }
       this.set({ ...this.state, isAnswering: false, text: answer, error: null, usedWeb: useWeb });
       // The chips are fixed prompts, not the user's questions: only typed asks are kept.
-      if (scope === 'recent') this.remember({ question: text, answer });
+      if (preset === null) this.remember({ question: text, answer });
     } catch (error) {
       if (stale() || isCancellation(error)) return;
       this.set({
