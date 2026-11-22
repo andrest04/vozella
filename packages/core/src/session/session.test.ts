@@ -3,7 +3,6 @@ import { InMemoryMeetingRepository } from '../library/in-memory-library';
 import type { MeetingRecord } from '../library/meeting';
 import { Workspace } from '../library/workspace';
 import {
-  busyReason,
   canRename,
   canRetranscribe,
   canSubmitRename,
@@ -85,19 +84,6 @@ describe('busy and availability', () => {
   const running = (id: string) => ({ isRunning: true, meetingId: id });
   const view = { hasMeeting: true, hasAudio: true };
 
-  function ws(capture: boolean): Workspace {
-    const w = new Workspace();
-    w.setCaptureActive(capture);
-    return w;
-  }
-
-  it('busyReason: capture, run or null', () => {
-    expect(busyReason(idle, ws(false))).toBeNull();
-    expect(busyReason(running('x'), ws(false))).toBe('run');
-    expect(busyReason(idle, ws(true))).toBe('capture');
-    expect(busyReason(running('x'), ws(true))).toBe('capture');
-  });
-
   it('canRetranscribe truth table', () => {
     for (const hasMeeting of [true, false])
       for (const hasAudio of [true, false])
@@ -108,7 +94,7 @@ describe('busy and availability', () => {
   });
 
   it('a run on another meeting blocks re-transcribe but not rename', () => {
-    expect(canRetranscribe(view, busyReason(running('other'), ws(false)))).toBe(false);
+    expect(canRetranscribe(view, 'run')).toBe(false);
     expect(canRename(view, 'm1', running('other'))).toBe(true);
   });
 

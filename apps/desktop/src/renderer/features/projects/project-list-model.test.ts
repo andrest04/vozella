@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { projectItem } from '../../test-support/project-fixtures';
-import { arrangeProjects, formatActivity, unreadableProjectCount } from './project-list-model';
+import { arrangeProjects, formatActivity } from './project-list-model';
 
 const items = [
   projectItem(1, 'Cálculo', {
@@ -85,17 +85,5 @@ describe('formatActivity', () => {
   });
   it('is empty for text that is not a date', () => {
     expect(formatActivity('nonsense', 'en', now)).toBe('');
-  });
-});
-
-describe('unreadableProjectCount', () => {
-  it('counts skipped projects', () => {
-    expect(unreadableProjectCount([])).toBe(0);
-    expect(
-      unreadableProjectCount([
-        { id: null, dir: null, reason: 'corrupt' },
-        { id: 'x', dir: 'd', reason: 'unsafe-dir' },
-      ]),
-    ).toBe(2);
   });
 });

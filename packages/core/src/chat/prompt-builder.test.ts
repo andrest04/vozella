@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MEETING_LINK_PREFIX, meetingLink, tryParseMeetingCitation } from './meeting-link';
+import { MEETING_LINK_PREFIX, tryParseMeetingCitation } from './meeting-link';
 import {
   LIVE_TIME_RULE,
   MULTI_MEETING_TIME_RULE,
@@ -147,12 +147,6 @@ describe('buildPrompt', () => {
 });
 
 describe('meeting links', () => {
-  it('MeetingLink_RoundTripsThroughTryParseMeetingCitation', () => {
-    const link = meetingLink('01234567-89AB-CDEF-0123-456789ABCDEF');
-    expect(link).toBe('https://meetinglive.local/meeting/0123456789abcdef0123456789abcdef');
-    expect(tryParseMeetingCitation(link)).toEqual({ meetingId: ID, seconds: null });
-  });
-
   it('TryParseMeetingCitation_RejectsOtherLinks', () => {
     for (const l of [
       null,

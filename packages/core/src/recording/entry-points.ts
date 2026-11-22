@@ -1,5 +1,3 @@
-import { parseOffsetDate } from '../library/offset-date';
-import type { RecordingPipelineRequest } from '../transcription/retranscription';
 import type { PipelineRequest } from './pipeline/request';
 
 /**
@@ -34,40 +32,4 @@ export interface RecordingEntryPoints {
     audioPath: string,
     request: ProcessAudioRequest,
   ): ProcessAudioResult;
-}
-
-/**
- * Adapts the request the re-transcription module builds (ISO dates, a missing end is unknown) to
- * the pipeline's epoch-millisecond request. An unreadable start falls back to `fallbackMs`.
- */
-export function pipelineRequestFromRetranscription(
-  request: RecordingPipelineRequest,
-  fallbackMs: number,
-): { audioPath: string; request: PipelineRequest } {
-  const recordedAtMs = parseOffsetDate(request.recordedAt)?.ms ?? fallbackMs;
-  const endedAtMs =
-    request.endedAt === null ? null : (parseOffsetDate(request.endedAt)?.ms ?? null);
-  return {
-    audioPath: request.audioFilePath,
-    request: {
-      meetingId: request.meetingId,
-      audioPath: request.audioFilePath,
-      recordedAtMs,
-      endedAtMs,
-      title: request.title,
-      liveDraft: null,
-      pausedDurationMs: Math.round(request.pausedSeconds * 1000),
-      projectId: request.projectId,
-      highlightsMs: request.highlightsMs,
-      agenda: request.agenda,
-      noteTemplateId: request.noteTemplateId,
-      templateInstructions: request.templateInstructions,
-      calendarEventId: request.calendarEventId,
-      calendarId: request.calendarId,
-      seriesId: request.seriesId,
-      joinUrl: request.joinUrl,
-      attendees: request.attendees,
-      brief: request.brief,
-    },
-  };
 }

@@ -5,8 +5,3 @@
 export interface Clock {
   now(): Date;
 }
-
-/** Example of domain code written against the port, not the system. */
-export function isExpired(clock: Clock, expiresAt: Date): boolean {
-  return clock.now().getTime() >= expiresAt.getTime();
-}

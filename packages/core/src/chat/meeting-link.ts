@@ -1,13 +1,8 @@
-import { compactMeetingId } from './context-packer';
-
 /**
  * The stored internal link scheme of meeting citations. It is saved in chats and notes, so it
  * must not change. The host is fake on purpose: the renderer intercepts these links.
  */
 export const MEETING_LINK_PREFIX = 'https://meetinglive.local/meeting/';
-
-/** `prefix` plus the id as 32 lowercase hex digits. */
-export const meetingLink = (id: string): string => MEETING_LINK_PREFIX + compactMeetingId(id);
 
 const HEX32 = /^[0-9a-f]{32}$/i;
 const HYPHENATED = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

@@ -1,5 +1,4 @@
 import type { MeetingRecord } from '../library/meeting';
-import type { Workspace } from '../library/workspace';
 import { evaluateRetranscription } from '../transcription/retranscription';
 
 export type BusyReason = 'capture' | 'run' | null;
@@ -34,16 +33,6 @@ export function deriveSessionView(
   };
 }
 
-/** Capture wins over a run when both hold: the capture is what the user can act on first. */
-export function busyReason(
-  runner: Pick<RunnerStateLike, 'isRunning'>,
-  workspace: Pick<Workspace, 'state'>,
-): BusyReason {
-  if (workspace.state.isCaptureActive) return 'capture';
-  if (runner.isRunning) return 'run';
-  return null;
-}
-
 /** Rename is blocked only while a run targets this meeting. */
 export function canRename(
   view: Pick<SessionView, 'hasMeeting'>,
@@ -55,7 +44,7 @@ export function canRename(
   );
 }
 
-/** Busy is any run or an active capture (`busyReason` explains it). */
+/** Busy is any run or an active capture. */
 export function canRetranscribe(
   view: Pick<SessionView, 'hasMeeting' | 'hasAudio'>,
   reason: BusyReason,

@@ -60,18 +60,3 @@ export function pcm16ToFloat(bytes: Uint8Array): Float32Array {
   for (let i = 0; i < count; i += 1) out[i] = view.getInt16(i * 2, true) / 32768;
   return out;
 }
-
-export const NORMALIZER_TARGET_PEAK = 0.7;
-export const NORMALIZER_MAX_GAIN = 16;
-export const NORMALIZER_SILENCE_PEAK = 0.002;
-
-/**
- * Not wired into recording: kept because the rule is documented and
- * tested. Run it on a whole recording or a long window, never on 200 ms slices.
- */
-export function resolveNormalizerGain(peakFullScale: number): number {
-  if (peakFullScale <= NORMALIZER_SILENCE_PEAK || peakFullScale >= NORMALIZER_TARGET_PEAK) {
-    return 1;
-  }
-  return Math.min(NORMALIZER_TARGET_PEAK / peakFullScale, NORMALIZER_MAX_GAIN);
-}
