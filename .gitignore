@@ -14,14 +14,14 @@ Thumbs.db
 *.ggml
 *.gguf
 
-## Agent skill index (regenerated locally; SKILL.md files under .agents/skills are the source of truth)
+## AI agent tooling (local only; AGENTS.md is the one shared guide)
+.agents/
+.claude/
 .atl/
-
-## CodeGraph local index (per-machine SQLite; not source)
 .codegraph/
-
-## Agent skill symlinks
-.claude/skills/
+odd/
+skills-lock.json
+CLAUDE.md
 
 ## Workspace (pnpm, electron-vite, Rust addon)
 node_modules/
@@ -38,11 +38,6 @@ target/
 
 # Impeccable critique snapshots (local working state)
 .impeccable/critique/
-
-## Local-only agent skills (not part of the repo)
-.agents/skills/electron-best-practices/
-.agents/skills/electron-builder/
-.agents/skills/impeccable/
 
 # Local environment and recordings
 .env.local
