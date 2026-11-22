@@ -227,6 +227,7 @@ export function useChat(
               requestId,
               user: outcome.user,
               assistant: outcome.assistant,
+              ...(outcome.coverage === undefined ? {} : { coverage: outcome.coverage }),
             });
             return 'answered';
           case 'failed':

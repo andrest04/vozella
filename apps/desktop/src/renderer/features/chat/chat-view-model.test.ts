@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import type { Translate } from '../../i18n/translate';
 import {
   INITIAL_VIEW,
   accessibleMessageText,
   chatViewReducer,
+  coverageNote,
   keyIntent,
   restoreDraft,
   type ChatViewState,
@@ -136,5 +138,71 @@ describe('keyIntent', () => {
 describe('accessibleMessageText', () => {
   it('reads as role then text', () => {
     expect(accessibleMessageText('You', 'Hi')).toBe('You: Hi');
+  });
+});
+
+describe('meeting coverage of an answer', () => {
+  const coverage = { used: 12, matching: 37, basis: 'relevance' } as const;
+  const answered = (over: { coverage?: typeof coverage } = {}) =>
+    chatViewReducer(started(), {
+      type: 'answered',
+      requestId: 'r1',
+      user: msg('m1', 'user', 'Hello'),
+      assistant: msg('m2', 'assistant', 'Hi'),
+      ...over,
+    });
+
+  it('stays with the answer row only', () => {
+    const state = answered({ coverage });
+    expect(state.rows.map((r) => [r.id, r.coverage])).toEqual([
+      ['m1', undefined],
+      ['m2', coverage],
+    ]);
+  });
+
+  it('an answer without coverage has none', () => {
+    expect(answered().rows.every((r) => r.coverage === undefined)).toBe(true);
+  });
+
+  it('survives a later server list of the same messages, not a different list', () => {
+    const state = answered({ coverage });
+    const same = chatViewReducer(state, {
+      type: 'hydrate',
+      messages: [msg('m1', 'user', 'Hello'), msg('m2', 'assistant', 'Hi')],
+    });
+    expect(same.rows.find((r) => r.id === 'm2')?.coverage).toEqual(coverage);
+    const other = chatViewReducer(state, {
+      type: 'hydrate',
+      messages: [msg('x1', 'user', 'Old'), msg('x2', 'assistant', 'Reply')],
+    });
+    expect(other.rows.every((r) => r.coverage === undefined)).toBe(true);
+  });
+});
+
+describe('coverageNote', () => {
+  const t: Translate = (key, ...args) => [key, ...args].join('|');
+
+  it('says nothing when every matching meeting was used, or there is no coverage', () => {
+    expect(coverageNote(undefined, t)).toBeNull();
+    expect(coverageNote({ used: 5, matching: 5, basis: 'recency' }, t)).toBeNull();
+    expect(coverageNote({ used: 0, matching: 0, basis: 'recency' }, t)).toBeNull();
+  });
+
+  it('names how many were used of how many, by relevance or by recency', () => {
+    expect(coverageNote({ used: 12, matching: 37, basis: 'relevance' }, t)).toBe(
+      'Ui_ChatCoverageRelevant|12|37',
+    );
+    expect(coverageNote({ used: 12, matching: 37, basis: 'recency' }, t)).toBe(
+      'Ui_ChatCoverageRecent|12|37',
+    );
+  });
+
+  it('has its own sentence for a single meeting used', () => {
+    expect(coverageNote({ used: 1, matching: 4, basis: 'relevance' }, t)).toBe(
+      'Ui_ChatCoverageRelevantOne|4',
+    );
+    expect(coverageNote({ used: 1, matching: 4, basis: 'recency' }, t)).toBe(
+      'Ui_ChatCoverageRecentOne|4',
+    );
   });
 });

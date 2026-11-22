@@ -943,3 +943,98 @@ describe('a reopened thread and an unsaved chat', () => {
     });
   });
 });
+
+describe('meetings left out of an answer', () => {
+  const answeredWith = (
+    coverage: { used: number; matching: number; basis: 'relevance' | 'recency' } | undefined,
+  ) => ({
+    send: (_n: number, input: { draft: string }) =>
+      Promise.resolve<ChatSendOutcomeDto>({
+        status: 'answered',
+        user: msg('u1', 'user', input.draft),
+        assistant: msg('a1', 'assistant', 'Fine answer'),
+        notice: null,
+        ...(coverage === undefined ? {} : { coverage }),
+      }),
+  });
+
+  it('says how many meetings the answer was based on, under that answer', async () => {
+    install(answeredWith({ used: 12, matching: 37, basis: 'relevance' }));
+    mount();
+    await userEvent.type(box(), 'What did we decide?{Enter}');
+    const note = await screen.findByTestId('InfoMeetingChatCoverage');
+    expect(note.textContent).toBe('Based on the 12 most relevant of 37 meetings');
+    const answer = screen.getByText('Fine answer').closest('li');
+    expect(answer?.contains(note)).toBe(true);
+  });
+
+  it('names the most recent meetings when none matched the question', async () => {
+    install(answeredWith({ used: 12, matching: 15, basis: 'recency' }));
+    mount(FOLDER);
+    await userEvent.type(box(), 'Anything new?{Enter}');
+    expect((await screen.findByTestId('InfoMeetingChatCoverage')).textContent).toBe(
+      'Based on the 12 most recent of 15 meetings',
+    );
+  });
+
+  it('says nothing when every meeting was used, or for one meeting', async () => {
+    install(answeredWith({ used: 5, matching: 5, basis: 'recency' }));
+    mount();
+    await userEvent.type(box(), 'q{Enter}');
+    await screen.findByTestId('BtnMeetingChatCopy');
+    expect(screen.queryByTestId('InfoMeetingChatCoverage')).toBeNull();
+    cleanup();
+    install(answeredWith(undefined));
+    mount(MEETING);
+    await userEvent.type(box(), 'q{Enter}');
+    await screen.findByTestId('BtnMeetingChatCopy');
+    expect(screen.queryByTestId('InfoMeetingChatCoverage')).toBeNull();
+  });
+
+  it('is not shown while the answer streams', async () => {
+    const open = deferred();
+    const api = install({ send: () => open.promise });
+    mount();
+    await userEvent.type(box(), 'q{Enter}');
+    act(() => {
+      api.emit('chat.chunk', { requestId: api.sends[0]?.requestId, text: 'Partial' });
+    });
+    expect(screen.queryByTestId('InfoMeetingChatCoverage')).toBeNull();
+    await act(async () => {
+      open.settle({
+        status: 'answered',
+        user: msg('u', 'user', 'q'),
+        assistant: msg('a', 'assistant', 'Done'),
+        notice: null,
+        coverage: { used: 12, matching: 20, basis: 'relevance' },
+      });
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId('InfoMeetingChatCoverage')).toBeTruthy();
+  });
+
+  it('stays when main sends the conversation again', async () => {
+    const api = install(answeredWith({ used: 12, matching: 37, basis: 'relevance' }));
+    mount();
+    await userEvent.type(box(), 'q{Enter}');
+    await screen.findByTestId('InfoMeetingChatCoverage');
+    act(() => {
+      api.emit('chat.stateChanged', {
+        state: stateOf({
+          messages: [msg('u1', 'user', 'q'), msg('a1', 'assistant', 'Fine answer')],
+          hasMessages: true,
+        }),
+      });
+    });
+    expect(screen.getByTestId('InfoMeetingChatCoverage')).toBeTruthy();
+  });
+
+  it('speaks Spanish', async () => {
+    install(answeredWith({ used: 12, matching: 37, basis: 'relevance' }));
+    mount(ALL, 'es');
+    await userEvent.type(box(), 'q{Enter}');
+    expect((await screen.findByTestId('InfoMeetingChatCoverage')).textContent).toBe(
+      'Con base en las 12 reuniones más relevantes de 37',
+    );
+  });
+});
