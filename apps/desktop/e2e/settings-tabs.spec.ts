@@ -20,7 +20,7 @@ const COPY = {
       ['Microphone', 'Call detection'],
       ['Meeting language', 'Transcription'],
       ['Summary provider'],
-      ['Appearance', 'Language', 'Data', 'About'],
+      ['Appearance', 'Language', 'Startup', 'Data', 'About'],
     ],
   },
   es: {
