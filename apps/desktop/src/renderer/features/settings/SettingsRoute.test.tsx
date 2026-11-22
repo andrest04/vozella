@@ -1391,7 +1391,7 @@ describe('Settings tabs', () => {
   it.each([
     ['Transcription', ['Meeting language', 'Transcription']],
     ['Summaries & AI', ['Summary provider']],
-    ['General', ['Appearance', 'Language', 'Data', 'About']],
+    ['General', ['Appearance', 'Language', 'Startup', 'Data', 'About']],
     ['Recording', ['Microphone', 'Call detection']],
   ])('the %s tab shows only its sections, in lifecycle order', async (name, wanted) => {
     install(handlers);
@@ -1432,7 +1432,7 @@ describe('Settings tabs', () => {
     first.unmount();
     visit();
     expect(selectedTab()).toBe('General');
-    expect(sections()).toEqual(['Appearance', 'Language', 'Data', 'About']);
+    expect(sections()).toEqual(['Appearance', 'Language', 'Startup', 'Data', 'About']);
   });
 
   it('keeps Appearance reachable, without tabs, while the page loads', () => {

@@ -26,7 +26,7 @@ describe('settings tabs', () => {
     expect(idsOf('recording')).toEqual(['microphone', 'recording', 'callDetection']);
     expect(idsOf('transcription')).toEqual(['meetingLanguage', 'transcription']);
     expect(idsOf('summary')).toEqual(['summaryProvider']);
-    expect(idsOf('general')).toEqual(['appearance', 'language', 'data', 'about']);
+    expect(idsOf('general')).toEqual(['appearance', 'language', 'startup', 'data', 'about']);
   });
 
   it('never leave a tab empty: each has a built section', () => {
@@ -50,6 +50,7 @@ describe('settings sections', () => {
       'summaryProvider',
       'appearance',
       'language',
+      'startup',
       'data',
       'about',
     ]);
