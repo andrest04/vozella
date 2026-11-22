@@ -114,6 +114,7 @@ import {
 } from './security/trusted-origin';
 import { RecordingHandoff } from './recording/recording-handoff';
 import { AppTray } from './tray/app-tray';
+import { trayMenuTemplate, trayRecordingState, type TrayActionId } from './tray/tray-model';
 import { installShellProbe } from './bootstrap/shell-probe';
 import { activateMainWindow } from './windows/activate-main-window';
 import { resolveIconPath } from './windows/app-icon-path';
@@ -1006,7 +1007,7 @@ function main(): void {
       // still exits the app, so the tray goes with it. Automated runs skip it unless a test asks.
       let tray: AppTray | undefined;
       if (mode !== 'test' || process.env.VOZELLA_E2E_TRAY === '1') {
-        tray = new AppTray({
+        const appTray = new AppTray({
           createTray: () => {
             const real = new Tray(
               nativeImage.createFromPath(resolveIconPath(iconInput, 'tray.ico')),
@@ -1024,27 +1025,46 @@ function main(): void {
             if (probe) {
               probe.trayItems = items.map((item) => ({ id: item.id, label: item.label }));
               probe.trayRun = (id) => {
-                run(id as 'open' | 'quit');
+                run(id as TrayActionId);
               };
             }
-            return Menu.buildFromTemplate(
-              items.map((item) => ({
-                label: item.label,
-                click: () => {
-                  run(item.id);
-                },
-              })),
-            );
+            return Menu.buildFromTemplate(trayMenuTemplate(items, run));
           },
           t: (key) => locale.t(key),
           open: () => {
             activateMainWindow(mainWindow);
           },
-          // The same path as every other quit: before-quit asks the exit gates first.
+          // The same path as every other quit: before-quit asks the exit gates first, and the
+          // close guard asks before a take that is still recording is stopped.
           quit: () => {
             app.quit();
           },
+          recording: {
+            // The call popup's Start: show the window, then a blank take-notes request. Main
+            // restores the remembered sources, the start minimizes the window and shows the pill,
+            // and an incomplete setup goes back to the Record page and its setup dialog.
+            start: () => {
+              activateMainWindow(mainWindow);
+              workspace.requestTakeNotes();
+            },
+            // The calls the pill makes over IPC; the service refuses what the state does not allow.
+            pause: () => recording.pause(),
+            resume: () => recording.resume(),
+            stop: () => recording.stop(),
+          },
+          onActionError: (id, error) => {
+            logger.warn('the tray action failed', {
+              action: id,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          },
         });
+        appTray.setRecordingState(trayRecordingState(recording.getState()));
+        // Every published state, so the menu follows pause and resume as well as the phase.
+        recording.onStateChanged((state) => {
+          appTray.setRecordingState(trayRecordingState(state));
+        });
+        tray = appTray;
       }
       let lastRecording = false;
       recording.gate.onChange(() => {
@@ -1053,7 +1073,6 @@ function main(): void {
         if (isRecording === lastRecording) return;
         lastRecording = isRecording;
         handoff.update(isRecording);
-        tray?.setRecording(isRecording);
       });
       mainWindow.on('close', (event) => {
         exitFlow.windowClose(event);

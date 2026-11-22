@@ -688,6 +688,25 @@ describe('RecordingService pause and highlights', () => {
     expect(saved?.transcript).toContain('* [00:06.00-00:08.00] world');
   });
 
+  it('tells state listeners about start, pause, resume and stop, and stops after unsubscribe', async () => {
+    const t = build();
+    const seen: { phase: string; isPaused: boolean }[] = [];
+    const off = t.service.onStateChanged((state) => {
+      seen.push({ phase: state.phase, isPaused: state.isPaused });
+    });
+    await t.service.start(sources);
+    expect(seen.at(-1)).toEqual({ phase: 'Recording', isPaused: false });
+    await t.service.pause();
+    expect(seen.at(-1)).toEqual({ phase: 'Recording', isPaused: true });
+    await t.service.resume();
+    expect(seen.at(-1)).toEqual({ phase: 'Recording', isPaused: false });
+    off();
+    const count = seen.length;
+    await t.service.stop();
+    await t.service.completion;
+    expect(seen).toHaveLength(count);
+  });
+
   it('refuses pause and highlight when nothing records', async () => {
     const t = build();
     expect(await t.service.pause()).toBe(false);
