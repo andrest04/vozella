@@ -266,8 +266,6 @@ export const libraryChanged = defineEvent('library.changed', {
 export const appSettingsSchema = z.object({
   selectedSummaryModelId: z.string().nullable(),
   selectedSummaryProvider: z.string().nullable(),
-  selectedXaiModelId: z.string().nullable(),
-  selectedXaiEffort: z.string().nullable(),
   selectedClaudeModelId: z.string().nullable(),
   selectedClaudeEffort: z.string().nullable(),
   selectedCodexModelId: z.string().nullable(),

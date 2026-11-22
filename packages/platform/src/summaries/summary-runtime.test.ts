@@ -196,8 +196,6 @@ describe('SummaryRuntime on a real settings.json', () => {
     const patch = {
       selectedSummaryModelId: 'm.gguf',
       selectedSummaryProvider: 'Codex',
-      selectedXaiModelId: 'x',
-      selectedXaiEffort: 'low',
       selectedClaudeModelId: 'opus',
       selectedClaudeEffort: 'high',
       selectedCodexModelId: 'gpt-5.5',

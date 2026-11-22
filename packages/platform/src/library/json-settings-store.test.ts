@@ -29,7 +29,7 @@ describe('JsonSettingsStore', () => {
     await store().update({ uiLanguage: 'en' });
     const doc = JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>;
     expect(doc.uiLanguage).toBe('en');
-    expect(Object.keys(doc)).toHaveLength(22);
+    expect(Object.keys(doc)).toHaveLength(20);
     expect(doc.meetingPopupEnabled).toBe(true);
   });
 
