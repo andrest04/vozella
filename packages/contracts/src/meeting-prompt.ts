@@ -4,8 +4,20 @@ import { defineEvent, defineRequest } from './channel';
 const empty = z.object({}).strict();
 const done = z.object({ done: z.literal(true) });
 
-/** Main tells the popup page to appear. The window is already shown (inactive). */
-export const meetingPromptShow = defineEvent('meetingPrompt.show', { payload: empty });
+/**
+ * The app the detected call runs in. `unknown`, or no app at all, gets the generic copy
+ * ("Meeting detected").
+ */
+export const meetingAppSchema = z.enum(['teams', 'zoom', 'meet', 'unknown']);
+export type MeetingAppDto = z.infer<typeof meetingAppSchema>;
+
+/**
+ * Main tells the popup page to appear, naming the call's app when it knows it. The window is
+ * already shown (inactive).
+ */
+export const meetingPromptShow = defineEvent('meetingPrompt.show', {
+  payload: z.object({ app: meetingAppSchema.optional() }).strict(),
+});
 
 /**
  * Main tells the popup page to leave. `animated` is false after Start, where the window goes
@@ -35,11 +47,11 @@ export const meetingPromptNeverAgain = defineRequest('meetingPrompt.neverAgain',
 
 /**
  * The popup page finished starting and listens to the events. Main answers whether the popup is
- * showing now, so a show sent before the page was listening is not lost.
+ * showing now, and for which app, so a show sent before the page was listening is not lost.
  */
 export const meetingPromptReady = defineRequest('meetingPrompt.ready', {
   input: empty,
-  output: z.object({ shown: z.boolean() }),
+  output: z.object({ shown: z.boolean(), app: meetingAppSchema.optional() }),
 });
 
 /**

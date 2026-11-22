@@ -9,11 +9,22 @@ describe('fake call scanner', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vozella-flag-'));
     const flag = path.join(dir, 'call.flag');
     const scanner = createFlagFileScanner(flag);
-    expect(await scanner.anyMeetingWindow()).toBe(false);
+    expect(await scanner.findMeetingWindow()).toBeNull();
     fs.writeFileSync(flag, '');
-    expect(await scanner.anyMeetingWindow()).toBe(true);
+    expect(await scanner.findMeetingWindow()).toEqual({ app: 'unknown' });
     fs.rmSync(dir, { recursive: true, force: true });
-    expect(await scanner.anyMeetingWindow()).toBe(false);
+    expect(await scanner.findMeetingWindow()).toBeNull();
+  });
+
+  it('names the app written in the flag file, else unknown', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vozella-flag-'));
+    const flag = path.join(dir, 'call.flag');
+    const scanner = createFlagFileScanner(flag);
+    fs.writeFileSync(flag, 'teams\n');
+    expect(await scanner.findMeetingWindow()).toEqual({ app: 'teams' });
+    fs.writeFileSync(flag, 'webex');
+    expect(await scanner.findMeetingWindow()).toEqual({ app: 'unknown' });
+    fs.rmSync(dir, { recursive: true, force: true });
   });
 
   it('is only honored in test mode', () => {

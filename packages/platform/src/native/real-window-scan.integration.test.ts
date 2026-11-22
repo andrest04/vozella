@@ -32,8 +32,8 @@ describe.skipIf(process.platform !== 'win32')('window scan against the real addo
     }
   });
 
-  it('answers with a boolean', async () => {
-    const answer = await new WindowScanner(new NativeWindowLister(addon)).anyMeetingWindow();
-    expect(typeof answer).toBe('boolean');
+  it('answers with a named match or nothing', async () => {
+    const answer = await new WindowScanner(new NativeWindowLister(addon)).findMeetingWindow();
+    expect(answer === null || ['teams', 'zoom', 'meet'].includes(answer.app)).toBe(true);
   });
 });

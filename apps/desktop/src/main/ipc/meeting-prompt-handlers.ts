@@ -4,6 +4,7 @@ import {
   meetingPromptNeverAgain,
   meetingPromptReady,
   meetingPromptStart,
+  type MeetingAppDto,
 } from '@vozella/contracts';
 import { registerRequest, type IpcServerDeps } from './ipc-server';
 
@@ -16,6 +17,8 @@ export interface MeetingPromptActions {
   hover(inside: boolean): void;
   /** Is the popup showing now (answered to a page that just started). */
   isShown(): boolean;
+  /** The app the showing popup names; undefined when it is hidden. */
+  shownApp(): MeetingAppDto | undefined;
 }
 
 export function registerMeetingPromptHandlers(
@@ -30,7 +33,10 @@ export function registerMeetingPromptHandlers(
     actions.dismiss();
     return { done: true as const };
   });
-  registerRequest(server, meetingPromptReady, () => ({ shown: actions.isShown() }));
+  registerRequest(server, meetingPromptReady, () => {
+    const app = actions.shownApp();
+    return { shown: actions.isShown(), ...(app ? { app } : {}) };
+  });
   registerRequest(server, meetingPromptHover, (input) => {
     actions.hover(input.inside);
     return { done: true as const };

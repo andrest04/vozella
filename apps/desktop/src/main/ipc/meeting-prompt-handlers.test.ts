@@ -2,7 +2,10 @@ import type { Logger } from '@vozella/core';
 import { describe, expect, it, vi } from 'vitest';
 import type { IpcEventLike } from '../security/trusted-origin';
 import type { IpcMainLike } from './ipc-server';
-import { registerMeetingPromptHandlers } from './meeting-prompt-handlers';
+import {
+  registerMeetingPromptHandlers,
+  type MeetingPromptActions,
+} from './meeting-prompt-handlers';
 
 const logger = (): Logger => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
 const event: IpcEventLike = {
@@ -19,6 +22,7 @@ function setup(trusted = true) {
     neverAgain: vi.fn(() => Promise.resolve()),
     hover: vi.fn(),
     isShown: vi.fn(() => true),
+    shownApp: vi.fn<MeetingPromptActions['shownApp']>(() => undefined),
   };
   registerMeetingPromptHandlers({ ipc, isTrusted: () => trusted, logger: logger() }, actions);
   const call = async (name: string, input: unknown = {}) =>
@@ -47,6 +51,15 @@ describe('meeting prompt handlers', () => {
   it('tells a page that just started whether the popup is showing', async () => {
     const t = setup();
     expect(await t.call('meetingPrompt.ready')).toEqual({ ok: true, value: { shown: true } });
+  });
+
+  it('tells a page that just started which app the popup names', async () => {
+    const t = setup();
+    t.actions.shownApp.mockReturnValue('zoom');
+    expect(await t.call('meetingPrompt.ready')).toEqual({
+      ok: true,
+      value: { shown: true, app: 'zoom' },
+    });
   });
 
   it('ignores an untrusted sender', async () => {

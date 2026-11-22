@@ -37,9 +37,9 @@ export function createPopupHandle(
     hide: () => {
       window.hide();
     },
-    notifyShow: () => {
+    notifyShow: (app) => {
       whenLoaded((target) => {
-        sendEvent(target, meetingPromptShow, {});
+        sendEvent(target, meetingPromptShow, { app });
       });
     },
     notifyHide: (animated) => {

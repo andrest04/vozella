@@ -1,4 +1,5 @@
 import type { Logger } from '../logging';
+import type { MeetingWindowMatch } from './call-detector';
 import { shouldShowPopup } from './popup-policy';
 
 /** Poll period of the call watcher. */
@@ -10,9 +11,9 @@ export interface Scheduler {
   setInterval(callback: () => void, intervalMs: number): () => void;
 }
 
-/** Port: is any meeting call window open right now. */
+/** Port: the first meeting call window open right now, or null when there is none. */
 export interface WindowScanPort {
-  anyMeetingWindow(): Promise<boolean>;
+  findMeetingWindow(): Promise<MeetingWindowMatch | null>;
 }
 
 /** The slice of Workspace the watcher needs. */
@@ -33,7 +34,13 @@ export interface CallWatcherPorts {
   logger: Logger;
 }
 
-export type CallWatcherEvent = 'meetingDetected' | 'meetingEnded';
+/** What each event hands its handlers: a detection names the call's app. */
+export interface CallWatcherHandlers {
+  meetingDetected: (match: MeetingWindowMatch) => void;
+  meetingEnded: () => void;
+}
+
+export type CallWatcherEvent = keyof CallWatcherHandlers;
 
 /**
  * Detects a meeting call and emits at most one `meetingDetected` per call.
@@ -44,16 +51,17 @@ export class CallWatcher {
   private windowFound = false;
   private ticking = false;
   private stopTimer: (() => void) | null = null;
-  private readonly handlers: Record<CallWatcherEvent, Set<() => void>> = {
-    meetingDetected: new Set(),
-    meetingEnded: new Set(),
-  };
+  private readonly detectedHandlers = new Set<CallWatcherHandlers['meetingDetected']>();
+  private readonly endedHandlers = new Set<CallWatcherHandlers['meetingEnded']>();
 
   constructor(private readonly ports: CallWatcherPorts) {}
 
-  on(event: CallWatcherEvent, handler: () => void): () => void {
-    this.handlers[event].add(handler);
-    return () => this.handlers[event].delete(handler);
+  on<E extends CallWatcherEvent>(event: E, handler: CallWatcherHandlers[E]): () => void {
+    const handlers = (
+      event === 'meetingDetected' ? this.detectedHandlers : this.endedHandlers
+    ) as Set<CallWatcherHandlers[E]>;
+    handlers.add(handler);
+    return () => handlers.delete(handler);
   }
 
   start(): void {
@@ -74,15 +82,18 @@ export class CallWatcher {
     this.ticking = true;
     let disarmedThisTick = false;
     try {
-      const inCall = await this.ports.scanner.anyMeetingWindow();
+      const match = await this.ports.scanner.findMeetingWindow();
+      const inCall = match !== null;
       if (inCall !== this.windowFound) {
         this.windowFound = inCall;
-        this.ports.logger.info(inCall ? 'Call window found' : 'Call window gone');
+        // The app only: a window title can carry a meeting name.
+        if (match) this.ports.logger.info('Call window found', { app: match.app });
+        else this.ports.logger.info('Call window gone');
       }
-      if (!inCall) {
+      if (!match) {
         if (!this.armed) {
           this.armed = true;
-          this.emit('meetingEnded');
+          for (const handler of [...this.endedHandlers]) handler();
         }
         return;
       }
@@ -96,7 +107,7 @@ export class CallWatcher {
       this.ports.workspace.offerCallPrompt();
       const enabled = await this.readPopupEnabled();
       if (shouldShowPopup(enabled, this.ports.workspace.state.isCaptureActive, false)) {
-        this.emit('meetingDetected');
+        for (const handler of [...this.detectedHandlers]) handler(match);
       } else {
         this.ports.logger.info('Call detected, popup not shown', { enabled });
       }
@@ -116,10 +127,6 @@ export class CallWatcher {
       this.safeLog('Reading the popup setting failed, defaulting to on', error);
       return true;
     }
-  }
-
-  private emit(event: CallWatcherEvent): void {
-    for (const handler of [...this.handlers[event]]) handler();
   }
 
   private safeLog(message: string, error: unknown): void {

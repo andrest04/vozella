@@ -1,4 +1,4 @@
-import { Workspace, type Logger, type WindowScanPort } from '@vozella/core';
+import { Workspace, type Logger, type MeetingApp, type WindowScanPort } from '@vozella/core';
 import { describe, expect, it, vi } from 'vitest';
 import {
   MeetingDetectionController,
@@ -15,8 +15,10 @@ interface FakeTimer {
 }
 
 function setup(options: { popupEnabled?: boolean; settingsFail?: boolean } = {}) {
-  const scan = { inCall: false };
-  const scanner: WindowScanPort = { anyMeetingWindow: () => Promise.resolve(scan.inCall) };
+  const scan = { inCall: false, app: 'zoom' as MeetingApp };
+  const scanner: WindowScanPort = {
+    findMeetingWindow: () => Promise.resolve(scan.inCall ? { app: scan.app } : null),
+  };
   const workspace = new Workspace();
   const requestSpy = vi.spyOn(workspace, 'requestTakeNotes');
   const offered = vi.fn();
@@ -31,7 +33,7 @@ function setup(options: { popupEnabled?: boolean; settingsFail?: boolean } = {})
   });
 
   const popupDispose = vi.fn();
-  const popup = { shows: 0, hides: 0, events: [] as string[] };
+  const popup = { shows: 0, hides: 0, events: [] as string[], apps: [] as MeetingApp[] };
   const popupWindow: PopupHandle = {
     show: () => {
       popup.shows += 1;
@@ -41,7 +43,10 @@ function setup(options: { popupEnabled?: boolean; settingsFail?: boolean } = {})
       popup.hides += 1;
       popup.events.push('hide');
     },
-    notifyShow: () => popup.events.push('notify-show'),
+    notifyShow: (app) => {
+      popup.apps.push(app);
+      popup.events.push('notify-show');
+    },
     notifyHide: (animated) => popup.events.push(animated ? 'notify-hide-animated' : 'notify-hide'),
     dispose: popupDispose,
   };
@@ -90,8 +95,9 @@ function setup(options: { popupEnabled?: boolean; settingsFail?: boolean } = {})
     logger: logger(),
   });
   controller.start();
-  const detect = async (inCall: boolean): Promise<void> => {
+  const detect = async (inCall: boolean, app: MeetingApp = 'zoom'): Promise<void> => {
     scan.inCall = inCall;
+    scan.app = app;
     await controller.watcher.tick();
   };
   /** Fires the pending timeout of that length, as the clock would. */
@@ -220,6 +226,21 @@ describe('MeetingDetectionController', () => {
     expect(t.controller.isShown).toBe(false);
   });
 
+  it('tells the popup page which app the call is in', async () => {
+    const t = setup();
+    await t.detect(true, 'teams');
+    expect(t.popup.apps).toEqual(['teams']);
+  });
+
+  it('reports the app of the showing popup, and none once it hides', async () => {
+    const t = setup();
+    expect(t.controller.shownApp).toBeUndefined();
+    await t.detect(true, 'meet');
+    expect(t.controller.shownApp).toBe('meet');
+    t.controller.dismiss();
+    expect(t.controller.shownApp).toBeUndefined();
+  });
+
   it('ignores hover when no popup is showing', () => {
     const t = setup();
     t.controller.hover(false);
@@ -297,7 +318,7 @@ describe('MeetingDetectionController', () => {
   it('start still requests the take when the main window is gone', () => {
     const t = setup();
     const controller = new MeetingDetectionController({
-      scanner: { anyMeetingWindow: () => Promise.resolve(false) },
+      scanner: { findMeetingWindow: () => Promise.resolve(null) },
       workspace: t.workspace,
       settings: { load: () => Promise.resolve({ meetingPopupEnabled: true }), update: vi.fn() },
       popup: {

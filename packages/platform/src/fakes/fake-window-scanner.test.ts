@@ -3,24 +3,24 @@ import { WindowScanner } from '../native/window-scanner';
 import { FakeWindowLister } from './fake-window-scanner';
 
 describe('WindowScanner over a fake lister', () => {
-  it('is true when one window is a meeting call', async () => {
+  it('names the app of the meeting call window', async () => {
     const lister = new FakeWindowLister([
       { processName: 'notepad', title: 'notes' },
       { processName: 'Zoom', title: 'Zoom Meeting' },
     ]);
-    await expect(new WindowScanner(lister).anyMeetingWindow()).resolves.toBe(true);
+    await expect(new WindowScanner(lister).findMeetingWindow()).resolves.toEqual({ app: 'zoom' });
   });
 
-  it('is false when no window is a call', async () => {
+  it('finds nothing when no window is a call', async () => {
     const lister = new FakeWindowLister([
       { processName: 'chrome', title: 'Inbox' },
       { processName: 'teams', title: 'Calls | Microsoft Teams' },
     ]);
-    await expect(new WindowScanner(lister).anyMeetingWindow()).resolves.toBe(false);
+    await expect(new WindowScanner(lister).findMeetingWindow()).resolves.toBeNull();
   });
 
-  it('is false for an empty window list', async () => {
-    await expect(new WindowScanner(new FakeWindowLister()).anyMeetingWindow()).resolves.toBe(false);
+  it('finds nothing in an empty window list', async () => {
+    await expect(new WindowScanner(new FakeWindowLister()).findMeetingWindow()).resolves.toBeNull();
   });
 
   it('skips windows with an empty title or process name', async () => {
@@ -28,7 +28,7 @@ describe('WindowScanner over a fake lister', () => {
       { processName: 'cpthost', title: '' },
       { processName: '', title: 'Zoom Meeting' },
     ]);
-    await expect(new WindowScanner(lister).anyMeetingWindow()).resolves.toBe(false);
+    await expect(new WindowScanner(lister).findMeetingWindow()).resolves.toBeNull();
   });
 
   it('stops at the first match, whatever follows it', async () => {
@@ -38,21 +38,32 @@ describe('WindowScanner over a fake lister', () => {
       },
       title: 'x',
     };
-    const lister = new FakeWindowLister([{ processName: 'cpthost', title: 'a' }, trap]);
-    await expect(new WindowScanner(lister).anyMeetingWindow()).resolves.toBe(true);
+    const lister = new FakeWindowLister([
+      { processName: 'ms-teams', title: 'Standup | Meeting' },
+      { processName: 'cpthost', title: 'a' },
+      trap,
+    ]);
+    await expect(new WindowScanner(lister).findMeetingWindow()).resolves.toEqual({ app: 'teams' });
   });
 
-  it('swallows a listing failure as false and reports it once', async () => {
+  it('swallows a listing failure as no call and reports it once', async () => {
     const lister = new FakeWindowLister([{ processName: 'cpthost', title: 'a' }]);
     lister.failWith = new Error('EnumWindows failed');
     const onError = vi.fn();
-    await expect(new WindowScanner(lister, onError).anyMeetingWindow()).resolves.toBe(false);
+    await expect(new WindowScanner(lister, onError).findMeetingWindow()).resolves.toBeNull();
     expect(onError).toHaveBeenCalledTimes(1);
+  });
+
+  it('names Google Meet in a browser tab', async () => {
+    const lister = new FakeWindowLister([
+      { processName: 'chrome', title: 'Meet - abc-defg-hij - Google Chrome' },
+    ]);
+    await expect(new WindowScanner(lister).findMeetingWindow()).resolves.toEqual({ app: 'meet' });
   });
 
   it('swallows a non-Error rejection', async () => {
     // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
     const scanner = new WindowScanner({ listWindows: () => Promise.reject('boom') });
-    await expect(scanner.anyMeetingWindow()).resolves.toBe(false);
+    await expect(scanner.findMeetingWindow()).resolves.toBeNull();
   });
 });
