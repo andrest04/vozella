@@ -210,24 +210,26 @@ export const settingsSetApiOption = defineRequest('settings.setApiOption', {
 });
 
 /**
+ * The answer to saving or clearing an API key: only whether a key is now set, never the key.
+ * `failed` names the catalog key of the reason (for example, the OS cannot encrypt it).
+ */
+const apiKeySaveResultSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('saved'), keySet: z.boolean() }).strict(),
+  z.object({ status: z.literal('failed'), errorKey: z.string() }).strict(),
+]);
+
+/**
  * Saves the user's API key for one engine. The key travels from the page to main once and is never
- * sent back: the answer says only whether a key is now set. A blank key removes it. `failed` names
- * the catalog key of the reason (for example, the OS cannot encrypt it).
+ * sent back. A blank key removes it.
  */
 export const settingsSetApiKey = defineRequest('settings.setApiKey', {
   input: z.object({ kind: apiProviderKindSchema, key: z.string().max(2_000) }).strict(),
-  output: z.discriminatedUnion('status', [
-    z.object({ status: z.literal('saved'), keySet: z.boolean() }).strict(),
-    z.object({ status: z.literal('failed'), errorKey: z.string() }).strict(),
-  ]),
+  output: apiKeySaveResultSchema,
 });
 
 export const settingsClearApiKey = defineRequest('settings.clearApiKey', {
   input: z.object({ kind: apiProviderKindSchema }).strict(),
-  output: z.discriminatedUnion('status', [
-    z.object({ status: z.literal('saved'), keySet: z.boolean() }).strict(),
-    z.object({ status: z.literal('failed'), errorKey: z.string() }).strict(),
-  ]),
+  output: apiKeySaveResultSchema,
 });
 
 /**

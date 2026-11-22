@@ -55,6 +55,18 @@ export interface UseSummaryGenerationInput {
 const errorText = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
+/** Puts the text on the clipboard; the draft line says `copied` or why it failed. */
+async function writeClipboard(
+  text: string,
+  copied: StringKey,
+  t: Translate,
+): Promise<DraftMessageState> {
+  const written = await window.vozella.invoke('summaries.writeClipboard', { text });
+  return written.status === 'written'
+    ? { kind: 'success', text: t(copied) }
+    : { kind: 'error', text: t('Ui_SummaryCopyFailed', written.detail) };
+}
+
 /** The one status line a finished run leaves behind. */
 export function describeOutcome(outcome: GenerateOutcomeDto, t: Translate): GenerationStatus {
   switch (outcome.status) {
@@ -266,13 +278,7 @@ export function useSummaryGeneration(input: UseSummaryGenerationInput): SummaryG
         } else if (answer.status === 'not-found') {
           next = { kind: 'error', text: tr('Ui_SummaryMeetingGone') };
         } else {
-          const written = await window.vozella.invoke('summaries.writeClipboard', {
-            text: answer.text,
-          });
-          next =
-            written.status === 'written'
-              ? { kind: 'success', text: tr('SummaryPage_ActionsCopied') }
-              : { kind: 'error', text: tr('Ui_SummaryCopyFailed', written.detail) };
+          next = await writeClipboard(answer.text, 'SummaryPage_ActionsCopied', tr);
         }
       } catch (error) {
         next = { kind: 'error', text: tr('Ui_SummaryCopyFailed', errorText(error)) };
@@ -296,13 +302,7 @@ export function useSummaryGeneration(input: UseSummaryGenerationInput): SummaryG
         if (answer.text === null) {
           next = { kind: 'error', text: tr('Ui_SummaryNothingToCopy') };
         } else {
-          const written = await window.vozella.invoke('summaries.writeClipboard', {
-            text: answer.text,
-          });
-          next =
-            written.status === 'written'
-              ? { kind: 'success', text: tr('SessionPage_CopyConfirmation.Message') }
-              : { kind: 'error', text: tr('Ui_SummaryCopyFailed', written.detail) };
+          next = await writeClipboard(answer.text, 'SessionPage_CopyConfirmation.Message', tr);
         }
       } catch (error) {
         next = { kind: 'error', text: tr('Ui_SummaryCopyFailed', errorText(error)) };

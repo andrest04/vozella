@@ -1,11 +1,10 @@
 import { MessageSquarePlus } from 'lucide-react';
-import { useMemo } from 'react';
 import { requestChat } from '../../app/chat-requests';
 import { ChatThreadRows } from '../../app/ChatThreadRows';
 import { useChatThreads } from '../../app/chat-threads';
 import { useI18n } from '../../i18n/I18nProvider';
 import { Button, EmptyState, Notice, Skeleton } from '../../ui';
-import { useMeetingListStore } from '../meeting-list/meeting-list-store';
+import { useMeetingTitles } from '../chat/use-meeting-titles';
 
 export interface ChatThreadListProps {
   /** The project whose chats these are; null for the chats that belong to no project. */
@@ -16,12 +15,7 @@ export interface ChatThreadListProps {
 export function ChatThreadList({ owner }: ChatThreadListProps) {
   const { t } = useI18n();
   const model = useChatThreads(owner);
-  const meetings = useMeetingListStore((state) => state.meetings);
-  const loaded = useMeetingListStore((state) => !state.isLoading);
-  const titles = useMemo(
-    () => (loaded ? new Map(meetings.map((meeting) => [meeting.id, meeting.title])) : null),
-    [loaded, meetings],
-  );
+  const titles = useMeetingTitles();
 
   return (
     <div className="flex flex-col gap-3">
