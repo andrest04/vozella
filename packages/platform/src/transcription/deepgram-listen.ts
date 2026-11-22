@@ -2,8 +2,7 @@ import type { ApiFailureKind, SpeechToTextWord } from '@vozella/core';
 
 /*
  * What Deepgram's `/listen` shares between its two forms: the WebSocket of a live recording and
- * the POST of a finished file. Docs and the observed answers are in
- * odd/tasks/deepgram-streaming-transcription.md (checked 2026-11-15).
+ * the POST of a finished file. Checked against Deepgram's docs and live answers on 2026-11-15.
  */
 
 /** The `endpointing` Deepgram recommends for the multilingual model, in milliseconds. */
