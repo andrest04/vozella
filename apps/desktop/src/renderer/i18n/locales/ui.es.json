@@ -641,5 +641,8 @@
   "Ui_ChatNotSaved": "Este chat no se está guardando.",
   "Ui_ChatReadOnlyMeeting": "La reunión de este chat se eliminó.",
   "Ui_ChatReadOnlyLive": "La reunión en vivo de este chat terminó.",
-  "Ui_ChatReadOnlyNew": "Iniciar un chat nuevo"
+  "Ui_ChatReadOnlyNew": "Iniciar un chat nuevo",
+  "Ui_Startup": "Inicio",
+  "Ui_OpenAtLogin": "Abrir Vozella al iniciar Windows",
+  "Ui_OpenAtLoginDescription": "Se abre en la bandeja, sin ventana, para que la detección de llamadas esté lista cuando empiece una reunión."
 }

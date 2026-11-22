@@ -301,6 +301,8 @@ export const appSettingsSchema = z.object({
   cloudTranscriptionModelId: z.string().nullable(),
   /** The user's own note template text; null or blank means none. */
   customNoteTemplate: z.string().nullable(),
+  /** Windows starts Vozella at sign in, hidden in the tray. Off by default. */
+  openAtLogin: z.boolean(),
 });
 export type AppSettingsDto = z.infer<typeof appSettingsSchema>;
 

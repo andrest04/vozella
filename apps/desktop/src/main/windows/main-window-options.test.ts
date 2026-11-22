@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { resolveWindowPlacement } from '@vozella/core';
-import { mainWindowOptions } from './main-window-options';
+import { mainWindowOptions, whenToMaximize } from './main-window-options';
 
 const iconPath = path.resolve('build', 'icon.ico');
 const base = {
@@ -60,5 +60,17 @@ describe('mainWindowOptions', () => {
 
   it('starts hidden so the first paint is not a white flash', () => {
     expect(mainWindowOptions(base).show).toBe(false);
+  });
+});
+
+describe('whenToMaximize', () => {
+  it('maximizes a saved maximized window at once, as before', () => {
+    expect(whenToMaximize({ maximized: true, startInTray: false })).toBe('now');
+    expect(whenToMaximize({ maximized: false, startInTray: false })).toBe('never');
+  });
+
+  it('waits for the first show after a start in the tray, because maximize shows the window', () => {
+    expect(whenToMaximize({ maximized: true, startInTray: true })).toBe('on-show');
+    expect(whenToMaximize({ maximized: false, startInTray: true })).toBe('never');
   });
 });

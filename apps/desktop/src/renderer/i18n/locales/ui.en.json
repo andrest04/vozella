@@ -641,5 +641,8 @@
   "Ui_ChatNotSaved": "This chat is not being saved.",
   "Ui_ChatReadOnlyMeeting": "The meeting for this chat was deleted.",
   "Ui_ChatReadOnlyLive": "The live meeting for this chat has ended.",
-  "Ui_ChatReadOnlyNew": "Start a new chat"
+  "Ui_ChatReadOnlyNew": "Start a new chat",
+  "Ui_Startup": "Startup",
+  "Ui_OpenAtLogin": "Open Vozella when Windows starts",
+  "Ui_OpenAtLoginDescription": "It opens in the tray, without a window, so call detection is ready when a meeting starts."
 }

@@ -44,3 +44,15 @@ export function mainWindowOptions(input: MainWindowOptionsInput): BrowserWindowC
     },
   };
 }
+
+/**
+ * When a saved maximized window is maximized. `maximize()` also shows a hidden window, so a start
+ * in the tray (open at sign in) waits for the first show instead of popping the window up.
+ */
+export function whenToMaximize(input: {
+  readonly maximized: boolean;
+  readonly startInTray: boolean;
+}): 'now' | 'on-show' | 'never' {
+  if (!input.maximized) return 'never';
+  return input.startInTray ? 'on-show' : 'now';
+}

@@ -13,6 +13,7 @@ export type SettingsSectionId =
   | 'transcription'
   | 'recording'
   | 'callDetection'
+  | 'startup'
   | 'data'
   | 'about';
 
@@ -102,6 +103,13 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
     tab: 'general',
     headingKey: 'Settings_Language.Text',
     owner: 'settings-i18n',
+    status: 'built',
+  },
+  {
+    id: 'startup',
+    tab: 'general',
+    headingKey: 'Ui_Startup',
+    owner: 'shell-platform',
     status: 'built',
   },
   {

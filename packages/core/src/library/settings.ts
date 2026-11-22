@@ -57,6 +57,11 @@ export interface AppSettings {
    * the `custom` template is picked. Null or blank means there is no custom template.
    */
   readonly customNoteTemplate: string | null;
+  /**
+   * Windows starts Vozella at sign in, hidden in the tray, so call detection runs without a manual
+   * start. Off by default; the main process mirrors it into the OS login items.
+   */
+  readonly openAtLogin: boolean;
 }
 
 type Kind = 'string' | 'bool-true' | 'bool-false' | 'number';
@@ -97,6 +102,7 @@ const FIELDS: readonly (readonly [keyof AppSettings, Kind])[] = [
   ['transcriptionEngine', 'string'],
   ['cloudTranscriptionModelId', 'string'],
   ['customNoteTemplate', 'string'],
+  ['openAtLogin', 'bool-false'],
 ];
 
 /**
@@ -111,6 +117,9 @@ const OMITTED_WHEN_NULL: ReadonlySet<string> = new Set([
   'cloudTranscriptionModelId',
   'customNoteTemplate',
 ]);
+
+/** Later boolean additions, written only while they are on, for the same reason. */
+const OMITTED_WHEN_FALSE: ReadonlySet<string> = new Set(['openAtLogin']);
 
 /** The raw document: every key in the file, known or not. */
 export type RawSettings = Readonly<Record<string, unknown>>;
@@ -187,7 +196,7 @@ export function applySettingsPatch(raw: RawSettings, patch: Partial<AppSettings>
 }
 
 /**
- * Writes every known property in order (nulls included, except unset optional additions), then any
+ * Writes every known property in order (nulls included, except unset or off later additions), then any
  * unknown keys. Plain UTF-8 JSON: two-space indent, LF, no escaping. The reader also accepts a BOM,
  * CRLF, any key case and numbers written as text, because files written by earlier versions have them.
  */
@@ -197,6 +206,9 @@ export function serializeSettings(raw: RawSettings): string {
   const doc: Record<string, unknown> = { ...settings };
   for (const key of OMITTED_WHEN_NULL) {
     if (doc[key] === null) Reflect.deleteProperty(doc, key);
+  }
+  for (const key of OMITTED_WHEN_FALSE) {
+    if (doc[key] === false) Reflect.deleteProperty(doc, key);
   }
   for (const [key, value] of Object.entries(raw)) {
     if (!known.has(key.toLowerCase())) doc[key] = value;

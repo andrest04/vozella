@@ -21,6 +21,7 @@ import { CustomTemplateSection } from './CustomTemplateSection';
 import { LiveQuestionsSection } from './LiveQuestionsSection';
 import { MeetingLanguageSection } from './MeetingLanguageSection';
 import { ProviderSection } from './ProviderSection';
+import { StartupSection } from './StartupSection';
 import { TranscriptionSection } from '../transcription/TranscriptionSection';
 import { useSettingsPage } from './use-settings-page';
 import { useSettingsTab } from './settings-tab';
@@ -102,6 +103,8 @@ export function SettingsRoute() {
         return <CallDetectionSection />;
       case 'appearance':
         return <AppearanceSection />;
+      case 'startup':
+        return <StartupSection />;
       case 'data':
         return <DataSection />;
       case 'about':
