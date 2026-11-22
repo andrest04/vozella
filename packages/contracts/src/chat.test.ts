@@ -154,6 +154,21 @@ describe('chat attachment contracts', () => {
     expect(answered).toMatchObject({ notice: null });
   });
 
+  it('an answer may say how many meetings it was based on, of how many matched', () => {
+    const base = { status: 'answered', user: message('user'), assistant: message('assistant') };
+    const coverage = { used: 12, matching: 37, basis: 'relevance' };
+    expect(chatSendOutcomeSchema.parse({ ...base, coverage })).toMatchObject({ coverage });
+    expect(chatSendOutcomeSchema.parse(base)).not.toHaveProperty('coverage');
+    for (const bad of [
+      { used: -1, matching: 3, basis: 'recency' },
+      { used: 1.5, matching: 3, basis: 'recency' },
+      { used: 1, matching: 3, basis: 'newest' },
+      { used: 1, matching: 3, basis: 'recency', extra: true },
+    ]) {
+      expect(chatSendOutcomeSchema.safeParse({ ...base, coverage: bad }).success).toBe(false);
+    }
+  });
+
   it('the chat state lists the attachments, empty by default', () => {
     const state = chatState.output.parse({
       messages: [],

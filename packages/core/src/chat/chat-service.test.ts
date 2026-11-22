@@ -546,3 +546,32 @@ describe('engine-aware prior turns in the service', () => {
     expect(prompt).not.toContain('z'.repeat(601));
   });
 });
+
+describe('meeting coverage of an answer', () => {
+  it('an All meetings answer says how many meetings it was based on, of how many', async () => {
+    const rig = createChatRig();
+    rig.reader.meetings = Array.from({ length: 37 }, (_, i) => meetingFixture(i + 1));
+    rig.provider.chunks = ['Done.'];
+    const out = await rig.service.send('What happened?', scopeOf(), null);
+    expect(out).toMatchObject({
+      status: 'sent',
+      coverage: { used: 12, matching: 37, basis: 'recency' },
+    });
+  });
+
+  it('a project answer counts the meetings of that project', async () => {
+    const rig = createChatRig();
+    const projectId = guid(1001);
+    rig.reader.meetings = Array.from({ length: 4 }, (_, i) => meetingFixture(i + 1, { projectId }));
+    rig.provider.chunks = ['Done.'];
+    const out = await rig.service.send('x', scopeOf({ kind: 'Project', projectId }), null);
+    expect(out).toMatchObject({ coverage: { used: 4, matching: 4, basis: 'recency' } });
+  });
+
+  it('a one meeting answer carries no coverage', async () => {
+    const rig = rigWithMeeting();
+    const out = await rig.service.send('When?', meetingScope, null);
+    expect(out.status).toBe('sent');
+    expect(out).not.toHaveProperty('coverage');
+  });
+});

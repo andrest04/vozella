@@ -5,7 +5,9 @@ import {
   contextBudgetFor,
   LIVE_DIGEST_LABEL,
   LOCAL_CONTEXT_BUDGET,
+  MEETING_CAP,
   packContext,
+  packContextWithCoverage,
   packLiveSession,
   TRANSCRIPT_EXCERPTS_LABEL,
   type ContextProject,
@@ -756,5 +758,74 @@ describe('carveProjectBlock: the local prompt does not grow', () => {
     });
     expect(uncarved.length).toBeGreaterThan(LOCAL_CONTEXT_BUDGET.meetingChars);
     expect(carved.length).toBeLessThanOrEqual(LOCAL_CONTEXT_BUDGET.meetingChars);
+  });
+});
+
+describe('packContextWithCoverage: how many meetings the answer is based on', () => {
+  const many = (count: number, over: Partial<ContextMeeting> = {}): ContextMeeting[] =>
+    Array.from({ length: count }, (_, i) => meeting(i + 1, over));
+  const cover = (
+    kind: Parameters<typeof packContextWithCoverage>[0],
+    meetings: readonly ContextMeeting[],
+    projectId: string | null = null,
+    projects: readonly ContextProject[] = [],
+  ) => packContextWithCoverage(kind, projectId, null, null, meetings, projects, t);
+
+  it('below the cap every meeting is used', () => {
+    expect(cover('AllMeetings', many(5)).coverage).toEqual({
+      used: 5,
+      matching: 5,
+      basis: 'recency',
+    });
+  });
+
+  it('at the cap every meeting is used', () => {
+    expect(cover('AllMeetings', many(MEETING_CAP)).coverage).toEqual({
+      used: MEETING_CAP,
+      matching: MEETING_CAP,
+      basis: 'recency',
+    });
+  });
+
+  it('above the cap only the cap is used, out of all that match', () => {
+    expect(cover('AllMeetings', many(37)).coverage).toEqual({
+      used: MEETING_CAP,
+      matching: 37,
+      basis: 'recency',
+    });
+  });
+
+  it('meetings ranked for the question make the basis relevance', () => {
+    const meetings = many(20).map((m, i) => (i < 3 ? { ...m, relevanceRank: i } : m));
+    expect(cover('AllMeetings', meetings).coverage).toEqual({
+      used: MEETING_CAP,
+      matching: 20,
+      basis: 'relevance',
+    });
+  });
+
+  it('a project counts only its own meetings', () => {
+    const f = project(1);
+    const meetings = [...many(15, { projectId: f.id }), meeting(99)];
+    expect(cover('Project', meetings, f.id, [f]).coverage).toEqual({
+      used: MEETING_CAP,
+      matching: 15,
+      basis: 'recency',
+    });
+  });
+
+  it('no coverage when nothing was packed, or for one meeting or a live take', () => {
+    expect(cover('AllMeetings', []).coverage).toBeNull();
+    expect(cover('Project', many(3)).coverage).toBeNull();
+    const m = meeting(1, { transcript: 'x' });
+    expect(packContextWithCoverage('Meeting', null, m.id, null, [m], [], t).coverage).toBeNull();
+    expect(packContextWithCoverage('Live', null, null, 'hi', [], [], t).coverage).toBeNull();
+  });
+
+  it('the text is exactly what packContext packs', () => {
+    const meetings = many(15);
+    expect(cover('AllMeetings', meetings).text).toBe(
+      pack('AllMeetings', null, null, null, meetings),
+    );
   });
 });

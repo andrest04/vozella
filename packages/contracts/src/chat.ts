@@ -103,6 +103,19 @@ export const chatFailureKindSchema = z.enum([
   'scope-gone',
 ]);
 
+/**
+ * Project and All meetings: the answer was based on `used` of the `matching` meetings in the scope
+ * (only so many fit). `relevance`: best matches for the question first; `recency`: the newest.
+ */
+export const chatMeetingCoverageSchema = z
+  .object({
+    used: z.number().int().nonnegative(),
+    matching: z.number().int().nonnegative(),
+    basis: z.enum(['relevance', 'recency']),
+  })
+  .strict();
+export type ChatMeetingCoverageDto = z.infer<typeof chatMeetingCoverageSchema>;
+
 export const chatSendOutcomeSchema = z.discriminatedUnion('status', [
   z.object({
     status: z.literal('answered'),
@@ -110,6 +123,8 @@ export const chatSendOutcomeSchema = z.discriminatedUnion('status', [
     assistant: chatMessageSchema,
     /** A line to show with the answer (images the local engine left out), or null. */
     notice: z.string().nullable().default(null),
+    /** Absent for one meeting or a live take. Not saved with the thread. */
+    coverage: chatMeetingCoverageSchema.optional(),
   }),
   /** No engine is ready: the page runs the provider gate and sends again with the same draft. */
   z.object({
