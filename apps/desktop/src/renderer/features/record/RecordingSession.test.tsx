@@ -150,7 +150,11 @@ describe('the recording bar content', () => {
     installApi();
     mount();
     await userEvent.hover(screen.getByRole('button', { name: 'Highlight' }));
-    expect(await screen.findByText('Star this moment in the transcript')).toBeVisible();
+    const starTooltip = (await screen.findByText('Star this moment in the transcript')).closest(
+      'span.gap-2',
+    );
+    expect(starTooltip?.textContent).toBe('Star this moment in the transcriptCtrl+H');
+    await userEvent.unhover(screen.getByRole('button', { name: 'Highlight' }));
     await userEvent.hover(screen.getByRole('button', { name: 'Stop' }));
     const tooltip = (await screen.findByText('Ctrl')).closest('span.gap-2');
     expect(tooltip?.textContent).toBe('StopCtrl+R');
@@ -358,6 +362,26 @@ describe('accelerators on the page', () => {
     fireEvent.keyDown(document, { key: 'D', ctrlKey: true, shiftKey: true });
     expect(await screen.findByRole('dialog', { name: 'Discard this recording?' })).toBeVisible();
     expect(api.named('recording.discard')).toHaveLength(0);
+  });
+
+  it('Ctrl+H marks this moment and says so, like the Highlight button', async () => {
+    const api = installApi();
+    mount();
+    const event = new KeyboardEvent('keydown', { key: 'h', ctrlKey: true, cancelable: true });
+    document.dispatchEvent(event);
+    await flush();
+    expect(event.defaultPrevented).toBe(true);
+    expect(api.named('recording.highlight')).toHaveLength(1);
+    expect(screen.getByTestId('highlight-feedback')).toHaveTextContent('Highlighted 00:12.34');
+  });
+
+  it('swallows Ctrl+H but marks nothing once a stop is running', () => {
+    const api = installApi();
+    mount({ state: { ...recording, phase: 'Stopping' } });
+    const event = new KeyboardEvent('keydown', { key: 'h', ctrlKey: true, cancelable: true });
+    document.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    expect(api.named('recording.highlight')).toHaveLength(0);
   });
 
   it('swallows the keys but does nothing once a stop is running', () => {

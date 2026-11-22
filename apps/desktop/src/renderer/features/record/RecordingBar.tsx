@@ -101,7 +101,7 @@ export function RecordingBar({
             {paused ? t('Record_Resume') : t('Record_Pause')}
           </Button>
         </Tooltip>
-        <Tooltip content={t('RecordPage_HighlightTooltip')}>
+        <Tooltip content={withKeys(t('RecordPage_HighlightTooltip'), 'highlight')}>
           <IconButton
             label={t('Record_Highlight')}
             icon={Star}

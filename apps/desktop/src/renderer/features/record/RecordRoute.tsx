@@ -166,6 +166,7 @@ export function RecordRoute() {
         : {
             stop: { enabled: idle && flags.showRecordHero, run: () => void record() },
             pause: { enabled: false, run: () => undefined },
+            highlight: { enabled: false, run: () => undefined },
             discard: { enabled: false, run: () => undefined },
           },
     [active, idle, flags.showRecordHero, record],

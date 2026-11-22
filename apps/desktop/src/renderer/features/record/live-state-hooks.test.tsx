@@ -141,10 +141,11 @@ describe('accelerators', () => {
     ...init,
   });
 
-  it('maps Ctrl+R, Ctrl+P and Ctrl+Shift+D and nothing else', () => {
+  it('maps Ctrl+R, Ctrl+P, Ctrl+H and Ctrl+Shift+D and nothing else', () => {
     expect(matchRecordShortcut(key({ key: 'r', ctrlKey: true }))).toBe('stop');
     expect(matchRecordShortcut(key({ key: 'R', ctrlKey: true }))).toBe('stop');
     expect(matchRecordShortcut(key({ key: 'p', ctrlKey: true }))).toBe('pause');
+    expect(matchRecordShortcut(key({ key: 'h', ctrlKey: true }))).toBe('highlight');
     expect(matchRecordShortcut(key({ key: 'd', ctrlKey: true, shiftKey: true }))).toBe('discard');
     expect(matchRecordShortcut(key({ key: 'D', ctrlKey: true, shiftKey: true }))).toBe('discard');
     expect(matchRecordShortcut(key({ key: 'd', ctrlKey: true }))).toBeNull();
@@ -157,6 +158,7 @@ describe('accelerators', () => {
     useRecordShortcuts({
       stop: { enabled, run },
       pause: { enabled, run: () => undefined },
+      highlight: { enabled, run: () => undefined },
       discard: { enabled, run: () => undefined },
     });
     return null;

@@ -252,6 +252,9 @@ export const pauseRecording = (): Promise<void> => command('pause');
 export const resumeRecording = (): Promise<void> => command('resume');
 export const stopRecording = (): Promise<void> => command('stop');
 
+/** How long "Highlighted mm:ss.ff" stays after a mark, on the Record page and on the pill. */
+export const HIGHLIGHT_FEEDBACK_MS = 2000;
+
 /** marks this moment; the elapsed time (WAV time, pauses excluded) comes back from main. */
 export async function highlightMoment(): Promise<number | null> {
   try {
