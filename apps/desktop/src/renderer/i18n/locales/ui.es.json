@@ -23,7 +23,6 @@
   "Ui_LibraryChooseFolder": "Elegir carpeta",
   "Ui_LibraryResetFolder": "Usar la carpeta predeterminada",
   "Ui_LibraryFolderRefused": "No se puede usar esa carpeta. {0}",
-  "Ui_LibraryAll": "Todas",
   "Ui_LibraryToday": "Hoy",
   "Ui_LibraryYesterday": "Ayer",
   "Ui_LibraryNoDate": "Sin fecha",
