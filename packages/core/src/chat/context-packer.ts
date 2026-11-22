@@ -137,6 +137,24 @@ export interface ContextProject {
   readonly name: string;
 }
 
+/**
+ * How many meetings a Project or All meetings context carries (`used`) out of the meetings that
+ * matched the scope (`matching`). Only `MEETING_CAP` fit, so `used < matching` means the answer
+ * left some out. `basis` says how they were picked: best matches for the question first, or only
+ * the newest.
+ */
+export interface MeetingCoverage {
+  readonly used: number;
+  readonly matching: number;
+  readonly basis: 'relevance' | 'recency';
+}
+
+/** The packed context and, for a scope of many meetings that packed any, its coverage. */
+export interface PackedChatContext {
+  readonly text: string;
+  readonly coverage: MeetingCoverage | null;
+}
+
 /** String lookup injected by the caller so core stays pure (CoreStrings keys). */
 export type ChatStringLookup = (key: string) => string;
 
@@ -218,10 +236,10 @@ function packMany(
   t: ChatStringLookup,
   summaryMax: number,
   projectBlock: string | null | undefined,
-): string {
+): PackedChatContext {
   let out = '';
   if (kind === 'Project') {
-    if (projectId === null) return t('ChatFolderNotSelected');
+    if (projectId === null) return { text: t('ChatFolderNotSelected'), coverage: null };
     const key = guidKey(projectId);
     const found = projects.find((p) => guidKey(p.id) === key);
     // The block already opens with "Project: name", so it replaces that line.
@@ -254,7 +272,7 @@ function packMany(
 
   if (selected.length === 0) {
     out += t(kind === 'Project' ? 'ChatNoMeetingsInFolder' : 'ChatNoMeetingsSaved');
-    return out.trimEnd();
+    return { text: out.trimEnd(), coverage: null };
   }
   if (selected.length < matching.length) {
     out +=
@@ -266,7 +284,14 @@ function packMany(
     if (index > 0) out += NL;
     out += sharedBlock(m, summaryMax, NOTES_MAX_CHARS);
   });
-  return out.trimEnd();
+  return {
+    text: out.trimEnd(),
+    coverage: {
+      used: selected.length,
+      matching: matching.length,
+      basis: ranked.length > 0 ? 'relevance' : 'recency',
+    },
+  };
 }
 
 /**
@@ -358,25 +383,55 @@ export function packContext(
   t: ChatStringLookup,
   options: PackOptions = {},
 ): string {
+  return packContextWithCoverage(
+    kind,
+    projectId,
+    meetingId,
+    liveTranscript,
+    meetings,
+    projects,
+    t,
+    options,
+  ).text;
+}
+
+/**
+ * `packContext`, plus how many meetings the text carries out of those that matched the scope.
+ * Coverage is null for Meeting and Live scopes, and when a Project or All meetings scope packed
+ * no meeting.
+ */
+export function packContextWithCoverage(
+  kind: ChatScopeKind,
+  projectId: string | null,
+  meetingId: string | null,
+  liveTranscript: string | LiveContextSnapshot | null | undefined,
+  meetings: readonly ContextMeeting[] | null,
+  projects: readonly ContextProject[] | null,
+  t: ChatStringLookup,
+  options: PackOptions = {},
+): PackedChatContext {
   const budget = options.budget ?? LOCAL_CONTEXT_BUDGET;
   if (meetings === null) throw new TypeError('meetings is required');
   if (projects === null) throw new TypeError('projects is required');
   switch (kind) {
     case 'Live':
-      return packLive(
-        typeof liveTranscript === 'string' || liveTranscript == null
-          ? { transcript: liveTranscript ?? null }
-          : liveTranscript,
-        budget,
-        t,
-      );
+      return {
+        text: packLive(
+          typeof liveTranscript === 'string' || liveTranscript == null
+            ? { transcript: liveTranscript ?? null }
+            : liveTranscript,
+          budget,
+          t,
+        ),
+        coverage: null,
+      };
     case 'Meeting': {
       const key = meetingId === null ? null : guidKey(meetingId);
       const found = key === null ? undefined : meetings.find((m) => guidKey(m.id) === key);
-      if (!found) return t('ChatMeetingNotFound');
+      if (!found) return { text: t('ChatMeetingNotFound'), coverage: null };
       const block = isBlank(options.projectBlock) ? null : options.projectBlock;
       const body = packMeeting(found, budget, options.query ?? '', t);
-      return block === null ? body : `${block}${NL}${NL}${body}`;
+      return { text: block === null ? body : `${block}${NL}${NL}${body}`, coverage: null };
     }
     case 'Project':
     case 'AllMeetings':

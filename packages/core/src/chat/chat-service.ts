@@ -38,11 +38,12 @@ import type {
 import {
   carveProjectBlock,
   contextBudgetFor,
-  packContext,
+  packContextWithCoverage,
   singleLine,
   type ContextMeeting,
   type ContextProject,
   type LiveContextSnapshot,
+  type MeetingCoverage,
 } from './context-packer';
 import { answerLanguageName, buildPrompt, priorTurnLimitsFor } from './prompt-builder';
 import { matchesOpenThread, type ChatScopeDecision } from './scope-resolver';
@@ -185,6 +186,8 @@ interface PackedContext {
   readonly owner: ThreadOwner;
   /** The scope names a meeting that no longer exists. */
   readonly meetingGone: boolean;
+  /** Project and All meetings: how many meetings the context carries, of how many matched. */
+  readonly coverage: MeetingCoverage | null;
 }
 
 export type ChatSendOutcome =
@@ -195,6 +198,11 @@ export type ChatSendOutcome =
       readonly assistant: ChatMessage;
       /** A line to show next to the answer (images the local engine left out), or null. */
       readonly notice: string | null;
+      /**
+       * Project and All meetings: how many meetings the answer was based on, of how many matched.
+       * Absent for one meeting or a live take.
+       */
+      readonly coverage?: MeetingCoverage;
     }
   /** The user stopped the answer. Silent: no message, nothing kept. */
   | { readonly status: 'cancelled'; readonly originalDraft: string }
@@ -498,7 +506,13 @@ export class ChatService {
         user,
         assistant,
       ]);
-      return { status: 'sent', user, assistant, notice };
+      return {
+        status: 'sent',
+        user,
+        assistant,
+        notice,
+        ...(packed.coverage === null ? {} : { coverage: packed.coverage }),
+      };
     } catch (error) {
       if (wasStopped() || isCancellation(error)) return cancelled();
       return fail(sendFailedFailure(error, t));
@@ -554,7 +568,7 @@ export class ChatService {
       block === null || isRemoteEngine(providerId) ? base : carveProjectBlock(base, block.length);
     const projects =
       scope.kind === 'Project' || scope.kind === 'AllMeetings' ? await reader.listProjects() : [];
-    const text = packContext(
+    const { text, coverage } = packContextWithCoverage(
       scope.kind,
       scope.projectId,
       scope.meetingId,
@@ -564,7 +578,7 @@ export class ChatService {
       this.deps.translate,
       { budget, query, projectBlock: block },
     );
-    return { text, owner, meetingGone };
+    return { text, owner, meetingGone, coverage };
   }
 
   /** The packed project block, or null for no project, an unknown one, or a read that failed. */

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import { Icon, IconButton, cn } from '../../ui';
 import { MarkdownView, type LinkHandler } from '../markdown/MarkdownView';
-import { accessibleMessageText, type ChatRow } from './chat-view-model';
+import { accessibleMessageText, coverageNote, type ChatRow } from './chat-view-model';
 
 export interface MessageRowProps {
   readonly row: ChatRow;
@@ -18,7 +18,8 @@ export interface MessageRowProps {
 /**
  * One message. The user's words sit right in a quiet bubble; the assistant's answer reads as a
  * document under a small role label. The copy button, and in a meeting scope the "Apply to
- * summary" button, appear only once the answer is complete.
+ * summary" button, appear only once the answer is complete. So does the quiet line that says how
+ * many meetings a Project or All meetings answer was based on, when some were left out.
  */
 export function MessageRow({ row, onCopy, onLink, onApply, onSaveAsPrompt }: MessageRowProps) {
   const t = useT();
@@ -70,6 +71,8 @@ export function MessageRow({ row, onCopy, onLink, onApply, onSaveAsPrompt }: Mes
 
   const label = t('Chat_RoleAssistant');
   const thinking = row.pending && row.text === '';
+  // Arrives with the finished answer, together with its actions, so nothing moves while streaming.
+  const coverage = row.pending ? null : coverageNote(row.coverage, t);
   return (
     <li aria-label={thinking ? label : accessibleMessageText(label, row.text)} className="group">
       <p className="text-ui font-medium text-ink-muted">{label}</p>
@@ -89,6 +92,11 @@ export function MessageRow({ row, onCopy, onLink, onApply, onSaveAsPrompt }: Mes
           )}
         />
       )}
+      {coverage !== null ? (
+        <p className="mt-2 text-ui text-ink-muted" data-testid="InfoMeetingChatCoverage">
+          {coverage}
+        </p>
+      ) : null}
       {!row.pending ? (
         <div className="mt-1 flex h-7 items-center gap-0.5">
           <IconButton

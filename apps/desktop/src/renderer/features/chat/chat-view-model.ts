@@ -1,5 +1,6 @@
-import type { ChatMessageDto } from '@vozella/contracts';
+import type { ChatMeetingCoverageDto, ChatMessageDto } from '@vozella/contracts';
 import { composerIntent } from '../../app/shortcuts';
+import type { Translate } from '../../i18n/translate';
 
 /** One row of the transcript. `pending` is the assistant row that waits for its first text. */
 export interface ChatRow {
@@ -7,6 +8,11 @@ export interface ChatRow {
   readonly role: 'user' | 'assistant';
   readonly text: string;
   readonly pending: boolean;
+  /**
+   * An answer of a Project or All meetings chat: how many meetings it was based on, of how many
+   * matched. Kept for this session only; a reopened thread has none.
+   */
+  readonly coverage?: ChatMeetingCoverageDto;
 }
 
 export interface ChatError {
@@ -41,6 +47,7 @@ export type ChatViewAction =
       readonly requestId: string;
       readonly user: ChatMessageDto;
       readonly assistant: ChatMessageDto;
+      readonly coverage?: ChatMeetingCoverageDto;
     }
   /** Both optimistic rows go away, whatever the reason (failure, stop, cancelled setup). */
   | { readonly type: 'rolledBack'; readonly requestId: string }
@@ -60,10 +67,21 @@ const isOptimistic = (row: ChatRow): boolean => /^[ua]:/.test(row.id);
 
 export function chatViewReducer(state: ChatViewState, action: ChatViewAction): ChatViewState {
   switch (action.type) {
-    case 'hydrate':
+    case 'hydrate': {
       // A send in flight owns its rows; the server list only fills an idle view.
       if (state.activeRequestId !== null) return state;
-      return { ...state, rows: action.messages.map(fromMessage) };
+      // Main does not keep coverage: an answer already on screen keeps its own.
+      const coverage = new Map(
+        state.rows.flatMap((row) => (row.coverage ? [[row.id, row.coverage] as const] : [])),
+      );
+      return {
+        ...state,
+        rows: action.messages.map((m) => {
+          const kept = coverage.get(m.id);
+          return kept ? { ...fromMessage(m), coverage: kept } : fromMessage(m);
+        }),
+      };
+    }
     case 'sendStarted': {
       const base = action.replace ? [] : state.rows;
       return {
@@ -105,7 +123,13 @@ export function chatViewReducer(state: ChatViewState, action: ChatViewAction): C
       return {
         ...state,
         activeRequestId: null,
-        rows: [...kept, fromMessage(action.user), fromMessage(action.assistant)],
+        rows: [
+          ...kept,
+          fromMessage(action.user),
+          action.coverage
+            ? { ...fromMessage(action.assistant), coverage: action.coverage }
+            : fromMessage(action.assistant),
+        ],
       };
     }
     case 'rolledBack':
@@ -131,6 +155,29 @@ export function restoreDraft(current: string, original: string): string {
 
 // The composer key rules live in the shortcut table (app/shortcuts.ts).
 export const keyIntent = composerIntent;
+
+/**
+ * The quiet line under an answer that left meetings out ("Based on the 12 most relevant of 37
+ * meetings"). Null when every matching meeting was used, or the answer has no coverage.
+ */
+export function coverageNote(
+  coverage: ChatMeetingCoverageDto | undefined,
+  t: Translate,
+): string | null {
+  if (coverage === undefined || coverage.used >= coverage.matching) return null;
+  const relevant = coverage.basis === 'relevance';
+  if (coverage.used === 1) {
+    return t(
+      relevant ? 'Ui_ChatCoverageRelevantOne' : 'Ui_ChatCoverageRecentOne',
+      coverage.matching,
+    );
+  }
+  return t(
+    relevant ? 'Ui_ChatCoverageRelevant' : 'Ui_ChatCoverageRecent',
+    coverage.used,
+    coverage.matching,
+  );
+}
 
 /** The text a screen reader reads for a message. */
 export const accessibleMessageText = (role: string, text: string): string => `${role}: ${text}`;

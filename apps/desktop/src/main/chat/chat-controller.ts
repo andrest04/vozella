@@ -400,6 +400,7 @@ export class ChatController {
           user: messageDto(outcome.user),
           assistant: messageDto(outcome.assistant),
           notice: outcome.notice,
+          ...(outcome.coverage === undefined ? {} : { coverage: { ...outcome.coverage } }),
         };
       case 'cancelled':
         return { status: 'cancelled', originalDraft: outcome.originalDraft };

@@ -388,6 +388,26 @@ describe('chat handlers', () => {
     ]);
   });
 
+  it('an answer carries how many meetings it was based on, of how many matched', async () => {
+    const { call, service } = setup();
+    service.outcome = (draft) => ({
+      status: 'sent',
+      user: message('u1', 'user', draft),
+      assistant: message('a1', 'assistant', 'Done.'),
+      notice: null,
+      coverage: { used: 12, matching: 37, basis: 'relevance' },
+    });
+    expect(ok(await call('chat.send', sendInput()))).toMatchObject({
+      status: 'answered',
+      coverage: { used: 12, matching: 37, basis: 'relevance' },
+    });
+  });
+
+  it('an answer without coverage (one meeting, a live take) sends none', async () => {
+    const { call } = setup();
+    expect(ok(await call('chat.send', sendInput()))).not.toHaveProperty('coverage');
+  });
+
   it('a setup-required send is a value that carries the kind and the draft', async () => {
     const { call, service } = setup();
     service.outcome = (draft) => ({
