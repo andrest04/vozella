@@ -231,6 +231,7 @@ export class RecordingService {
   private readonly canvas = new HighlightedLiveText();
   private readonly offs: (() => void)[] = [];
   private lastState = '';
+  private readonly stateListeners = new Set<(state: RecordingStateDto) => void>();
   private lastLiveText: string | null = null;
   private lastPublishedRaw = '';
   /** The current title of the last processed meeting: a summary can replace a placeholder. */
@@ -341,6 +342,17 @@ export class RecordingService {
     return { ...this.buildState(), liveText: this.canvasText() };
   }
 
+  /**
+   * Main-side listeners (the tray) get the state each time it is broadcast, so they follow the
+   * pause too, which the session gate does not see. Returns the unsubscribe.
+   */
+  onStateChanged(listener: (state: RecordingStateDto) => void): () => void {
+    this.stateListeners.add(listener);
+    return () => {
+      this.stateListeners.delete(listener);
+    };
+  }
+
   /** The setup checklist, read from the same facts the Start gate uses. */
   async getSetup(): Promise<RecordingSetupDto> {
     const { facts, readiness } = await evaluateSetup(this.deps.setup);
@@ -428,6 +440,7 @@ export class RecordingService {
     if (key !== this.lastState) {
       this.lastState = key;
       this.deps.broadcast(recordingStateChanged, state);
+      for (const listener of [...this.stateListeners]) listener(state);
     }
     this.publishLive();
   }

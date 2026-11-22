@@ -250,7 +250,7 @@ test('bounds saved off every screen fall back to the default window on a visible
 // ---------------------------------------------------------------------------------------------
 // Tray (7.3b) through the probe of test mode
 
-test('the tray has Open and Quit, Open restores a minimized window, Quit still asks first', async () => {
+test('the tray has Start recording, Open and Quit, Open restores a minimized window, Quit still asks first', async () => {
   test.skip(packaged, NO_TEST_HOOKS);
   const root = newRoot();
   seedReady(root);
@@ -258,8 +258,12 @@ test('the tray has Open and Quit, Open restores a minimized window, Quit still a
   try {
     const page = await readyOnRecord(app);
     const probe = await readProbe(app);
-    expect(probe.trayItems.map((i) => i.id)).toEqual(['open', 'quit']);
-    expect(probe.trayItems.map((i) => i.label)).toEqual(['Open Vozella', 'Quit Vozella']);
+    expect(probe.trayItems.map((i) => i.id)).toEqual(['start', 'open', 'quit']);
+    expect(probe.trayItems.map((i) => i.label)).toEqual([
+      'Start recording',
+      'Open Vozella',
+      'Quit Vozella',
+    ]);
     expect(probe.trayTooltip).toBe('Vozella');
 
     const runTray = (id: string) =>
