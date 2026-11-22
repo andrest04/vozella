@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { InMemoryMeetingRepository } from '../library/in-memory-library';
 import type { MeetingRecord } from '../library/meeting';
-import { Workspace } from '../library/workspace';
+import { isSessionTab, Workspace } from '../library/workspace';
 import {
   canRename,
   canRetranscribe,
@@ -10,7 +10,6 @@ import {
   createCopyFeedback,
   createSlideTracker,
   deriveSessionView,
-  isSessionTab,
   renameMeeting,
   resolveRevealTarget,
   slideDirection,

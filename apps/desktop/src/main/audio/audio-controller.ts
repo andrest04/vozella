@@ -12,22 +12,27 @@ import {
 } from '@vozella/contracts';
 import {
   buildCaptureSources,
-  buildMicrophoneOptions,
   pcm16ToFloat,
   RecordSourcePicker,
   rememberAppPatch,
   rememberMicrophonePatch,
   rememberSystemAudioPatch,
+  resolveMicrophoneChoice,
   restoreApp,
-  restoreMicrophone,
-  selectMicrophoneAfterReload,
   type ActiveAudioApp,
   type Logger,
   type ProcessDetails,
+  type RememberedMicrophone,
   type SettingsStore,
 } from '@vozella/core';
 import type { Broadcast } from '../ipc/library-handlers';
 import type { AudioPushEvent } from '../workers/audio-worker-host';
+
+const NOTHING_REMEMBERED: RememberedMicrophone = {
+  recordMicrophoneKind: null,
+  recordMicrophoneDeviceId: null,
+  selectedMicrophoneDeviceId: null,
+};
 
 /** The slice of AudioWorkerHost the controller uses. */
 export interface AudioHostLike {
@@ -104,15 +109,10 @@ export class AudioController {
       // Any failure gives an empty list: only None and System default remain.
       this.deps.logger.warn('could not list microphones', { error: String(error) });
     }
-    const options = buildMicrophoneOptions(devices);
-    const settings = await this.deps.settings.load().catch(() => undefined);
-    const remembered = settings
-      ? restoreMicrophone(
-          settings,
-          devices.map((d) => d.id),
-        )
-      : { kind: 'SystemDefault' as const, deviceId: null };
-    return { options, selected: selectMicrophoneAfterReload(options, userChoice, remembered) };
+    // Unreadable settings remember nothing, which resolves to System default.
+    const settings = await this.deps.settings.load().catch(() => NOTHING_REMEMBERED);
+    const { options, selected } = resolveMicrophoneChoice(devices, settings, userChoice);
+    return { options: [...options], selected };
   }
 
   /** A saving failure is ignored: a locked settings file must not break picking. */

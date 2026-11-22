@@ -2,10 +2,6 @@ import { SESSION_TABS, type SessionTab } from '../library/workspace';
 
 export type SlideDirection = 'FromRight' | 'FromLeft';
 
-export function isSessionTab(value: unknown): value is SessionTab {
-  return typeof value === 'string' && (SESSION_TABS as readonly string[]).includes(value);
-}
-
 export function tabIndex(tab: SessionTab): number {
   return SESSION_TABS.indexOf(tab);
 }

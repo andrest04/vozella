@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { resolveMicrophoneChoice, sameMicrophoneChoices } from './mic-choice';
+import { sameMicrophoneOptions } from '../audio-capture/record-sources';
+import { resolveMicrophoneChoice } from './mic-choice';
 
 const devices = [
   { id: 'a', name: 'Headset' },
@@ -66,7 +67,7 @@ describe('resolveMicrophoneChoice', () => {
     const a = resolveMicrophoneChoice(devices, none).options;
     const b = resolveMicrophoneChoice(devices, none).options;
     const c = resolveMicrophoneChoice([devices[0]!], none).options;
-    expect(sameMicrophoneChoices(a, b)).toBe(true);
-    expect(sameMicrophoneChoices(a, c)).toBe(false);
+    expect(sameMicrophoneOptions(a, b)).toBe(true);
+    expect(sameMicrophoneOptions(a, c)).toBe(false);
   });
 });

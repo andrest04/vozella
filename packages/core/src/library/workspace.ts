@@ -29,8 +29,8 @@ function isShellTag(value: string): value is ShellTag {
   return (SHELL_TAGS as readonly string[]).includes(value);
 }
 
-function isSessionTab(value: string): value is SessionTab {
-  return (SESSION_TABS as readonly string[]).includes(value);
+export function isSessionTab(value: unknown): value is SessionTab {
+  return typeof value === 'string' && (SESSION_TABS as readonly string[]).includes(value);
 }
 
 /**
