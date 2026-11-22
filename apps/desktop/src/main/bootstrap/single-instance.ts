@@ -1,3 +1,5 @@
+import { HIDDEN_LAUNCH_ARG } from '../open-at-login/open-at-login';
+
 export interface SingleInstanceDeps {
   readonly requestLock: () => boolean;
   /** True when this process was started by the app's own restart. */
@@ -45,7 +47,10 @@ export interface RelaunchDeps {
  * so a chain of restarts keeps one flag.
  */
 export function relaunchApp(deps: RelaunchDeps): void {
-  const args = deps.argv.slice(1).filter((arg) => arg !== RELAUNCH_ARG);
+  // A restart the user asked for shows the window, so the hidden sign-in mark is dropped too.
+  const args = deps.argv
+    .slice(1)
+    .filter((arg) => arg !== RELAUNCH_ARG && arg !== HIDDEN_LAUNCH_ARG);
   deps.relaunch({ args: [...args, RELAUNCH_ARG] });
   deps.defer(deps.quit);
 }

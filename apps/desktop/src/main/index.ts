@@ -118,6 +118,8 @@ import { installShellProbe } from './bootstrap/shell-probe';
 import { activateMainWindow } from './windows/activate-main-window';
 import { resolveIconPath } from './windows/app-icon-path';
 import { createMainWindow } from './windows/main-window';
+import { electronLoginItem } from './open-at-login/electron-login-item';
+import { isHiddenLaunch, OpenAtLogin, showMainWindowOnReady } from './open-at-login/open-at-login';
 import { loadWindowPlacement, trackWindowState } from './windows/window-state';
 import { createMeetingPromptWindow } from './windows/meeting-prompt-window';
 import {
@@ -614,6 +616,21 @@ function main(): void {
       // read from library.getLocation once the page is up, so no native dialog duplicates it.
       logger.info('app language', { tag: locale.tag, saved: locale.saved });
 
+      // Open at login: the OS entry follows the setting, restored here and rewritten on a toggle.
+      const openAtLogin = new OpenAtLogin({
+        port: electronLoginItem(app),
+        packaged: app.isPackaged,
+        logger: logger.child('open-at-login'),
+      });
+      void library.settings
+        .load()
+        .then((saved) => {
+          openAtLogin.reconcile(saved.openAtLogin);
+        })
+        .catch((error: unknown) => {
+          logger.warn('could not read the open at login setting', { error: String(error) });
+        });
+
       registerHandlers({
         logger,
         info,
@@ -638,6 +655,7 @@ function main(): void {
         broadcast,
         onSettingsSaved: (patch) => {
           if (changesTranscriptionEngine(patch)) void transcriptionController.refreshStatus();
+          if (typeof patch.openAtLogin === 'boolean') openAtLogin.apply(patch.openAtLogin);
         },
       });
 
@@ -942,9 +960,12 @@ function main(): void {
         },
       );
       const placement = await loadWindowPlacement(windowStateStore, screen);
+      const startsInTray = mode !== 'test' && isHiddenLaunch(process.argv);
       mainWindow = createMainWindow({
         devServerUrl,
-        showOnReady: mode !== 'test' || process.env.VOZELLA_E2E_SHOW === '1',
+        // A start at sign in stays in the tray; the tray or a second launch shows the window.
+        showOnReady: showMainWindowOnReady({ mode, env: process.env, argv: process.argv }),
+        startInTray: startsInTray,
         theme: resolvedTheme(),
         placement,
         iconPath: resolveIconPath(iconInput, 'icon.ico'),
@@ -973,6 +994,13 @@ function main(): void {
       // Minimize and restore re-evaluate the pill (mainWindowActive starts true).
       mainWindow.on('minimize', () => pill?.setMainWindowActive(false));
       mainWindow.on('restore', () => pill?.setMainWindowActive(mainWindow?.isFocused() ?? false));
+      // A hidden start at sign in has no active window: a take started from the call popup
+      // then shows the pill, as it does after the start minimized a visible window.
+      if (startsInTray) {
+        logger.info('started hidden at sign in');
+        handoff.setMainWindowActive(false);
+        pill.setMainWindowActive(false);
+      }
 
       // The tray restores the window after the recording start minimized it. Closing the window
       // still exits the app, so the tray goes with it. Automated runs skip it unless a test asks.

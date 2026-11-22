@@ -2,7 +2,7 @@ import path from 'node:path';
 import type { WindowPlacement } from '@vozella/core';
 import { BrowserWindow } from 'electron';
 import { APP_ENTRY_URL } from '../security/trusted-origin';
-import { mainWindowOptions } from './main-window-options';
+import { mainWindowOptions, whenToMaximize } from './main-window-options';
 import type { ResolvedTheme } from './title-bar-theme';
 
 export interface MainWindowOptions {
@@ -10,6 +10,8 @@ export interface MainWindowOptions {
   readonly devServerUrl: string | undefined;
   /** Hide the window (automated runs and smoke checks). */
   readonly showOnReady: boolean;
+  /** A start at sign in: the window stays in the tray until the user opens it. */
+  readonly startInTray: boolean;
   /** Theme at creation, so the first paint and the caption buttons already match. */
   readonly theme: ResolvedTheme;
   /** Saved or default geometry (window-state.json). */
@@ -33,7 +35,12 @@ export function createMainWindow(options: MainWindowOptions): BrowserWindow {
   if (bounds.x !== undefined && bounds.y !== undefined) {
     window.setBounds({ x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height });
   }
-  if (options.placement.maximized) window.maximize();
+  const maximize = whenToMaximize({
+    maximized: options.placement.maximized,
+    startInTray: options.startInTray,
+  });
+  if (maximize === 'now') window.maximize();
+  else if (maximize === 'on-show') window.once('show', () => window.maximize());
 
   window.once('ready-to-show', () => {
     if (options.showOnReady) window.show();

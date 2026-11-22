@@ -54,6 +54,7 @@ describe('defaults', () => {
       transcriptionEngine: null,
       cloudTranscriptionModelId: null,
       customNoteTemplate: null,
+      openAtLogin: false,
     });
   });
 
@@ -369,6 +370,26 @@ describe('resolveLiveQuestionsMode', () => {
       applySettingsPatch({}, { customNoteTemplate: 'Use ## Goals\nthen ## Risks' }),
     );
     expect(parseSettingsJson(text).settings.customNoteTemplate).toBe('Use ## Goals\nthen ## Risks');
+  });
+
+  it('open at login is off for a file written before it existed, and stays out of it', () => {
+    const old = serializeSettings({ uiLanguage: 'es', meetingPopupEnabled: false });
+    expect(old).not.toContain('openAtLogin');
+    const { raw, settings } = parseSettingsJson(old);
+    expect(settings.openAtLogin).toBe(false);
+    expect(serializeSettings(raw)).toBe(old);
+    expect(serializeSettings(applySettingsPatch(raw, { openAtLogin: false }))).toBe(old);
+  });
+
+  it('open at login is written last of the known properties once on, and round-trips', () => {
+    const text = serializeSettings(applySettingsPatch({ futureThing: 1 }, { openAtLogin: true }));
+    expect(parseSettingsJson(text).settings.openAtLogin).toBe(true);
+    expect(text.indexOf('"openAtLogin": true')).toBeGreaterThan(
+      text.indexOf('liveCopilotPillAlong'),
+    );
+    expect(text.indexOf('futureThing')).toBeGreaterThan(text.indexOf('openAtLogin'));
+    expect(readSettings({ OpenAtLogin: 'yes' }).openAtLogin).toBe(false);
+    expect(readSettings({ openatlogin: true }).openAtLogin).toBe(true);
   });
 
   it('round-trips through the settings file, written last of the known properties once set', () => {

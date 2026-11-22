@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { HIDDEN_LAUNCH_ARG } from '../open-at-login/open-at-login';
 import { acquireSingleInstance, relaunchApp, RELAUNCH_ARG } from './single-instance';
 
 describe('acquireSingleInstance', () => {
@@ -67,5 +68,16 @@ describe('relaunchApp', () => {
     expect(log).toEqual([`relaunch --flag ${RELAUNCH_ARG}`]);
     deferred!();
     expect(log).toEqual([`relaunch --flag ${RELAUNCH_ARG}`, 'quit']);
+  });
+
+  it('a restart the user asked for shows the window, even after a hidden start at login', () => {
+    const log: string[] = [];
+    relaunchApp({
+      argv: ['vozella.exe', HIDDEN_LAUNCH_ARG],
+      relaunch: (options) => log.push(`relaunch ${options.args.join(' ')}`),
+      quit: () => undefined,
+      defer: () => undefined,
+    });
+    expect(log).toEqual([`relaunch ${RELAUNCH_ARG}`]);
   });
 });
