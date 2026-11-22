@@ -29,7 +29,6 @@ function setup(
     kind?: SummaryProviderKind;
     chunks?: (cancel: CancelSignal, prompt: string) => AsyncIterable<string>;
     resolution?: LiveAskResolution;
-    setupWired?: boolean;
     settingsGate?: Gate;
     committed?: string;
     context?: () => ReturnType<LiveAskDeps['sessionContext']>;
@@ -73,7 +72,6 @@ function setup(
     publish: (s) => published.push(s),
     nowMs: () => now,
     formatFailure: (e) => `failed: ${(e as Error).message}`,
-    setupWired: options.setupWired ?? false,
     ...(options.projectId === undefined ? {} : { projectId: () => options.projectId ?? null }),
     ...(options.projectContext === undefined ? {} : { projectContext: options.projectContext }),
     logger: { warn: (message, context) => void warnings.push({ message, context }) },
@@ -199,13 +197,33 @@ describe('LiveAskSession', () => {
     expect(t.last()?.error).toBeNull();
   });
 
-  it.each([
-    [false, 'Ui_LiveAnswerNoProvider'],
-    [true, 'Status_SetupCancelled'],
-  ])('unresolved provider with setupWired=%s gives %s', async (setupWired, key) => {
-    const t = setup({ resolution: { status: 'unresolved' }, setupWired });
+  it('an unresolved provider says so with the no-provider reason, so a page can offer the setup', async () => {
+    const t = setup({ resolution: { status: 'unresolved' } });
     await t.session.ask('q');
-    expect(t.last()).toMatchObject({ isAnswering: false, error: { key } });
+    expect(t.last()).toMatchObject({ isAnswering: false, text: '' });
+    expect(t.last()?.error).toEqual({
+      key: 'Ui_LiveAnswerNoProvider',
+      text: '',
+      reason: 'no-provider',
+    });
+  });
+
+  it('only the missing provider carries a reason: an empty answer and an engine failure do not', async () => {
+    const empty = setup({
+      chunks: async function* () {
+        yield ' ';
+      },
+    });
+    await empty.session.ask('q');
+    expect(empty.last()?.error).toEqual({ key: 'RecordPage_LiveAnswerEmpty', text: '' });
+    const failed = setup({
+      chunks: async function* () {
+        yield 'x';
+        throw new Error('boom');
+      },
+    });
+    await failed.session.ask('q');
+    expect(failed.last()?.error).toEqual({ key: null, text: 'failed: boom' });
   });
 
   it('web is used only for a CLI provider with the toggle on, and the toggle survives reset', async () => {

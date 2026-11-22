@@ -21,6 +21,7 @@ function setup(
     liveQuestions?: string | null;
     projectId?: string | null;
     projectContext?: Pick<ProjectContextSource, 'get'>;
+    showMainWindow?: () => boolean;
   } = {},
 ) {
   const handlers = new Map<string, (event: never, ...args: unknown[]) => unknown>();
@@ -66,6 +67,7 @@ function setup(
     nowMs: extra.now ?? (() => 0),
     ...(extra.localModelLoaded ? { localModelLoaded: extra.localModelLoaded } : {}),
     ...(extra.projectContext ? { projectContext: extra.projectContext } : {}),
+    ...(extra.showMainWindow ? { showMainWindow: extra.showMainWindow } : {}),
   });
   registerLiveAskHandlers({ ipc, logger: logger(), isTrusted: () => true }, liveAsk);
   const call = (name: string, input: unknown): Promise<unknown> => {
@@ -119,10 +121,60 @@ describe('live ask handlers', () => {
       const last = t.sent[t.sent.length - 1];
       expect(last?.payload).toMatchObject({
         isAnswering: false,
-        error: { key: 'Ui_LiveAnswerNoProvider' },
+        error: { key: 'Ui_LiveAnswerNoProvider', text: '', reason: 'no-provider' },
       });
     },
   );
+
+  it('a chosen engine that cannot answer is the same missing-provider state', async () => {
+    const sent: { channel: string; payload: unknown }[] = [];
+    const unresolved = new LiveAsk({
+      settings: { load: () => Promise.resolve({ selectedSummaryProvider: 'Codex' } as never) },
+      resolver: {
+        resolveSummaryProvider: () => Promise.resolve({ status: 'unresolved' } as never),
+      },
+      recording: () => ({ recording: true, title: '', projectId: null }),
+      broadcast: (channel, payload) => {
+        sent.push({ channel: channel.name, payload });
+      },
+      formatFailure: String,
+      nowMs: () => 0,
+    });
+    unresolved.ask('Why?', false, undefined);
+    await settle();
+    const last = sent[sent.length - 1];
+    expect(recordingAnswerSchema.parse(last?.payload).error).toEqual({
+      key: 'Ui_LiveAnswerNoProvider',
+      text: '',
+      reason: 'no-provider',
+    });
+  });
+
+  it('opening the engine setup brings the main window forward, then asks it to show the engines', async () => {
+    const order: string[] = [];
+    const showMainWindow = vi.fn<() => boolean>(() => {
+      order.push('show');
+      return true;
+    });
+    const t = setup(true, null, { showMainWindow });
+    t.sent.length = 0;
+    expect(await t.call('recording.openAnswerSetup', {})).toEqual({ opened: true });
+    expect(showMainWindow).toHaveBeenCalledTimes(1);
+    order.push(...t.sent.map((sent) => sent.channel));
+    expect(order).toEqual(['show', 'recording.answerSetupRequested']);
+    expect(t.sent[0]?.payload).toEqual({});
+  });
+
+  it('without a main window to bring forward, nothing is asked to navigate', async () => {
+    const t = setup(true, null, { showMainWindow: () => false });
+    t.sent.length = 0;
+    expect(await t.call('recording.openAnswerSetup', {})).toEqual({ opened: false });
+    expect(t.sent).toEqual([]);
+    const unwired = setup(true, null);
+    unwired.sent.length = 0;
+    expect(await unwired.call('recording.openAnswerSetup', {})).toEqual({ opened: false });
+    expect(unwired.sent).toEqual([]);
+  });
 
   it('a preset question is routed through the preset path and answered', async () => {
     const t = setup();

@@ -834,6 +834,9 @@ function main(): void {
         projectContext: liveRepository(() => library.projectContext),
         logger: logger.child('live-ask'),
         broadcast,
+        // The engine setup link of a "no engine" answer: the same restore and focus as the pill's
+        // Open Vozella button, then the main window opens Settings on the summary engines.
+        showMainWindow: () => activateMainWindow(mainWindow),
         formatFailure: (error) => summaries.controller.formatError(error),
         nowMs: () => Date.now(),
         // The rolling digest never loads the local model; it runs only when it is already up, and

@@ -125,6 +125,30 @@ describe('the answer area', () => {
     expect(screen.getByTestId('InfoLiveCopilotError')).toHaveTextContent('The CLI said no');
   });
 
+  it('offers the engine setup when no summary engine can answer; main brings the app forward', async () => {
+    render(<Panel />);
+    answer({ error: { key: 'Ui_LiveAnswerNoProvider', text: '', reason: 'no-provider' } });
+    const notice = screen.getByTestId('InfoLiveCopilotError');
+    expect(notice).toHaveTextContent(
+      'Pick a summary engine in Settings to get answers during a take.',
+    );
+    const setUp = within(notice).getByRole('button', { name: 'Set up a summary engine' });
+    expect(setUp).toHaveAttribute('id', 'BtnLiveCopilotSetUpEngine');
+    expect(setUp).toHaveAttribute('data-testid', 'BtnLiveCopilotSetUpEngine');
+    expect(setUp.classList.contains('pill-no-drag')).toBe(true);
+    await userEvent.click(setUp);
+    // One request: main restores and focuses the main window, then opens the engines there.
+    expect(calls).toEqual([{ name: 'recording.openAnswerSetup', input: {} }]);
+  });
+
+  it('offers no setup for a failure that is not the missing engine', () => {
+    render(<Panel />);
+    answer({ error: { key: 'Ui_LiveAnswerNoProvider', text: '' } });
+    expect(within(screen.getByTestId('InfoLiveCopilotError')).queryByRole('button')).toBeNull();
+    answer({ error: { key: null, text: 'The CLI said no' } });
+    expect(within(screen.getByTestId('InfoLiveCopilotError')).queryByRole('button')).toBeNull();
+  });
+
   it('shows the web badge, without the emoji, only when the answer used the web', () => {
     render(<Panel />);
     answer({ text: 'a' });

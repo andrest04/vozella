@@ -7,7 +7,12 @@ import { Button, Icon, Notice, SectionHeader, Select, SettingRow } from '../../u
 import { SetupWizardDialog } from '../ai-provider/SetupWizardDialog';
 import { API_NAME_KEYS, isApiKind } from '../ai-provider/api-engines';
 import { ApiProviderOptions } from './ApiProviderOptions';
-import { onEngineFocus, pendingEngineFocus, takeEngineFocus } from './engine-focus';
+import {
+  onEngineFocus,
+  pendingEngineFocus,
+  takeEngineFocus,
+  type EngineFocus,
+} from './engine-focus';
 import { EngineList, type EngineGroupView } from './EngineList';
 import { LocalEngineSetup } from './LocalEngineSetup';
 import {
@@ -163,29 +168,38 @@ export function ProviderSection({
   const t = useT();
   const { provider } = page;
   const [wizardOpen, setWizardOpen] = useState(false);
-  const [openKind, setOpenKind] = useState<EngineKind | null>(
-    () => pendingEngineFocus() ?? (isEngineKind(provider) ? provider : null),
-  );
-  // A link from elsewhere (the chat's model picker) opens its engine's row and brings it into
-  // view, here on mount or later while the page is on screen. It never changes the engine in use.
-  const [focusKind, setFocusKind] = useState<EngineKind | null>(null);
+  const inUse = isEngineKind(provider) ? provider : null;
+  // Read by the link listener, which outlives the render that registered it.
+  const inUseRef = useRef(inUse);
+  inUseRef.current = inUse;
+  const [openKind, setOpenKind] = useState<EngineKind | null>(() => {
+    const linked = pendingEngineFocus();
+    return linked === null || linked === 'in-use' ? inUse : linked;
+  });
+  // A link from elsewhere (the chat's model picker, or the live answer's engine setup) opens its
+  // engine's row and brings it into view, here on mount or later while the page is on screen. It
+  // never changes the engine in use; with none in use, the first row takes the focus.
+  const [focus, setFocus] = useState<EngineFocus | null>(null);
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const linked = takeEngineFocus();
-    if (linked) setFocusKind(linked);
-    return onEngineFocus((kind) => {
+    if (linked) setFocus(linked);
+    return onEngineFocus((next) => {
       takeEngineFocus();
-      setOpenKind(kind);
-      setFocusKind(kind);
+      setOpenKind(next === 'in-use' ? inUseRef.current : next);
+      setFocus(next);
     });
   }, []);
   useEffect(() => {
-    if (focusKind === null) return;
-    const button = root.current?.querySelector<HTMLElement>(`[data-engine="${focusKind}"]`);
+    if (focus === null) return;
+    const kind = focus === 'in-use' ? inUse : focus;
+    const button = root.current?.querySelector<HTMLElement>(
+      kind === null ? '[data-engine]' : `[data-engine="${kind}"]`,
+    );
     button?.scrollIntoView({ block: 'center' });
     button?.focus({ preventScroll: true });
-    setFocusKind(null);
-  }, [focusKind]);
+    setFocus(null);
+  }, [focus, inUse]);
 
   const readinessOf = (kind: EngineKind): SummaryEngineReadinessDto | null =>
     page.engines.find((engine) => engine.kind === kind)?.readiness ?? null;

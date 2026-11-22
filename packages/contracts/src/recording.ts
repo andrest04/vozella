@@ -257,17 +257,45 @@ export const recordingCancelAsk = defineRequest('recording.cancelAsk', {
   output: z.object({ cancelled: z.boolean() }),
 });
 
+/**
+ * Why an ask failed, when a window can act on it. `no-provider`: no summary engine is chosen, or
+ * the chosen one cannot answer; the window offers to open the engine setup.
+ */
+export const liveAnswerErrorReasonSchema = z.enum(['no-provider']);
+export type LiveAnswerErrorReasonDto = z.infer<typeof liveAnswerErrorReasonSchema>;
+
 /** The answer card state, sent on every change (streaming included). */
 export const recordingAnswerSchema = z.object({
   isAnswering: z.boolean(),
   text: z.string(),
   /** A catalog key, or ready text when `key` is null. */
-  error: z.object({ key: z.string().nullable(), text: z.string() }).nullable(),
+  error: z
+    .object({
+      key: z.string().nullable(),
+      text: z.string(),
+      reason: liveAnswerErrorReasonSchema.optional(),
+    })
+    .nullable(),
   usedWeb: z.boolean(),
   canUseWebSearch: z.boolean(),
 });
 export type RecordingAnswerDto = z.infer<typeof recordingAnswerSchema>;
 export const recordingAnswer = defineEvent('recording.answer', { payload: recordingAnswerSchema });
+
+/**
+ * The action of a `no-provider` answer, from the Record page or the pill: main brings the main
+ * window forward (restoring it when minimized), then sends `recording.answerSetupRequested` to
+ * it. `opened` is false when there is no main window to show.
+ */
+export const recordingOpenAnswerSetup = defineRequest('recording.openAnswerSetup', {
+  input: empty,
+  output: z.object({ opened: z.boolean() }),
+});
+
+/** The main window opens Settings on the summary engines, at the engine in use. */
+export const recordingAnswerSetupRequested = defineEvent('recording.answerSetupRequested', {
+  payload: empty,
+});
 
 /**
  * A question spoken in the take (live question detection). Sent again with `confirmed: true` when

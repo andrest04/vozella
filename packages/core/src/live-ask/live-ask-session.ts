@@ -23,11 +23,26 @@ import { shouldUseWeb, supportsWebSearch } from './web-policy';
 /** At most one publish per this many ms once the first visible text went out. */
 export const LIVE_ANSWER_FLUSH_MS = 80;
 
+/**
+ * Why an ask failed, when a window can act on it: `no-provider` means no summary engine is chosen
+ * or the chosen one cannot answer, so the window offers the engine setup.
+ */
+export type LiveAnswerErrorReason = 'no-provider';
+
 /** A catalog key, or ready text (a CLI failure already in the user's language). */
 export interface LiveAnswerError {
   readonly key: string | null;
   readonly text: string;
+  /** Set only for a failure a window can act on; the other failures leave it out. */
+  readonly reason?: LiveAnswerErrorReason;
 }
+
+/** The answer of an ask no summary engine can take. */
+const NO_PROVIDER: LiveAnswerError = {
+  key: 'Ui_LiveAnswerNoProvider',
+  text: '',
+  reason: 'no-provider',
+};
 
 export interface LiveAnswerState {
   readonly isAnswering: boolean;
@@ -72,8 +87,6 @@ export interface LiveAskDeps {
   publish(state: LiveAnswerState): void;
   nowMs(): number;
   formatFailure(error: unknown): string;
-  /** True when the page can open the provider setup (the message then says it was cancelled). */
-  readonly setupWired: boolean;
 }
 
 /** A typed ask reads the last minutes; a preset overview reads the digest and a wider window. */
@@ -164,8 +177,8 @@ export class LiveAskSession {
       });
       if (stale()) return;
       if (resolution.status !== 'ready') {
-        const key = this.deps.setupWired ? 'Status_SetupCancelled' : 'Ui_LiveAnswerNoProvider';
-        this.set({ ...this.state, isAnswering: false, error: { key, text: '' } });
+        // Typed, so the Record page and the pill can offer the engine setup next to the message.
+        this.set({ ...this.state, isAnswering: false, error: NO_PROVIDER });
         return;
       }
       const budget = budgetFor(settings.providerKind);

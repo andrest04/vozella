@@ -4,9 +4,9 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { isCtrlEnter } from '../../app/shortcuts';
 import { useT } from '../../i18n/I18nProvider';
 import type { StringKey } from '../../i18n/translate';
-import { IconButton, Input, Notice, cn } from '../../ui';
+import { Button, IconButton, Input, Notice, cn } from '../../ui';
 import { LiveQuestionSlot } from './LiveQuestionSlot';
-import { askLive, setWebSearch, useLiveAskStore } from './use-live-ask';
+import { askLive, openAnswerSetup, setWebSearch, useLiveAskStore } from './use-live-ask';
 import { registerQuestionDock } from './use-live-questions';
 
 export const answerErrorMessage = (
@@ -17,6 +17,10 @@ export const answerErrorMessage = (
   if (error === null) return '';
   return error.key === null ? error.text : translate(error.key as StringKey);
 };
+
+/** True when no summary engine could take the ask: the window offers the engine setup. */
+export const needsEngineSetup = (answer: RecordingAnswerDto): boolean =>
+  answer.error?.reason === 'no-provider';
 
 /**
  * The typed question under the live transcript. Ctrl+Enter inside the
@@ -58,6 +62,19 @@ export function LiveAskDock({ enabled }: { readonly enabled: boolean }) {
         <Notice tone="error" data-testid="live-answer-error">
           <p className="font-medium">{t('RecordPage_LiveAnswerError.Title')}</p>
           {message === '' ? null : <p className="text-ui text-ink-muted">{message}</p>}
+          {needsEngineSetup(answer) ? (
+            <Button
+              id="BtnLiveAnswerSetUpEngine"
+              data-testid="BtnLiveAnswerSetUpEngine"
+              size="sm"
+              className="mt-2"
+              onClick={() => {
+                void openAnswerSetup();
+              }}
+            >
+              {t('Ui_LiveAnswerSetUpEngine')}
+            </Button>
+          ) : null}
         </Notice>
       ) : null}
       <div className="flex items-center gap-2">

@@ -1,8 +1,10 @@
 import {
   recordingAnswer,
+  recordingAnswerSetupRequested,
   recordingAsk,
   recordingCancelAsk,
   recordingDismissQuestion,
+  recordingOpenAnswerSetup,
   recordingQuestionDetected,
   recordingQuestionWithdrawn,
   type EventChannel,
@@ -55,6 +57,11 @@ export interface LiveAskDeps {
    */
   readonly localModelLoaded?: () => boolean;
   readonly broadcast: Broadcast;
+  /**
+   * Restores the main window when minimized, shows it when hidden and focuses it (the pill's
+   * "Open Vozella" path). False when there is no main window. Unset: there is none.
+   */
+  readonly showMainWindow?: () => boolean;
   readonly formatFailure: (error: unknown) => string;
   readonly nowMs: () => number;
   /** Test seams for the live question detection; default to setImmediate and setTimeout. */
@@ -119,8 +126,6 @@ export class LiveAsk {
       },
       nowMs: deps.nowMs,
       formatFailure: deps.formatFailure,
-      // Provider setup is a page flow; the main process cannot open it from here.
-      setupWired: false,
     });
     this.digest = new RollingDigest({
       nowMs: deps.nowMs,
@@ -265,6 +270,16 @@ export class LiveAsk {
     this.session.cancel();
     return was;
   }
+
+  /**
+   * The action of a `no-provider` answer, from the Record page or the pill: the main window comes
+   * forward first, then opens Settings on the summary engines. Nothing navigates without it.
+   */
+  openSetup(): boolean {
+    if (this.deps.showMainWindow?.() !== true) return false;
+    this.deps.broadcast(recordingAnswerSetupRequested, {});
+    return true;
+  }
 }
 
 export function registerLiveAskHandlers(server: IpcServerDeps, liveAsk: LiveAsk): void {
@@ -275,4 +290,5 @@ export function registerLiveAskHandlers(server: IpcServerDeps, liveAsk: LiveAsk)
   registerRequest(server, recordingDismissQuestion, ({ id }) => ({
     dismissed: liveAsk.dismissQuestion(id),
   }));
+  registerRequest(server, recordingOpenAnswerSetup, () => ({ opened: liveAsk.openSetup() }));
 }

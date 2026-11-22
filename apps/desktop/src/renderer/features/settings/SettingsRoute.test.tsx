@@ -7,7 +7,7 @@ import { ThemeProvider } from '../../app/theme';
 import { Providers } from '../../app/test-providers';
 import { SettingsRoute } from './SettingsRoute';
 import { resetSettingsPageCache } from './use-settings-page';
-import { openEngineInSettings, takeEngineFocus } from './engine-focus';
+import { connectEngineSetupRequests, openEngineInSettings, takeEngineFocus } from './engine-focus';
 import { rememberSettingsTab, resetSettingsTab } from './settings-tab';
 import {
   openTranscriptionInSettings,
@@ -1574,6 +1574,60 @@ describe('Settings page (engine link)', () => {
     });
     expect(await openRow('Anthropic')).toBeInTheDocument();
     expect(await row('Local (on this device)')).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('a link to the engine in use opens the Summaries tab on that row and focuses it', async () => {
+    install({
+      'settings.getPage': () => pageDto({ provider: 'Codex' }),
+      'workspace.dispatch': () => ({}),
+    });
+    openEngineInSettings('in-use');
+    mount('en', 'general');
+    const codex = await openRow('Codex CLI');
+    expect(screen.getByRole('tab', { selected: true })).toHaveTextContent('Summaries & AI');
+    await waitFor(() => {
+      expect(codex).toHaveFocus();
+    });
+    expect(takeEngineFocus()).toBeNull();
+  });
+
+  it('a link to the engine in use focuses the first engine when none is in use', async () => {
+    install({
+      'settings.getPage': () => pageDto({ provider: '' }),
+      'workspace.dispatch': () => ({}),
+    });
+    openEngineInSettings('in-use');
+    mount();
+    const local = await row('Local (on this device)');
+    await waitFor(() => {
+      expect(local).toHaveFocus();
+    });
+    expect(local).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('the live answer setup request, sent to the main window, opens the engine in use', async () => {
+    const calls = install({
+      'settings.getPage': () => pageDto({ provider: 'Codex' }),
+      'workspace.dispatch': () => ({}),
+    });
+    const off = connectEngineSetupRequests();
+    act(() => {
+      emit('recording.answerSetupRequested', {});
+    });
+    expect(calls).toContainEqual({
+      name: 'workspace.dispatch',
+      input: { action: { type: 'navigateTo', tag: 'Settings' } },
+    });
+    mount('en', 'general');
+    const codex = await openRow('Codex CLI');
+    await waitFor(() => {
+      expect(codex).toHaveFocus();
+    });
+    off();
+    act(() => {
+      emit('recording.answerSetupRequested', {});
+    });
+    expect(calls.filter((call) => call.name === 'workspace.dispatch')).toHaveLength(1);
   });
 
   it('a link is used once: the next visit opens the engine in use again', async () => {

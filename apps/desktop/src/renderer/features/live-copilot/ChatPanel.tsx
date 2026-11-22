@@ -43,8 +43,13 @@ export interface ChatPanelProps {
   /** The streamed answer, Markdown. Empty until the first piece arrives. */
   readonly answerText: string;
   readonly isAnswering: boolean;
-  /** Ready text of a failed ask (may be empty), or null when there is no error. */
-  readonly error: { readonly message: string } | null;
+  /**
+   * Ready text of a failed ask (may be empty), or null when there is no error. `setup` names the
+   * engine setup action when no summary engine could take the ask.
+   */
+  readonly error: { readonly message: string; readonly setup?: string } | null;
+  /** Brings the app forward on the summary engines in Settings. */
+  readonly onSetup: () => void;
   readonly usedWeb: boolean;
   /** A take is running: asking is possible. */
   readonly canAsk: boolean;
@@ -145,6 +150,18 @@ export function ChatPanel(props: ChatPanelProps) {
               <p className="font-medium">{labels.errorTitle}</p>
               {props.error.message === '' ? null : (
                 <p className="text-ui text-ink-muted">{props.error.message}</p>
+              )}
+              {props.error.setup === undefined ? null : (
+                <Button
+                  id="BtnLiveCopilotSetUpEngine"
+                  data-testid="BtnLiveCopilotSetUpEngine"
+                  size="sm"
+                  aria-label={props.error.setup}
+                  onClick={props.onSetup}
+                  className={cn('mt-2', NO_DRAG)}
+                >
+                  {props.error.setup}
+                </Button>
               )}
             </Notice>
           ) : null}

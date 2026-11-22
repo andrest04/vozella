@@ -1,8 +1,14 @@
 import type { PillEdgeDto } from '@vozella/contracts';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useT } from '../../i18n/I18nProvider';
-import { askLive, connectLiveAsk, setWebSearch, useLiveAskStore } from '../record/use-live-ask';
-import { answerErrorMessage } from '../record/LiveAskDock';
+import {
+  askLive,
+  connectLiveAsk,
+  openAnswerSetup,
+  setWebSearch,
+  useLiveAskStore,
+} from '../record/use-live-ask';
+import { answerErrorMessage, needsEngineSetup } from '../record/LiveAskDock';
 import { LiveQuestionSlot } from '../record/LiveQuestionSlot';
 import { ChatPanel } from './ChatPanel';
 import { classifyPillLink } from './pill-links';
@@ -78,7 +84,14 @@ export function ChatPanelContainer({
       animate={animate}
       answerText={answer.text}
       isAnswering={answer.isAnswering}
-      error={answer.error === null ? null : { message: answerErrorMessage(answer, t) }}
+      error={
+        answer.error === null
+          ? null
+          : {
+              message: answerErrorMessage(answer, t),
+              ...(needsEngineSetup(answer) ? { setup: t('Ui_LiveAnswerSetUpEngine') } : {}),
+            }
+      }
       usedWeb={answer.usedWeb}
       canAsk={recording}
       canUseWeb={answer.canUseWebSearch}
@@ -111,6 +124,9 @@ export function ChatPanelContainer({
         setWebSearch(!forceWeb);
       }}
       onOpenApp={onOpenApp}
+      onSetup={() => {
+        void openAnswerSetup();
+      }}
       onLink={onLink}
       question={<LiveQuestionSlot className="pill-no-drag" />}
     />
