@@ -1,8 +1,10 @@
 import type { PillStateDto, RecordingStateDto } from '@vozella/contracts';
-import { EXPANDED_RADIUS_DIP } from '@vozella/core';
+import { EXPANDED_RADIUS_DIP, formatElapsed } from '@vozella/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import { useElapsed } from '../record/use-elapsed';
+import { HIGHLIGHT_FEEDBACK_MS, highlightMoment } from '../record/use-recording';
+import { useTimedValue } from '../record/use-timed-value';
 import { ChatPanelContainer } from './ChatPanelContainer';
 import { CapsuleView, hintSide, type CapsuleHint } from './CapsuleView';
 
@@ -12,7 +14,8 @@ const clampLevel = (level: number): number =>
 /**
  * The pill window page. Main owns the geometry and the take; this container asks for both once
  * (`pill.ready`, `recording.getState`), then follows `pill.state`, `pill.hint`, `recording.state`
- * and `audio.recording.level`, and sends the four buttons back through the bridge.
+ * and `audio.recording.level`, and sends the buttons back through the bridge. Highlight calls
+ * `recording.highlight` like the Record page (any app window may), and shows the same feedback.
  */
 export function PillContainer() {
   const t = useT();
@@ -24,6 +27,7 @@ export function PillContainer() {
   const hintCount = useRef(0);
   const animations = useRef(true);
   animations.current = pill?.animationsEnabled ?? true;
+  const highlighted = useTimedValue<string>(HIGHLIGHT_FEEDBACK_MS);
 
   const clearHintTimer = useCallback((): void => {
     if (hintTimer.current !== null) window.clearTimeout(hintTimer.current);
@@ -92,6 +96,13 @@ export function PillContainer() {
   const send = (name: 'pill.togglePause' | 'pill.stop' | 'pill.openApp'): void => {
     void window.vozella.invoke(name, {}).catch(() => undefined);
   };
+  const highlight = (): void => {
+    void highlightMoment().then((elapsedMs) => {
+      if (elapsedMs !== null) {
+        highlighted.show(t('RecordPage_Highlighted', formatElapsed(elapsedMs)));
+      }
+    });
+  };
   const toggleExpanded = (): void => {
     if (!pill) return;
     void window.vozella
@@ -138,11 +149,14 @@ export function PillContainer() {
         running={pill.visible}
         elapsed={elapsed}
         hint={hint}
+        canHighlight={recording?.phase === 'Recording'}
+        highlighted={highlighted.value}
         labels={{
           openApp: t('LiveCopilot_OpenApp.AutomationProperties.Name'),
           pause: t('LiveCopilot_Pause.AutomationProperties.Name'),
           resume: t('LiveCopilot_Resume.AutomationProperties.Name'),
           stop: t('LiveCopilot_Stop.AutomationProperties.Name'),
+          highlight: t('LiveCopilot_Highlight.AutomationProperties.Name'),
           expand: t('LiveCopilot_Expand.AutomationProperties.Name'),
           collapse: t('LiveCopilot_Collapse.AutomationProperties.Name'),
           collapseTooltip: t('LiveCopilot_Collapse.ToolTipService.ToolTip'),
@@ -158,6 +172,7 @@ export function PillContainer() {
         onStop={() => {
           send('pill.stop');
         }}
+        onHighlight={highlight}
         onToggleExpanded={toggleExpanded}
       />
     </div>
