@@ -1104,6 +1104,7 @@ function main(): void {
         },
         hover: (inside) => detection?.hover(inside),
         isShown: () => detection?.isShown ?? false,
+        shownApp: () => detection?.shownApp,
       });
       // Detection is a convenience: a missing addon is logged and must not stop the app.
       const watchers = await startup.run('watchers', () => startMeetingDetection(), {

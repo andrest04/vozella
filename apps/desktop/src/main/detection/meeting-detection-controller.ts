@@ -3,6 +3,7 @@ import {
   POPUP_AUTO_HIDE_MS,
   POPUP_EXIT_MS,
   type Logger,
+  type MeetingApp,
   type Scheduler,
   type WindowScanPort,
   type Workspace,
@@ -15,8 +16,8 @@ export interface PopupHandle {
   show(): void;
   /** Hides the window at once. */
   hide(): void;
-  /** Tells the popup page to appear (meetingPrompt.show). */
-  notifyShow(): void;
+  /** Tells the popup page to appear (meetingPrompt.show), naming the call's app. */
+  notifyShow(app: MeetingApp): void;
   /** Tells the popup page to leave (meetingPrompt.hide). */
   notifyHide(animated: boolean): void;
   dispose(): void;
@@ -54,6 +55,7 @@ export interface MeetingDetectionDeps {
 export class MeetingDetectionController {
   readonly watcher: CallWatcher;
   private shown = false;
+  private app: MeetingApp | undefined;
   private cancelAutoHide: (() => void) | null = null;
   private cancelExit: (() => void) | null = null;
   private offs: (() => void)[] = [];
@@ -85,8 +87,8 @@ export class MeetingDetectionController {
     if (this.offs.length > 0) return;
     this.disposed = false;
     this.offs = [
-      this.watcher.on('meetingDetected', () => {
-        this.show();
+      this.watcher.on('meetingDetected', ({ app }) => {
+        this.show(app);
       }),
       this.watcher.on('meetingEnded', () => {
         this.hideAnimated();
@@ -121,6 +123,11 @@ export class MeetingDetectionController {
   /** True from a show until the hide starts. */
   get isShown(): boolean {
     return this.shown;
+  }
+
+  /** The app the showing popup names; undefined when no popup is showing. */
+  get shownApp(): MeetingApp | undefined {
+    return this.shown ? this.app : undefined;
   }
 
   /** W8: the pointer over the card pauses the auto-hide, leaving it restarts the 30 s. */
@@ -158,11 +165,12 @@ export class MeetingDetectionController {
     this.deps.popup.dispose();
   }
 
-  private show(): void {
+  private show(app: MeetingApp): void {
     this.clearTimers();
     this.shown = true;
+    this.app = app;
     this.deps.popup.show();
-    this.deps.popup.notifyShow();
+    this.deps.popup.notifyShow(app);
     this.armAutoHide();
   }
 

@@ -5,6 +5,7 @@ import {
   type Scheduler,
   type CallWatcherPorts,
 } from './call-watcher';
+import type { MeetingApp, MeetingWindowMatch } from './call-detector';
 
 class FakeScheduler implements Scheduler {
   callback: (() => void) | null = null;
@@ -21,18 +22,24 @@ class FakeScheduler implements Scheduler {
 }
 
 function setup(opts: { popup?: () => Promise<boolean> } = {}) {
-  const scan = { found: false, fail: false, gate: null as Promise<void> | null };
+  const scan = {
+    found: false,
+    app: 'zoom' as MeetingApp,
+    fail: false,
+    gate: null as Promise<void> | null,
+  };
   const ws = { isCaptureActive: false, offers: 0, offerThrows: false };
   const events: string[] = [];
   const logs: string[] = [];
   const metas: unknown[] = [];
+  const infos: [string, unknown][] = [];
   const scheduler = new FakeScheduler();
   const ports: CallWatcherPorts = {
     scanner: {
-      async anyMeetingWindow() {
+      async findMeetingWindow(): Promise<MeetingWindowMatch | null> {
         if (scan.gate) await scan.gate;
         if (scan.fail) throw new Error('scan failed');
-        return scan.found;
+        return scan.found ? { app: scan.app } : null;
       },
     },
     workspace: {
@@ -48,7 +55,10 @@ function setup(opts: { popup?: () => Promise<boolean> } = {}) {
     scheduler,
     logger: {
       debug: (m) => logs.push(m),
-      info: (m) => logs.push(m),
+      info: (m, meta) => {
+        logs.push(m);
+        infos.push([m, meta]);
+      },
       warn: (m, meta) => {
         logs.push(m);
         metas.push(meta);
@@ -57,9 +67,13 @@ function setup(opts: { popup?: () => Promise<boolean> } = {}) {
     },
   };
   const watcher = new CallWatcher(ports);
-  watcher.on('meetingDetected', () => events.push('detected'));
+  const detected: MeetingWindowMatch[] = [];
+  watcher.on('meetingDetected', (match) => {
+    detected.push(match);
+    events.push('detected');
+  });
   watcher.on('meetingEnded', () => events.push('ended'));
-  return { watcher, scan, ws, events, logs, metas, scheduler };
+  return { watcher, scan, ws, events, detected, logs, metas, infos, scheduler };
 }
 
 describe('CallWatcher', () => {
@@ -182,6 +196,22 @@ describe('CallWatcher', () => {
     await watcher.tick();
     expect(ws.offers).toBe(1);
     expect(events).toEqual(['detected']);
+  });
+
+  it('hands the detected app to the meetingDetected handlers', async () => {
+    const { watcher, scan, detected } = setup();
+    scan.found = true;
+    scan.app = 'teams';
+    await watcher.tick();
+    expect(detected).toEqual([{ app: 'teams' }]);
+  });
+
+  it('logs which app it found, never the window title', async () => {
+    const { watcher, scan, infos } = setup();
+    scan.found = true;
+    scan.app = 'meet';
+    await watcher.tick();
+    expect(infos).toContainEqual(['Call window found', { app: 'meet' }]);
   });
 
   it('an overlapping tick is dropped', async () => {

@@ -1,4 +1,4 @@
-import { isMeeting, type WindowScanPort } from '@vozella/core';
+import { meetingApp, type MeetingWindowMatch, type WindowScanPort } from '@vozella/core';
 
 export interface TopLevelWindowInfo {
   /** Process image name without ".exe". */
@@ -12,8 +12,9 @@ export interface WindowLister {
 }
 
 /**
- * Port: is any open top-level window a meeting call? Stops at the first match. A listing
- * that fails counts as "no call window", so a scan error never reaches the watcher.
+ * Port: the first open top-level window that is a meeting call, named by its app. Stops at the
+ * first match. A listing that fails counts as "no call window", so a scan error never reaches
+ * the watcher. The match never carries the window title.
  */
 export class WindowScanner implements WindowScanPort {
   constructor(
@@ -21,17 +22,18 @@ export class WindowScanner implements WindowScanPort {
     private readonly onError: (error: Error) => void = () => undefined,
   ) {}
 
-  async anyMeetingWindow(): Promise<boolean> {
+  async findMeetingWindow(): Promise<MeetingWindowMatch | null> {
     try {
       const windows = await this.lister.listWindows();
       for (const w of windows) {
         if (w.processName === '' || w.title === '') continue;
-        if (isMeeting(w.processName, w.title)) return true;
+        const app = meetingApp(w.processName, w.title);
+        if (app !== null) return { app };
       }
-      return false;
+      return null;
     } catch (error) {
       this.onError(error instanceof Error ? error : new Error(String(error)));
-      return false;
+      return null;
     }
   }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isMeeting } from './call-detector';
+import { isMeeting, meetingApp } from './call-detector';
 
 describe('isMeeting', () => {
   it.each([
@@ -58,5 +58,29 @@ describe('isMeeting', () => {
     for (const p of ['webex', 'slack', 'discord', 'skype']) {
       expect(isMeeting(p, 'Meeting call')).toBe(false);
     }
+  });
+});
+
+describe('meetingApp', () => {
+  it.each([
+    ['CptHost', 'Zoom', 'zoom'],
+    ['zoom', 'Zoom Meeting', 'zoom'],
+    ['  ZOOM  ', 'zoom webinar', 'zoom'],
+    ['ms-teams', 'Standup | Meeting', 'teams'],
+    ['Teams', 'Call with Ana | Microsoft Teams', 'teams'],
+    ['chrome', 'Meet - abc-defg-hij - Google Chrome', 'meet'],
+    ['msedge', 'Meet – abc-defg-hij', 'meet'],
+  ])('%s / %s is a %s meeting', (proc, title, app) => {
+    expect(meetingApp(proc, title)).toBe(app);
+  });
+
+  it.each([
+    ['Zoom', 'Zoom Workplace'],
+    ['Teams', 'Chat | Microsoft Teams'],
+    ['chrome', 'Google Meet'],
+    ['notepad', 'Zoom Meeting'],
+    ['', 'Zoom Meeting'],
+  ])('%s / %s is no meeting', (proc, title) => {
+    expect(meetingApp(proc, title)).toBeNull();
   });
 });

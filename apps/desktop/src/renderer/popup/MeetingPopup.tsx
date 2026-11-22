@@ -55,7 +55,11 @@ export function MeetingPopup(props: MeetingPopupProps) {
           <Mark size={24} />
         </div>
         <div className="relative min-w-0 flex-1">
-          <p id="TxtMeetingPromptTitle" className="truncate text-ui-lg font-medium text-ink">
+          <p
+            id="TxtMeetingPromptTitle"
+            title={props.title}
+            className="truncate text-ui-lg font-medium text-ink"
+          >
             {props.title}
           </p>
           <p id="TxtMeetingPromptSubtitle" className="truncate text-caption text-ink-muted">

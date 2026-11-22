@@ -7,10 +7,11 @@ import { MeetingPopupContainer } from './MeetingPopupContainer';
 
 type Listener = (payload: never) => void;
 
-function install(reducedMotion: boolean, shownAtStart = false) {
+function install(reducedMotion: boolean, shownAtStart = false, appAtStart?: string) {
   const listeners = new Map<string, Listener>();
+  const ready = { shown: shownAtStart, ...(appAtStart ? { app: appAtStart } : {}) };
   const invoke = vi.fn((name: string, _input: unknown) =>
-    Promise.resolve(name === 'meetingPrompt.ready' ? { shown: shownAtStart } : { done: true }),
+    Promise.resolve(name === 'meetingPrompt.ready' ? ready : { done: true }),
   );
   Object.defineProperty(window, 'vozella', {
     configurable: true,
@@ -78,6 +79,47 @@ describe('MeetingPopupContainer', () => {
       'id',
       'BtnMeetingPromptMore',
     );
+  });
+
+  it.each([
+    ['teams', 'Teams meeting detected'],
+    ['zoom', 'Zoom meeting detected'],
+    ['meet', 'Google Meet call detected'],
+  ])('names the %s app in the title', (app, title) => {
+    const bridge = install(false);
+    renderPopup();
+    bridge.emit('meetingPrompt.show', { app });
+    expect(screen.getByText(title)).toHaveAttribute('id', 'TxtMeetingPromptTitle');
+  });
+
+  it('keeps the generic title for an unknown app or none', () => {
+    const bridge = install(false);
+    renderPopup();
+    bridge.emit('meetingPrompt.show', { app: 'unknown' });
+    expect(screen.getByText('Meeting detected')).toHaveAttribute('id', 'TxtMeetingPromptTitle');
+    bridge.emit('meetingPrompt.show', { app: 'teams' });
+    bridge.emit('meetingPrompt.show', {});
+    expect(screen.getByText('Meeting detected')).toHaveAttribute('id', 'TxtMeetingPromptTitle');
+  });
+
+  it('keeps the full title readable on hover when it is cut off', () => {
+    const bridge = install(false);
+    renderPopup();
+    bridge.emit('meetingPrompt.show', { app: 'meet' });
+    expect(document.getElementById('TxtMeetingPromptTitle')).toHaveAttribute(
+      'title',
+      'Google Meet call detected',
+    );
+  });
+
+  it('names the app when main showed the popup before the page was listening', async () => {
+    install(false, true, 'zoom');
+    renderPopup();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(card()).toHaveAttribute('data-phase', 'in');
+    expect(screen.getByText('Zoom meeting detected')).toBeInTheDocument();
   });
 
   it('is hidden until main shows it, then plays the entrance (W7)', () => {
@@ -177,5 +219,18 @@ describe('MeetingPopupContainer', () => {
     );
     expect(screen.getByText('Reunión detectada')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Empezar a grabar' })).toBeInTheDocument();
+  });
+
+  it('names the app in Spanish too', () => {
+    const bridge = install(false);
+    render(
+      <I18nProvider initialLocale="es">
+        <MeetingPopupContainer />
+      </I18nProvider>,
+    );
+    bridge.emit('meetingPrompt.show', { app: 'teams' });
+    expect(screen.getByText('Reunión de Teams detectada')).toBeInTheDocument();
+    bridge.emit('meetingPrompt.show', { app: 'meet' });
+    expect(screen.getByText('Llamada de Google Meet detectada')).toBeInTheDocument();
   });
 });
