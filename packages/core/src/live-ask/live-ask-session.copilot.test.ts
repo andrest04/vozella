@@ -56,7 +56,6 @@ function rig(
     publish: (s) => published.push(s),
     nowMs: () => now,
     formatFailure: (e) => `failed: ${(e as Error).message}`,
-    setupWired: false,
   };
   const session = new LiveAskSession(deps);
   return {

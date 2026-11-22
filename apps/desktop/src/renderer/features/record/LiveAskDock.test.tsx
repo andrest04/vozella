@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Providers } from '../../app/test-providers';
@@ -150,6 +150,39 @@ describe('LiveAskDock', () => {
     );
     answer({ error: { key: null, text: 'The CLI failed.' } });
     expect(screen.getByRole('alert')).toHaveTextContent('The CLI failed.');
+  });
+
+  it('offers the engine setup when no summary engine can answer, and opens it in Settings', async () => {
+    mount();
+    answer({ error: { key: 'Ui_LiveAnswerNoProvider', text: '', reason: 'no-provider' } });
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent(
+      'Pick a summary engine in Settings to get answers during a take.',
+    );
+    const setUp = within(alert).getByRole('button', { name: 'Set up a summary engine' });
+    expect(setUp).toHaveAttribute('id', 'BtnLiveAnswerSetUpEngine');
+    await userEvent.click(setUp);
+    expect(calls).toEqual([{ name: 'recording.openAnswerSetup', input: {} }]);
+  });
+
+  it('offers no setup for the other failures', () => {
+    mount();
+    answer({ error: { key: 'RecordPage_LiveAnswerEmpty', text: '' } });
+    expect(within(screen.getByRole('alert')).queryByRole('button')).toBeNull();
+    answer({ error: { key: null, text: 'The CLI failed.' } });
+    expect(within(screen.getByRole('alert')).queryByRole('button')).toBeNull();
+  });
+
+  it('names the setup in Spanish', () => {
+    render(
+      <Providers locale="es">
+        <LiveAskDock enabled />
+      </Providers>,
+    );
+    answer({ error: { key: 'Ui_LiveAnswerNoProvider', text: '', reason: 'no-provider' } });
+    expect(
+      screen.getByRole('button', { name: 'Configurar un motor de resumen' }),
+    ).toBeInTheDocument();
   });
 
   it('locks the box when the take is not recording', () => {

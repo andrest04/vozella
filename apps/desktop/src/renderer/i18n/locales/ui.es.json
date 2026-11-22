@@ -100,6 +100,7 @@
   "Ui_SwitchOff": "Desactivado",
   "Ui_RecordingLevel": "Nivel del micro",
   "Ui_LiveAnswerNoProvider": "Elige un motor de resumen en Ajustes para recibir respuestas durante la grabación.",
+  "Ui_LiveAnswerSetUpEngine": "Configurar un motor de resumen",
   "Ui_LiveSkipped": "La vista previa en vivo está desactivada. La transcripción se hace al detener.",
   "Ui_RetranscribeBusy": "Espera a que termine la grabación o la nueva transcripción en curso.",
   "Ui_RetranscribeNeedsEngine": "El motor de transcripción aún no está instalado. Descárgalo primero.",

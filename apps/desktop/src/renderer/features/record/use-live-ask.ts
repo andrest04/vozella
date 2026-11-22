@@ -90,3 +90,15 @@ export async function cancelLiveAsk(): Promise<void> {
     // The answer finishes on its own.
   }
 }
+
+/**
+ * The action of an answer that found no summary engine: main brings the main window forward and
+ * it opens Settings on the engine in use. The same call from the Record page and the pill.
+ */
+export async function openAnswerSetup(): Promise<void> {
+  try {
+    await window.vozella.invoke('recording.openAnswerSetup', {});
+  } catch {
+    // Nothing opens; the message still says where the setting is.
+  }
+}
