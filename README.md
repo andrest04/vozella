@@ -85,8 +85,6 @@ Every push to `main` that touches the app builds the installer on GitHub Actions
 | `docs/brand/` | Logo files |
 | `docs/screenshots/` | README and e2e screenshots |
 | `scripts/` | Icon generation |
-| `odd/tasks/` | Feature task notes |
-| `.agents/`, `.claude/` | Coding agent skills and settings |
 
 The Electron stack and its conventions are in [`docs/stack.md`](docs/stack.md). Agent and contributor guidance is in [AGENTS.md](AGENTS.md).
 
