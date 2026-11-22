@@ -1,6 +1,6 @@
 import { CancelSource, type CancelSignal } from '../cancel';
 import { isTranscriptHeader, splitCommittedLines } from '../transcription/committed-line';
-import { takeHead } from './utf16';
+import { cutPrefix } from '../text/utf16-cut';
 
 /** An update is considered at most this often while recording. */
 export const DIGEST_INTERVAL_MS = 120_000;
@@ -61,7 +61,7 @@ export function cleanDigestReply(reply: string): string {
     .map((l) => l.trimEnd());
   const text = lines.join('\n').trim();
   if (text.length <= DIGEST_MAX_CHARS) return text;
-  const cut = takeHead(text, DIGEST_MAX_CHARS);
+  const cut = cutPrefix(text, DIGEST_MAX_CHARS);
   const lastBreak = cut.lastIndexOf('\n');
   return (lastBreak > 0 ? cut.slice(0, lastBreak) : cut).trimEnd();
 }

@@ -1,6 +1,6 @@
 import { packAttachments, type AttachedDocument } from '../chat/attachments';
 import { neutralizeStructure, singleLine } from '../chat/context-packer';
-import { cutPrefix } from '../chat/text-cut';
+import { cutPrefix } from '../text/utf16-cut';
 import { isRemoteEngine } from '../settings/api-providers';
 import type { ProviderId } from '../summaries/provider';
 

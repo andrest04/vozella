@@ -17,7 +17,7 @@ import {
   takeRecentWindow,
 } from './answer-window';
 import { buildLiveAnswerPrompt } from './prompt-builder';
-import { takeTail } from './utf16';
+import { cutTail } from '../text/utf16-cut';
 import { shouldUseWeb, supportsWebSearch } from './web-policy';
 
 /** At most one publish per this many ms once the first visible text went out. */
@@ -244,7 +244,7 @@ export class LiveAskSession {
     if (scope === 'recent') return takeRecentWindow(committed, DEFAULT_ANSWER_WINDOW_MS);
     const windowMs = hasDigest ? OVERVIEW_WINDOW_WITH_DIGEST_MS : OVERVIEW_WINDOW_NO_DIGEST_MS;
     const chars = hasDigest ? budget.liveTailWithDigestChars : budget.liveChars;
-    return takeTail(takeRecentWindow(committed, windowMs), chars);
+    return cutTail(takeRecentWindow(committed, windowMs), chars);
   }
 
   /** Stop and Discard. Silent: it only ends the answering state. */

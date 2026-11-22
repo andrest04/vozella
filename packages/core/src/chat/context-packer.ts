@@ -3,7 +3,7 @@ import { parseOffsetDate } from '../library/offset-date';
 import { isRemoteEngine } from '../settings/api-providers';
 import type { ProviderId } from '../summaries/provider';
 import type { ChatScopeKind } from './scope-resolver';
-import { cutPrefix, cutTail } from './text-cut';
+import { cutPrefix, cutTail } from '../text/utf16-cut';
 import { selectExcerpts } from './transcript-retrieval';
 
 export const LIVE_TRANSCRIPT_MAX_CHARS = 2500;

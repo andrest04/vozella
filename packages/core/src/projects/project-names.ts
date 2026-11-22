@@ -1,6 +1,7 @@
 import { parseGuid } from '../library/guid';
 import { parseOffsetDate } from '../library/offset-date';
 import { foldText } from '../library/text-fold';
+import { cutPrefix } from '../text/utf16-cut';
 import { MAX_CHAIN_DEPTH, PROJECT_NAME_MAX } from './project';
 
 /** What every project name is compared by: case and accents do not count. */
@@ -31,12 +32,6 @@ export function isProjectNameTaken(
 }
 
 const SEPARATOR = ' – ';
-
-function cut(value: string, max: number): string {
-  if (value.length <= max) return value;
-  const last = value.charCodeAt(max - 1);
-  return value.slice(0, last >= 0xd800 && last <= 0xdbff ? max - 1 : max);
-}
 
 /** An entry of the folder list written by earlier versions, as the reader hands it over (nothing validated yet). */
 export interface LegacyFolderEntry {
@@ -143,7 +138,7 @@ export function resolveMigratedNames(nodes: readonly Node[]): Map<string, string
   for (const n of nodes) {
     const parent = parentOf(n);
     if (isRenamed(n) && parent !== undefined)
-      prefixed.set(n.id, cut(`${parent.name}${SEPARATOR}${n.name}`, PROJECT_NAME_MAX));
+      prefixed.set(n.id, cutPrefix(`${parent.name}${SEPARATOR}${n.name}`, PROJECT_NAME_MAX));
   }
   const prefixedSize = new Map<string, number>();
   for (const value of prefixed.values()) {
@@ -154,10 +149,10 @@ export function resolveMigratedNames(nodes: readonly Node[]): Map<string, string
   const taken = new Set<string>();
   const result = new Map<string, string>();
   const claim = (id: string, wanted: string): void => {
-    let candidate = cut(wanted, PROJECT_NAME_MAX);
+    let candidate = cutPrefix(wanted, PROJECT_NAME_MAX);
     for (let n = 2; taken.has(foldText(candidate)); n += 1) {
       const suffix = ` ${String(n)}`;
-      candidate = `${cut(wanted, PROJECT_NAME_MAX - suffix.length)}${suffix}`;
+      candidate = `${cutPrefix(wanted, PROJECT_NAME_MAX - suffix.length)}${suffix}`;
     }
     taken.add(foldText(candidate));
     result.set(id, candidate);
@@ -175,7 +170,7 @@ export function resolveMigratedNames(nodes: readonly Node[]): Map<string, string
 
 const cleanName = (raw: string | null): string => {
   const trimmed = (raw ?? '').trim();
-  return trimmed === '' ? 'Project' : cut(trimmed, PROJECT_NAME_MAX);
+  return trimmed === '' ? 'Project' : cutPrefix(trimmed, PROJECT_NAME_MAX);
 };
 
 /**
