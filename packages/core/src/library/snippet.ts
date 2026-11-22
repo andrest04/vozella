@@ -1,4 +1,4 @@
-import { cutPrefix } from '../chat/text-cut';
+import { cutPrefix } from '../text/utf16-cut';
 import { extractCommittedBody, isTranscriptHeader } from '../transcription/committed-line';
 import type { MeetingListItem, MeetingRecord } from './meeting';
 

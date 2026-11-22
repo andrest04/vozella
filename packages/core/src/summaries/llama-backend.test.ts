@@ -4,7 +4,6 @@ import {
   backendFallbackChain,
   chooseBackend,
   gpuOffloadFor,
-  isGpuBackend,
   usesGpuOffload,
 } from './llama-backend';
 
@@ -51,10 +50,8 @@ describe('llama backend choice', () => {
   });
 
   it('GPU backends offload layers, cpu does not', () => {
-    expect(isGpuBackend('cuda12')).toBe(true);
-    expect(isGpuBackend('cuda13')).toBe(true);
-    expect(isGpuBackend('vulkan')).toBe(true);
-    expect(isGpuBackend('cpu')).toBe(false);
+    expect(usesGpuOffload('cuda12')).toBe(true);
+    expect(usesGpuOffload('cuda13')).toBe(true);
     expect(usesGpuOffload('vulkan')).toBe(true);
     expect(usesGpuOffload('cpu')).toBe(false);
   });

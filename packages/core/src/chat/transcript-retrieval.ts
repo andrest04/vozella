@@ -4,7 +4,7 @@
  * question, and the best ones are returned in time order, followed by the recent tail.
  */
 import { foldText } from '../library/text-fold';
-import { cutPrefix, cutTail } from './text-cut';
+import { cutPrefix, cutTail } from '../text/utf16-cut';
 
 export const RETRIEVAL_WINDOW_MS = 90_000;
 /** Window size for a transcript without timestamps. */

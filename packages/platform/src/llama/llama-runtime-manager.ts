@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import nodePath from 'node:path';
 import { RuntimeInUseError, type CancelSignal, type LlamaBackend } from '@vozella/core';
+import { listFilesRecursive, listSubdirectories } from '../fs/directory-tree';
 import { downloadToFile } from '../settings/download-to-file';
 import { extractZipWithTar, type ZipExtractor } from '../transcription/zip-extractor';
 import {
@@ -162,7 +163,7 @@ export class LlamaRuntimeManager {
       return;
     }
     const probe = this.options.probeFile ?? defaultProbe;
-    for (const file of listFiles(folder)) {
+    for (const file of listFilesRecursive(folder)) {
       try {
         probe(file);
       } catch (error) {
@@ -179,26 +180,8 @@ export class LlamaRuntimeManager {
 /** The folder itself, or one subfolder (some archives wrap their files in a directory). */
 export function findServerDirectory(folder: string): string | null {
   if (fs.existsSync(nodePath.join(folder, LLAMA_SERVER_EXE))) return folder;
-  let entries: fs.Dirent[];
-  try {
-    entries = fs.readdirSync(folder, { withFileTypes: true });
-  } catch {
-    return null;
-  }
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const dir = nodePath.join(folder, entry.name);
+  for (const dir of listSubdirectories(folder)) {
     if (fs.existsSync(nodePath.join(dir, LLAMA_SERVER_EXE))) return dir;
   }
   return null;
-}
-
-function listFiles(dir: string): string[] {
-  const out: string[] = [];
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = nodePath.join(dir, entry.name);
-    if (entry.isDirectory()) out.push(...listFiles(full));
-    else out.push(full);
-  }
-  return out;
 }

@@ -2,7 +2,7 @@ import { isRemoteEngine } from '../settings/api-providers';
 import type { ProviderId } from '../summaries/provider';
 import { MEETING_LINK_PREFIX } from './meeting-link';
 import type { ChatScopeKind } from './scope-resolver';
-import { cutPrefix } from './text-cut';
+import { cutPrefix } from '../text/utf16-cut';
 
 export const MAX_PRIOR_MESSAGES = 8;
 export const MAX_PRIOR_MESSAGE_CHARS = 1500;

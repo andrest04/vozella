@@ -47,7 +47,7 @@ import {
 import { answerLanguageName, buildPrompt, priorTurnLimitsFor } from './prompt-builder';
 import { matchesOpenThread, type ChatScopeDecision } from './scope-resolver';
 import { StreamCoalescer } from './stream-coalescer';
-import { cutPrefix } from './text-cut';
+import { cutPrefix } from '../text/utf16-cut';
 import type { ChatEngine } from './user-prompts';
 
 /**

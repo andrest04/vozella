@@ -4,7 +4,7 @@ import {
   parseCommittedLineEnd,
   splitCommittedLines,
 } from '../transcription/committed-line';
-import { takeTail } from './utf16';
+import { cutTail } from '../text/utf16-cut';
 
 export const DEFAULT_ANSWER_WINDOW_MS = 90_000;
 /** A preset overview next to a rolling digest: the digest covers what came before this. */
@@ -24,7 +24,7 @@ export function takeRecentWindow(
   let latest: number | null = null;
   for (const end of ends) if (end !== null && (latest === null || end > latest)) latest = end;
   // The cut keeps whole surrogate pairs.
-  if (latest === null) return takeTail(lines.join('\n'), UNSTAMPED_FALLBACK_CHARS);
+  if (latest === null) return cutTail(lines.join('\n'), UNSTAMPED_FALLBACK_CHARS);
   const cutoff = latest - windowMs;
   const inSpan = (end: number | null): boolean => end !== null && end >= cutoff && end <= latest;
   let first = -1;

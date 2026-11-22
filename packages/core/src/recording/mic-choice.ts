@@ -1,6 +1,5 @@
 import {
   buildMicrophoneOptions,
-  sameMicrophoneOptions,
   selectMicrophoneAfterReload,
   type MicrophoneDevice,
   type MicrophoneOption,
@@ -40,6 +39,3 @@ export function resolveMicrophoneChoice(
   );
   return { options, selected: selectMicrophoneAfterReload(options, current, remembered) };
 }
-
-/** An unchanged list is not rewritten (an open dropdown stays as it is). */
-export const sameMicrophoneChoices = sameMicrophoneOptions;

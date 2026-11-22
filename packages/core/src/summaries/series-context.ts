@@ -1,6 +1,6 @@
 import { packAttachments, type AttachedDocument } from '../chat/attachments';
 import { neutralizeStructure } from '../chat/context-packer';
-import { cutPrefix } from '../chat/text-cut';
+import { cutPrefix } from '../text/utf16-cut';
 import type { ActionItem } from '../library/meeting';
 import type { ProjectContextBudget } from '../projects/project-context';
 import type { SeriesContextInput } from './prompt-builders';

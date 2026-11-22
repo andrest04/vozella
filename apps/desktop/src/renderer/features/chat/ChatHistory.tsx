@@ -1,10 +1,10 @@
 import { History, MessageSquarePlus } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { ChatThreadRows } from '../../app/ChatThreadRows';
 import { useChatThreads } from '../../app/chat-threads';
 import { useT } from '../../i18n/I18nProvider';
 import { Button, IconButton, Popover, Skeleton } from '../../ui';
-import { useMeetingListStore } from '../meeting-list/meeting-list-store';
+import { useMeetingTitles } from './use-meeting-titles';
 
 export interface ChatHistoryProps {
   /** Whose chats are listed: a project, or null for no project. */
@@ -24,12 +24,7 @@ function HistoryList({
 }: Omit<ChatHistoryProps, 'disabled'> & { readonly close: () => void }) {
   const t = useT();
   const model = useChatThreads(owner);
-  const meetings = useMeetingListStore((state) => state.meetings);
-  const loaded = useMeetingListStore((state) => !state.isLoading);
-  const titles = useMemo(
-    () => (loaded ? new Map(meetings.map((meeting) => [meeting.id, meeting.title])) : null),
-    [loaded, meetings],
-  );
+  const titles = useMeetingTitles();
   return (
     <div className="flex flex-col gap-2">
       <Button

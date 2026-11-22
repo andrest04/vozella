@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ApiProviderError,
   CancelSource,
-  cloudTranscriptionApiEngine,
+  cloudTranscriptionProvider,
   resolveCloudTranscriptionModel,
 } from '@vozella/core';
 import { OpenAiSpeechToTextClient } from './openai-speech-to-text-client';
@@ -38,7 +38,7 @@ const KEYS: Record<OpenAiCompatibleKind, string> = {
 const KINDS = Object.keys(KEYS) as OpenAiCompatibleKind[];
 
 function client(kind: OpenAiCompatibleKind, key: string): OpenAiSpeechToTextClient {
-  const engine = cloudTranscriptionApiEngine(kind);
+  const engine = cloudTranscriptionProvider(kind);
   return new OpenAiSpeechToTextClient({
     displayName: engine.displayName,
     baseUrl: engine.defaultBaseUrl ?? '',

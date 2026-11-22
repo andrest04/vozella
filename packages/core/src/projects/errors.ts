@@ -10,14 +10,3 @@ export class StorageTooNewError extends Error {
     this.name = 'StorageTooNewError';
   }
 }
-
-/** A project file's stored data exists but cannot be read. Distinct from "missing". */
-export class ProjectFileCorruptError extends Error {
-  constructor(
-    readonly path: string,
-    readonly reason: string,
-  ) {
-    super(`A project file is damaged (${path}): ${reason}`);
-    this.name = 'ProjectFileCorruptError';
-  }
-}

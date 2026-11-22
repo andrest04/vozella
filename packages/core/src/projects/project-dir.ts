@@ -1,5 +1,6 @@
 import { INBOX_DIR_NAME } from './storage-layout';
 import { foldText } from '../library/text-fold';
+import { cutPrefix } from '../text/utf16-cut';
 
 const MAX_DIR_LENGTH = 260;
 const MAX_NAME_LENGTH = 80;
@@ -31,12 +32,6 @@ export function isSafeProjectDir(dir: string): boolean {
   });
 }
 
-const cut = (value: string, max: number): string => {
-  if (value.length <= max) return value;
-  const last = value.charCodeAt(max - 1);
-  return value.slice(0, last >= 0xd800 && last <= 0xdbff ? max - 1 : max);
-};
-
 /**
  * One safe directory name for a new project: forbidden characters removed, whitespace collapsed,
  * leading dots and trailing dots and spaces stripped, at most 80 characters. Empty becomes
@@ -46,7 +41,7 @@ const cut = (value: string, max: number): string => {
 export function sanitizeDirName(name: string): string {
   const clean = (value: string): string => value.replace(/^[\s.]+/u, '').replace(/[\s.]+$/u, '');
   let value = name.replace(SANITIZE_CHARS, ' ').replace(/\s+/g, ' ');
-  value = clean(cut(clean(value), MAX_NAME_LENGTH));
+  value = clean(cutPrefix(clean(value), MAX_NAME_LENGTH));
   if (value === '') return 'Project';
   return isDevice(value) ? value.replace(/^[^.]*/u, (stem) => `${stem} project`) : value;
 }

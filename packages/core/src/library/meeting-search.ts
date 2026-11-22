@@ -1,4 +1,4 @@
-import { cutPrefix, cutTail } from '../chat/text-cut';
+import { cutPrefix, cutTail } from '../text/utf16-cut';
 import { meetingInstant } from './library-view';
 import type { MeetingListItem, MeetingRecord } from './meeting';
 import { SNIPPET_MAX_LENGTH, plainMarkdownLine, spokenTranscript } from './snippet';

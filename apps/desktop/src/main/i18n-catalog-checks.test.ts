@@ -207,15 +207,10 @@ describe('references in the code', () => {
    * Keys in the groups Settings uses that no code of this app asks for, each with the reason.
    * Anything else in these groups must be referenced, so a converted key that stops being used
    * (or never was) fails here instead of rotting.
-   */
-  const OTHER_MODULES = [
-    // The calendar section heading kept from the carried-over catalog.
-    /^Settings_Calendar\.Text$/,
-  ];
-  /**
-   * The Grok (xAI) provider was removed (owner decision 2026-11-03, may return later). Its keys
-   * remain in en.json and es.json and nothing reads them. Xai_FeedbackModel is not one of them: the Claude Code and
-   * Codex model line still uses it.
+   *
+   * The Grok (xAI) provider was removed (owner decision 2026-11-03, may return later). Its
+   * Settings_ keys and Xai_ProviderName remain in en.json and es.json and no app code reads them.
+   * Xai_FeedbackModel is not one of them: the Claude Code and Codex model line still uses it.
    */
   const REMOVED_PROVIDER_KEYS = /^(Xai_(?!FeedbackModel$)|Settings_Xai|Settings_ProviderXai)/;
   const UNUSED_BY_DECISION: string[] = [
@@ -234,7 +229,6 @@ describe('references in the code', () => {
     const unreferenced = Object.keys(en)
       .filter((key) => groups.test(key))
       .filter((key) => !uses(key))
-      .filter((key) => !OTHER_MODULES.some((pattern) => pattern.test(key)))
       .filter((key) => !REMOVED_PROVIDER_KEYS.test(key))
       .filter((key) => !UNUSED_BY_DECISION.includes(key));
     expect(unreferenced).toEqual([]);

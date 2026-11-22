@@ -234,21 +234,13 @@ describe('SettingsPageService.load', () => {
 
   it('a saved Xai provider is reported as removed, never as Local', async () => {
     const { service, store } = page();
-    await store.update({
-      selectedSummaryProvider: 'Xai',
-      selectedXaiModelId: 'grok-4.3',
-      selectedXaiEffort: 'high',
-    });
+    await store.update({ selectedSummaryProvider: 'Xai' });
     const snapshot = await service.load();
     expect(snapshot.provider).toBe('Xai');
     expect(snapshot.providerNotice).toBe('xai-removed');
     expect(snapshot.cliStatus).toBeNull();
     const kept = await store.load();
-    expect(kept).toMatchObject({
-      selectedSummaryProvider: 'Xai',
-      selectedXaiModelId: 'grok-4.3',
-      selectedXaiEffort: 'high',
-    });
+    expect(kept).toMatchObject({ selectedSummaryProvider: 'Xai' });
   });
 
   it('detection can be asked again after the CLI is installed', async () => {

@@ -16,8 +16,6 @@ import { LibraryFileCorruptError } from './errors';
 export interface AppSettings {
   readonly selectedSummaryModelId: string | null;
   readonly selectedSummaryProvider: string | null;
-  readonly selectedXaiModelId: string | null;
-  readonly selectedXaiEffort: string | null;
   readonly selectedClaudeModelId: string | null;
   readonly selectedClaudeEffort: string | null;
   readonly selectedCodexModelId: string | null;
@@ -71,8 +69,6 @@ type Kind = 'string' | 'bool-true' | 'bool-false' | 'number';
 const FIELDS: readonly (readonly [keyof AppSettings, Kind])[] = [
   ['selectedSummaryModelId', 'string'],
   ['selectedSummaryProvider', 'string'],
-  ['selectedXaiModelId', 'string'],
-  ['selectedXaiEffort', 'string'],
   ['selectedClaudeModelId', 'string'],
   ['selectedClaudeEffort', 'string'],
   ['selectedCodexModelId', 'string'],

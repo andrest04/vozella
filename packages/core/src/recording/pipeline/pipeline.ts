@@ -3,7 +3,7 @@ import type { MeetingRecord } from '../../library/meeting';
 import type { MeetingRepository, SettingsStore } from '../../library/ports';
 import { resolveTranscriptionLanguage } from '../../library/settings';
 import {
-  cloudTranscriptionApiEngine,
+  cloudTranscriptionProvider,
   LOCAL_TRANSCRIPTION_ENGINE,
   resolveTranscriptionEngine,
 } from '../../settings/cloud-transcription-engines';
@@ -315,7 +315,7 @@ export class RecordingPipeline {
           ? { key: 'Ui_TranscriptionEngineUnavailable', args: [] }
           : {
               key: 'Ui_CloudTranscriptionKeyMissingAudioKept',
-              args: [cloudTranscriptionApiEngine(engine).displayName],
+              args: [cloudTranscriptionProvider(engine).displayName],
             },
       );
       return this.withoutTranscript(state);

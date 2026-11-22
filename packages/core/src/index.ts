@@ -18,3 +18,4 @@ export * from './session';
 export * from './live-copilot';
 export * from './shell';
 export * from './youtube';
+export * from './text';

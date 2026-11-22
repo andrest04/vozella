@@ -2,6 +2,7 @@
  * Code-point-safe cuts that still count UTF-16 units. Limits are counted in
  * JavaScript `length` units, and a cut never leaves half of a
  * surrogate pair behind: when the boundary falls inside a pair, the whole character is dropped.
+ * A lone surrogate already in the text is not repaired; only the cut itself is made safe.
  */
 
 const isHigh = (code: number): boolean => code >= 0xd800 && code <= 0xdbff;

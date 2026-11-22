@@ -23,7 +23,6 @@
   "Ui_LibraryChooseFolder": "Choose folder",
   "Ui_LibraryResetFolder": "Use the default folder",
   "Ui_LibraryFolderRefused": "That folder cannot be used. {0}",
-  "Ui_LibraryAll": "All",
   "Ui_LibraryToday": "Today",
   "Ui_LibraryYesterday": "Yesterday",
   "Ui_LibraryNoDate": "No date",

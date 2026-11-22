@@ -28,14 +28,9 @@ export const splitLines = (text: string): string[] =>
   text.split(/\r\n|\n|\r/).filter((line) => line.trim() !== '');
 
 /**
- * Turns the live transcript into lines the page can draw. `committedText` is the part that will not
- * change: the display text starts with it, and what follows is the interim suffix.
+ * Turns the live transcript into lines the page can draw. The first `committedCount` lines will not
+ * change (Infinity: all); the lines after them are the interim suffix.
  */
-export function liveLines(displayText: string, committedText: string): LiveLine[] {
-  return liveLinesFrom(displayText, splitLines(committedText).length);
-}
-
-/** The same, when the caller already knows how many lines are committed (Infinity: all). */
 export function liveLinesFrom(displayText: string, committedCount: number): LiveLine[] {
   return splitLines(displayText).map((line, index): LiveLine => {
     if (HEADER.test(line.trimStart())) return { kind: 'header', text: line.trim() };
@@ -50,12 +45,6 @@ export function liveLinesFrom(displayText: string, committedCount: number): Live
       starred: match[1] !== undefined,
     };
   });
-}
-
-/** The percent in "Transcribing audio... 42%", or null while the pass has not reported one. */
-export function percentFromStatus(status: string): number | null {
-  const match = /(\d{1,3})%/.exec(status);
-  return match?.[1] === undefined ? null : Math.min(100, Number(match[1]));
 }
 
 /** One bar for the whole install: each stage owns an equal share. */

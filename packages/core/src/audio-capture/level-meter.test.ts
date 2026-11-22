@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  computeBufferRms,
-  pcm16ToFloat,
-  resolveNormalizerGain,
-  toMeterPercent,
-  toMeterValue,
-} from './level-meter';
+import { computeBufferRms, pcm16ToFloat, toMeterPercent, toMeterValue } from './level-meter';
 
 describe('toMeterValue', () => {
   it.each([0, 1e-6, 0.0005])('is zero at or below the floor (%s)', (amplitude) => {
@@ -67,22 +61,5 @@ describe('RMS', () => {
   it('converts PCM16 to float32 with a 32768 divisor', () => {
     const f = pcm16ToFloat(new Uint8Array(new Int16Array([16384, -32768, 32767]).buffer));
     expect([...f]).toEqual([0.5, -1, 32767 / 32768]);
-  });
-});
-
-describe('resolveNormalizerGain (kept, not wired in)', () => {
-  it('leaves silence, quiet noise and loud audio unchanged', () => {
-    expect(resolveNormalizerGain(0)).toBe(1);
-    expect(resolveNormalizerGain(0.0009)).toBe(1);
-    expect(resolveNormalizerGain(0.8)).toBe(1);
-  });
-
-  it('raises quiet speech toward the target peak', () => {
-    expect(resolveNormalizerGain(0.1)).toBeCloseTo(7, 10);
-  });
-
-  it('caps the gain at 16', () => {
-    expect(resolveNormalizerGain(0.01)).toBe(16);
-    expect(resolveNormalizerGain(0.003)).toBe(16);
   });
 });

@@ -26,8 +26,6 @@ describe('defaults', () => {
     expect(defaults).toEqual<AppSettings>({
       selectedSummaryModelId: null,
       selectedSummaryProvider: null,
-      selectedXaiModelId: null,
-      selectedXaiEffort: null,
       selectedClaudeModelId: null,
       selectedClaudeEffort: null,
       selectedCodexModelId: null,
@@ -134,7 +132,7 @@ describe('resolvers', () => {
     }
   });
 
-  it('a legacy Xai file keeps its provider, xai fields and unknown fields through a re-save', () => {
+  it('a legacy Xai file loads and keeps its provider, its old xai fields and unknown fields through a re-save', () => {
     const text = JSON.stringify(
       {
         selectedSummaryProvider: 'Xai',
@@ -148,8 +146,9 @@ describe('resolvers', () => {
     );
     const parsed = parseSettingsJson(text);
     expect(parsed.settings.selectedSummaryProvider).toBe('Xai');
-    expect(parsed.settings.selectedXaiModelId).toBe('grok-4.3');
-    expect(parsed.settings.selectedXaiEffort).toBe('high');
+    expect(parsed.settings).not.toHaveProperty('selectedXaiModelId');
+    expect(parsed.settings).not.toHaveProperty('selectedXaiEffort');
+    expect(parsed.raw).toMatchObject({ selectedXaiModelId: 'grok-4.3', selectedXaiEffort: 'high' });
     const rewritten = serializeSettings(applySettingsPatch(parsed.raw, { summaryLanguage: 'es' }));
     expect(rewritten).toContain('"selectedSummaryProvider": "Xai"');
     expect(rewritten).toContain('"selectedXaiModelId": "grok-4.3"');
@@ -310,7 +309,7 @@ describe('reading and writing', () => {
     );
     const { settings, raw } = parseSettingsJson(text);
     expect(settings.meetingPopupEnabled).toBe(false);
-    expect(settings.selectedXaiModelId).toBeNull();
+    expect(settings).not.toHaveProperty('selectedXaiModelId');
     expect(serializeSettings(raw)).toBe(text);
     expect(serializeSettings(applySettingsPatch(raw, { summaryLanguage: 'en' }))).toContain(
       '"disabledCalendarIds": [\n    "cal-1",\n    "cal-2"\n  ]',
@@ -319,7 +318,7 @@ describe('reading and writing', () => {
 
   it('cd-1: a file that still selects Xai loads and rewrites with the provider kept', () => {
     const text = serializeSettings(
-      applySettingsPatch({}, { selectedSummaryProvider: 'Xai', selectedXaiModelId: 'grok' }),
+      applySettingsPatch({ selectedXaiModelId: 'grok' }, { selectedSummaryProvider: 'Xai' }),
     );
     const { settings, raw } = parseSettingsJson(text);
     expect(resolveSummaryProviderKind(settings)).toBe('Xai');

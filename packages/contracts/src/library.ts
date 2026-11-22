@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineEvent, defineRequest } from './channel';
-import { projectIdSchema } from './ids';
+import { guidSchema } from './ids';
 
 /** Library, settings storage and workspace channels (module: library-storage). */
 
@@ -149,7 +149,7 @@ export const libraryGetMeeting = defineRequest('library.getMeeting', {
 });
 
 export const libraryMoveMeeting = defineRequest('library.moveMeeting', {
-  input: z.object({ meetingId: guid, projectId: projectIdSchema.nullable() }),
+  input: z.object({ meetingId: guid, projectId: guidSchema.nullable() }),
   output: done,
 });
 
@@ -171,7 +171,7 @@ const bulkResult = z.object({ results: z.array(meetingOutcome).readonly() });
 
 /** One result per meeting; a meeting that cannot move does not stop the others. */
 export const libraryMoveMeetings = defineRequest('library.moveMeetings', {
-  input: z.object({ meetingIds: bulkMeetingIds, projectId: projectIdSchema.nullable() }),
+  input: z.object({ meetingIds: bulkMeetingIds, projectId: guidSchema.nullable() }),
   output: bulkResult,
 });
 
@@ -185,7 +185,7 @@ export const libraryDeleteMeetings = defineRequest('library.deleteMeetings', {
 export const libraryViewSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('all') }),
   z.object({ kind: z.literal('none') }),
-  z.object({ kind: z.literal('project'), id: projectIdSchema }),
+  z.object({ kind: z.literal('project'), id: guidSchema }),
 ]);
 export type LibraryViewDto = z.infer<typeof libraryViewSchema>;
 
@@ -266,8 +266,6 @@ export const libraryChanged = defineEvent('library.changed', {
 export const appSettingsSchema = z.object({
   selectedSummaryModelId: z.string().nullable(),
   selectedSummaryProvider: z.string().nullable(),
-  selectedXaiModelId: z.string().nullable(),
-  selectedXaiEffort: z.string().nullable(),
   selectedClaudeModelId: z.string().nullable(),
   selectedClaudeEffort: z.string().nullable(),
   selectedCodexModelId: z.string().nullable(),
@@ -342,7 +340,7 @@ export const workspaceActionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('setCurrentShellTag'), tag: shellTagSchema }),
   z.object({ type: z.literal('navigateTo'), tag: shellTagSchema }),
   z.object({ type: z.literal('openSession'), tab: sessionTabSchema }),
-  z.object({ type: z.literal('publishSelectedProject'), projectId: projectIdSchema.nullable() }),
+  z.object({ type: z.literal('publishSelectedProject'), projectId: guidSchema.nullable() }),
   z.object({ type: z.literal('setLiveTranscript'), text: z.string() }),
   z.object({ type: z.literal('setCaptureActive'), active: z.boolean() }),
   z.object({ type: z.literal('requestTakeNotes') }),

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { guidSchema, projectIdSchema } from './ids';
+import { guidSchema } from './ids';
 import { projectFileKindSchema } from './projects';
 
 /**
@@ -51,7 +51,7 @@ const migrationReportRecord = z.looseObject({
   /** Where the old folder list was found: `library`, `app-data` or `none` (a fresh install). */
   source: z.string(),
   projects: z.number().int().nonnegative(),
-  renamed: z.array(z.looseObject({ id: projectIdSchema, from: z.string(), to: z.string() })),
+  renamed: z.array(z.looseObject({ id: guidSchema, from: z.string(), to: z.string() })),
   skipped: z.array(z.looseObject({ index: z.number().int().nonnegative(), reason: z.string() })),
   legacyLeftovers: z.array(z.string()),
   /** Path of the backup relative to `.vozella`; null when there was no source. */
@@ -87,7 +87,7 @@ export type LibraryManifestRecord = z.infer<typeof libraryManifestSchema>;
 /** `.vozella/projects/<id>/project.json` */
 export const projectRecordSchema = z.looseObject({
   schemaVersion: z.literal(1),
-  id: projectIdSchema,
+  id: guidSchema,
   name: z.string().min(1),
   description: z.string(),
   instructions: z.string(),
@@ -150,7 +150,7 @@ export const chatThreadFileSchema = z.looseObject({
   schemaVersion: z.literal(1),
   id: guidSchema,
   /** The project that owns the thread; null is "no project". */
-  ownerProjectId: projectIdSchema.nullable(),
+  ownerProjectId: guidSchema.nullable(),
   scope: z.looseObject({
     kind: z.enum(['AllMeetings', 'Project', 'Meeting', 'Live']),
     meetingId: z.string().nullable(),

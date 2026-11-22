@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  chooseWarning,
-  noticeMessage,
-  recordingStatus,
-  sourcesSummaryArgs,
-  startFailureMessage,
-} from './recording-status';
+import { recordingStatus, sourcesSummaryArgs, startFailureMessage } from './recording-status';
 
 describe('recordingStatus', () => {
   it('names the four mic and output combinations', () => {
@@ -25,50 +19,6 @@ describe('recordingStatus', () => {
       key: 'Status_RecordingNoMicApp',
       args: ['Zoom'],
     });
-  });
-});
-
-describe('noticeMessage', () => {
-  it('maps a lost microphone, a lost output and an empty mix', () => {
-    expect(noticeMessage({ kind: 'source-lost', source: 'Microphone', remaining: 1 })).toEqual({
-      key: 'Warning_MicrophoneLost',
-      args: [],
-    });
-    expect(noticeMessage({ kind: 'source-lost', source: 'Output', remaining: 1 })).toEqual({
-      key: 'Warning_OutputAudioLost',
-      args: [],
-    });
-    expect(noticeMessage({ kind: 'source-lost', source: 'Output', remaining: 0 })).toEqual({
-      key: 'Warning_NoAudioSourcesLeft',
-      args: [],
-    });
-    expect(noticeMessage({ kind: 'source-lost', source: 'Microphone', remaining: 0 })).toEqual({
-      key: 'Warning_NoAudioSourcesLeft',
-      args: [],
-    });
-  });
-
-  it('carries the error text of the two stopping failures', () => {
-    expect(noticeMessage({ kind: 'output-failed', message: 'gone' })).toEqual({
-      key: 'Error_OutputCaptureFailed',
-      args: ['gone'],
-    });
-    expect(noticeMessage({ kind: 'faulted', message: 'disk full' })).toEqual({
-      key: 'Error_CaptureFaulted',
-      args: ['disk full'],
-    });
-  });
-});
-
-describe('chooseWarning', () => {
-  const mic = { key: 'Warning_MicrophoneLost', args: [] } as const;
-  const none = { key: 'Warning_NoAudioSourcesLeft', args: [] } as const;
-  it('keeps nothing-left once it was raised, even if a milder event arrives late', () => {
-    expect(chooseWarning(none, mic)).toBe(none);
-  });
-  it('otherwise takes the newest', () => {
-    expect(chooseWarning(null, mic)).toBe(mic);
-    expect(chooseWarning(mic, none)).toBe(none);
   });
 });
 

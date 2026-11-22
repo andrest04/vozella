@@ -1,4 +1,4 @@
-import type { ProjectListItemDto, SkippedProjectDto } from '@vozella/contracts';
+import type { ProjectListItemDto } from '@vozella/contracts';
 import { foldText, foldedWords, hasAllWords } from '@vozella/core';
 
 export type ProjectSort = 'recent' | 'name' | 'newest';
@@ -70,9 +70,4 @@ export function formatActivity(iso: string, locale: string, nowMs: number): stri
   })
     .format(new Date(ms))
     .replace(/\./g, '');
-}
-
-/** Projects the library listed but could not read; their meetings show under No project. */
-export function unreadableProjectCount(skipped: readonly SkippedProjectDto[]): number {
-  return skipped.length;
 }

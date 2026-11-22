@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { API_PROVIDER_IDS } from './api-providers';
 import { defineEvent, defineRequest } from './channel';
-import { guidSchema, projectIdSchema } from './ids';
+import { guidSchema } from './ids';
 import { summaryEngineReadinessSchema } from './settings';
 import { summarySetupKindSchema } from './summaries';
 
@@ -21,7 +21,7 @@ export const chatScopeKindSchema = z.enum(['AllMeetings', 'Project', 'Meeting', 
 export const chatScopeSchema = z.object({
   isVisible: z.boolean(),
   kind: chatScopeKindSchema,
-  projectId: projectIdSchema.nullable(),
+  projectId: guidSchema.nullable(),
   meetingId: z.string().max(200).nullable(),
 });
 export type ChatScopeDto = z.infer<typeof chatScopeSchema>;
@@ -32,7 +32,7 @@ export type ChatScopeDto = z.infer<typeof chatScopeSchema>;
  */
 export const threadScopeSchema = z.object({
   kind: chatScopeKindSchema,
-  projectId: projectIdSchema.nullable(),
+  projectId: guidSchema.nullable(),
   meetingId: z.string().max(200).nullable(),
 });
 export type ThreadScopeDto = z.infer<typeof threadScopeSchema>;
@@ -40,7 +40,7 @@ export type ThreadScopeDto = z.infer<typeof threadScopeSchema>;
 /** One row of a thread list, newest first. */
 export const chatThreadSummarySchema = z.object({
   id: guidSchema,
-  ownerProjectId: projectIdSchema.nullable(),
+  ownerProjectId: guidSchema.nullable(),
   scope: z.object({ kind: chatScopeKindSchema, meetingId: z.string().max(200).nullable() }),
   title: z.string().max(200),
   /** ISO-8601 UTC. */
@@ -388,7 +388,7 @@ export const chatOpenExternal = defineRequest('chat.openExternal', {
 
 // ----------------------------------------------------------------- chat history
 
-const owner = projectIdSchema.nullable();
+const owner = guidSchema.nullable();
 
 export const chatThreadsList = defineRequest('chat.threads.list', {
   input: z.object({ projectId: owner }).strict(),

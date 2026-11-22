@@ -10,6 +10,7 @@ import {
   type PinnedRuntime,
   type RuntimeStore,
 } from '@vozella/core';
+import { listFilesRecursive, listSubdirectories } from '../fs/directory-tree';
 import { downloadToFile, sha256OfFile } from '../settings/download-to-file';
 import { extractZipWithTar, type ZipExtractor } from './zip-extractor';
 
@@ -190,7 +191,7 @@ export class NemoSpeechRuntimeManager implements RuntimeStore {
     const { root } = this.options;
     if (!fs.existsSync(root)) return;
     const probe = this.options.probeFile ?? defaultProbe;
-    for (const file of listFiles(root)) {
+    for (const file of listFilesRecursive(root)) {
       try {
         probe(file);
       } catch (error) {
@@ -220,15 +221,7 @@ export function findLibraryDirectory(folder: string): string | null {
   if (!fs.existsSync(folder)) return null;
   const direct = nodePath.join(folder, 'bin');
   if (fs.existsSync(nodePath.join(direct, NEMO_RUNTIME_DLL))) return direct;
-  let entries: fs.Dirent[];
-  try {
-    entries = fs.readdirSync(folder, { withFileTypes: true });
-  } catch {
-    return null;
-  }
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const dir = nodePath.join(folder, entry.name);
+  for (const dir of listSubdirectories(folder)) {
     if (fs.existsSync(nodePath.join(dir, NEMO_RUNTIME_DLL))) return dir;
     const nested = nodePath.join(dir, 'bin');
     if (fs.existsSync(nodePath.join(nested, NEMO_RUNTIME_DLL))) return nested;
@@ -236,14 +229,4 @@ export function findLibraryDirectory(folder: string): string | null {
     if (deeper !== null) return deeper;
   }
   return null;
-}
-
-function listFiles(dir: string): string[] {
-  const out: string[] = [];
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = nodePath.join(dir, entry.name);
-    if (entry.isDirectory()) out.push(...listFiles(full));
-    else out.push(full);
-  }
-  return out;
 }
