@@ -209,10 +209,11 @@ describe('references in the code', () => {
    * (or never was) fails here instead of rotting.
    *
    * The Grok (xAI) provider was removed (owner decision 2026-11-03, may return later). Its
-   * Settings_ keys and Xai_ProviderName remain in en.json and es.json and no app code reads them.
-   * Xai_FeedbackModel is not one of them: the Claude Code and Codex model line still uses it.
+   * Settings_ keys are gone; Xai_ProviderName remains in en.json and es.json, read only by the
+   * recording strings test. Xai_FeedbackModel is not one of them: the Claude Code and Codex model
+   * line still uses it.
    */
-  const REMOVED_PROVIDER_KEYS = /^(Xai_(?!FeedbackModel$)|Settings_Xai|Settings_ProviderXai)/;
+  const REMOVED_PROVIDER_KEYS = /^Xai_(?!FeedbackModel$)/;
   const UNUSED_BY_DECISION: string[] = [
     // The CLI setup dropped the effort help text (the Select lists the values); the carried-over
     // catalog keeps its keys.
