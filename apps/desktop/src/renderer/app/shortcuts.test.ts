@@ -24,6 +24,7 @@ describe('shortcut table', () => {
     ).toEqual([
       ['stop', 'record', 'Ctrl+R'],
       ['pause', 'record', 'Ctrl+P'],
+      ['highlight', 'record', 'Ctrl+H'],
       ['discard', 'record', 'Ctrl+Shift+D'],
       ['liveAsk', 'liveAsk', 'Ctrl+Enter'],
       ['chatSend', 'chatComposer', 'Ctrl+Enter'],
@@ -45,6 +46,10 @@ describe('shortcut table', () => {
     expect(matchRecordShortcut(key({ key: 'r', ctrlKey: true }))).toBe('stop');
     expect(matchRecordShortcut(key({ key: 'R', ctrlKey: true }))).toBe('stop');
     expect(matchRecordShortcut(key({ key: 'p', ctrlKey: true }))).toBe('pause');
+    expect(matchRecordShortcut(key({ key: 'h', ctrlKey: true }))).toBe('highlight');
+    expect(matchRecordShortcut(key({ key: 'H', ctrlKey: true }))).toBe('highlight');
+    expect(matchRecordShortcut(key({ key: 'h', ctrlKey: true, shiftKey: true }))).toBeNull();
+    expect(matchRecordShortcut(key({ key: 'h' }))).toBeNull();
     expect(matchRecordShortcut(key({ key: 'D', ctrlKey: true, shiftKey: true }))).toBe('discard');
     expect(matchRecordShortcut(key({ key: 'd', ctrlKey: true }))).toBeNull();
     expect(matchRecordShortcut(key({ key: 'r', ctrlKey: true, shiftKey: true }))).toBeNull();

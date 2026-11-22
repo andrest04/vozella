@@ -11,7 +11,14 @@
  * any text field is left to that field.
  */
 export type ShortcutId =
-  'stop' | 'pause' | 'discard' | 'liveAsk' | 'chatSend' | 'librarySearch' | 'librarySelectAll';
+  | 'stop'
+  | 'pause'
+  | 'highlight'
+  | 'discard'
+  | 'liveAsk'
+  | 'chatSend'
+  | 'librarySearch'
+  | 'librarySelectAll';
 export type ShortcutScope = 'record' | 'liveAsk' | 'chatComposer' | 'library' | 'libraryGrid';
 
 export interface ShortcutDef {
@@ -27,6 +34,8 @@ export interface ShortcutDef {
 export const SHORTCUTS: Readonly<Record<ShortcutId, ShortcutDef>> = {
   stop: { scope: 'record', ctrl: true, shift: false, key: 'r', keys: ['Ctrl', 'R'] },
   pause: { scope: 'record', ctrl: true, shift: false, key: 'p', keys: ['Ctrl', 'P'] },
+  // H for highlight. The notepad binds no Ctrl+H, and the app has no menu that would.
+  highlight: { scope: 'record', ctrl: true, shift: false, key: 'h', keys: ['Ctrl', 'H'] },
   discard: { scope: 'record', ctrl: true, shift: true, key: 'd', keys: ['Ctrl', 'Shift', 'D'] },
   liveAsk: { scope: 'liveAsk', ctrl: true, shift: false, key: 'enter', keys: ['Ctrl', 'Enter'] },
   chatSend: {
@@ -69,10 +78,13 @@ function matches(id: ShortcutId, event: KeyLike): boolean {
   );
 }
 
-export type RecordShortcut = Extract<ShortcutId, 'stop' | 'pause' | 'discard'>;
-const RECORD_IDS: readonly RecordShortcut[] = ['stop', 'pause', 'discard'];
+export type RecordShortcut = Extract<ShortcutId, 'stop' | 'pause' | 'highlight' | 'discard'>;
+const RECORD_IDS: readonly RecordShortcut[] = ['stop', 'pause', 'highlight', 'discard'];
 
-/** Ctrl+R stops or starts, Ctrl+P pauses or resumes, Ctrl+Shift+D discards. */
+/**
+ * Ctrl+R stops or starts, Ctrl+P pauses or resumes, Ctrl+H marks this moment, Ctrl+Shift+D
+ * discards.
+ */
 export function matchRecordShortcut(event: KeyLike): RecordShortcut | null {
   return RECORD_IDS.find((id) => matches(id, event)) ?? null;
 }

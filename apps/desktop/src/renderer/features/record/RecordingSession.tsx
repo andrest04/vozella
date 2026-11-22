@@ -8,6 +8,7 @@ import { DiscardDialog } from './DiscardDialog';
 import { RecordingBar } from './RecordingBar';
 import { RecordingLevel } from './RecordingLevel';
 import {
+  HIGHLIGHT_FEEDBACK_MS,
   copyToClipboard,
   discardRecording,
   highlightMoment,
@@ -19,8 +20,7 @@ import { useElapsed } from './use-elapsed';
 import { useRecordShortcuts, type RecordShortcutHandlers } from './use-record-shortcuts';
 import { useTimedValue } from './use-timed-value';
 
-/** The highlight feedback clears after 2 s, the "Copied" bar after 2.5 s. */
-export const HIGHLIGHT_FEEDBACK_MS = 2000;
+/** The "Copied" bar clears after 2.5 s (the highlight feedback after `HIGHLIGHT_FEEDBACK_MS`). */
 export const COPIED_BAR_MS = 2500;
 
 /**
@@ -107,9 +107,10 @@ export function RecordingSession({
     () => ({
       stop: { enabled: controllable && !confirming, run: () => void stopRecording() },
       pause: { enabled: controllable && !confirming, run: togglePause },
+      highlight: { enabled: controllable && !confirming, run: highlight },
       discard: { enabled: controllable && !confirming, run: askDiscard },
     }),
-    [controllable, confirming, togglePause, askDiscard],
+    [controllable, confirming, togglePause, highlight, askDiscard],
   );
   useRecordShortcuts(shortcuts);
 

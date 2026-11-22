@@ -370,6 +370,7 @@
   "LiveCopilot_Resume.AutomationProperties.Name": "Reanudar la grabación",
   "LiveCopilot_Stop.AutomationProperties.Name": "Detener la grabación",
   "LiveCopilot_Stop.ToolTipService.ToolTip": "Detener la grabación",
+  "LiveCopilot_Highlight.AutomationProperties.Name": "Destacar este momento",
   "LiveCopilot_OpenApp.AutomationProperties.Name": "Abrir Vozella",
   "LiveCopilot_OpenApp.ToolTipService.ToolTip": "Abrir Vozella",
   "LiveCopilot_Empty.Text": "Escribe una pregunta abajo o responde una que Vozella detecte.",

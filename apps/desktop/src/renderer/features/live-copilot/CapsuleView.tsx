@@ -1,6 +1,6 @@
 import type { PillEdgeDto } from '@vozella/contracts';
 import { EXPANDED_RADIUS_DIP, PULSE_SCALE, TIMINGS } from '@vozella/core';
-import { MessageSquare, Pause, Play, Square } from 'lucide-react';
+import { MessageSquare, Pause, Play, Square, Star } from 'lucide-react';
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { AudioBars, Icon, Mark, cn } from '../../ui';
 import { useReducedMotion } from '../../ui/use-reduced-motion';
@@ -34,6 +34,8 @@ export interface CapsuleLabels {
   readonly pause: string;
   readonly resume: string;
   readonly stop: string;
+  /** The highlight button's name and resting tooltip. */
+  readonly highlight: string;
   readonly expand: string;
   readonly collapse: string;
   /** The tooltip of the collapse button; the accessible name stays `collapse`. */
@@ -63,10 +65,15 @@ export interface CapsuleViewProps {
   /** `mm:ss`, minutes unbounded. */
   readonly elapsed: string;
   readonly hint: CapsuleHint | null;
+  /** A take is recording or paused, so this moment can be marked. */
+  readonly canHighlight: boolean;
+  /** "Highlighted 00:12.34" while the feedback of the last mark lasts, null otherwise. */
+  readonly highlighted: string | null;
   readonly labels: CapsuleLabels;
   readonly onOpenApp: () => void;
   readonly onTogglePause: () => void;
   readonly onStop: () => void;
+  readonly onHighlight: () => void;
   readonly onToggleExpanded: () => void;
 }
 
@@ -75,7 +82,8 @@ const BUTTON =
   'transition-colors duration-150 ease-out-quick motion-reduce:transition-none';
 
 /**
- * The pill capsule: logo tile, level bars, elapsed time, pause, stop, chat toggle.
+ * The pill capsule: logo tile, level bars, elapsed time, highlight, pause, stop, chat toggle.
+ * Seven items fit the 240 DIP vertical capsule only on a 4 DIP gap (208 DIP of items, six gaps).
  * Presentational: the container owns events and calls. The whole capsule drags the window; every
  * clickable element opts out with `pill-no-drag`. Always drawn on the dark tokens.
  */
@@ -129,7 +137,7 @@ export function CapsuleView(props: CapsuleViewProps) {
       <div
         ref={content}
         className={cn(
-          'flex h-full w-full items-center justify-center gap-2',
+          'flex h-full w-full items-center justify-center gap-1',
           props.vertical ? 'flex-col' : 'flex-row',
         )}
       >
@@ -159,6 +167,28 @@ export function CapsuleView(props: CapsuleViewProps) {
         >
           {props.elapsed}
         </span>
+        <button
+          id="BtnLiveCopilotHighlight"
+          type="button"
+          data-item="highlight"
+          {...(props.highlighted !== null ? { 'data-marked': 'true' } : {})}
+          aria-label={labels.highlight}
+          title={props.highlighted ?? labels.highlight}
+          disabled={!props.canHighlight}
+          onClick={props.onHighlight}
+          className={cn(
+            BUTTON,
+            'size-8 text-ink hover:not-disabled:bg-hover active:not-disabled:bg-pressed',
+            'disabled:cursor-not-allowed disabled:opacity-50 forced-colors:disabled:text-[GrayText]',
+            props.highlighted !== null && 'bg-pressed',
+          )}
+        >
+          <Icon
+            icon={Star}
+            size={16}
+            className={props.highlighted !== null ? 'fill-current' : undefined}
+          />
+        </button>
         <button
           id="BtnLiveCopilotPause"
           type="button"
@@ -206,6 +236,16 @@ export function CapsuleView(props: CapsuleViewProps) {
           <Icon icon={MessageSquare} size={16} />
         </button>
       </div>
+      {/* Always mounted, so the mark is announced the moment its text arrives. A bare polite
+          live region, not role="status": that role names the started hint on this page. */}
+      <span
+        aria-live="polite"
+        aria-atomic="true"
+        data-testid="pill-highlight-status"
+        className="sr-only"
+      >
+        {props.highlighted ?? ''}
+      </span>
       {hint ? (
         <div
           role="status"

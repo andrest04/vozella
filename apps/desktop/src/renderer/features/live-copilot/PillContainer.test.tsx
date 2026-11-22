@@ -51,6 +51,7 @@ function install(
     reduced?: boolean;
     pill?: Record<string, unknown>;
     rec?: Record<string, unknown>;
+    highlight?: { marked: boolean; elapsedMs: number };
   } = {},
 ) {
   const listeners = new Map<string, Listener>();
@@ -64,6 +65,8 @@ function install(
         return Promise.resolve(current);
       case 'recording.getState':
         return Promise.resolve(recordingState(options.rec));
+      case 'recording.highlight':
+        return Promise.resolve(options.highlight ?? { marked: true, elapsedMs: 12_340 });
       case 'i18n.getLocale':
         return Promise.resolve({ locale: 'en' });
       default:
@@ -205,6 +208,56 @@ describe('PillContainer', () => {
     expect(
       screen.getByRole('button', { name: en['LiveCopilot_Collapse.AutomationProperties.Name'] }),
     ).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  describe('highlight', () => {
+    const highlightName = en['LiveCopilot_Highlight.AutomationProperties.Name'];
+
+    it('marks this moment through recording.highlight and says so for 2 s', async () => {
+      const bridge = install();
+      await mount();
+      const button = screen.getByRole('button', { name: highlightName });
+      fireEvent.click(button);
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(bridge.invoke).toHaveBeenCalledWith('recording.highlight', {});
+      expect(button).toHaveAttribute('data-marked', 'true');
+      expect(screen.getByTestId('pill-highlight-status')).toHaveTextContent('Highlighted 00:12.34');
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+      expect(button).not.toHaveAttribute('data-marked');
+      expect(screen.getByTestId('pill-highlight-status')).toBeEmptyDOMElement();
+    });
+
+    it('stays quiet when main did not mark anything', async () => {
+      install({ highlight: { marked: false, elapsedMs: 0 } });
+      await mount();
+      fireEvent.click(screen.getByRole('button', { name: highlightName }));
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(screen.getByTestId('pill-highlight-status')).toBeEmptyDOMElement();
+    });
+
+    it('is available while paused and disabled once the take stops', async () => {
+      const bridge = install({ rec: { isPaused: true } });
+      await mount();
+      expect(screen.getByRole('button', { name: highlightName })).toBeEnabled();
+      bridge.emit('recording.state', recordingState({ phase: 'Stopping', isRecording: false }));
+      expect(screen.getByRole('button', { name: highlightName })).toBeDisabled();
+    });
+
+    it('names the button in Spanish', async () => {
+      install();
+      await mount('es');
+      expect(
+        screen.getByRole('button', { name: es['LiveCopilot_Highlight.AutomationProperties.Name'] }),
+      ).toBeInTheDocument();
+    });
   });
 
   it('applies the page opacity and the capsule opacity main pushes', async () => {

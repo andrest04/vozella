@@ -21,6 +21,7 @@ const labels = {
   pause: 'Pause recording',
   resume: 'Resume recording',
   stop: 'Stop recording',
+  highlight: 'Highlight this moment',
   expand: 'Expand live copilot',
   collapse: 'Collapse live copilot',
   collapseTooltip: 'Collapse',
@@ -40,10 +41,13 @@ function props(over: Partial<CapsuleViewProps> = {}): CapsuleViewProps {
     running: true,
     elapsed: '00:00',
     hint: null,
+    canHighlight: true,
+    highlighted: null,
     labels,
     onOpenApp: vi.fn(),
     onTogglePause: vi.fn(),
     onStop: vi.fn(),
+    onHighlight: vi.fn(),
     onToggleExpanded: vi.fn(),
     ...over,
   };
@@ -60,13 +64,17 @@ describe('CapsuleView', () => {
   });
   afterEach(cleanup);
 
-  it('lays the six items out in their fixed order with the AutomationIds', () => {
+  it('lays the seven items out in their fixed order with the AutomationIds', () => {
     render(<CapsuleView {...props()} />);
     const capsule = screen.getByTestId('LiveCopilotCapsule');
     const order = Array.from(capsule.querySelectorAll('[data-item]')).map((n) =>
       n.getAttribute('data-item'),
     );
-    expect(order).toEqual(['logo', 'bars', 'elapsed', 'pause', 'stop', 'chat']);
+    expect(order).toEqual(['logo', 'bars', 'elapsed', 'highlight', 'pause', 'stop', 'chat']);
+    expect(screen.getByRole('button', { name: 'Highlight this moment' })).toHaveAttribute(
+      'id',
+      'BtnLiveCopilotHighlight',
+    );
     expect(screen.getByRole('button', { name: 'Open Vozella' })).toHaveAttribute(
       'id',
       'BtnLiveCopilotLogoOpenApp',
@@ -165,8 +173,10 @@ describe('CapsuleView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open Vozella' }));
     fireEvent.click(screen.getByRole('button', { name: 'Pause recording' }));
     fireEvent.click(screen.getByRole('button', { name: 'Stop recording' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Highlight this moment' }));
     fireEvent.click(screen.getByRole('button', { name: 'Expand live copilot' }));
     expect(p.onOpenApp).toHaveBeenCalledOnce();
+    expect(p.onHighlight).toHaveBeenCalledOnce();
     expect(p.onTogglePause).toHaveBeenCalledOnce();
     expect(p.onStop).toHaveBeenCalledOnce();
     expect(p.onToggleExpanded).toHaveBeenCalledOnce();
@@ -210,10 +220,53 @@ describe('CapsuleView', () => {
     expect(className).toContain('forced-colors:text-[HighlightText]');
   });
 
-  it('spaces the capsule content by 8 DIP (gap-2 on a 4 px scale)', () => {
+  // Seven items fit the 240 DIP vertical capsule only on a 4 DIP gap: 208 DIP of items, six gaps.
+  it('spaces the capsule content by 4 DIP (gap-1 on a 4 px scale)', () => {
     render(<CapsuleView {...props()} />);
     const row = screen.getByTestId('LiveCopilotCapsule').firstElementChild;
-    expect(row?.className).toContain('gap-2');
+    expect(row?.className).toContain('gap-1');
+    expect(row?.className).not.toContain('gap-2');
+  });
+
+  describe('highlight', () => {
+    it('is a plain star until a mark is taken, with its name as the tooltip', () => {
+      render(<CapsuleView {...props()} />);
+      const button = screen.getByRole('button', { name: 'Highlight this moment' });
+      expect(button).toBeEnabled();
+      expect(button).toHaveAttribute('title', 'Highlight this moment');
+      expect(button).not.toHaveAttribute('data-marked');
+      expect(button.querySelector('svg')?.getAttribute('class')).not.toContain('fill-current');
+      expect(screen.getByTestId('pill-highlight-status')).toBeEmptyDOMElement();
+    });
+
+    it('fills the star and announces the mark while the feedback lasts, in place', () => {
+      const { rerender } = render(
+        <CapsuleView {...props({ highlighted: 'Highlighted 00:12.34' })} />,
+      );
+      const button = screen.getByRole('button', { name: 'Highlight this moment' });
+      expect(button).toHaveAttribute('data-marked', 'true');
+      expect(button).toHaveAttribute('title', 'Highlighted 00:12.34');
+      expect(button.querySelector('svg')?.getAttribute('class')).toContain('fill-current');
+      const status = screen.getByTestId('pill-highlight-status');
+      expect(status).toHaveAttribute('aria-live', 'polite');
+      // Not role="status": that role stays the started hint's, which the window waits on.
+      expect(screen.queryByRole('status')).toBeNull();
+      expect(status).toHaveTextContent('Highlighted 00:12.34');
+      // The announcement is for screen readers only: nothing in the capsule moves.
+      expect(status.className).toContain('sr-only');
+      rerender(<CapsuleView {...props()} />);
+      expect(button).not.toHaveAttribute('data-marked');
+      expect(screen.getByTestId('pill-highlight-status')).toBeEmptyDOMElement();
+    });
+
+    it('is disabled and does nothing when no take can be marked', () => {
+      const p = props({ canHighlight: false });
+      render(<CapsuleView {...p} />);
+      const button = screen.getByRole('button', { name: 'Highlight this moment' });
+      expect(button).toBeDisabled();
+      fireEvent.click(button);
+      expect(p.onHighlight).not.toHaveBeenCalled();
+    });
   });
 
   it('pulses the content from 1 to 1.08 and back, twice, 180 ms each, sine ease in out', () => {
