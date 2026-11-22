@@ -43,15 +43,18 @@ function setup(isPackaged: boolean, env: Record<string, string> = {}, createPort
   });
   const state = async () =>
     ((await handlers.get('updates.getState')?.({} as never, {})) as { value: unknown }).value;
-  return { create, broadcast, state, log, registered: [...handlers.keys()] };
+  const check = async () =>
+    ((await handlers.get('updates.check')?.({} as never, {})) as { value: unknown }).value;
+  return { create, broadcast, state, check, log, registered: [...handlers.keys()] };
 }
 
 describe('composeUpdates', () => {
   it('never creates the updater in dev or e2e, yet serves an idle state', async () => {
     for (const t of [setup(false), setup(true, { VOZELLA_E2E: '1' })]) {
       expect(t.create).not.toHaveBeenCalled();
-      expect(t.registered).toEqual(['updates.getState', 'updates.install']);
+      expect(t.registered).toEqual(['updates.getState', 'updates.install', 'updates.check']);
       expect(await t.state()).toEqual({ currentVersion: '0.9.7', update: { status: 'idle' } });
+      expect(await t.check()).toEqual({ status: 'disabled' });
     }
   });
 
@@ -72,5 +75,6 @@ describe('composeUpdates', () => {
     });
     expect(t.log.error).toHaveBeenCalledTimes(1);
     expect(await t.state()).toEqual({ currentVersion: '0.9.7', update: { status: 'idle' } });
+    expect(await t.check()).toEqual({ status: 'disabled' });
   });
 });

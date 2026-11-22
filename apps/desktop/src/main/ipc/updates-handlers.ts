@@ -1,4 +1,4 @@
-import { updatesGetState, updatesInstall } from '@vozella/contracts';
+import { updatesCheck, updatesGetState, updatesInstall } from '@vozella/contracts';
 import type { UpdatesService } from '../updates/update-controller';
 import { registerRequest, type IpcServerDeps } from './ipc-server';
 
@@ -11,4 +11,5 @@ export interface UpdatesHandlerDeps {
 export function registerUpdatesHandlers(deps: UpdatesHandlerDeps): void {
   registerRequest(deps.server, updatesGetState, () => deps.updates.state());
   registerRequest(deps.server, updatesInstall, () => deps.updates.install());
+  registerRequest(deps.server, updatesCheck, () => deps.updates.check());
 }

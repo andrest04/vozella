@@ -1,4 +1,9 @@
-import type { UpdateInstallOutcome, UpdateState, UpdateStatus } from '@vozella/contracts';
+import type {
+  UpdateCheckOutcome,
+  UpdateInstallOutcome,
+  UpdateState,
+  UpdateStatus,
+} from '@vozella/contracts';
 import { RestartService, type ExitGateRegistry, type Logger } from '@vozella/core';
 
 /** The slice of electron-updater this feature uses. The adapter lives in electron-updater-port.ts. */
@@ -24,6 +29,8 @@ export interface UpdateTimers {
 export interface UpdatesService {
   state(): UpdateState;
   install(): Promise<UpdateInstallOutcome>;
+  /** Checks the feed now, unless a check, a download or a downloaded update is already there. */
+  check(): UpdateCheckOutcome;
 }
 
 export interface UpdateControllerDeps {
@@ -38,6 +45,8 @@ export interface UpdateControllerDeps {
   readonly onChange: (state: UpdateState) => void;
   readonly firstCheckDelayMs?: number;
   readonly checkIntervalMs?: number;
+  /** The clock for `lastCheckedAt`; Date.now by default. */
+  readonly now?: () => number;
 }
 
 export const FIRST_CHECK_DELAY_MS = 30_000;
@@ -50,12 +59,13 @@ function messageOf(error: unknown): string {
 }
 
 /**
- * Checks shortly after startup and then every few hours, follows the download, and installs on
- * request. Failures (offline included) are logged and kept as state; they never reach a dialog.
+ * Checks shortly after startup, every few hours and on request, follows the download, and installs
+ * on request. Failures (offline included) are logged and kept as state; they never reach a dialog.
  * Once a download is ready, checking stops: the installer runs on quit or on "Install now".
  */
 export class UpdateController implements UpdatesService {
   private status: UpdateStatus = { status: 'idle' };
+  private lastCheckedAt: number | null = null;
   private readonly cancels: (() => void)[] = [];
   private readonly restart: RestartService;
 
@@ -75,9 +85,11 @@ export class UpdateController implements UpdatesService {
     const { port, timers } = this.deps;
     port.onAvailable((version) => {
       this.deps.logger.info('update available', { version });
+      this.answered();
       this.set({ status: 'available', version });
     });
     port.onNotAvailable(() => {
+      this.answered();
       this.set({ status: 'idle' });
     });
     port.onProgress((percent) => {
@@ -108,7 +120,9 @@ export class UpdateController implements UpdatesService {
   }
 
   state(): UpdateState {
-    return { currentVersion: this.deps.currentVersion, update: this.status };
+    const state: UpdateState = { currentVersion: this.deps.currentVersion, update: this.status };
+    if (this.lastCheckedAt !== null) state.lastCheckedAt = this.lastCheckedAt;
+    return state;
   }
 
   async install(): Promise<UpdateInstallOutcome> {
@@ -120,16 +134,43 @@ export class UpdateController implements UpdatesService {
     return outcome;
   }
 
-  private check(): void {
-    // A download in progress or a finished one needs no new check.
-    if (this.status.status === 'downloading' || this.status.status === 'ready') return;
+  /**
+   * The timers and the "Check for updates" button both come here. A check in flight, a found
+   * update (it downloads by itself) or a download in progress is never restarted; a downloaded one
+   * waits for install. The outcome of the check itself arrives as state changes.
+   */
+  check(): UpdateCheckOutcome {
+    switch (this.status.status) {
+      case 'ready':
+        return { status: 'ready' };
+      case 'checking':
+      case 'available':
+      case 'downloading':
+        return { status: 'busy' };
+      case 'idle':
+      case 'error':
+        break;
+    }
+    this.set({ status: 'checking' });
     try {
-      void this.deps.port.check().catch((error: unknown) => {
-        this.fail(error);
-      });
+      void this.deps.port
+        .check()
+        .then(() => {
+          // electron-updater answers with an event first; without one (an inactive updater) there
+          // was no answer, so the status goes back to idle and the last-checked time stays.
+          if (this.status.status === 'checking') this.set({ status: 'idle' });
+        })
+        .catch((error: unknown) => {
+          this.fail(error);
+        });
     } catch (error) {
       this.fail(error);
     }
+    return { status: 'started' };
+  }
+
+  private answered(): void {
+    this.lastCheckedAt = (this.deps.now ?? Date.now)();
   }
 
   private fail(error: unknown): void {
@@ -143,9 +184,11 @@ export class UpdateController implements UpdatesService {
   }
 
   private set(next: UpdateStatus): void {
-    if (JSON.stringify(next) === JSON.stringify(this.status)) return;
+    const before = JSON.stringify(this.state());
     this.status = next;
-    this.deps.onChange(this.state());
+    const state = this.state();
+    if (JSON.stringify(state) === before) return;
+    this.deps.onChange(state);
   }
 }
 
@@ -154,6 +197,7 @@ export function disabledUpdates(currentVersion: string): UpdatesService {
   return {
     state: () => ({ currentVersion, update: { status: 'idle' } }),
     install: () => Promise.resolve({ status: 'failed', message: NOT_READY }),
+    check: () => ({ status: 'disabled' }),
   };
 }
 

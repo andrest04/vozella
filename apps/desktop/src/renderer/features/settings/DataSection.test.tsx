@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Providers } from '../../app/test-providers';
@@ -96,8 +96,11 @@ describe('Settings data and about', () => {
 });
 
 describe('Settings about', () => {
-  it('has its own heading and shows the version', async () => {
-    install({ 'library.getLocation': () => location() });
+  it('has its own heading, shows the version and offers a check for updates below it', async () => {
+    install({
+      'library.getLocation': () => location(),
+      'updates.getState': () => ({ currentVersion: '1.2.3.4', update: { status: 'idle' } }),
+    });
     render(
       <Providers>
         <AboutSection />
@@ -106,5 +109,8 @@ describe('Settings about', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'About' })).toBeInTheDocument();
     const row = await screen.findByRole('group', { name: 'Version' });
     expect(row).toHaveTextContent('1.2.3.4');
+    const updates = await screen.findByRole('group', { name: 'Updates' });
+    expect(row.compareDocumentPosition(updates) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(updates).getByRole('button', { name: 'Check for updates' })).toBeInTheDocument();
   });
 });

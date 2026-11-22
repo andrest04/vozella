@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import { SectionHeader, SkeletonText } from '../../ui';
 import { DataRow } from './DataSection';
+import { UpdatesRow } from './UpdatesRow';
 
-/** The app version, in a section of its own at the end of the page. */
+/** The app version and the update check, in a section of their own at the end of the page. */
 export function AboutSection() {
   const t = useT();
   const [version, setVersion] = useState<string | null>(null);
@@ -29,6 +30,7 @@ export function AboutSection() {
       ) : (
         <DataRow title={t('Ui_AboutVersion')} value={version} />
       )}
+      <UpdatesRow />
     </div>
   );
 }

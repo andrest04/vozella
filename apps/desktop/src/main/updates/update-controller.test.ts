@@ -57,6 +57,11 @@ class FakeTimers implements UpdateTimers {
   }
 }
 
+/** Lets a resolved check finish its follow-up. */
+const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+const NOW = 1_700_000_000_000;
+
 function setup(options: { gates?: ExitGateRegistry } = {}) {
   const port = new FakeUpdater();
   const timers = new FakeTimers();
@@ -71,18 +76,20 @@ function setup(options: { gates?: ExitGateRegistry } = {}) {
     gates: options.gates ?? new ExitGateRegistry(),
     approveQuit,
     onChange: (state) => changes.push(state),
+    now: () => NOW,
   });
   controller.start();
   return { port, timers, log, changes, approveQuit, controller };
 }
 
 describe('UpdateController', () => {
-  it('checks once shortly after startup and then every few hours', () => {
+  it('checks once shortly after startup and then every few hours', async () => {
     const t = setup();
     expect(t.timers.once.map((timer) => timer.ms)).toEqual([FIRST_CHECK_DELAY_MS]);
     expect(t.timers.repeating.map((timer) => timer.ms)).toEqual([CHECK_INTERVAL_MS]);
     expect(t.port.check).not.toHaveBeenCalled();
     t.timers.once[0]?.run();
+    await settle();
     t.timers.repeating[0]?.run();
     expect(t.port.check).toHaveBeenCalledTimes(2);
   });
@@ -191,11 +198,94 @@ describe('UpdateController', () => {
   });
 });
 
+describe('UpdateController manual check', () => {
+  it('checks at once, says it is checking, then up to date with the time', async () => {
+    const t = setup();
+    t.port.check.mockImplementation(() => {
+      t.port.notAvailable?.();
+      return Promise.resolve(null);
+    });
+    expect(t.controller.check()).toEqual({ status: 'started' });
+    expect(t.port.check).toHaveBeenCalledTimes(1);
+    await settle();
+    expect(t.changes.map((state) => state.update.status)).toEqual(['checking', 'idle']);
+    expect(t.controller.state()).toEqual({
+      currentVersion: '0.9.7',
+      update: { status: 'idle' },
+      lastCheckedAt: NOW,
+    });
+  });
+
+  it('follows a found update through the same state events as a timed check', () => {
+    const t = setup();
+    t.port.check.mockImplementation(() => {
+      t.port.available?.('0.10.0');
+      return Promise.resolve(null);
+    });
+    t.controller.check();
+    expect(t.changes.map((state) => state.update)).toEqual([
+      { status: 'checking' },
+      { status: 'available', version: '0.10.0' },
+    ]);
+    expect(t.controller.state().lastCheckedAt).toBe(NOW);
+  });
+
+  it('does not start a second check while one is in flight', () => {
+    const t = setup();
+    t.port.check.mockImplementation(() => new Promise(() => undefined));
+    expect(t.controller.check()).toEqual({ status: 'started' });
+    expect(t.controller.check()).toEqual({ status: 'busy' });
+    t.timers.repeating[0]?.run();
+    expect(t.port.check).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not restart a found update or a download in progress', () => {
+    const t = setup();
+    t.port.available?.('0.10.0');
+    expect(t.controller.check()).toEqual({ status: 'busy' });
+    t.port.progress?.(40);
+    expect(t.controller.check()).toEqual({ status: 'busy' });
+    expect(t.port.check).not.toHaveBeenCalled();
+  });
+
+  it('leaves a downloaded update alone and says it is ready', () => {
+    const t = setup();
+    t.port.downloaded?.('0.10.0');
+    expect(t.controller.check()).toEqual({ status: 'ready' });
+    expect(t.port.check).not.toHaveBeenCalled();
+    expect(t.controller.state().update).toEqual({ status: 'ready', version: '0.10.0' });
+  });
+
+  it('turns a failed check into the error state and can try again', async () => {
+    const t = setup();
+    t.port.check.mockRejectedValueOnce(new Error('net::ERR_INTERNET_DISCONNECTED'));
+    expect(t.controller.check()).toEqual({ status: 'started' });
+    await settle();
+    expect(t.controller.state().update).toEqual({
+      status: 'error',
+      message: 'net::ERR_INTERNET_DISCONNECTED',
+    });
+    expect(t.controller.check()).toEqual({ status: 'started' });
+    expect(t.controller.state().update).toEqual({ status: 'checking' });
+  });
+
+  it('goes back to idle when the updater answers without an event', async () => {
+    const t = setup();
+    t.controller.check();
+    await settle();
+    expect(t.controller.state()).toEqual({ currentVersion: '0.9.7', update: { status: 'idle' } });
+  });
+});
+
 describe('disabledUpdates', () => {
   it('stays idle and has nothing to install', async () => {
     const updates = disabledUpdates('1.2.3');
     expect(updates.state()).toEqual({ currentVersion: '1.2.3', update: { status: 'idle' } });
     expect((await updates.install()).status).toBe('failed');
+  });
+
+  it('answers a manual check with disabled instead of throwing', () => {
+    expect(disabledUpdates('1.2.3').check()).toEqual({ status: 'disabled' });
   });
 });
 

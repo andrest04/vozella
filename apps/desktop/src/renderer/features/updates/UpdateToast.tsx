@@ -4,6 +4,7 @@ import type { UpdateState } from '@vozella/contracts';
 import { useT } from '../../i18n/I18nProvider';
 import { Button, Icon, IconButton, cn } from '../../ui';
 import { popupColors } from '../../ui/styles';
+import { useUpdateState } from './use-update-state';
 
 /** "Remind me later" hides the card this long; a new launch shows it again at once. */
 export const REMIND_LATER_MS = 4 * 60 * 60 * 1000;
@@ -11,28 +12,6 @@ export const REMIND_LATER_MS = 4 * 60 * 60 * 1000;
 /** The downloaded version, or null while nothing is ready to install. */
 export function readyVersion(state: UpdateState | null): string | null {
   return state?.update.status === 'ready' ? state.update.version : null;
-}
-
-/** Main's update state: read once, then followed. */
-function useUpdateState(): UpdateState | null {
-  const [state, setState] = useState<UpdateState | null>(null);
-  useEffect(() => {
-    let alive = true;
-    const off = window.vozella.on('updates.stateChanged', (next) => {
-      setState(next);
-    });
-    window.vozella
-      .invoke('updates.getState', {})
-      .then((next) => {
-        if (alive) setState((current) => current ?? next);
-      })
-      .catch(() => undefined);
-    return () => {
-      alive = false;
-      off();
-    };
-  }, []);
-  return state;
 }
 
 /**

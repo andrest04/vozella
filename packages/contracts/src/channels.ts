@@ -219,6 +219,7 @@ export const requestChannels = {
   [session.sessionRevealFile.name]: session.sessionRevealFile,
   [updates.updatesGetState.name]: updates.updatesGetState,
   [updates.updatesInstall.name]: updates.updatesInstall,
+  [updates.updatesCheck.name]: updates.updatesCheck,
 } as const;
 
 export const eventChannels = {

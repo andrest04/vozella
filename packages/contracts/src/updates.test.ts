@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { eventChannels, requestChannels, updateStateSchema, updatesInstall } from './index';
+import {
+  eventChannels,
+  requestChannels,
+  updateStateSchema,
+  updatesCheck,
+  updatesInstall,
+} from './index';
 
 describe('updates contracts', () => {
   it('registers the update requests and event by name', () => {
@@ -29,5 +35,42 @@ describe('updates contracts', () => {
 
   it('takes no install input', () => {
     expect(updatesInstall.input.safeParse({ silent: true }).success).toBe(false);
+  });
+});
+
+describe('manual update check contract', () => {
+  it('registers updates.check and takes no input', () => {
+    expect(Object.keys(requestChannels)).toContain('updates.check');
+    expect(updatesCheck.input.safeParse({}).success).toBe(true);
+    expect(updatesCheck.input.safeParse({ force: true }).success).toBe(false);
+  });
+
+  it.each(['started', 'busy', 'ready', 'disabled'])('answers a check with %s', (status) => {
+    expect(updatesCheck.output.parse({ status })).toEqual({ status });
+  });
+
+  it('rejects an unknown check outcome', () => {
+    expect(updatesCheck.output.safeParse({ status: 'restarted' }).success).toBe(false);
+  });
+
+  it('carries a checking status and the time of the last answered check', () => {
+    expect(
+      updateStateSchema.parse({
+        currentVersion: '0.9.7',
+        update: { status: 'checking' },
+        lastCheckedAt: 1_700_000_000_000,
+      }),
+    ).toEqual({
+      currentVersion: '0.9.7',
+      update: { status: 'checking' },
+      lastCheckedAt: 1_700_000_000_000,
+    });
+    expect(
+      updateStateSchema.safeParse({
+        currentVersion: '0.9.7',
+        update: { status: 'idle' },
+        lastCheckedAt: -1,
+      }).success,
+    ).toBe(false);
   });
 });
