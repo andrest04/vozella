@@ -1,5 +1,5 @@
 import type { ChatMessageDto } from '@vozella/contracts';
-import { composerIntent, type ComposerIntent, type ComposerKeyInput } from '../../app/shortcuts';
+import { composerIntent } from '../../app/shortcuts';
 
 /** One row of the transcript. `pending` is the assistant row that waits for its first text. */
 export interface ChatRow {
@@ -130,8 +130,6 @@ export function restoreDraft(current: string, original: string): string {
 }
 
 // The composer key rules live in the shortcut table (app/shortcuts.ts).
-export type KeyIntent = ComposerIntent;
-export type KeyInput = ComposerKeyInput;
 export const keyIntent = composerIntent;
 
 /** The text a screen reader reads for a message. */

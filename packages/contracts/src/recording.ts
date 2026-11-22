@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { defineEvent, defineRequest } from './channel';
 import { microphoneChoiceSchema } from './audio';
-import { projectIdSchema } from './ids';
+import { guidSchema } from './ids';
 
 /**
  * Recording channels (module: recording). Main owns the take from Record to the saved summary:
@@ -58,7 +58,7 @@ export const recordingStateSchema = z.object({
   /** The meeting the take writes to; null while idle. */
   meetingId: z.string().nullable(),
   /** The project the take files into; null for no project, and while idle. */
-  projectId: projectIdSchema.nullable(),
+  projectId: guidSchema.nullable(),
   title: z.string(),
   recordedAtMs: z.number().nullable(),
   highlightCount: z.number().int(),
@@ -119,7 +119,7 @@ export const recordingGetState = defineRequest('recording.getState', {
 export const recordingStart = defineRequest('recording.start', {
   input: z.object({
     title: z.string(),
-    projectId: projectIdSchema.nullable(),
+    projectId: guidSchema.nullable(),
     microphone: microphoneChoiceSchema.nullable(),
     processId: z.number().int().nullable().optional(),
     appName: z.string().nullable(),
@@ -196,7 +196,7 @@ const recordingImportResultSchema = z.discriminatedUnion('started', [
 export const recordingImport = defineRequest('recording.import', {
   input: z.object({
     title: z.string(),
-    projectId: projectIdSchema.nullable(),
+    projectId: guidSchema.nullable(),
     path: z.string(),
   }),
   output: recordingImportResultSchema,
@@ -210,7 +210,7 @@ export const recordingImport = defineRequest('recording.import', {
 export const recordingImportUrl = defineRequest('recording.importUrl', {
   input: z.object({
     title: z.string(),
-    projectId: projectIdSchema.nullable(),
+    projectId: guidSchema.nullable(),
     url: z.string(),
   }),
   output: recordingImportResultSchema,

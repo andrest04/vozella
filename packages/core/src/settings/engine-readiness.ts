@@ -14,12 +14,6 @@ import type { CliPathProbe } from './ports';
 /** Every engine the user can pick, in the order the page lists them. Xai is gone, so never here. */
 export type SelectableEngineKind = 'Local' | CliProviderKind | ApiProviderKind;
 
-export const SELECTABLE_ENGINE_KINDS = [
-  'Local',
-  ...CLI_PROVIDER_KINDS,
-  ...API_PROVIDER_KINDS,
-] as const satisfies readonly SelectableEngineKind[];
-
 /**
  * Whether an engine can answer if it were picked now, else the first thing it still needs:
  * the CLI program, an API key, the compatible engine's server address, or a model (Local without

@@ -40,7 +40,6 @@ export function deriveRecordLayout(input: RecordLayoutInput): RecordLayoutFlags 
 
 /** The window width from which the side panel is a right column. */
 export const SIDE_PANEL_MIN_WIDTH = 1100;
-export const SIDE_PANEL_WIDTH = 320;
 export const STACKED_NOTES_MAX_HEIGHT = 200;
 
 export interface PanelArrangement {

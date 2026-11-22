@@ -112,5 +112,3 @@ export function createProjectsController(deps: ProjectsControllerDeps) {
     },
   };
 }
-
-export type ProjectsController = ReturnType<typeof createProjectsController>;

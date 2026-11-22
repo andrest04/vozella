@@ -150,9 +150,6 @@ export const cloudTranscriptionProvider = (
 ): CloudTranscriptionProvider =>
   isTranscriptionProviderKind(kind) ? TRANSCRIPTION_PROVIDERS[kind] : API_ENGINES[kind];
 
-/** The name `cloudTranscriptionProvider` had while every cloud engine was an API engine. */
-export const cloudTranscriptionApiEngine = cloudTranscriptionProvider;
-
 /**
  * The model an engine is asked for: the saved one, trimmed, when this engine lists it, else the
  * engine's default. One setting holds the model whatever engine is selected, so an id saved while

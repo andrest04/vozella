@@ -10,7 +10,6 @@ import {
   CLOUD_TRANSCRIPTION_ENGINE_LIST,
   CLOUD_TRANSCRIPTION_KINDS,
   CLOUD_TRANSCRIPTION_MAX_FILE_BYTES,
-  cloudTranscriptionApiEngine,
   cloudTranscriptionProvider,
   isCloudTranscriptionKind,
   LOCAL_TRANSCRIPTION_ENGINE,
@@ -117,10 +116,6 @@ describe('where the name, the endpoint and the key of a cloud engine come from',
   it('Deepgram resolves to its transcription-only provider', () => {
     expect(cloudTranscriptionProvider('Deepgram')).toBe(TRANSCRIPTION_PROVIDERS.Deepgram);
     expect(cloudTranscriptionProvider('Deepgram').displayName).toBe('Deepgram');
-  });
-
-  it('keeps the older name of the lookup for its callers', () => {
-    expect(cloudTranscriptionApiEngine).toBe(cloudTranscriptionProvider);
   });
 });
 

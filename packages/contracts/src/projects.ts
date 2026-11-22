@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineEvent, defineRequest } from './channel';
-import { guidSchema, projectIdSchema } from './ids';
+import { guidSchema } from './ids';
 
 /**
  * Project channels (module: projects). A project is a flat container of meetings with
@@ -17,7 +17,7 @@ export const PROJECT_INSTRUCTIONS_MAX = 20_000;
 export const PROJECT_FILES_PICK_MAX = 10;
 
 export const projectSchema = z.object({
-  id: projectIdSchema,
+  id: guidSchema,
   name: z.string().min(1).max(PROJECT_NAME_MAX),
   description: z.string().max(PROJECT_DESCRIPTION_MAX),
   instructions: z.string().max(PROJECT_INSTRUCTIONS_MAX),
@@ -148,7 +148,7 @@ export const migrationReportSchema = z.object({
   kind: z.literal('folders-to-projects'),
   /** How many projects the old folder list became. */
   projects: z.number().int().nonnegative(),
-  renamed: z.array(z.object({ id: projectIdSchema, from: z.string(), to: z.string() })).readonly(),
+  renamed: z.array(z.object({ id: guidSchema, from: z.string(), to: z.string() })).readonly(),
   skipped: z
     .array(z.object({ index: z.number().int().nonnegative(), reason: z.string() }))
     .readonly(),
@@ -171,7 +171,7 @@ export const projectsList = defineRequest('projects.list', {
 });
 
 export const projectsGet = defineRequest('projects.get', {
-  input: z.object({ id: projectIdSchema }).strict(),
+  input: z.object({ id: guidSchema }).strict(),
   output: z.discriminatedUnion('ok', [
     z.object({
       ok: z.literal(true),
@@ -193,7 +193,7 @@ export const projectsCreate = defineRequest('projects.create', {
 export const projectsUpdate = defineRequest('projects.update', {
   input: z
     .object({
-      id: projectIdSchema,
+      id: guidSchema,
       name: z.string().max(1_000).optional(),
       description: z.string().max(5_000).optional(),
       pinned: z.boolean().optional(),
@@ -204,13 +204,13 @@ export const projectsUpdate = defineRequest('projects.update', {
 
 export const projectsSetInstructions = defineRequest('projects.setInstructions', {
   input: z
-    .object({ id: projectIdSchema, instructions: z.string().max(PROJECT_INSTRUCTIONS_MAX) })
+    .object({ id: guidSchema, instructions: z.string().max(PROJECT_INSTRUCTIONS_MAX) })
     .strict(),
   output: projectResult,
 });
 
 export const projectsDelete = defineRequest('projects.delete', {
-  input: z.object({ id: projectIdSchema }).strict(),
+  input: z.object({ id: guidSchema }).strict(),
   output: projectDeleteResultSchema,
 });
 
@@ -218,7 +218,7 @@ const fileResults = z.object({ results: z.array(addProjectFileResultSchema).read
 
 /** Opens the file picker in main. An empty list means the user cancelled. */
 export const projectsFilesPick = defineRequest('projects.files.pick', {
-  input: z.object({ projectId: projectIdSchema }).strict(),
+  input: z.object({ projectId: guidSchema }).strict(),
   output: fileResults,
 });
 
@@ -226,7 +226,7 @@ export const projectsFilesPick = defineRequest('projects.files.pick', {
 export const projectsFilesAdd = defineRequest('projects.files.add', {
   input: z
     .object({
-      projectId: projectIdSchema,
+      projectId: guidSchema,
       paths: z.array(z.string().min(1).max(4_096)).min(1).max(PROJECT_FILES_PICK_MAX),
     })
     .strict(),
@@ -234,7 +234,7 @@ export const projectsFilesAdd = defineRequest('projects.files.add', {
 });
 
 export const projectsFilesRemove = defineRequest('projects.files.remove', {
-  input: z.object({ projectId: projectIdSchema, fileId: guidSchema }).strict(),
+  input: z.object({ projectId: guidSchema, fileId: guidSchema }).strict(),
   output: z.object({ removed: z.boolean() }),
 });
 
@@ -252,6 +252,6 @@ export const projectsDismissMigrationReport = defineRequest('projects.dismissMig
 export const projectsChanged = defineEvent('projects.changed', {
   payload: z.object({
     reason: z.enum(['project', 'files']),
-    projectId: projectIdSchema.nullable(),
+    projectId: guidSchema.nullable(),
   }),
 });

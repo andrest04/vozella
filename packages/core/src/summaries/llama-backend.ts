@@ -8,10 +8,8 @@ export type LlamaBackend = (typeof LLAMA_BACKENDS)[number];
 /** The CUDA build a driver probe may ask for. The default is cuda12. */
 export type CudaGeneration = 'cuda12' | 'cuda13';
 
-export const isGpuBackend = (backend: LlamaBackend): boolean => backend !== 'cpu';
-
 /** Layers are offloaded to the GPU on every backend except cpu. Feeds `rateFor`. */
-export const usesGpuOffload = isGpuBackend;
+export const usesGpuOffload = (backend: LlamaBackend): boolean => backend !== 'cpu';
 
 /** A GPU that is not NVIDIA but reports video memory: Vulkan can use it. */
 function hasVulkanGpu(hardware: Pick<HardwareProfile, 'gpuName' | 'gpuVramGb'>): boolean {

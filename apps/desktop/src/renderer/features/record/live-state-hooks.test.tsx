@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { elapsedAt, useElapsed } from './use-elapsed';
 import { STICK_THRESHOLD, isStuck } from './use-follow-scroll';
 import { useHeldValue } from './use-live-text';
-import { matchShortcut, useRecordShortcuts } from './use-record-shortcuts';
+import { matchRecordShortcut } from '../../app/shortcuts';
+import { useRecordShortcuts } from './use-record-shortcuts';
 import { useTimedValue } from './use-timed-value';
 
 afterEach(() => {
@@ -141,15 +142,15 @@ describe('accelerators', () => {
   });
 
   it('maps Ctrl+R, Ctrl+P and Ctrl+Shift+D and nothing else', () => {
-    expect(matchShortcut(key({ key: 'r', ctrlKey: true }))).toBe('stop');
-    expect(matchShortcut(key({ key: 'R', ctrlKey: true }))).toBe('stop');
-    expect(matchShortcut(key({ key: 'p', ctrlKey: true }))).toBe('pause');
-    expect(matchShortcut(key({ key: 'd', ctrlKey: true, shiftKey: true }))).toBe('discard');
-    expect(matchShortcut(key({ key: 'D', ctrlKey: true, shiftKey: true }))).toBe('discard');
-    expect(matchShortcut(key({ key: 'd', ctrlKey: true }))).toBeNull();
-    expect(matchShortcut(key({ key: 'r', ctrlKey: true, shiftKey: true }))).toBeNull();
-    expect(matchShortcut(key({ key: 'r' }))).toBeNull();
-    expect(matchShortcut(key({ key: 'r', ctrlKey: true, altKey: true }))).toBeNull();
+    expect(matchRecordShortcut(key({ key: 'r', ctrlKey: true }))).toBe('stop');
+    expect(matchRecordShortcut(key({ key: 'R', ctrlKey: true }))).toBe('stop');
+    expect(matchRecordShortcut(key({ key: 'p', ctrlKey: true }))).toBe('pause');
+    expect(matchRecordShortcut(key({ key: 'd', ctrlKey: true, shiftKey: true }))).toBe('discard');
+    expect(matchRecordShortcut(key({ key: 'D', ctrlKey: true, shiftKey: true }))).toBe('discard');
+    expect(matchRecordShortcut(key({ key: 'd', ctrlKey: true }))).toBeNull();
+    expect(matchRecordShortcut(key({ key: 'r', ctrlKey: true, shiftKey: true }))).toBeNull();
+    expect(matchRecordShortcut(key({ key: 'r' }))).toBeNull();
+    expect(matchRecordShortcut(key({ key: 'r', ctrlKey: true, altKey: true }))).toBeNull();
   });
 
   function Probe({ enabled, run }: { enabled: boolean; run: () => void }) {

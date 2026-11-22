@@ -6,10 +6,8 @@ import { z } from 'zod';
  */
 const GUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** The id of a project, a project file or a chat thread (the same canonical GUID). */
 export const guidSchema = z
   .string()
   .regex(GUID_PATTERN, 'Expected a GUID')
   .transform((value) => value.toLowerCase());
-
-/** The id of a project, a project file or a chat thread (the same canonical GUID). */
-export const projectIdSchema = guidSchema;

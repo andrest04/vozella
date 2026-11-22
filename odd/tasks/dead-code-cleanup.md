@@ -25,7 +25,7 @@ Kept on purpose: platform/projects/migrations/legacy-directory.ts (frozen copy),
 
 ## Tasks
 - [x] T1 Orphan i18n keys (route: delegated writer, T1-T4 together; trigger: 2+ non-trivial files)
-- [ ] T2 Unreferenced symbols and aliases
+- [x] T2 Unreferenced symbols and aliases
 - [ ] T3 Test-only production code
 - [ ] T4 Legacy Xai settings fields
 - [ ] T5 Duplicate consolidation (route: delegated writer; trigger: 2+ non-trivial files)
@@ -39,4 +39,5 @@ About 600-800 authored changed lines, mostly deletions. Strategy: exception-ok (
 ## Progress / evidence
 Commit hashes are recorded in the next task's commit (a commit cannot hold its own hash).
 
-- T1 (route: delegated writer). Removed 51 keys from en.json/es.json and Ui_LibraryAll from ui.en.json/ui.es.json, each re-checked with rg across apps, packages, native, scripts and e2e (no literal or template-built use). Kept after re-check: Xai_FeedbackModel (Claude Code/Codex model feedback key in contracts/settings.ts), Ui_LibraryAllProjects, Library_InboxEmpty.Text, Chat_Recipes.AutomationProperties.Name (all used), Xai_ProviderName (test-only, out of scope). Not touched: Settings_Xai*/Settings_ProviderXai.Text (also unread, but outside the listed families; candidate follow-up). i18n-catalog-checks.test.ts: dropped the now empty Settings_Calendar exception. Checks: pnpm typecheck pass; pnpm lint pass; pnpm test pass (contracts 142, core 2805, platform 984 + 34 skipped, desktop 2849 + 6 skipped).
+- T1 (route: delegated writer). Removed 51 keys from en.json/es.json and Ui_LibraryAll from ui.en.json/ui.es.json, each re-checked with rg across apps, packages, native, scripts and e2e (no literal or template-built use). Kept after re-check: Xai_FeedbackModel (Claude Code/Codex model feedback key in contracts/settings.ts), Ui_LibraryAllProjects, Library_InboxEmpty.Text, Chat_Recipes.AutomationProperties.Name (all used), Xai_ProviderName (test-only, out of scope). Not touched: Settings_Xai*/Settings_ProviderXai.Text (also unread, but outside the listed families; candidate follow-up). i18n-catalog-checks.test.ts: dropped the now empty Settings_Calendar exception. Checks: pnpm typecheck pass; pnpm lint pass; pnpm test pass (contracts 142, core 2805, platform 984 + 34 skipped, desktop 2849 + 6 skipped). Commit 8d0b9d5.
+- T2 (route: delegated writer). Deleted ProjectFileCorruptError, SELECTABLE_ENGINE_KINDS, SIDE_PANEL_WIDTH. ProjectsController, KeyIntent and KeyInput had no reader at all, so they were deleted rather than unexported (an unexported unused type fails lint). Aliases collapsed: matchRecordShortcut (the record hooks test now imports it from app/shortcuts), usesGpuOffload (more callers; its test absorbed the isGpuBackend cases), cloudTranscriptionProvider (pipeline.ts and the real STT integration test updated; the alias identity test dropped), guidSchema (projectIdSchema replaced in chat, library, projects, recording and storage contracts; it is also the id of threads and files, so the generic name is the accurate one). Checks: pnpm typecheck pass; pnpm lint pass; pnpm test pass (contracts 142, core 2804, platform 984 + 34 skipped, desktop 2849 + 6 skipped).
