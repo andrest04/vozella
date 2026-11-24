@@ -18,7 +18,8 @@ export interface AsrResult {
 /**
  * Right-context of the encoder. Live is 6 frames (560 ms); offline is 13 frames (1.12 s).
  * Live moved from 3 to 6: in the second-pass spike it fixed the live word errors for about
- * 0.15-0.19 s more delay per final (odd/tasks/second-pass-spike.md on spike/second-pass-measure).
+ * 0.15-0.19 s more delay per final. Measured on Spanish TTS audio only;
+ * still to be confirmed on real meeting audio.
  */
 export type AsrLatencyProfile = 'live' | 'offline';
 
