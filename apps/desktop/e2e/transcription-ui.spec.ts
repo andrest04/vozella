@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, openSettingsTab, type LaunchedApp } from './launch';
+import { launchApp, openSettingsTab, readSettings, type LaunchedApp } from './launch';
 
 // The transcription pages in the real window on the fake native build: the engine downloads are
 // stepped and can be made to fail, the speech engine "hears" a fixed script, and the data root is a
@@ -29,11 +29,8 @@ function silentWav(seconds: number): Buffer {
   return Buffer.concat([header, data]);
 }
 
-const settingsFile = (app: LaunchedApp): Record<string, unknown> =>
-  JSON.parse(fs.readFileSync(path.join(app.dataRoot, 'app', 'settings.json'), 'utf8')) as Record<
-    string,
-    unknown
-  >;
+/** The saved settings; `{}` until the first change is saved (see readSettings). */
+const settingsFile = (app: LaunchedApp): Record<string, unknown> => readSettings(app.dataRoot);
 
 async function start(env: Record<string, string>, seed?: (root: string) => void) {
   const launched = await launchApp(env, seed);

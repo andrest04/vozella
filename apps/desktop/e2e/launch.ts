@@ -100,6 +100,25 @@ export function seedReadySettings(root: string): void {
 }
 
 /**
+ * The saved settings of a data root, or an empty object while there are none. A fresh data root has
+ * no settings.json until the app saves its first change, a moment after the click that asks for it,
+ * and `expect.poll` (like `toPass`) does not retry a read that throws: a missing file must read as
+ * "not saved yet" so the poll waits for the save. Only a missing file is tolerated; any other error
+ * is rethrown. The store writes atomically (a temp file, then a rename), so a file that exists is
+ * whole and always parses.
+ */
+export function readSettings(root: string): Record<string, unknown> {
+  let text: string;
+  try {
+    text = fs.readFileSync(path.join(root, 'app', 'settings.json'), 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {};
+    throw error;
+  }
+  return JSON.parse(text) as Record<string, unknown>;
+}
+
+/**
  * Puts the fake engine on disk, the last thing the Record setup gate waits for, and reloads so the
  * Record page reads the setup again (it reads it on entry, and the window opens on Record).
  */
