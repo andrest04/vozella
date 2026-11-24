@@ -50,15 +50,15 @@ describe('downloader additions', () => {
   const body = Buffer.alloc(200_000, 3);
 
   it('continues a broken transfer with a Range request and checks the checksum', async () => {
-    let attempts = 0;
     const ranges: (string | undefined)[] = [];
+    let first: http.ServerResponse | undefined;
     const server = await serve((req, res) => {
-      attempts += 1;
       ranges.push(req.headers.range);
-      if (attempts === 1) {
+      if (ranges.length === 1) {
+        // Part of the body, then the connection stays open until the client breaks it below.
+        first = res;
         res.writeHead(200, { 'content-length': body.length });
         res.write(body.subarray(0, 50_000));
-        setTimeout(() => res.destroy(), 20);
         return;
       }
       const from = Number(/bytes=(\d+)-/.exec(req.headers.range ?? '')?.[1] ?? 0);
@@ -68,12 +68,18 @@ describe('downloader additions', () => {
     try {
       const target = path.join(dir, 'm.gguf');
       const options = { url: server.url, target, sha256: sha(body), resume: true };
-      await expect(downloadToFile(options)).rejects.toThrow();
+      // Break the transfer from onProgress, which runs after a chunk is in the .part file. A timer
+      // on the server could fire before the client wrote anything, leaving nothing to continue.
+      const breakOnFirstBytes = (): void => {
+        first?.destroy();
+      };
+      await expect(downloadToFile({ ...options, onProgress: breakOnFirstBytes })).rejects.toThrow();
       expect(fs.existsSync(target)).toBe(false);
-      expect(fs.existsSync(`${target}.part`)).toBe(true);
+      const kept = fs.statSync(`${target}.part`).size;
+      expect(kept).toBeGreaterThan(0);
       await downloadToFile(options);
       expect(fs.readFileSync(target).equals(body)).toBe(true);
-      expect(ranges[1]).toMatch(/^bytes=\d+-$/);
+      expect(ranges[1]).toBe(`bytes=${String(kept)}-`);
       expect(fs.existsSync(`${target}.part`)).toBe(false);
     } finally {
       await server.close();
@@ -81,13 +87,14 @@ describe('downloader additions', () => {
   });
 
   it('starts over when the server ignores the Range header', async () => {
-    let first = true;
-    const server = await serve((_req, res) => {
-      if (first) {
-        first = false;
+    const ranges: (string | undefined)[] = [];
+    let first: http.ServerResponse | undefined;
+    const server = await serve((req, res) => {
+      ranges.push(req.headers.range);
+      if (ranges.length === 1) {
+        first = res;
         res.writeHead(200, { 'content-length': body.length });
         res.write(body.subarray(0, 1000));
-        setTimeout(() => res.destroy(), 20);
         return;
       }
       res.writeHead(200, { 'content-length': body.length });
@@ -95,8 +102,15 @@ describe('downloader additions', () => {
     });
     try {
       const target = path.join(dir, 'm.gguf');
-      await expect(downloadToFile({ url: server.url, target, resume: true })).rejects.toThrow();
+      // Broken once the client has bytes on disk, so the second request really asks for a Range.
+      const breakOnFirstBytes = (): void => {
+        first?.destroy();
+      };
+      await expect(
+        downloadToFile({ url: server.url, target, resume: true, onProgress: breakOnFirstBytes }),
+      ).rejects.toThrow();
       await downloadToFile({ url: server.url, target, resume: true });
+      expect(ranges[1]).toMatch(/^bytes=[1-9]\d*-$/);
       expect(fs.readFileSync(target).equals(body)).toBe(true);
     } finally {
       await server.close();

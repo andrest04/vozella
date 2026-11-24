@@ -51,14 +51,17 @@ async function setContentSize(width: number, height: number): Promise<void> {
   });
   await launched.app.evaluate(
     ({ BrowserWindow }, size) => {
-      const main = BrowserWindow.getAllWindows()[0];
+      // By title, not getAllWindows()[0]: after a take the live copilot pill window is listed
+      // first, and resizing it leaves the main window at whatever size it had.
+      const main = BrowserWindow.getAllWindows().find((w) => w.getTitle() === 'Vozella');
+      if (!main) throw new Error('expected the main window');
       // The window's own minimum is 960x680; the narrow and short cases go under it on purpose,
       // with room below 300 for the rounding correction in resize().
-      main?.setMinimumSize(200, 200);
+      main.setMinimumSize(200, 200);
       // A maximized or full-screen window ignores setContentSize.
-      if (main?.isFullScreen()) main.setFullScreen(false);
-      if (main?.isMaximized()) main.unmaximize();
-      main?.setContentSize(size.width, size.height);
+      if (main.isFullScreen()) main.setFullScreen(false);
+      if (main.isMaximized()) main.unmaximize();
+      main.setContentSize(size.width, size.height);
     },
     { width, height },
   );
