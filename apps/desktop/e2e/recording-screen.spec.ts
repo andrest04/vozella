@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, type LaunchedApp } from './launch';
+import { launchApp, type LaunchedApp, setMainContentSize } from './launch';
 
 // The Record screen in the real window on the fake native build: the setup gate, the destination,
 // a take from Record to the result card, and the removed provider message. Screenshots
@@ -62,9 +62,7 @@ test.beforeAll(async () => {
   );
   page = await launched.app.firstWindow();
   await expect(page.getByRole('navigation')).toBeVisible();
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1180, 900);
-  });
+  await setMainContentSize(launched.app, 1180, 900);
   await page.getByRole('link', { name: 'Record' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Record meeting' })).toBeVisible();
 });

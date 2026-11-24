@@ -305,8 +305,14 @@ test('expanded: the capsule radius is 28, a collapsed one is a full round', asyn
   const radiusAt = async (): Promise<string> =>
     page.locator('#LiveCopilotCapsule').evaluate((el) => (el as HTMLElement).style.borderRadius);
 
-  // Collapsed, at 8.8 DIP in along the diagonal of the box corner: outside a 32 radius.
-  const inset = 8.8;
+  // A radius r leaves the box corner at r (1 - 1/√2) along the diagonal: 9.37 DIP for 32 and
+  // 8.20 DIP for 28. One sample point between the two is outside the collapsed radius and inside
+  // the expanded one. That gap is only 1.17 DIP wide, so the sample must be a whole physical
+  // pixel whose centre lies in it: both pixel readers round a DIP point to the nearest pixel
+  // (dipToScreenPoint on screen, captureRgb off-screen), and at 100 % scale 8.8 rounded to pixel 9,
+  // whose centre (9.5) is inside the 32 radius on the antialiased hairline, never magenta. Take the
+  // pixel whose centre is nearest 8.8 and aim a quarter pixel into it, so the rounding keeps it.
+  const inset = (Math.floor(8.8 * scale) + 0.25) / scale;
   const collapsedCap = await boxOf('#LiveCopilotCapsule');
   expect(await radiusAt()).toBe('32px');
   const [collapsedPixel] = await pixelsAt([

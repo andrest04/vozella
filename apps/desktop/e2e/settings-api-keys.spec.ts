@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, openSettingsTab } from './launch';
+import { launchApp, openSettingsTab, readSettings, setMainContentSize } from './launch';
 
 // The API key engines (BYOK) in Settings, in the real window on the fake native build: the key
 // store is in memory and Verify answers from a fixed model list, so no request leaves the PC.
@@ -29,9 +29,7 @@ test('OpenAI: save a key, see it saved but never shown, verify it, and pass axe'
   try {
     const page = await launched.app.firstWindow();
     await expect(page.getByRole('navigation')).toBeVisible();
-    await launched.app.evaluate(({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0]?.setContentSize(1120, 1000);
-    });
+    await setMainContentSize(launched.app, 1120, 1000);
     await page.evaluate(() => {
       window.location.hash = '#/settings';
     });
@@ -62,13 +60,7 @@ test('OpenAI: save a key, see it saved but never shown, verify it, and pass axe'
     expect(await page.content()).not.toContain(SECRET);
     await expect(row).toHaveAccessibleDescription('Key saved');
     await page.getByRole('button', { name: 'Use this engine' }).click();
-    await expect
-      .poll(
-        () =>
-          (JSON.parse(fs.readFileSync(settingsFile, 'utf8')) as Record<string, unknown>)
-            .selectedSummaryProvider,
-      )
-      .toBe('OpenAi');
+    await expect.poll(() => readSettings(launched.dataRoot).selectedSummaryProvider).toBe('OpenAi');
     await expect(row).toHaveAccessibleDescription(/In use/);
     expect(fs.readFileSync(settingsFile, 'utf8')).not.toContain(SECRET);
 
@@ -100,9 +92,7 @@ test('Groq: its own engine row takes a key, verifies it and suggests the Groq mo
   try {
     const page = await launched.app.firstWindow();
     await expect(page.getByRole('navigation')).toBeVisible();
-    await launched.app.evaluate(({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0]?.setContentSize(1120, 1000);
-    });
+    await setMainContentSize(launched.app, 1120, 1000);
     await page.evaluate(() => {
       window.location.hash = '#/settings';
     });
@@ -127,13 +117,7 @@ test('Groq: its own engine row takes a key, verifies it and suggests the Groq mo
 
     await page.getByRole('button', { name: 'Use this engine' }).click();
     const settingsFile = path.join(launched.dataRoot, 'app', 'settings.json');
-    await expect
-      .poll(
-        () =>
-          (JSON.parse(fs.readFileSync(settingsFile, 'utf8')) as Record<string, unknown>)
-            .selectedSummaryProvider,
-      )
-      .toBe('Groq');
+    await expect.poll(() => readSettings(launched.dataRoot).selectedSummaryProvider).toBe('Groq');
     expect(fs.readFileSync(settingsFile, 'utf8')).not.toContain(SECRET);
 
     await page.getByRole('button', { name: 'Verify' }).click();

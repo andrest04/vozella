@@ -4,12 +4,14 @@ import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import {
+  evaluateMain,
   installEngine,
   launchAppInRoot,
   readyEnv,
   seedReadySettings,
   NO_TEST_HOOKS,
   packaged,
+  setMainContentSize,
 } from './launch';
 
 // sp-5: the shell end to end on the fake native build. Single instance, window state, tray,
@@ -93,11 +95,7 @@ const readProbe = (app: ElectronApplication): Promise<Probe> =>
   });
 
 const mainState = (app: ElectronApplication) =>
-  app.evaluate(({ BrowserWindow }) => {
-    const win = BrowserWindow.getAllWindows().find((w) =>
-      w.webContents.getURL().includes('/index.html'),
-    );
-    if (!win) throw new Error('no main window');
+  evaluateMain(app, (win) => {
     return { minimized: win.isMinimized(), visible: win.isVisible(), bounds: win.getBounds() };
   });
 
@@ -131,10 +129,8 @@ function markdownFiles(dir: string): string[] {
 }
 
 const closeMain = (app: ElectronApplication) =>
-  app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()
-      .find((w) => w.webContents.getURL().includes('/index.html'))
-      ?.close();
+  evaluateMain(app, (win) => {
+    win.close();
   });
 
 // ---------------------------------------------------------------------------------------------
@@ -145,8 +141,8 @@ test('a second launch on the same data root exits and the first window comes bac
   const app = await launchAppInRoot(root);
   try {
     await ready(app);
-    await app.evaluate(({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0]?.minimize();
+    await evaluateMain(app, (win) => {
+      win.minimize();
     });
     expect((await mainState(app)).minimized).toBe(true);
 
@@ -185,18 +181,18 @@ test('moved and resized bounds come back on the next launch, and the minimum siz
   const first = await launchAppInRoot(root);
   try {
     await ready(first);
-    await first.evaluate(({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0]?.setBounds({ x: 90, y: 60, width: 1040, height: 710 });
+    await evaluateMain(first, (win) => {
+      win.setBounds({ x: 90, y: 60, width: 1040, height: 710 });
     });
     // Below the minimum: the window refuses to get smaller than 960 x 680.
-    await first.evaluate(({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0]?.setSize(500, 300);
+    await evaluateMain(first, (win) => {
+      win.setSize(500, 300);
     });
     const squeezed = await mainState(first);
     expect(squeezed.bounds.width).toBeGreaterThanOrEqual(960);
     expect(squeezed.bounds.height).toBeGreaterThanOrEqual(680);
-    await first.evaluate(({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0]?.setBounds({ x: 90, y: 60, width: 1040, height: 710 });
+    await evaluateMain(first, (win) => {
+      win.setBounds({ x: 90, y: 60, width: 1040, height: 710 });
     });
   } finally {
     await first.close();
@@ -224,9 +220,7 @@ test('bounds saved off every screen fall back to the default window on a visible
   const app = await launchAppInRoot(root);
   try {
     await ready(app);
-    const facts = await app.evaluate(({ BrowserWindow, screen }) => {
-      const win = BrowserWindow.getAllWindows()[0];
-      if (!win) throw new Error('no window');
+    const facts = await evaluateMain(app, (win, _arg, { screen }) => {
       const bounds = win.getBounds();
       const area = screen.getDisplayMatching(bounds).workArea;
       return { bounds, area, areas: screen.getAllDisplays().map((d) => d.workArea) };
@@ -273,8 +267,8 @@ test('the tray has Start recording, Open and Quit, Open restores a minimized win
         probeObject.trayRun?.(action);
       }, id);
 
-    await app.evaluate(({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0]?.minimize();
+    await evaluateMain(app, (win) => {
+      win.minimize();
     });
     expect((await mainState(app)).minimized).toBe(true);
     await runTray('open');
@@ -338,12 +332,9 @@ test('starting a take minimizes the main window once, dismisses the popup and te
     expect(last).toMatchObject({ isRecording: true, mainWindowActive: false });
 
     // Pause and resume leave the window alone: bring it back and see it stay.
-    await app.evaluate(({ BrowserWindow }) => {
-      const win = BrowserWindow.getAllWindows().find((w) =>
-        w.webContents.getURL().includes('/index.html'),
-      );
-      win?.restore();
-      win?.show();
+    await evaluateMain(app, (win) => {
+      win.restore();
+      win.show();
     });
     await expect.poll(async () => (await mainState(app)).minimized).toBe(false);
     await page.keyboard.press('Control+p');
@@ -511,9 +502,7 @@ test('screenshots: the shell, the tray menu model and the startup notice, light 
   try {
     const page = await app.firstWindow();
     await expect(page.locator('#NavItemRecording')).toBeAttached();
-    await app.evaluate(({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0]?.setContentSize(1180, 800);
-    });
+    await setMainContentSize(app, 1180, 800);
     for (const theme of ['light', 'dark'] as const) {
       await page.evaluate(() => {
         window.sessionStorage.clear();

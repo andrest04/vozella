@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, type LaunchedApp } from './launch';
+import { launchApp, type LaunchedApp, setMainContentSize } from './launch';
 
 // Playing the saved audio from the Transcript tab.
 // The audio is a generated three second wav; the library is a throwaway data root.
@@ -72,9 +72,7 @@ test.beforeAll(async () => {
   });
   page = await launched.app.firstWindow();
   await expect(page.getByRole('navigation')).toBeVisible();
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1120, 780);
-  });
+  await setMainContentSize(launched.app, 1120, 780);
 });
 
 test.afterAll(async () => {

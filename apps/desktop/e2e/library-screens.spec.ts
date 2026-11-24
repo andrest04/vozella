@@ -1,7 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, openSettingsTab, type LaunchedApp } from './launch';
+import {
+  evaluateMain,
+  launchApp,
+  openSettingsTab,
+  setMainContentSize,
+  type LaunchedApp,
+} from './launch';
 import { writeMeeting } from './library-data';
 
 // Regenerates docs/screenshots/library-storage/*.png, the pictures T4.1 is judged from. Opt in with
@@ -187,12 +193,15 @@ async function resize(
   // Parked, the page can come out a few px off what the window reports, so ask again by the gap.
   let asked = { width, height };
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    await launched.app.evaluate(({ BrowserWindow }, size) => {
-      const main = BrowserWindow.getAllWindows()[0];
-      // The real minimum is the 960 asked for here, and parked the frame would keep it at 976.
-      main?.setMinimumSize(300, 300);
-      main?.setContentSize(size.width, size.height);
-    }, asked);
+    await evaluateMain(
+      launched.app,
+      (main, size) => {
+        // The real minimum is the 960 asked for here, and parked the frame would keep it at 976.
+        main.setMinimumSize(300, 300);
+        main.setContentSize(size.width, size.height);
+      },
+      asked,
+    );
     await page.waitForTimeout(200);
     const inner = await page.evaluate(() => ({ w: window.innerWidth, h: window.innerHeight }));
     if (inner.w === width) break;
@@ -384,9 +393,7 @@ test('an empty library', async () => {
   try {
     const win = await empty.app.firstWindow();
     await expect(win.getByRole('navigation')).toBeVisible();
-    await empty.app.evaluate(({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0]?.setContentSize(1180, 760);
-    });
+    await setMainContentSize(empty.app, 1180, 760);
     await win.evaluate(() => {
       window.location.hash = '#/library';
     });
@@ -404,9 +411,7 @@ test('3,000 meetings, while loading and loaded', async () => {
   try {
     const win = await large.app.firstWindow();
     await expect(win.getByRole('navigation')).toBeVisible();
-    await large.app.evaluate(({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0]?.setContentSize(1180, 760);
-    });
+    await setMainContentSize(large.app, 1180, 760);
     await win.evaluate(() => {
       window.location.hash = '#/library';
     });

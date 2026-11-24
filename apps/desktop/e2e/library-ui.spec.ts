@@ -2,7 +2,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, openSettingsTab, type LaunchedApp } from './launch';
+import {
+  evaluateMain,
+  launchApp,
+  openSettingsTab,
+  setMainContentSize,
+  type LaunchedApp,
+} from './launch';
 import { writeMeeting } from './library-data';
 
 // Main flows of the Library screen and the Settings data card, in the real app with fake native
@@ -172,16 +178,9 @@ test('Settings shows where data lives, follows a picked folder, and refuses a re
 
 test('the library is panes that scroll on their own, under the title bar and over the chat', async () => {
   const resize = async (width: number, height: number): Promise<void> => {
-    await launched.app.evaluate(
-      ({ BrowserWindow }, size) => {
-        BrowserWindow.getAllWindows()[0]?.setContentSize(size.width, size.height);
-      },
-      { width, height },
-    );
+    await setMainContentSize(launched.app, width, height);
   };
-  const before = await launched.app.evaluate(({ BrowserWindow }) =>
-    BrowserWindow.getAllWindows()[0]?.getContentSize(),
-  );
+  const before = await evaluateMain(launched.app, (main) => main.getContentSize());
   await goTo('Library');
   const main = page.locator('#content');
   await expect.poll(() => main.evaluate((el) => getComputedStyle(el).overflowY)).toBe('hidden');
@@ -209,7 +208,7 @@ test('the library is panes that scroll on their own, under the title bar and ove
 
   await goTo('Settings');
   await expect.poll(() => main.evaluate((el) => getComputedStyle(el).overflowY)).toBe('auto');
-  if (before?.[0] && before[1]) await resize(before[0], before[1]);
+  if (before[0] && before[1]) await resize(before[0], before[1]);
 });
 
 test('no serious accessibility violations on the library, its dialogs and the data card', async () => {

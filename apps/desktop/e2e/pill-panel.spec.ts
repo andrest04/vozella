@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { installEngine, launchApp, readyEnv, type LaunchedApp } from './launch';
+import { evaluateMain, installEngine, launchApp, readyEnv, type LaunchedApp } from './launch';
 import { os, sleep } from './os/os';
 import { BACKGROUND, pillPixelsAt } from './pill-pixels';
 
@@ -347,13 +347,8 @@ test('the web toggle adds the badge to the answer and survives the next ask', as
   await setAppTheme('dark');
 });
 
-const mainMinimized = (): Promise<boolean | null> =>
-  launched.app.evaluate(({ BrowserWindow }) => {
-    const w = BrowserWindow.getAllWindows().find((x) =>
-      x.webContents.getURL().includes('index.html'),
-    );
-    return w ? w.isMinimized() : null;
-  });
+const mainMinimized = (): Promise<boolean> =>
+  evaluateMain(launched.app, (main) => main.isMinimized());
 
 const pillVisible = (): Promise<boolean> =>
   launched.app.evaluate(({ BrowserWindow }) => {
@@ -365,10 +360,8 @@ const pillVisible = (): Promise<boolean> =>
 
 /** The pill shows while the app is not in front: minimize the app and put the backdrop back. */
 async function minimizeApp(): Promise<void> {
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()
-      .find((x) => x.webContents.getURL().includes('index.html'))
-      ?.minimize();
+  await evaluateMain(launched.app, (main) => {
+    main.minimize();
   });
   await expect.poll(mainMinimized).toBe(true);
   await expect.poll(pillVisible, { timeout: 10_000 }).toBe(true);

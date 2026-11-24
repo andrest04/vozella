@@ -100,6 +100,25 @@ export function seedReadySettings(root: string): void {
 }
 
 /**
+ * The saved settings of a data root, or an empty object while there are none. A fresh data root has
+ * no settings.json until the app saves its first change, a moment after the click that asks for it,
+ * and `expect.poll` (like `toPass`) does not retry a read that throws: a missing file must read as
+ * "not saved yet" so the poll waits for the save. Only a missing file is tolerated; any other error
+ * is rethrown. The store writes atomically (a temp file, then a rename), so a file that exists is
+ * whole and always parses.
+ */
+export function readSettings(root: string): Record<string, unknown> {
+  let text: string;
+  try {
+    text = fs.readFileSync(path.join(root, 'app', 'settings.json'), 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {};
+    throw error;
+  }
+  return JSON.parse(text) as Record<string, unknown>;
+}
+
+/**
  * Puts the fake engine on disk, the last thing the Record setup gate waits for, and reloads so the
  * Record page reads the setup again (it reads it on entry, and the window opens on Record).
  */
@@ -124,16 +143,77 @@ export const NO_TEST_HOOKS =
 export const packagedShots =
   process.env.VOZELLA_PACKAGED_SHOTS === '1' && Boolean(process.env.VOZELLA_E2E_EXECUTABLE);
 
+/** A function `evaluateMain` runs in the main process on the main window. */
+export type MainWindowFunction<R, Arg> = (
+  main: Electron.BrowserWindow,
+  arg: Arg,
+  electron: typeof Electron.CrossProcessExports,
+) => R | Promise<R>;
+
+/**
+ * Runs `fn` in the main process on the main window, the one showing /index.html.
+ *
+ * The app has more windows than the main one: the live copilot pill (/pill.html) and the meeting
+ * popup (/meeting-prompt.html) are created on demand, then hidden, never destroyed.
+ * `getAllWindows()` does not list them in creation order, and all three pages are titled
+ * "Vozella", so neither the first window nor the title finds the main one. Its page path does:
+ * the app routes by hash, so the path stays /index.html on every screen.
+ *
+ * Like any `app.evaluate` callback, `fn` is sent as source text, so it can use only its own
+ * parameters: the main window, `arg`, and the electron module.
+ */
+export async function evaluateMain<R, Arg = undefined>(
+  app: ElectronApplication,
+  fn: MainWindowFunction<R, Arg>,
+  arg?: Arg,
+): Promise<R> {
+  return (await app.evaluate(
+    async (electron, payload) => {
+      const { source, value } = payload as unknown as { source: string; value: Arg };
+      const isMain = (w: Electron.BrowserWindow): boolean => {
+        if (w.isDestroyed()) return false;
+        const url = w.webContents.getURL();
+        return URL.canParse(url) && new URL(url).pathname === '/index.html';
+      };
+      const all = electron.BrowserWindow.getAllWindows();
+      const main = all.find(isMain);
+      if (!main) {
+        const urls = all.map((w) => (w.isDestroyed() ? '(destroyed)' : w.webContents.getURL()));
+        throw new Error(`no main window (/index.html) among: ${urls.join(', ') || 'no windows'}`);
+      }
+      // The callback arrives as source text, the way Playwright sends any evaluate callback.
+      // eslint-disable-next-line @typescript-eslint/no-implied-eval
+      const revive = new Function(`return (${source});`) as () => MainWindowFunction<unknown, Arg>;
+      return revive()(main, value, electron);
+    },
+    { source: fn.toString(), value: arg },
+  )) as R;
+}
+
+/** Sets the size of the main window's content area. */
+export async function setMainContentSize(
+  app: ElectronApplication,
+  width: number,
+  height: number,
+): Promise<void> {
+  await evaluateMain(
+    app,
+    (main, size) => {
+      main.setContentSize(size.width, size.height);
+    },
+    { width, height },
+  );
+}
+
 /**
  * Starting a take minimizes the main window (the live copilot pill takes over) and a minimized
  * window paints nothing, so a screenshot taken during or after a take needs this first. It does
  * what the pill's Show button does.
  */
 export async function restoreMain(app: ElectronApplication): Promise<void> {
-  await app.evaluate(({ BrowserWindow }) => {
-    const main = BrowserWindow.getAllWindows().find((w) => w.getTitle() === 'Vozella');
-    if (main?.isMinimized()) main.restore();
-    main?.show();
+  await evaluateMain(app, (main) => {
+    if (main.isMinimized()) main.restore();
+    main.show();
   });
 }
 

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import axe from 'axe-core';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, openSettingsTab, type LaunchedApp } from './launch';
+import { launchApp, openSettingsTab, readSettings, type LaunchedApp } from './launch';
 
 // The Settings page in the real window, on the fake native build and a throwaway data root.
 // Nothing here talks to a real CLI or the network.
@@ -10,10 +10,8 @@ import { launchApp, openSettingsTab, type LaunchedApp } from './launch';
 let launched: LaunchedApp;
 let page: Page;
 
-const settingsFile = (): Record<string, unknown> =>
-  JSON.parse(
-    fs.readFileSync(path.join(launched.dataRoot, 'app', 'settings.json'), 'utf8'),
-  ) as Record<string, unknown>;
+/** The saved settings; `{}` until the first change is saved (see readSettings). */
+const settingsFile = (): Record<string, unknown> => readSettings(launched.dataRoot);
 
 async function choose(select: string | RegExp, option: string | RegExp): Promise<void> {
   await page.getByRole('combobox', { name: select }).click();

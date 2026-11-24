@@ -2,7 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { launchApp, openSettingsTab, READY_MODEL, restoreMain, type LaunchedApp } from './launch';
+import {
+  launchApp,
+  openSettingsTab,
+  READY_MODEL,
+  restoreMain,
+  type LaunchedApp,
+  setMainContentSize,
+} from './launch';
 
 // Cloud transcription with the user's own API key (BYOK), in the real window on the fake native
 // build: the key store is in memory, the cloud speech client hears a fixed script (one word per
@@ -51,9 +58,7 @@ async function open(
   );
   const page = await launched.app.firstWindow();
   await expect(page.getByRole('navigation')).toBeVisible();
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1180, 1000);
-  });
+  await setMainContentSize(launched.app, 1180, 1000);
   return { launched, page };
 }
 

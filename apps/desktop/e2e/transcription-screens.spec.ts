@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, openSettingsTab } from './launch';
+import { launchApp, openSettingsTab, setMainContentSize } from './launch';
 
 // Regenerates docs/screenshots/transcription/*.png. Opt in with VOZELLA_SCREENSHOTS=1.
 test.skip(process.env.VOZELLA_SCREENSHOTS !== '1', 'set VOZELLA_SCREENSHOTS=1 to capture');
@@ -33,9 +33,7 @@ async function launchShown(env: Record<string, string>, seed?: (root: string) =>
   const launched = await launchApp({ VOZELLA_E2E_SHOW: '1', ...env }, seed);
   const page = await launched.app.firstWindow();
   await expect(page.getByRole('navigation')).toBeVisible();
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1120, 980);
-  });
+  await setMainContentSize(launched.app, 1120, 980);
   await page.waitForTimeout(300);
   return { launched, page };
 }
@@ -87,9 +85,7 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(page.getByTestId('transcription-section')).toBeVisible();
       await expect(page.getByTestId('live-drops-caption')).toBeVisible();
       await page.getByTestId('transcription-section').scrollIntoViewIfNeeded();
-      await launched.app.evaluate(({ BrowserWindow }) => {
-        BrowserWindow.getAllWindows()[0]?.setContentSize(1120, 1500);
-      });
+      await setMainContentSize(launched.app, 1120, 1500);
       await page.waitForTimeout(400);
       await shot(page, `settings-transcription-${theme}`);
     } finally {
@@ -125,9 +121,7 @@ for (const theme of ['light', 'dark'] as const) {
         'aria-valuenow',
         /^[1-9]/,
       );
-      await launched.app.evaluate(({ BrowserWindow }) => {
-        BrowserWindow.getAllWindows()[0]?.setContentSize(1120, 1500);
-      });
+      await setMainContentSize(launched.app, 1120, 1500);
       await page.waitForTimeout(400);
       await shot(page, `settings-engine-downloading-${theme}`);
     } finally {

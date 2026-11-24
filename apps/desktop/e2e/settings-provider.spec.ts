@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, openSettingsTab, type LaunchedApp } from './launch';
+import { launchApp, openSettingsTab, type LaunchedApp, setMainContentSize } from './launch';
 
 // The summary provider section of Settings in the real window, on the fake native build and
 // a throwaway data root. No real CLI, model or network is involved. Screenshots go to
@@ -28,9 +28,7 @@ async function start(seedSettings?: object): Promise<Session> {
   });
   const page = await launched.app.firstWindow();
   await expect(page.getByRole('navigation')).toBeVisible();
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1120, 1000);
-  });
+  await setMainContentSize(launched.app, 1120, 1000);
   await page.evaluate(() => {
     window.location.hash = '#/settings';
   });

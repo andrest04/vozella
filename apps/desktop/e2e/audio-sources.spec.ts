@@ -1,9 +1,7 @@
 import axe from 'axe-core';
-import fs from 'node:fs';
-import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { FAKE_APPS } from './fake-audio-apps';
-import { launchApp, type LaunchedApp } from './launch';
+import { launchApp, readSettings, type LaunchedApp } from './launch';
 
 // The audio-capture pages in the real window on the fake native build: a fake microphone
 // list, and fake apps that "play" audio through VOZELLA_FAKE_AUDIO_APPS. No real device,
@@ -12,10 +10,8 @@ import { launchApp, type LaunchedApp } from './launch';
 let launched: LaunchedApp;
 let page: Page;
 
-const settingsFile = (): Record<string, unknown> =>
-  JSON.parse(
-    fs.readFileSync(path.join(launched.dataRoot, 'app', 'settings.json'), 'utf8'),
-  ) as Record<string, unknown>;
+/** The saved settings; `{}` until the first pick is saved (see readSettings). */
+const settingsFile = (): Record<string, unknown> => readSettings(launched.dataRoot);
 
 /** The row of a card: the radio is the small circle, the words and the meter sit beside it. */
 const cardRow = (name: RegExp) =>

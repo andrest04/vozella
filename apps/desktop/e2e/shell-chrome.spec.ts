@@ -12,6 +12,7 @@ import {
   type LaunchedApp,
   NO_TEST_HOOKS,
   packaged,
+  setMainContentSize,
 } from './launch';
 import { writeMeeting } from './library-data';
 
@@ -55,9 +56,7 @@ test.beforeAll(async () => {
   page = await launched.app.firstWindow();
   // The startup dialog is modal, so the rail is hidden from the accessibility tree until it closes.
   await expect(page.locator('#NavItemRecording')).toBeAttached();
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1180, 800);
-  });
+  await setMainContentSize(launched.app, 1180, 800);
 });
 
 test.afterAll(async () => {

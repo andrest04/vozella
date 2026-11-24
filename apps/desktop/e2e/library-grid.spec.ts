@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { launchApp, type LaunchedApp } from './launch';
+import { launchApp, type LaunchedApp, setMainContentSize } from './launch';
 import { writeMeeting } from './library-data';
 
 // The sticky day header and the pinned focused row depend on real scrolling and layout, which
@@ -34,9 +34,7 @@ test.beforeAll(async () => {
   });
   page = await launched.app.firstWindow();
   await expect(page.getByRole('navigation')).toBeVisible();
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1180, 760);
-  });
+  await setMainContentSize(launched.app, 1180, 760);
   await page.getByRole('navigation').getByRole('link', { name: 'Library' }).click();
   grid = page.getByRole('grid', { name: 'Library' });
   await expect(grid).toBeVisible();
@@ -75,10 +73,7 @@ test('each row fills the slot the list gives it, so the rows sit edge to edge', 
 });
 
 test('the smallest window has no preview, so it puts no cursor on a row', async () => {
-  const resize = (width: number) =>
-    launched.app.evaluate(({ BrowserWindow }, value) => {
-      BrowserWindow.getAllWindows()[0]?.setContentSize(value, 760);
-    }, width);
+  const resize = (width: number) => setMainContentSize(launched.app, width, 760);
   await resize(960);
   await expect.poll(() => page.evaluate(() => window.innerWidth)).toBeLessThan(992);
   await page.reload();

@@ -1,7 +1,14 @@
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { FAKE_APPS } from './fake-audio-apps';
-import { installEngine, launchApp, readyEnv, seedReadySettings, type LaunchedApp } from './launch';
+import {
+  installEngine,
+  launchApp,
+  readyEnv,
+  seedReadySettings,
+  type LaunchedApp,
+  setMainContentSize,
+} from './launch';
 
 // Regenerates docs/screenshots/audio-capture/*.png. Opt in with VOZELLA_SCREENSHOTS=1.
 test.skip(process.env.VOZELLA_SCREENSHOTS !== '1', 'set VOZELLA_SCREENSHOTS=1 to capture');
@@ -21,9 +28,7 @@ test.beforeAll(async () => {
   page = await launched.app.firstWindow();
   await expect(page.getByRole('navigation')).toBeVisible();
   await installEngine(page);
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1120, 1100);
-  });
+  await setMainContentSize(launched.app, 1120, 1100);
   await page.waitForTimeout(300);
 });
 

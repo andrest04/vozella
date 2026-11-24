@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, type LaunchedApp, NO_GALLERY, packaged } from './launch';
+import { launchApp, type LaunchedApp, NO_GALLERY, packaged, setMainContentSize } from './launch';
 import { writeMeeting } from './library-data';
 
 // The CLI setup dialog, the wizard CLI check and the generation gate in the real app with the
@@ -55,9 +55,7 @@ async function start(
   );
   const page = await launched.app.firstWindow();
   await expect(page.getByRole('navigation')).toBeVisible();
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1120, 780);
-  });
+  await setMainContentSize(launched.app, 1120, 780);
   if (options.locale) {
     await page.evaluate(
       (tag) => window.vozella.invoke('settings.setUiLanguage', { tag }),

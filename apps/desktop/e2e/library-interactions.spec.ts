@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { launchApp, type LaunchedApp } from './launch';
+import { launchApp, type LaunchedApp, setMainContentSize } from './launch';
 import { writeMeeting } from './library-data';
 
 // Checking, keyboard and moving in the real renderer, with files on disk behind them. Each test seeds
@@ -56,9 +56,7 @@ test.beforeAll(async () => {
   libraryRoot = path.join(launched.dataRoot, 'meetings');
   page = await launched.app.firstWindow();
   await expect(page.getByRole('navigation')).toBeVisible();
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1180, 760);
-  });
+  await setMainContentSize(launched.app, 1180, 760);
   grid = page.getByRole('grid', { name: 'Library' });
 });
 

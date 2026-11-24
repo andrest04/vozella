@@ -4,7 +4,7 @@ import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { FAKE_APPS } from './fake-audio-apps';
-import { installEngine, launchAppInRoot, readyEnv } from './launch';
+import { evaluateMain, installEngine, launchAppInRoot, readyEnv } from './launch';
 import {
   appDataOf,
   guid,
@@ -137,11 +137,11 @@ const pickNext = (app: ElectronApplication, files: readonly string[]) =>
 
 /** Sets the size of the window's content; the minimum is lowered so that the narrow layouts can be reached. */
 const resize = (app: ElectronApplication, width: number, height: number) =>
-  app.evaluate(
-    ({ BrowserWindow }, size) => {
-      const win = BrowserWindow.getAllWindows()[0];
-      win?.setMinimumSize(320, 320);
-      win?.setContentSize(size.width, size.height);
+  evaluateMain(
+    app,
+    (win, size) => {
+      win.setMinimumSize(320, 320);
+      win.setContentSize(size.width, size.height);
     },
     { width, height },
   );
@@ -1108,12 +1108,20 @@ test('9. unfiled meetings move to a project one by one and in bulk, with undo, a
     const rows = page.locator('[data-row-id]');
     await expect(rows).toHaveCount(5);
     const row = (title: string) => page.getByRole('row', { name: new RegExp(title) });
+    // A move closes its popover with a 150 ms fade, and the closing list stays in the page (and in
+    // the accessibility tree) until the fade ends; the row and the bar each have their own popover,
+    // so one opened sooner shows every project twice. Wait for the list to go after each move.
+    const moveList = page.getByRole('listbox', { name: 'Move to project' });
+    const moveTo = async (name: string): Promise<void> => {
+      await moveList.getByRole('option', { name }).click();
+      await expect(moveList).toHaveCount(0);
+    };
 
     // Move one from its row menu: the recording goes with it, and Undo brings both back.
     await row('Inbox one').getByRole('button', { name: 'More actions' }).click();
     await page.getByRole('menuitem', { name: 'Move to project' }).click();
     await page.getByRole('combobox', { name: 'Search projects' }).fill('arch');
-    await page.getByRole('option', { name: 'Archive' }).click();
+    await moveTo('Archive');
     await expect(rows).toHaveCount(4);
     await expect(page.getByText('Moved "Inbox one" to Archive.')).toBeVisible();
     expect(fs.existsSync(inLibrary(root, 'Archive', 'Inbox one.md', 1))).toBe(true);
@@ -1128,7 +1136,7 @@ test('9. unfiled meetings move to a project one by one and in bulk, with undo, a
     // And once more, for good; the card counts follow.
     await row('Inbox one').getByRole('button', { name: 'More actions' }).click();
     await page.getByRole('menuitem', { name: 'Move to project' }).click();
-    await page.getByRole('option', { name: 'Archive' }).click();
+    await moveTo('Archive');
     await expect(rows).toHaveCount(4);
 
     // Three checked meetings move together from the bar, and Undo returns the three.
@@ -1138,7 +1146,7 @@ test('9. unfiled meetings move to a project one by one and in bulk, with undo, a
     }
     await expect(bar.getByText('Checked: 3')).toBeVisible();
     await bar.getByRole('button', { name: 'Move to project' }).click();
-    await page.getByRole('option', { name: 'Active' }).click();
+    await moveTo('Active');
     await expect(rows).toHaveCount(1);
     await expect(page.getByText('Moved 3 meetings to Active.')).toBeVisible();
     for (const [index, title] of ['Inbox two', 'Inbox three', 'Inbox four'].entries()) {
@@ -1151,7 +1159,7 @@ test('9. unfiled meetings move to a project one by one and in bulk, with undo, a
       await row(title).getByRole('checkbox').click();
     }
     await bar.getByRole('button', { name: 'Move to project' }).click();
-    await page.getByRole('option', { name: 'Active' }).click();
+    await moveTo('Active');
     await expect(rows).toHaveCount(1);
 
     await goToProjects(page);

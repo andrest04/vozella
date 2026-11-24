@@ -1,7 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { installEngine, launchApp, readyEnv, seedReadySettings, type LaunchedApp } from './launch';
+import {
+  evaluateMain,
+  installEngine,
+  launchApp,
+  readyEnv,
+  seedReadySettings,
+  type LaunchedApp,
+} from './launch';
 import { os, pixels, sleep } from './os/os';
 import { BACKGROUND, pillPixelsAt } from './pill-pixels';
 
@@ -274,15 +281,7 @@ test('a take starts: the main window is minimized and the pill appears docked ri
     const e = expectedDock('Right');
     return i.visible && i.bounds.x === e.x && i.bounds.width === e.width;
   });
-  const mainMinimized = await launched.app.evaluate(({ BrowserWindow }) =>
-    BrowserWindow.getAllWindows()
-      .filter(
-        (w) =>
-          !w.webContents.getURL().endsWith('/pill.html') &&
-          w.webContents.getURL().startsWith('vozella://'),
-      )
-      .some((w) => w.isMinimized()),
-  );
+  const mainMinimized = await evaluateMain(launched.app, (main) => main.isMinimized());
   expect(mainMinimized).toBe(true);
 
   const info = await mustPill();
@@ -497,14 +496,8 @@ test('bringing the main window forward hides the pill; leaving shows it again wi
     BACKGROUND,
     'the hide and show follow real window focus, which off-screen windows never take',
   );
-  await launched.app.evaluate(({ BrowserWindow, screen }) => {
+  await evaluateMain(launched.app, (mainWindow, _arg, { screen }) => {
     const area = screen.getPrimaryDisplay().workArea;
-    const mainWindow = BrowserWindow.getAllWindows().find(
-      (w) =>
-        !w.webContents.getURL().endsWith('/pill.html') &&
-        w.webContents.getURL().startsWith('vozella://'),
-    );
-    if (!mainWindow) throw new Error('no main window');
     mainWindow.setBounds({ x: area.x + 40, y: area.y + 40, width: 700, height: 560 });
     mainWindow.restore();
     mainWindow.focus();
