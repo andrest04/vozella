@@ -2,7 +2,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, openSettingsTab, type LaunchedApp, type SettingsTab } from './launch';
+import {
+  launchApp,
+  openSettingsTab,
+  type LaunchedApp,
+  type SettingsTab,
+  setMainContentSize,
+} from './launch';
 
 // The four tabs of the Settings page in the real window, on the fake native build and a throwaway
 // data root: what each one holds, the keyboard, the remembered tab, the sticky list, and how the
@@ -48,9 +54,7 @@ async function openApp(locale: Locale): Promise<{ launched: LaunchedApp; page: P
   });
   const page = await launched.app.firstWindow();
   await expect(page.getByRole('navigation')).toBeVisible();
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1120, 800);
-  });
+  await setMainContentSize(launched.app, 1120, 800);
   await page.getByRole('navigation').getByRole('link', { name: COPY[locale].settings }).click();
   await expect(page.getByRole('tablist', { name: COPY[locale].list })).toBeVisible();
   return { launched, page };
@@ -192,9 +196,7 @@ test.describe('Settings tabs', () => {
   });
 
   test('the tab list stays at the top of a long tab, and a focused control clears it', async () => {
-    await launched.app.evaluate(({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0]?.setContentSize(1120, 420);
-    });
+    await setMainContentSize(launched.app, 1120, 420);
     await openSettingsTab(page, 'summary');
     const list = page.getByRole('tablist', { name: COPY.en.list });
     const main = page.locator('main#content');
@@ -220,9 +222,7 @@ test.describe('Settings tabs', () => {
     if (!listBox || !firstBox) throw new Error('expected the list and the first row');
     expect(firstBox.y).toBeGreaterThanOrEqual(listBox.y + listBox.height);
 
-    await launched.app.evaluate(({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0]?.setContentSize(1120, 800);
-    });
+    await setMainContentSize(launched.app, 1120, 800);
   });
 
   for (const theme of ['light', 'dark'] as const) {

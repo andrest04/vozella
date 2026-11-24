@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { launchApp, type LaunchedApp } from './launch';
+import { launchApp, type LaunchedApp, setMainContentSize } from './launch';
 import { writeMeeting } from './library-data';
 
 // Date and status filters in the real renderer, over files on disk and the real search channel.
@@ -138,9 +138,7 @@ test.beforeAll(async () => {
   await expect(page.getByRole('navigation')).toBeVisible();
   // A color read in the middle of a transition is neither the old color nor the new one.
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1180, 760);
-  });
+  await setMainContentSize(launched.app, 1180, 760);
 });
 
 test.afterAll(async () => {

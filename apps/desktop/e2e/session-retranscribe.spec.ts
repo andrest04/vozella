@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, type LaunchedApp } from './launch';
+import { launchApp, type LaunchedApp, setMainContentSize } from './launch';
 
 // Re-transcribe from the session header, in the real app on the fake native build: the fake speech
 // engine "hears" a fixed script, the fake summary provider answers after a delay the environment
@@ -88,9 +88,7 @@ async function start(env: Record<string, string>): Promise<Run> {
   );
   const page = await launched.app.firstWindow();
   await expect(page.getByRole('navigation')).toBeVisible();
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1120, 780);
-  });
+  await setMainContentSize(launched.app, 1120, 780);
   // A summary engine is chosen, so a finished run also writes a summary.
   await page.evaluate(() => window.vozella.invoke('summaries.chooseCli', { kind: 'ClaudeCode' }));
   return { launched, page };

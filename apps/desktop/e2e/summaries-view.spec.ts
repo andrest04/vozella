@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, type LaunchedApp } from './launch';
+import { launchApp, type LaunchedApp, setMainContentSize } from './launch';
 import { writeMeeting } from './library-data';
 
 // The Summary tab of the session page, in the real app with fake native adapters and a seeded
@@ -91,9 +91,7 @@ test.beforeAll(async () => {
   launched = await launchApp({ VOZELLA_E2E_SHOW: '1' }, seed);
   page = await launched.app.firstWindow();
   await expect(page.getByRole('navigation')).toBeVisible();
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1120, 780);
-  });
+  await setMainContentSize(launched.app, 1120, 780);
 });
 
 test.afterAll(async () => {

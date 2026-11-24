@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, type LaunchedApp } from './launch';
+import { evaluateMain, launchApp, type LaunchedApp } from './launch';
 import { writeMeeting } from './library-data';
 
 // The session page shell (header, tabs, rename, copy, open location, empty state), in the real
@@ -72,8 +72,8 @@ test.beforeAll(async () => {
   launched = await launchApp({ VOZELLA_E2E_SHOW: '1' }, seed);
   page = await launched.app.firstWindow();
   await expect(page.getByRole('navigation')).toBeVisible();
-  await launched.app.evaluate(({ BrowserWindow, shell }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1120, 780);
+  await evaluateMain(launched.app, (main, _arg, { shell }) => {
+    main.setContentSize(1120, 780);
     // Never open a real file manager from a test; record what was asked instead.
     (globalThis as { revealed?: string[] }).revealed = [];
     shell.showItemInFolder = (file: string) => {

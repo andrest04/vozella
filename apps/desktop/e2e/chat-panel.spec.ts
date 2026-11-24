@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, type LaunchedApp } from './launch';
+import { launchApp, setMainContentSize, type LaunchedApp } from './launch';
 import { writeMeeting } from './library-data';
 
 // AI panel in the shell (chat-6): launcher, docked and floating panel, Ctrl+J, persistence. Screenshots land in docs/screenshots/chat/ when
@@ -54,12 +54,7 @@ const launcher = () => page.getByRole('button', { name: 'Ask AI' });
 const composer = () => page.getByTestId('TxtMeetingChat');
 
 async function resize(width: number, height: number): Promise<void> {
-  await launched.app.evaluate(
-    ({ BrowserWindow }, size) => {
-      BrowserWindow.getAllWindows()[0]?.setContentSize(size.width, size.height);
-    },
-    { width, height },
-  );
+  await setMainContentSize(launched.app, width, height);
 }
 
 async function shot(name: string): Promise<void> {

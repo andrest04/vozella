@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, type LaunchedApp } from './launch';
+import { launchApp, setMainContentSize, type LaunchedApp } from './launch';
 
 // Regenerates docs/screenshots/foundation/*.png. Opt in with VOZELLA_SCREENSHOTS=1 so a
 // normal run does not rewrite tracked images. The window is shown, real pixels are captured.
@@ -32,12 +32,7 @@ async function useTheme(theme: 'light' | 'dark'): Promise<void> {
 }
 
 async function resizeWindow(width: number, height: number): Promise<void> {
-  await launched.app.evaluate(
-    ({ BrowserWindow }, size) => {
-      BrowserWindow.getAllWindows()[0]?.setContentSize(size.width, size.height);
-    },
-    { width, height },
-  );
+  await setMainContentSize(launched.app, width, height);
   await page.waitForTimeout(250);
 }
 

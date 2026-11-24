@@ -3,7 +3,14 @@ import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type Page } from '@playwright/test';
 import { FAKE_APPS } from './fake-audio-apps';
-import { installEngine, launchApp, readyEnv, type LaunchedApp } from './launch';
+import {
+  evaluateMain,
+  installEngine,
+  launchApp,
+  readyEnv,
+  setMainContentSize,
+  type LaunchedApp,
+} from './launch';
 
 // R12: the whole pipeline from Record to the saved summary in the real window on the fake native
 // build. The fake microphone plays a tone, the fake speech engine "hears" a fixed script and the
@@ -41,9 +48,7 @@ async function open(
   );
   const page = await launched.app.firstWindow();
   await expect(page.getByRole('navigation')).toBeVisible();
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1180, 900);
-  });
+  await setMainContentSize(launched.app, 1180, 900);
   await page.getByRole('link', { name: /Record|Grabar/ }).click();
   if (engine) {
     await installEngine(page);
@@ -392,11 +397,9 @@ test('closing the window with an active take asks first', async () => {
   const { launched, page } = await open();
   try {
     await record(page, 'Close check');
-    await launched.app.evaluate(({ BrowserWindow }) => {
-      // The pill window exists during a take and may be listed first: close the main window.
-      BrowserWindow.getAllWindows()
-        .find((w) => w.webContents.getURL().includes('/index.html'))
-        ?.close();
+    // The pill window exists during a take and may be listed first: close the main window.
+    await evaluateMain(launched.app, (main) => {
+      main.close();
     });
     const dialog = page.getByRole('dialog', { name: 'Stop recording before closing?' });
     await expect(dialog).toBeVisible({ timeout: 15_000 });

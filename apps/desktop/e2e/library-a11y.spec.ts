@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, type LaunchedApp } from './launch';
+import { launchApp, type LaunchedApp, setMainContentSize } from './launch';
 import { writeMeeting } from './library-data';
 
 // Axe over the grid, in every state that changes its roles or its colors. Rows use
@@ -101,9 +101,7 @@ test.beforeAll(async () => {
   await expect(page.getByRole('navigation')).toBeVisible();
   // A color read in the middle of a transition is neither the old color nor the new one.
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1180, 760);
-  });
+  await setMainContentSize(launched.app, 1180, 760);
 });
 
 test.afterAll(async () => {
@@ -147,18 +145,14 @@ for (const theme of ['light', 'dark'] as const) {
 }
 
 test('in Spanish, in the smallest window, with no preview', async () => {
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(960, 700);
-  });
+  await setMainContentSize(launched.app, 960, 700);
   try {
     await useLook('light', 'es');
     await expect(page.getByTestId('library-preview')).toHaveCount(0);
     await expectNoViolations(page);
   } finally {
     await useLook('light', 'en-US');
-    await launched.app.evaluate(({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0]?.setContentSize(1180, 760);
-    });
+    await setMainContentSize(launched.app, 1180, 760);
   }
 });
 

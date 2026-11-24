@@ -3,6 +3,7 @@ import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type Page } from '@playwright/test';
 import {
+  evaluateMain,
   installEngine,
   launchApp,
   readyEnv,
@@ -49,12 +50,11 @@ async function setContentSize(width: number, height: number): Promise<void> {
       setTimeout(resolve, 1000);
     });
   });
-  await launched.app.evaluate(
-    ({ BrowserWindow }, size) => {
-      // By title, not getAllWindows()[0]: after a take the live copilot pill window is listed
-      // first, and resizing it leaves the main window at whatever size it had.
-      const main = BrowserWindow.getAllWindows().find((w) => w.getTitle() === 'Vozella');
-      if (!main) throw new Error('expected the main window');
+  // The main window, not the first one listed: after a take the live copilot pill window can be
+  // listed first, and resizing it leaves the main window at whatever size it had.
+  await evaluateMain(
+    launched.app,
+    (main, size) => {
       // The window's own minimum is 960x680; the narrow and short cases go under it on purpose,
       // with room below 300 for the rounding correction in resize().
       main.setMinimumSize(200, 200);

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, openSettingsTab, type LaunchedApp } from './launch';
+import { launchApp, openSettingsTab, type LaunchedApp, setMainContentSize } from './launch';
 
 // Regenerates docs/screenshots/settings-i18n/*.png. Opt in with VOZELLA_SCREENSHOTS=1.
 test.skip(process.env.VOZELLA_SCREENSHOTS !== '1', 'set VOZELLA_SCREENSHOTS=1 to capture');
@@ -16,9 +16,7 @@ test.beforeAll(async () => {
   launched = await launchApp({ VOZELLA_E2E_SHOW: '1' });
   page = await launched.app.firstWindow();
   await expect(page.getByRole('navigation')).toBeVisible();
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1120, 1500);
-  });
+  await setMainContentSize(launched.app, 1120, 1500);
   await page.waitForTimeout(300);
 });
 

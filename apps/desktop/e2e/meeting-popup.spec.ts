@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import {
+  evaluateMain,
   installEngine,
   launchApp,
   readyEnv,
@@ -149,11 +150,7 @@ test('Dismiss from the More menu closes the popup', async () => {
 test('Start requests take notes and brings the main window to the front', async () => {
   // The take that follows hands off to the pill and minimizes the window by design, so the state
   // is read at the moment of activation, the last step of which is focus.
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    const win = BrowserWindow.getAllWindows().find((w) =>
-      w.webContents.getURL().includes('index.html'),
-    );
-    if (!win) return;
+  await evaluateMain(launched.app, (win) => {
     const focus = win.focus.bind(win);
     win.focus = () => {
       (globalThis as { activated?: unknown }).activated = {

@@ -2,7 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type Page } from '@playwright/test';
-import { installEngine, launchApp, readyEnv, type LaunchedApp } from './launch';
+import {
+  evaluateMain,
+  installEngine,
+  launchApp,
+  readyEnv,
+  setMainContentSize,
+  type LaunchedApp,
+} from './launch';
 
 // R11 in the real window on the fake native build: the processing bar and its Cancel, the quiet
 // Cancel summary after the hand-off, the retry action, the typed live ask with its answer card and
@@ -32,9 +39,7 @@ async function open(
   );
   const page = await launched.app.firstWindow();
   await expect(page.getByRole('navigation')).toBeVisible();
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1180, 900);
-  });
+  await setMainContentSize(launched.app, 1180, 900);
   await page.getByRole('link', { name: 'Record' }).click();
   await installEngine(page);
   await page.getByRole('link', { name: 'Record' }).click();
@@ -214,11 +219,9 @@ test('closing the window while recording asks first, and Keep recording keeps th
   const { launched, page } = await open({});
   try {
     await startTake(page, 'Close check');
-    await launched.app.evaluate(({ BrowserWindow }) => {
-      // The pill window exists during a take and may be listed first: close the main window.
-      BrowserWindow.getAllWindows()
-        .find((w) => w.webContents.getURL().includes('/index.html'))
-        ?.close();
+    // The pill window exists during a take and may be listed first: close the main window.
+    await evaluateMain(launched.app, (main) => {
+      main.close();
     });
     const dialog = page.getByRole('dialog', { name: 'Stop recording before closing?' });
     await expect(dialog).toBeVisible({ timeout: 15_000 });
@@ -242,9 +245,10 @@ test('the saving dialog cannot be dismissed and the failure dialog defaults to K
   const { launched, page } = await open({});
   try {
     const send = (dialog: string, requestId: string) =>
-      launched.app.evaluate(
-        ({ BrowserWindow }, payload) => {
-          BrowserWindow.getAllWindows()[0]?.webContents.send('recording.closeRequest', payload);
+      evaluateMain(
+        launched.app,
+        (main, payload) => {
+          main.webContents.send('recording.closeRequest', payload);
         },
         { requestId, dialog },
       );

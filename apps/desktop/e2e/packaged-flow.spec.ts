@@ -8,6 +8,7 @@ import {
   readyEnv,
   restoreMain,
   seedReadySettings,
+  setMainContentSize,
 } from './launch';
 
 // The main flow in the packaged e2e build (pnpm package:e2e, then pnpm test:e2e:packaged): the
@@ -44,9 +45,7 @@ test('the packaged window opens and a take goes from Record to a saved summary',
     const page = await launched.app.firstWindow();
     await expect(page.getByRole('navigation')).toBeVisible();
     await expect(page).toHaveTitle(/Vozella/);
-    await launched.app.evaluate(({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0]?.setContentSize(1180, 820);
-    });
+    await setMainContentSize(launched.app, 1180, 820);
 
     await page.getByRole('link', { name: /Record|Grabar/ }).click();
     await installEngine(page);

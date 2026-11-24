@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
-import { launchApp } from './launch';
+import { evaluateMain, launchApp } from './launch';
 
 // The shell window in the real app on the fake native build: geometry, saved state, no menu bar,
 // Ctrl+R, tray start up, and a second launch handing over to the first.
@@ -36,9 +36,7 @@ test('opens at 1180 x 760 with a 960 x 680 minimum, titled Vozella, without a me
   try {
     const page = await launched.app.firstWindow();
     await expect(page.getByRole('navigation')).toBeVisible();
-    const facts = await launched.app.evaluate(({ BrowserWindow, Menu }) => {
-      const win = BrowserWindow.getAllWindows()[0];
-      if (!win) throw new Error('no window');
+    const facts = await evaluateMain(launched.app, (win, _arg, { Menu }) => {
       const bounds = win.getNormalBounds();
       return {
         width: bounds.width,
@@ -69,8 +67,8 @@ test('Ctrl+R on the Record page is not a page reload', async () => {
     const page = await launched.app.firstWindow();
     await expect(page.getByRole('navigation')).toBeVisible();
     // The menu accelerators only act on a shown, focused window.
-    await launched.app.evaluate(({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0]?.focus();
+    await evaluateMain(launched.app, (win) => {
+      win.focus();
     });
     await page.evaluate(() => {
       (window as unknown as { survivor: number }).survivor = 1;
@@ -98,17 +96,13 @@ test('restores the saved geometry and writes it again on close', async () => {
   try {
     const page = await launched.app.firstWindow();
     await expect(page.getByRole('navigation')).toBeVisible();
-    const before = await launched.app.evaluate(({ BrowserWindow }) => {
-      const win = BrowserWindow.getAllWindows()[0];
-      if (!win) throw new Error('no window');
-      return win.getNormalBounds();
-    });
+    const before = await evaluateMain(launched.app, (win) => win.getNormalBounds());
     expect([before.x, before.y]).toEqual([30, 40]);
     near(before.width, 1100);
     near(before.height, 720);
 
-    await launched.app.evaluate(({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0]?.setBounds({ x: 60, y: 70, width: 1000, height: 700 });
+    await evaluateMain(launched.app, (win) => {
+      win.setBounds({ x: 60, y: 70, width: 1000, height: 700 });
     });
     await launched.app.close();
     const saved = JSON.parse(fs.readFileSync(stateFile(launched.dataRoot), 'utf8')) as unknown;
@@ -135,9 +129,9 @@ test('a corrupt window-state file opens the default window', async () => {
   try {
     const page = await launched.app.firstWindow();
     await expect(page.getByRole('navigation')).toBeVisible();
-    const size = await launched.app.evaluate(({ BrowserWindow }) => {
-      const bounds = BrowserWindow.getAllWindows()[0]?.getNormalBounds();
-      return [bounds?.width, bounds?.height];
+    const size = await evaluateMain(launched.app, (win) => {
+      const bounds = win.getNormalBounds();
+      return [bounds.width, bounds.height];
     });
     near(size[0], 1180);
     near(size[1], 760);
@@ -161,14 +155,10 @@ test('a second launch exits and brings the first window back from minimized', as
   try {
     const page = await launched.app.firstWindow();
     await expect(page.getByRole('navigation')).toBeVisible();
-    await launched.app.evaluate(({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0]?.minimize();
+    await evaluateMain(launched.app, (win) => {
+      win.minimize();
     });
-    expect(
-      await launched.app.evaluate(({ BrowserWindow }) =>
-        BrowserWindow.getAllWindows()[0]?.isMinimized(),
-      ),
-    ).toBe(true);
+    expect(await evaluateMain(launched.app, (win) => win.isMinimized())).toBe(true);
 
     // The path of the Electron binary, as the launcher resolves it.
     const electronPath = await launched.app.evaluate(({ app }) => app.getPath('exe'));
@@ -186,12 +176,7 @@ test('a second launch exits and brings the first window back from minimized', as
     expect(code).toBe(0);
 
     await expect
-      .poll(() =>
-        launched.app.evaluate(({ BrowserWindow }) => {
-          const win = BrowserWindow.getAllWindows()[0];
-          return win ? !win.isMinimized() && win.isVisible() : false;
-        }),
-      )
+      .poll(() => evaluateMain(launched.app, (win) => !win.isMinimized() && win.isVisible()))
       .toBe(true);
   } finally {
     await launched.close();

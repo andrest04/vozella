@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, type LaunchedApp, NO_GALLERY, packaged } from './launch';
+import { launchApp, type LaunchedApp, NO_GALLERY, packaged, setMainContentSize } from './launch';
 
 // The summary setup wizard in the real app with the fake native build: the fake hardware probe,
 // the scripted fake model folder (no network, no file) and a settings file on disk that is the
@@ -28,9 +28,7 @@ async function start(env: Record<string, string> = {}): Promise<Session> {
   const launched = await launchApp({ VOZELLA_E2E_SHOW: '1', ...env });
   const page = await launched.app.firstWindow();
   await expect(page.getByRole('navigation')).toBeVisible();
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1120, 780);
-  });
+  await setMainContentSize(launched.app, 1120, 780);
   await page.evaluate(() => {
     window.location.hash = '#/gallery';
   });

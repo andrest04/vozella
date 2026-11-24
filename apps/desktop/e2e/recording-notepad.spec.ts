@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, type LaunchedApp } from './launch';
+import { launchApp, type LaunchedApp, setMainContentSize } from './launch';
 
 // The session notes of the Record page in the real window on the fake native build. The take is
 // started through the recording service (`recording.start`), because main owns the notes.
@@ -162,9 +162,7 @@ test.describe('screenshots', () => {
   for (const theme of ['light', 'dark'] as const) {
     test(`notepad in ${theme}`, async () => {
       fs.mkdirSync(outDir, { recursive: true });
-      await launched.app.evaluate(({ BrowserWindow }) => {
-        BrowserWindow.getAllWindows()[0]?.setContentSize(1120, 1100);
-      });
+      await setMainContentSize(launched.app, 1120, 1100);
       await page.evaluate((value) => {
         window.localStorage.setItem('vozella.theme', value);
       }, theme);

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type Page } from '@playwright/test';
-import { installEngine, launchApp, readyEnv, type LaunchedApp } from './launch';
+import { installEngine, launchApp, readyEnv, type LaunchedApp, setMainContentSize } from './launch';
 
 // Live question detection on the fake native build. The fake speech engine reads a question as
 // its second phrase (VOZELLA_FAKE_ASR_QUESTION=1, 3 to 6 s of audio). The card shows on the Record
@@ -39,9 +39,7 @@ test.beforeAll(async () => {
   );
   page = await launched.app.firstWindow();
   await expect(page.getByRole('navigation')).toBeVisible();
-  await launched.app.evaluate(({ BrowserWindow }) => {
-    BrowserWindow.getAllWindows()[0]?.setContentSize(1180, 900);
-  });
+  await setMainContentSize(launched.app, 1180, 900);
   await page.getByRole('link', { name: 'Record' }).click();
   await installEngine(page);
   await page.getByRole('link', { name: 'Record' }).click();

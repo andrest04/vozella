@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { launchApp, openSettingsTab, type LaunchedApp } from './launch';
+import { evaluateMain, launchApp, openSettingsTab, type LaunchedApp } from './launch';
 import { writeMeeting } from './library-data';
 
 // Page widths on a wide window: Settings, Record and the meeting page fill the content area up
@@ -46,11 +46,11 @@ test.afterAll(async () => {
 });
 
 async function resize(width: number, height: number): Promise<void> {
-  await launched.app.evaluate(
-    ({ BrowserWindow }, size) => {
-      const main = BrowserWindow.getAllWindows()[0];
-      if (main?.isMaximized()) main.unmaximize();
-      main?.setContentSize(size.width, size.height);
+  await evaluateMain(
+    launched.app,
+    (main, size) => {
+      if (main.isMaximized()) main.unmaximize();
+      main.setContentSize(size.width, size.height);
     },
     { width, height },
   );

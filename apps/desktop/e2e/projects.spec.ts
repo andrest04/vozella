@@ -4,7 +4,7 @@ import path from 'node:path';
 import axe from 'axe-core';
 import { expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { FAKE_APPS } from './fake-audio-apps';
-import { installEngine, launchAppInRoot, readyEnv } from './launch';
+import { evaluateMain, installEngine, launchAppInRoot, readyEnv } from './launch';
 import {
   appDataOf,
   guid,
@@ -137,11 +137,11 @@ const pickNext = (app: ElectronApplication, files: readonly string[]) =>
 
 /** Sets the size of the window's content; the minimum is lowered so that the narrow layouts can be reached. */
 const resize = (app: ElectronApplication, width: number, height: number) =>
-  app.evaluate(
-    ({ BrowserWindow }, size) => {
-      const win = BrowserWindow.getAllWindows()[0];
-      win?.setMinimumSize(320, 320);
-      win?.setContentSize(size.width, size.height);
+  evaluateMain(
+    app,
+    (win, size) => {
+      win.setMinimumSize(320, 320);
+      win.setContentSize(size.width, size.height);
     },
     { width, height },
   );
