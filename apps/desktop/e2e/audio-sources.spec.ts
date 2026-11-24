@@ -12,10 +12,17 @@ import { launchApp, type LaunchedApp } from './launch';
 let launched: LaunchedApp;
 let page: Page;
 
-const settingsFile = (): Record<string, unknown> =>
-  JSON.parse(
-    fs.readFileSync(path.join(launched.dataRoot, 'app', 'settings.json'), 'utf8'),
-  ) as Record<string, unknown>;
+/**
+ * The saved settings, or an empty object while there are none. A fresh data root has no
+ * settings.json until the first change is saved, a moment after the pick, and expect.poll does not
+ * retry a read that throws: a missing file must read as "not saved yet" so the poll waits for it.
+ * The store writes atomically (temp file, then rename), so a file that exists is whole.
+ */
+const settingsFile = (): Record<string, unknown> => {
+  const file = path.join(launched.dataRoot, 'app', 'settings.json');
+  if (!fs.existsSync(file)) return {};
+  return JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, unknown>;
+};
 
 /** The row of a card: the radio is the small circle, the words and the meter sit beside it. */
 const cardRow = (name: RegExp) =>
