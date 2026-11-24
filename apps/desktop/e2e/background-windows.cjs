@@ -96,11 +96,6 @@ app.on('browser-window-created', (_event, window) => {
   asked.set(window, { x, y });
   window.setSkipTaskbar(true);
   setPosition.call(window, OFF_SCREEN, OFF_SCREEN);
-  // A fallback for a window built with the original class (ParkedWindow below is the normal
-  // path): Electron places and shows a `show: true` window after this event, so park it again.
-  window.on('show', () => {
-    setPosition.call(window, OFF_SCREEN, OFF_SCREEN);
-  });
 });
 
 /**
@@ -112,9 +107,12 @@ app.on('browser-window-created', (_event, window) => {
 class ParkedWindow extends BrowserWindow {
   constructor(options = {}) {
     super({ ...options, show: false });
-    // The window has its real, still hidden, place now: x/y, centered, or the default.
-    const { x, y } = getBounds.call(this);
-    asked.set(this, { x, y });
+    // Without x/y the window keeps the default place 'browser-window-created' recorded before
+    // parking it; with them, Electron moved the still hidden window there, so that is its place.
+    if (options.x !== undefined && options.y !== undefined) {
+      const { x, y } = getBounds.call(this);
+      asked.set(this, { x, y });
+    }
     if (options.show !== false) showParked.call(this);
   }
 
