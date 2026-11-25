@@ -16,6 +16,7 @@ export default tseslint.config(
       '**/resources/native/**',
       'native/**/index.d.ts',
       'website/**',
+      'video/assets/vendor/**',
       'docs/**',
       'scripts/**',
       '.claude/**',

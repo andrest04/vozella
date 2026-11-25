@@ -32,7 +32,7 @@ recording pill and the bar wipe can cross scene cuts), and it notes the film has
 | `index.html` | The whole composition: CSS tokens, one section per scene, one timeline script |
 | `assets/fonts/` | Schibsted Grotesk (variable) and IBM Plex Mono, latin subsets, OFL |
 | `assets/vendor/gsap.min.js` | GSAP 3.15.0, vendored so renders need no network |
-| `assets/screens/` | The real app screenshot used in the recording scene (copied from `docs/port/screens/`) |
+| `assets/screens/` | The real app screenshot used in the recording scene |
 
 ## Scenes
 
