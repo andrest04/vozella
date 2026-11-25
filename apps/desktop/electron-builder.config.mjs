@@ -43,6 +43,8 @@ export default {
     uninstallerIcon: 'build/icon.ico',
     installerHeaderIcon: 'build/icon.ico',
     deleteAppDataOnUninstall: false,
+    // Uninstall clean up: removes the "open at Windows sign in" entry.
+    include: 'build/installer.nsh',
     artifactName: `Vozella-Setup-\${version}${variant === 'e2e' ? '-e2e' : ''}.\${ext}`,
   },
   // Where installed copies look for updates (electron-updater reads the app-update.yml this
