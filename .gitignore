@@ -41,4 +41,8 @@ target/
 
 # Local environment and recordings
 .env.local
-video/
+
+# Presentation video (HyperFrames): renders and caches are build outputs
+video/renders/
+video/node_modules/
+video/.hyperframes/
