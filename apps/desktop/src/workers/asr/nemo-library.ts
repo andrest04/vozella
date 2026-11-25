@@ -21,7 +21,7 @@ export interface RecognizerConfigDto {
     readonly speakerCacheFrames: number;
     readonly updatePeriodFrames: number;
   };
-  /** Encoder right context in 80 ms frames: 3 for live, 13 for offline. */
+  /** Encoder right context in 80 ms frames: 6 for live, 13 for offline (see `rightContextFrames`). */
   readonly rnntRightContext: number;
 }
 

@@ -16,7 +16,8 @@ export interface AsrResult {
 }
 
 /**
- * Right-context of the encoder. Live is 6 frames (560 ms); offline is 13 frames (1.12 s).
+ * Right-context of the encoder. Live is 6 frames, a 560 ms chunk (the current 80 ms frame plus
+ * 6 ahead); offline is 13 frames, a 1.12 s chunk.
  * Live moved from 3 to 6: in the second-pass spike it fixed the live word errors for about
  * 0.15-0.19 s more delay per final. Measured on Spanish TTS audio only;
  * still to be confirmed on real meeting audio.
