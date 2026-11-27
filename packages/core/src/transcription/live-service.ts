@@ -175,7 +175,7 @@ export class LiveTranscriptionService {
    */
   micDominantShare(startMs: number, endMs: number): number | null {
     const session = this.session;
-    if (!session || !session.levelsSeen) return null;
+    if (!session?.levelsSeen) return null;
     return session.micActivity.dominantShare(startMs, endMs);
   }
 

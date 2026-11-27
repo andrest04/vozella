@@ -20,6 +20,10 @@ export interface ShortcutCaptureProps {
   readonly onCapture: (accelerator: string) => void;
 }
 
+/**
+ * The caps are the button's label, so they take its ink rather than the muted ink of a hint:
+ * muted text keeps no contrast margin while the button fades in from disabled.
+ */
 function Caps({ keys }: { readonly keys: readonly string[] }) {
   return (
     <span className="inline-flex items-center gap-0.5">
@@ -30,7 +34,8 @@ function Caps({ keys }: { readonly keys: readonly string[] }) {
               +
             </span>
           ) : null}
-          <Kbd>{cap}</Kbd>
+          {/* Important: the shared cap's muted ink comes later in the stylesheet. */}
+          <Kbd className="text-ink!">{cap}</Kbd>
         </Fragment>
       ))}
     </span>

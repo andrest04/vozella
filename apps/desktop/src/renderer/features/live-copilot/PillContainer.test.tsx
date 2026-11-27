@@ -447,31 +447,34 @@ describe('PillContainer type at cursor', () => {
     expect(note()).toHaveTextContent('Start a recording first');
   });
 
-  it('names a shortcut another app holds', async () => {
+  it('names a shortcut another app holds without drawing over the capsule while off', async () => {
     const bridge = install();
     await mount();
     bridge.emit(
       'cursorTyping.state',
       typing({ shortcut: { status: 'unavailable', accelerator: 'CommandOrControl+Alt+Space' } }),
     );
-    expect(note()).toHaveTextContent('Another app uses Ctrl+Alt+Space');
+    expect(note()).toBeNull();
+    expect(badge()).toBeNull();
+    expect(announced()).toHaveTextContent('Another app uses Ctrl+Alt+Space');
   });
 
-  it('teaches the shortcut once, after the started hint closes', async () => {
+  it('announces the shortcut once, after the started hint closes, and draws nothing', async () => {
     const bridge = install();
     await mount();
     bridge.emit('cursorTyping.state', typing());
     bridge.emit('pill.hint', { show: true, durationMs: 2500, edge: 'Right', pulse: false });
-    expect(note()).toBeNull();
+    expect(announced()).toHaveTextContent('');
     bridge.emit('pill.hint', { show: false, durationMs: 2500, edge: 'Right', pulse: false });
-    expect(note()).toHaveTextContent('Ctrl+Alt+Space types at your cursor');
-    act(() => {
-      vi.advanceTimersByTime(4100);
-    });
+    expect(announced()).toHaveTextContent('Ctrl+Alt+Space types at your cursor');
     expect(note()).toBeNull();
+    expect(badge()).toBeNull();
+    // A later refusal replaces the line; a second hint does not teach again.
+    bridge.emit('cursorTyping.state', typing({ lastRefusal: 'own-window', refusalSeq: 1 }));
+    expect(announced()).toHaveTextContent('Put your cursor in another app first');
     bridge.emit('pill.hint', { show: true, durationMs: 2500, edge: 'Right', pulse: false });
     bridge.emit('pill.hint', { show: false, durationMs: 2500, edge: 'Right', pulse: false });
-    expect(note()).toBeNull();
+    expect(announced()).toHaveTextContent('Put your cursor in another app first');
   });
 
   it('keeps the started hint on top of a note', async () => {

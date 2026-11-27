@@ -1,10 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type {
-  AudioCapturePort,
-  AudioFrame,
-  CaptureSession,
-  TextInjectorPort,
-} from '@vozella/core';
+import type { AudioCapturePort, AudioFrame, CaptureSession, TextInjectorPort } from '@vozella/core';
 import { FakeAudioCapture } from '../fakes/fake-audio-capture';
 import { FakeTextInjector } from '../fakes/fake-text-injector';
 import { loadNativeAddon, type NativeAddon, type NativeFrame } from './addon';
@@ -91,10 +86,10 @@ function textInjectorContract(
     it('describes the foreground target', () => {
       const target = make().injector.foregroundTarget();
       expect(target).toEqual({
-        windowHandle: expect.any(Number),
-        focusHandle: expect.any(Number),
-        processId: expect.any(Number),
-        processName: expect.any(String),
+        windowHandle: expect.any(Number) as number,
+        focusHandle: expect.any(Number) as number,
+        processId: expect.any(Number) as number,
+        processName: expect.any(String) as string,
         isOwnProcess: false,
         menuOpen: false,
         modifiersHeld: false,
@@ -229,7 +224,9 @@ describe('createNativePorts', () => {
   });
 
   it('rejects an addon without the text input exports', () => {
-    const { foregroundTarget: _f, typeText: _t, ...older } = stubAddon();
+    const older: Partial<NativeAddon> = { ...stubAddon() };
+    delete older.foregroundTarget;
+    delete older.typeText;
     expect(() => loadNativeAddon('x.node', () => older)).toThrow(/expected API/);
   });
 

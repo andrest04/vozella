@@ -4,7 +4,7 @@ import { LOCAL_SPEAKER_MIN_SHARE } from './local-speaker';
 
 /** A share function that answers `value` and remembers the spans it was asked about. */
 function shareOf(value: number | null) {
-  const asked: Array<[number, number]> = [];
+  const asked: [number, number][] = [];
   const share = (startMs: number, endMs: number): number | null => {
     asked.push([startMs, endMs]);
     return value;

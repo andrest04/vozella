@@ -30,9 +30,11 @@ export interface CursorTypingPill {
 
 /**
  * Type at cursor on the pill: a lasting mark, a note for each change, and what to announce.
- * Every change of the status line or a new refusal shows a note. While typing is off and the
- * shortcut is held, the shortcut is taught once per take, after the started hint closes, so the
- * two never fight for the capsule. `hintVisible` is whether the started hint is on screen.
+ * While typing is armed or paused, every change of the status line shows a note; a refusal
+ * answers a press and the stop is confirmed. While typing is off nothing else is drawn, so the
+ * capsule looks as it does without the feature: a shortcut another app holds and the shortcut
+ * itself (taught once per take, after the started hint closes) are only announced. `hintVisible`
+ * is whether the started hint is on screen.
  */
 export function useCursorTypingPill(hintVisible: boolean): CursorTypingPill {
   const t = useT();
@@ -54,10 +56,11 @@ export function useCursorTypingPill(hintVisible: boolean): CursorTypingPill {
   useEffect(() => {
     const was = lastTyping.current;
     lastTyping.current = typingStatus;
-    let say: string | null = stateText;
-    if (say === null && was !== 'off' && typingStatus === 'off') say = t('Ui_CursorTypingStopped');
+    const stopped = was !== 'off' && typingStatus === 'off';
+    const say = stateText ?? (stopped ? t('Ui_CursorTypingStopped') : null);
     if (say === null) return;
-    show(say);
+    // While typing is off the capsule stays as it was: only the stop itself is drawn.
+    if (typingStatus !== 'off' || stopped) show(say);
     setAnnouncement(say);
     // Only a new line is news; `t` changes with the language and only relabels.
   }, [stateText, typingStatus, show]);
@@ -84,9 +87,8 @@ export function useCursorTypingPill(hintVisible: boolean): CursorTypingPill {
     }
     if (!teachable || !hintSeen.current || taught.current || hintText === null) return;
     taught.current = true;
-    show(hintText);
     setAnnouncement(hintText);
-  }, [hintVisible, held, teachable, hintText, show]);
+  }, [hintVisible, held, teachable, hintText]);
 
   const state = status?.state ?? null;
   const targetText = state ? cursorTypingTargetText(state, t) : null;
