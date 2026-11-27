@@ -62,6 +62,12 @@ export interface AppSettings {
    * start. Off by default; the main process mirrors it into the OS login items.
    */
   readonly openAtLogin: boolean;
+  /** Type at cursor is offered while recording. On by default; read the others through resolvers. */
+  readonly cursorTypingEnabled: boolean;
+  /** The Electron accelerator that arms type at cursor; null or blank is the default. */
+  readonly cursorTypingShortcut: string | null;
+  /** `others` or `all`; null or unknown is `others`. */
+  readonly cursorTypingSource: string | null;
 }
 
 type Kind = 'string' | 'bool-true' | 'bool-false' | 'number';
@@ -103,6 +109,9 @@ const FIELDS: readonly (readonly [keyof AppSettings, Kind])[] = [
   ['cloudTranscriptionModelId', 'string'],
   ['customNoteTemplate', 'string'],
   ['openAtLogin', 'bool-false'],
+  ['cursorTypingEnabled', 'bool-true'],
+  ['cursorTypingShortcut', 'string'],
+  ['cursorTypingSource', 'string'],
 ];
 
 /**
@@ -116,10 +125,15 @@ const OMITTED_WHEN_NULL: ReadonlySet<string> = new Set([
   'transcriptionEngine',
   'cloudTranscriptionModelId',
   'customNoteTemplate',
+  'cursorTypingShortcut',
+  'cursorTypingSource',
 ]);
 
 /** Later boolean additions, written only while they are on, for the same reason. */
 const OMITTED_WHEN_FALSE: ReadonlySet<string> = new Set(['openAtLogin']);
+
+/** Later boolean additions that default to on, written only while they are off. */
+const OMITTED_WHEN_TRUE: ReadonlySet<string> = new Set(['cursorTypingEnabled']);
 
 /** The raw document: every key in the file, known or not. */
 export type RawSettings = Readonly<Record<string, unknown>>;
@@ -209,6 +223,9 @@ export function serializeSettings(raw: RawSettings): string {
   }
   for (const key of OMITTED_WHEN_FALSE) {
     if (doc[key] === false) Reflect.deleteProperty(doc, key);
+  }
+  for (const key of OMITTED_WHEN_TRUE) {
+    if (doc[key] === true) Reflect.deleteProperty(doc, key);
   }
   for (const [key, value] of Object.entries(raw)) {
     if (!known.has(key.toLowerCase())) doc[key] = value;
@@ -313,3 +330,22 @@ export function resolveLiveQuestionsMode(
   if (chosen !== undefined) return chosen;
   return isRemoteProvider(s.selectedSummaryProvider) ? 'rules+ai' : 'rules';
 }
+
+/** Ctrl+Alt+Space: rarely bound by other apps, and pressed with one hand. */
+export const DEFAULT_CURSOR_TYPING_SHORTCUT = 'CommandOrControl+Alt+Space';
+
+/** The accelerator that arms type at cursor, trimmed; blank is the default. */
+export const resolveCursorTypingShortcut = (
+  s: Pick<AppSettings, 'cursorTypingShortcut'>,
+): string =>
+  blank(s.cursorTypingShortcut)
+    ? DEFAULT_CURSOR_TYPING_SHORTCUT
+    : (s.cursorTypingShortcut ?? DEFAULT_CURSOR_TYPING_SHORTCUT).trim();
+
+export const CURSOR_TYPING_SOURCES = ['others', 'all'] as const;
+
+/** Which lines type at cursor types; an unset or unknown value is only the other participants. */
+export const resolveCursorTypingSource = (
+  s: Pick<AppSettings, 'cursorTypingSource'>,
+): (typeof CURSOR_TYPING_SOURCES)[number] =>
+  CURSOR_TYPING_SOURCES.find((source) => source === s.cursorTypingSource) ?? 'others';
