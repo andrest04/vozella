@@ -187,6 +187,24 @@ describe('transcription handlers', () => {
     });
   });
 
+  it('verifies a saved ElevenLabs key with its own request', async () => {
+    const accepted = setup(true, { chunks: ['{"token":"sutkn_test"}'] });
+    await accepted.store.set('ElevenLabs', 'xi-key');
+    expect(await accepted.call('transcription.verifyProviderKey', { kind: 'ElevenLabs' })).toEqual({
+      ok: true,
+      value: { status: 'verified' },
+    });
+    expect(
+      accepted.fetch.calls.map((request) => [request.method, request.url, request.headers]),
+    ).toEqual([
+      [
+        'POST',
+        'https://api.elevenlabs.io/v1/single-use-token/realtime_scribe',
+        { 'xi-api-key': 'xi-key' },
+      ],
+    ]);
+  });
+
   it('takes no API engine on the provider key channels', async () => {
     const { call, store, controller } = setup();
     for (const kind of ['Groq', 'OpenAi', 'Local']) {

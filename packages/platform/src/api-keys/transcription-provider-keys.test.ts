@@ -39,6 +39,54 @@ describe('verifyTranscriptionProviderKey', () => {
     });
   });
 
+  it('asks ElevenLabs for a realtime Scribe token, with the bare key in its own header', async () => {
+    const elevenLabs = TRANSCRIPTION_PROVIDERS.ElevenLabs;
+    const fake = new FakeFetch({ chunks: ['{"token":"sutkn_test"}'] });
+    await verifyTranscriptionProviderKey(elevenLabs, ` ${KEY} `, fake.fetch);
+    expect(fake.calls).toHaveLength(1);
+    expect(fake.calls[0]).toMatchObject({
+      url: 'https://api.elevenlabs.io/v1/single-use-token/realtime_scribe',
+      method: 'POST',
+      headers: { 'xi-api-key': KEY },
+      body: null,
+      form: null,
+    });
+    // No Authorization header: the key travels once, in the header the provider reads.
+    expect(Object.keys(fake.calls[0]?.headers ?? {})).toEqual(['xi-api-key']);
+  });
+
+  it('reads an ElevenLabs refusal as KeyInvalid, without the key', async () => {
+    const fake = new FakeFetch({
+      status: 401,
+      chunks: [`{"detail":{"status":"invalid_api_key","message":"${KEY}"}}`],
+    });
+    const error = await failure(
+      verifyTranscriptionProviderKey(TRANSCRIPTION_PROVIDERS.ElevenLabs, KEY, fake.fetch),
+    );
+    expect(error).toMatchObject({ kind: 'KeyInvalid', displayName: 'ElevenLabs' });
+    expect(JSON.stringify(error)).not.toContain(KEY);
+  });
+
+  it.each([
+    [{ status: 401, chunks: ['{"detail":{"status":"quota_exceeded","message":"m"}}'] }],
+    [{ status: 402, chunks: ['{"detail":{"code":"insufficient_credits","message":"m"}}'] }],
+  ] as const satisfies readonly (readonly [FakeHttpReply])[])(
+    'reads a spent ElevenLabs credit (%j) as QuotaExceeded, not as a bad key',
+    async (reply) => {
+      const fake = new FakeFetch(reply);
+      const error = await failure(
+        verifyTranscriptionProviderKey(TRANSCRIPTION_PROVIDERS.ElevenLabs, KEY, fake.fetch),
+      );
+      expect(error).toMatchObject({ kind: 'QuotaExceeded', displayName: 'ElevenLabs' });
+    },
+  );
+
+  it('keeps reading a Deepgram 401 as a bad key, whatever its body says', async () => {
+    const fake = new FakeFetch({ status: 401, chunks: ['{"detail":{"status":"quota_exceeded"}}'] });
+    const error = await failure(verifyTranscriptionProviderKey(deepgram, KEY, fake.fetch));
+    expect(error).toMatchObject({ kind: 'KeyInvalid' });
+  });
+
   it('accepts any 2xx answer, whatever its body', async () => {
     const fake = new FakeFetch({ status: 200, chunks: ['not json'] });
     await expect(
@@ -157,6 +205,18 @@ describe('TranscriptionProviderKeys', () => {
     const { fake, keys } = service(await storeWithKey(), { chunks: ['{"projects":[]}'] });
     expect(await keys.verify('Deepgram')).toEqual({ status: 'verified' });
     expect(fake.calls[0]?.headers.authorization).toBe(`Token ${KEY}`);
+  });
+
+  it('verifies the saved ElevenLabs key with its own request', async () => {
+    const store = emptyStore();
+    await store.set('ElevenLabs', KEY);
+    const { fake, keys } = service(store, { chunks: ['{"token":"sutkn_test"}'] });
+    expect(await keys.verify('ElevenLabs')).toEqual({ status: 'verified' });
+    expect(fake.calls[0]).toMatchObject({
+      url: 'https://api.elevenlabs.io/v1/single-use-token/realtime_scribe',
+      method: 'POST',
+      headers: { 'xi-api-key': KEY },
+    });
   });
 
   it('a rejected key is KeyInvalid, and no saved key is KeyMissing without a request', async () => {

@@ -45,11 +45,13 @@ describe('TranscriptionSection: the engine choice', () => {
       'false',
       'false',
       'false',
+      'false',
     ]);
     expect(within(group).getByRole('radio', { name: /^On this PC/ })).toBeChecked();
     expect(within(group).getByRole('radio', { name: /^Groq/ })).not.toBeChecked();
     expect(within(group).getByRole('radio', { name: /^OpenAI/ })).not.toBeChecked();
     expect(within(group).getByRole('radio', { name: /^Deepgram/ })).not.toBeChecked();
+    expect(within(group).getByRole('radio', { name: /^ElevenLabs/ })).not.toBeChecked();
     // Nothing about a cloud engine is shown while this PC transcribes.
     expect(screen.queryByTestId('cloud-engine-setup')).toBeNull();
     expect(screen.queryByText(/is sent to/)).toBeNull();
@@ -67,12 +69,19 @@ describe('TranscriptionSection: the engine choice', () => {
     expect(within(group).queryByTestId('engine-key-Local')).toBeNull();
   });
 
-  it('offers Deepgram last, with its own key and the promise of text as you speak', async () => {
+  it('offers Deepgram, then ElevenLabs, each with its own key and the promise of text as you speak', async () => {
     installTranscriptionApi();
     mount(sectionProps({ keys: ['Deepgram'] }));
     const group = await choice();
     const deepgram = within(group).getByRole('radio', { name: /^Deepgram.*Key saved/ });
-    expect(within(group).getAllByRole('radio').at(-1)).toBe(deepgram);
+    const elevenLabs = within(group).getByRole('radio', { name: /^ElevenLabs.*Needs key/ });
+    expect(within(group).getAllByRole('radio').slice(-2)).toEqual([deepgram, elevenLabs]);
+    expect(
+      within(group).getByText(
+        'In the cloud, with your own ElevenLabs API key. The text appears as you speak.',
+      ),
+    ).toBeVisible();
+    expect(within(group).getByTestId('engine-key-ElevenLabs')).toHaveTextContent('Needs key');
     expect(
       within(group).getByText(
         'In the cloud, with your own Deepgram API key. The text appears as you speak.',
@@ -188,7 +197,7 @@ describe('TranscriptionSection: a cloud engine without its key', () => {
     installTranscriptionApi({ 'transcription.getStatus': () => groqNoKey });
     mount();
     const setup = await screen.findByRole('group', { name: 'Groq setup' });
-    const toggle = within(setup).getByRole('button', { name: 'How to get a Groq API key' });
+    const toggle = within(setup).getByRole('button', { name: 'How to get your Groq API key' });
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     const steps = within(within(setup).getByRole('list')).getAllByRole('listitem');
     expect(steps.map((step) => step.textContent)).toEqual([
@@ -252,7 +261,7 @@ describe('TranscriptionSection: a cloud engine with its key', () => {
       within(setup).getByText('The same key also works for summaries and chat with Groq.'),
     ).toBeVisible();
     expect(
-      within(setup).getByRole('button', { name: 'How to get a Groq API key' }),
+      within(setup).getByRole('button', { name: 'How to get your Groq API key' }),
     ).toHaveAttribute('aria-expanded', 'false');
     expect(within(setup).queryByRole('list')).toBeNull();
   });
@@ -362,7 +371,7 @@ describe('TranscriptionSection: Deepgram, a provider that only transcribes', () 
     mount();
     const setup = await screen.findByRole('group', { name: 'Deepgram setup' });
     expect(
-      within(setup).getByRole('button', { name: 'How to get a Deepgram API key' }),
+      within(setup).getByRole('button', { name: 'How to get your Deepgram API key' }),
     ).toHaveAttribute('aria-expanded', 'true');
     expect(
       within(setup).getByRole('link', { name: /Open the Deepgram API keys page/ }),
@@ -448,6 +457,108 @@ describe('TranscriptionSection: Deepgram, a provider that only transcribes', () 
     // The only notice in the setup is where the audio goes.
     const setup = screen.getByRole('group', { name: 'Deepgram setup' });
     expect(within(setup).queryByText(/cannot transcribe/)).toBeNull();
+  });
+});
+
+describe('TranscriptionSection: ElevenLabs, another provider that only transcribes', () => {
+  const elevenLabsNoKey = {
+    ...baseStatus,
+    engine: 'ElevenLabs',
+    ready: false,
+    cloudNotReadyReason: 'key-missing',
+  };
+  const elevenLabsReady = { ...baseStatus, engine: 'ElevenLabs', ready: true };
+
+  it('choosing ElevenLabs saves it and drops a model that is not its own', async () => {
+    const api = installTranscriptionApi({ 'transcription.getStatus': () => groqReady });
+    mount(sectionProps({ keys: ['Groq'], cloudModel: 'whisper-large-v3' }));
+    await userEvent.click(within(await choice()).getByRole('radio', { name: /^ElevenLabs/ }));
+    await waitFor(() => {
+      expect(updates(api)).toEqual([
+        { patch: { transcriptionEngine: 'ElevenLabs', cloudTranscriptionModelId: null } },
+      ]);
+    });
+  });
+
+  it('names where the audio goes, saves the key for ElevenLabs and links its key page', async () => {
+    installTranscriptionApi({ 'transcription.getStatus': () => elevenLabsNoKey });
+    const props = mount();
+    const setup = await screen.findByRole('group', { name: 'ElevenLabs setup' });
+    expect(
+      within(setup).getByText(
+        'While ElevenLabs is selected, the audio of each meeting is sent to ElevenLabs to be turned into text.',
+      ),
+    ).toBeVisible();
+    expect(
+      within(setup).getByRole('button', { name: 'How to get your ElevenLabs API key' }),
+    ).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      within(setup).getByRole('link', { name: /Open the ElevenLabs API keys page/ }),
+    ).toHaveAttribute('href', 'https://elevenlabs.io/app/settings/api-keys');
+    await userEvent.type(within(setup).getByLabelText('API key', { selector: 'input' }), 'xi-1');
+    await userEvent.click(within(setup).getByRole('button', { name: 'Save key' }));
+    expect(props.model.calls).toEqual([{ name: 'setApiKey', kind: 'ElevenLabs', key: 'xi-1' }]);
+    expect(
+      within(setup).getByText(
+        'This key is used only to transcribe. Summaries and chat use the engine you choose for them.',
+      ),
+    ).toBeVisible();
+  });
+
+  it('Verify goes to ElevenLabs, and a Verify that passes says the key works', async () => {
+    installTranscriptionApi({ 'transcription.getStatus': () => elevenLabsReady });
+    const props = mount(sectionProps({ keys: ['ElevenLabs'] }));
+    const setup = await screen.findByRole('group', { name: 'ElevenLabs setup' });
+    await userEvent.click(within(setup).getByRole('button', { name: 'Verify' }));
+    expect(await within(setup).findByText('Verified. ElevenLabs accepted the key.')).toBeVisible();
+    expect(props.model.calls).toEqual([{ name: 'verifyApiKey', kind: 'ElevenLabs' }]);
+  });
+
+  it('offers Scribe v2 first as the default and saves Scribe v3', async () => {
+    const api = installTranscriptionApi({ 'transcription.getStatus': () => elevenLabsReady });
+    // A model saved while Deepgram was the engine is not shown.
+    mount(sectionProps({ keys: ['ElevenLabs'], cloudModel: 'nova-3' }));
+    const setup = await screen.findByRole('group', { name: 'ElevenLabs setup' });
+    const picker = within(setup).getByRole('combobox', { name: 'Transcription model' });
+    expect(picker).toHaveTextContent('Scribe v2');
+    await userEvent.click(picker);
+    expect((await screen.findAllByRole('option')).map((option) => option.textContent)).toEqual([
+      'Scribe v2',
+      'Scribe v3',
+    ]);
+    await userEvent.click(screen.getByRole('option', { name: 'Scribe v3' }));
+    await waitFor(() => {
+      expect(updates(api)).toEqual([{ patch: { cloudTranscriptionModelId: 'scribe_v3' } }]);
+    });
+  });
+
+  it('says live captions appear as you speak', async () => {
+    installTranscriptionApi({ 'transcription.getStatus': () => elevenLabsReady });
+    mount(sectionProps({ keys: ['ElevenLabs'] }));
+    const live = await screen.findByRole('switch', { name: 'Live transcription during recording' });
+    await waitFor(() => {
+      expect(live).toBeChecked();
+    });
+    expect(
+      screen.getByRole('group', { name: 'Live transcription during recording' }),
+    ).toHaveAccessibleDescription(
+      'Shows captions on screen while you record. With ElevenLabs the text appears as you speak.',
+    );
+  });
+
+  it('words ElevenLabs in Spanish', async () => {
+    // Without a key, so the key guide is open.
+    installTranscriptionApi({ 'transcription.getStatus': () => elevenLabsNoKey });
+    mount(sectionProps(), 'es');
+    const setup = await screen.findByRole('group', { name: 'Configuración de ElevenLabs' });
+    expect(
+      screen.getByText(
+        'En la nube, con tu propia clave de API de ElevenLabs. El texto aparece mientras hablas.',
+      ),
+    ).toBeVisible();
+    expect(
+      within(setup).getByRole('link', { name: /Abre la página de claves de API de ElevenLabs/ }),
+    ).toHaveAttribute('href', 'https://elevenlabs.io/app/settings/api-keys');
   });
 });
 

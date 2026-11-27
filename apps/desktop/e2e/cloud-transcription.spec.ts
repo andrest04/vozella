@@ -326,7 +326,7 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(page.getByRole('navigation')).toBeVisible();
       await toSettings(page);
       // Without the key: the notice, the key field and the open guide.
-      const guide = section(page).getByRole('button', { name: 'How to get a Groq API key' });
+      const guide = section(page).getByRole('button', { name: 'How to get your Groq API key' });
       await expect(guide).toHaveAttribute('aria-expanded', 'true');
       await expect(
         section(page).getByRole('link', { name: /Open the Groq API keys page/ }),

@@ -3,7 +3,8 @@ import { Cpu, Server } from 'lucide-react';
 import { Icon } from '../../ui';
 
 // Provider marks as 24 x 24 canvas paths. OpenAI, Anthropic, Gemini and Groq come from
-// @lobehub/icons-static-svg 1.102.0 (MIT); Deepgram comes from simple-icons 16.38.0 (CC0-1.0).
+// @lobehub/icons-static-svg 1.102.0 (MIT); Deepgram and ElevenLabs come from simple-icons 16.38.0
+// (CC0-1.0).
 // They are third-party trademarks: shown only beside the provider's name, never as the app brand.
 const MARKS = {
   ClaudeCode: {
@@ -41,11 +42,16 @@ const MARKS = {
     rule: 'nonzero',
     d: 'M11.203 24H1.517a.364.364 0 0 1-.258-.62l6.239-6.275a.366.366 0 0 1 .259-.108h3.52c2.723 0 5.025-2.127 5.107-4.845a5.004 5.004 0 0 0-4.999-5.148H7.613v4.646c0 .2-.164.364-.365.364H.968a.365.365 0 0 1-.363-.364V.364C.605.164.768 0 .969 0h10.416c6.684 0 12.111 5.485 12.01 12.187C23.293 18.77 17.794 24 11.202 24z',
   },
+  ElevenLabs: {
+    fill: 'currentColor',
+    rule: 'nonzero',
+    d: 'M4.6035 0v24h4.9317V0zm9.8613 0v24h4.9317V0z',
+  },
 } as const;
 
 /**
  * A 16 px provider mark, decorative: the label next to it is the name. Codex, OpenAI, Anthropic,
- * Groq and Deepgram follow the text color; Claude and Gemini keep their brand color, and forced colors turn every
+ * Groq, Deepgram and ElevenLabs follow the text color; Claude and Gemini keep their brand color, and forced colors turn every
  * mark into text color. OpenAI-compatible is any server, so it gets a generic server icon.
  */
 export function ProviderMark({

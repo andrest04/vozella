@@ -301,39 +301,42 @@ describe('composeTranscription: cloud transcription engines', () => {
     };
   }
 
-  it('fake native: a streaming engine hears the fake session live and the fake client after Stop', async () => {
-    const fake = new FakeFetch({ networkError: true });
-    const sockets = new ScriptedLiveSockets();
-    const { audio, second } = recordingAudio();
-    const updates: { displayText: string; committedText: string }[] = [];
-    const { controller } = compose({
-      library: await cloudLibrary({ transcriptionEngine: 'Deepgram' }),
-      apiKeys: new FakeApiKeyStore({ Deepgram: 'dg-fake' }),
-      fakeNative: true,
-      env: { VOZELLA_FAKE_ASR_PHRASES: 'uno dos tres cuatro' },
-      fetch: fake.fetch,
-      socket: sockets.factory,
-      audio,
-      broadcast: (channel, payload) => {
-        if (channel.name === 'transcription.liveUpdate') updates.push(payload as never);
-      },
-    });
-    expect(await controller.status()).toMatchObject({ engine: 'Deepgram', ready: true });
-    await controller.startLive(null);
-    await second();
-    await second();
-    // Word by word: the text on screen grows before any of it is committed.
-    expect(updates[0]?.committedText).toBe('');
-    expect(updates.length).toBeGreaterThan(1);
-    const draft = await controller.stopLive();
-    expect(draft).toMatch(/^\[00:00\.00-00:01\.90\] \S+ \S+ \S+ \S+$/);
-    expect(controller.liveDraftIsFinal).toBe(true);
-    // An imported file goes to the fake upload client. Neither opened a connection.
-    const text = await controller.transcribeFile({ audioPath: wav, recordedAtMs: null });
-    expect(text).toMatch(/^\[00:00\.00-00:01\.90\] \S+ \S+ \S+ \S+$/);
-    expect(fake.calls).toHaveLength(0);
-    expect(sockets.sockets).toHaveLength(0);
-  });
+  it.each(['Deepgram', 'ElevenLabs'] as const)(
+    'fake native: %s hears the fake session live and the fake client after Stop',
+    async (kind) => {
+      const fake = new FakeFetch({ networkError: true });
+      const sockets = new ScriptedLiveSockets();
+      const { audio, second } = recordingAudio();
+      const updates: { displayText: string; committedText: string }[] = [];
+      const { controller } = compose({
+        library: await cloudLibrary({ transcriptionEngine: kind }),
+        apiKeys: new FakeApiKeyStore({ [kind]: 'fake-key' }),
+        fakeNative: true,
+        env: { VOZELLA_FAKE_ASR_PHRASES: 'uno dos tres cuatro' },
+        fetch: fake.fetch,
+        socket: sockets.factory,
+        audio,
+        broadcast: (channel, payload) => {
+          if (channel.name === 'transcription.liveUpdate') updates.push(payload as never);
+        },
+      });
+      expect(await controller.status()).toMatchObject({ engine: kind, ready: true });
+      await controller.startLive(null);
+      await second();
+      await second();
+      // Word by word: the text on screen grows before any of it is committed.
+      expect(updates[0]?.committedText).toBe('');
+      expect(updates.length).toBeGreaterThan(1);
+      const draft = await controller.stopLive();
+      expect(draft).toMatch(/^\[00:00\.00-00:01\.90\] \S+ \S+ \S+ \S+$/);
+      expect(controller.liveDraftIsFinal).toBe(true);
+      // An imported file goes to the fake upload client. Neither opened a connection.
+      const text = await controller.transcribeFile({ audioPath: wav, recordedAtMs: null });
+      expect(text).toMatch(/^\[00:00\.00-00:01\.90\] \S+ \S+ \S+ \S+$/);
+      expect(fake.calls).toHaveLength(0);
+      expect(sockets.sockets).toHaveLength(0);
+    },
+  );
 
   it('fake native: the session failure the environment asks for stops the live text with its reason', async () => {
     const { audio, second } = recordingAudio();

@@ -2,6 +2,7 @@ import {
   ApiProviderError,
   CLOUD_TRANSCRIPTION_ENGINES,
   cloudTranscriptionProvider,
+  isTranscriptionProviderKind,
   resolveCloudTranscriptionModel,
   TRANSCRIPTION_PROVIDERS,
   type ApiKeyStore,
@@ -14,6 +15,10 @@ import {
 import { verifyTranscriptionProviderKey } from '../api-keys/transcription-provider-keys';
 import { DeepgramLiveSpeechProvider } from './deepgram-live-speech-provider';
 import { DeepgramSpeechToTextClient } from './deepgram-speech-to-text-client';
+import { ElevenLabsLiveSpeechProvider } from './elevenlabs-live-speech-provider';
+import { elevenLabsLiveModel } from './elevenlabs-scribe';
+import { ElevenLabsSpeechToTextClient } from './elevenlabs-speech-to-text-client';
+import type { LiveKeyCheckRequest } from './live-key-check';
 import type { LiveSocketFactory } from './live-socket';
 import { OpenAiSpeechToTextClient } from './openai-speech-to-text-client';
 
@@ -73,6 +78,8 @@ export function createCloudSpeechToTextClient(
       return new OpenAiSpeechToTextClient(options);
     case 'deepgram-listen':
       return new DeepgramSpeechToTextClient(options);
+    case 'elevenlabs-scribe':
+      return new ElevenLabsSpeechToTextClient(options);
   }
 }
 
@@ -87,6 +94,24 @@ export interface StreamingSpeechDeps {
 }
 
 /**
+ * The key check of a live session of `kind` that never opened: the same request Verify sends in
+ * Settings for that provider, which says whether it takes the key. A kind with no key check of
+ * its own (an API engine; none streams today) asks nothing, so the failure stays a connection one.
+ */
+function liveKeyCheck(
+  deps: StreamingSpeechDeps,
+  kind: CloudTranscriptionKind,
+): LiveKeyCheckRequest {
+  if (!isTranscriptionProviderKind(kind)) return () => Promise.resolve();
+  const provider = TRANSCRIPTION_PROVIDERS[kind];
+  return (key, cancel) =>
+    verifyTranscriptionProviderKey(provider, key, deps.fetch, {
+      cancel,
+      timeoutMs: LIVE_KEY_CHECK_TIMEOUT_MS,
+    });
+}
+
+/**
  * The `StreamingSpeechProvider` of a cloud transcription engine, for the live pass, or null when
  * its protocol has no streaming form (its live text arrives in pieces through the client above).
  * Whoever selects the engine of a pass puts the streaming speech engine in front of this for the
@@ -96,23 +121,28 @@ export function createStreamingSpeechProvider(
   deps: StreamingSpeechDeps,
   choice: CloudSpeechToTextChoice,
 ): StreamingSpeechProvider | null {
-  switch (CLOUD_TRANSCRIPTION_ENGINES[choice.kind].protocol) {
+  const { kind } = choice;
+  const live = () => ({
+    displayName: cloudTranscriptionProvider(kind).displayName,
+    baseUrl: requireBaseUrl(choice),
+    apiKey: () => deps.keys.get(kind),
+    timer: deps.timer,
+    checkKey: liveKeyCheck(deps, kind),
+    ...(deps.socket ? { socket: deps.socket } : {}),
+  });
+  switch (CLOUD_TRANSCRIPTION_ENGINES[kind].protocol) {
     case 'openai-audio-transcriptions':
       return null;
     case 'deepgram-listen':
       return new DeepgramLiveSpeechProvider({
-        displayName: cloudTranscriptionProvider(choice.kind).displayName,
-        baseUrl: requireBaseUrl(choice),
-        model: resolveCloudTranscriptionModel(choice.kind, choice.model),
-        apiKey: () => deps.keys.get(choice.kind),
-        timer: deps.timer,
-        // The same request Verify sends in Settings: it says whether the provider takes the key.
-        checkKey: (key, cancel) =>
-          verifyTranscriptionProviderKey(TRANSCRIPTION_PROVIDERS.Deepgram, key, deps.fetch, {
-            cancel,
-            timeoutMs: LIVE_KEY_CHECK_TIMEOUT_MS,
-          }),
-        ...(deps.socket ? { socket: deps.socket } : {}),
+        ...live(),
+        model: resolveCloudTranscriptionModel(kind, choice.model),
+      });
+    case 'elevenlabs-scribe':
+      return new ElevenLabsLiveSpeechProvider({
+        ...live(),
+        // The setting names the batch model; the stream uses its realtime pair.
+        model: elevenLabsLiveModel(resolveCloudTranscriptionModel(kind, choice.model)),
       });
   }
 }

@@ -9,14 +9,32 @@ import {
 } from './transcription-provider-table';
 
 describe('the transcription-only provider table', () => {
-  it('declares Deepgram', () => {
-    expect([...TRANSCRIPTION_PROVIDER_KINDS]).toEqual(['Deepgram']);
+  it('declares Deepgram, then ElevenLabs', () => {
+    expect([...TRANSCRIPTION_PROVIDER_KINDS]).toEqual(['Deepgram', 'ElevenLabs']);
+  });
+
+  it('checks a Deepgram key with a GET of its projects, under the Token scheme', () => {
     expect(TRANSCRIPTION_PROVIDERS.Deepgram).toMatchObject({
       kind: 'Deepgram',
       displayName: 'Deepgram',
       nameKey: 'Ui_DeepgramName',
       defaultBaseUrl: 'https://api.deepgram.com/v1',
-      keyCheck: { path: '/projects', authScheme: 'Token' },
+      keyCheck: { method: 'GET', path: '/projects', header: 'authorization', authScheme: 'Token' },
+    });
+  });
+
+  it('checks an ElevenLabs key by asking for a realtime Scribe token, with the bare key in xi-api-key', () => {
+    expect(TRANSCRIPTION_PROVIDERS.ElevenLabs).toMatchObject({
+      kind: 'ElevenLabs',
+      displayName: 'ElevenLabs',
+      nameKey: 'Ui_ElevenLabsName',
+      defaultBaseUrl: 'https://api.elevenlabs.io/v1',
+      keyCheck: {
+        method: 'POST',
+        path: '/single-use-token/realtime_scribe',
+        header: 'xi-api-key',
+        authScheme: null,
+      },
     });
   });
 
@@ -29,7 +47,9 @@ describe('the transcription-only provider table', () => {
     (provider) => {
       expect(provider.defaultBaseUrl).toMatch(/^https:\/\/[a-z0-9.-]+(\/[a-z0-9/-]*[a-z0-9])?$/);
       expect(provider.resolveBaseUrl(readSettings({}))).toBe(provider.defaultBaseUrl);
-      expect(provider.keyCheck.path).toMatch(/^\/[a-z0-9/-]+$/);
+      expect(provider.keyCheck.path).toMatch(/^\/[a-z0-9/_-]+$/);
+      // A header name in lower case, as `fetch` sends it.
+      expect(provider.keyCheck.header).toMatch(/^[a-z][a-z0-9-]*$/);
     },
   );
 
@@ -48,11 +68,14 @@ describe('the transcription-only provider table', () => {
 });
 
 describe('isTranscriptionProviderKind', () => {
-  it('knows Deepgram', () => {
-    expect(isTranscriptionProviderKind('Deepgram')).toBe(true);
+  it.each(['Deepgram', 'ElevenLabs'])('knows %s', (kind) => {
+    expect(isTranscriptionProviderKind(kind)).toBe(true);
   });
 
-  it.each(['Groq', 'OpenAi', 'Local', 'deepgram', '', null, undefined])('%s is not one', (kind) => {
-    expect(isTranscriptionProviderKind(kind)).toBe(false);
-  });
+  it.each(['Groq', 'OpenAi', 'Local', 'deepgram', 'elevenlabs', '', null, undefined])(
+    '%s is not one',
+    (kind) => {
+      expect(isTranscriptionProviderKind(kind)).toBe(false);
+    },
+  );
 });

@@ -96,6 +96,13 @@ describe('useSettingsPage: the key commands by kind of provider', () => {
       { name: 'transcription.verifyProviderKey', input: { kind: 'Deepgram' } },
     ]);
     expect(sent('settings.getPage')).toHaveLength(1);
+    await act(async () => {
+      expect(await model().verifyApiKey('ElevenLabs')).toEqual({ status: 'verified', models: [] });
+    });
+    expect(sent('transcription.').at(-1)).toEqual({
+      name: 'transcription.verifyProviderKey',
+      input: { kind: 'ElevenLabs' },
+    });
   });
 
   it('passes on the reason of a failed Verify, and words a broken call as unknown', async () => {

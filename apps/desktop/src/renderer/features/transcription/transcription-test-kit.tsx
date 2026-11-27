@@ -52,6 +52,7 @@ export function sectionProps(
         Groq: saved.has('Groq'),
         OpenAi: saved.has('OpenAi'),
         Deepgram: saved.has('Deepgram'),
+        ElevenLabs: saved.has('ElevenLabs'),
       },
       settings: { cloudTranscriptionModelId: options.cloudModel ?? null },
     } as unknown as TranscriptionSectionProps['page'],

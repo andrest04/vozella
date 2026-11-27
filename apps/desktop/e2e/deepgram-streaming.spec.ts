@@ -1,17 +1,23 @@
 import fs from 'node:fs';
-import http from 'node:http';
-import type { AddressInfo } from 'node:net';
-import path from 'node:path';
-import axe from 'axe-core';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { restoreMain } from './launch';
 import {
-  launchApp,
-  openSettingsTab,
-  READY_MODEL,
-  restoreMain,
-  type LaunchedApp,
-  setMainContentSize,
-} from './launch';
+  choice,
+  closeApp,
+  filesOf,
+  keyField,
+  liveUpdates,
+  mainProcessUpgrade,
+  meetings,
+  open,
+  recordLiveUpdates,
+  saveKey,
+  section,
+  serious,
+  settingsFile,
+  toRecord,
+  toSettings,
+} from './helpers/streaming-transcription';
 
 // Streaming cloud transcription (Deepgram) with the user's own API key, in the real window on the
 // fake native build: the key store is in memory, the live session is a scripted one that hears one
@@ -22,146 +28,6 @@ import {
 const KEY = 'dg-e2e-SECRET-0123456789';
 
 test.describe.configure({ timeout: 150_000 });
-
-type Settings = Record<string, unknown>;
-
-/** The summary is ready, so the transcription engine is the only thing the Record gate can miss. */
-const seed = (settings: Settings) => (root: string) => {
-  fs.mkdirSync(path.join(root, 'app'), { recursive: true });
-  fs.writeFileSync(
-    path.join(root, 'app', 'settings.json'),
-    JSON.stringify({
-      selectedSummaryProvider: 'Local',
-      selectedSummaryModelId: READY_MODEL,
-      ...settings,
-    }),
-  );
-};
-
-async function open(
-  settings: Settings = {},
-  env: Record<string, string> = {},
-): Promise<{ launched: LaunchedApp; page: Page }> {
-  const launched = await launchApp(
-    {
-      VOZELLA_FAKE_MODEL_PRESENT: READY_MODEL,
-      VOZELLA_FAKE_ENGINE_STEP_MS: '600',
-      VOZELLA_E2E_SHOW: '0',
-      ...env,
-    },
-    seed(settings),
-  );
-  const page = await launched.app.firstWindow();
-  await expect(page.getByRole('navigation')).toBeVisible();
-  await setMainContentSize(launched.app, 1180, 1000);
-  return { launched, page };
-}
-
-async function closeApp(launched: LaunchedApp, page: Page): Promise<void> {
-  await page.evaluate(() => window.vozella.invoke('recording.discard', {})).catch(() => undefined);
-  await launched.close();
-}
-
-const settingsFile = (launched: LaunchedApp): Settings =>
-  JSON.parse(
-    fs.readFileSync(path.join(launched.dataRoot, 'app', 'settings.json'), 'utf8'),
-  ) as Settings;
-
-const go = (page: Page, name: RegExp): Promise<void> =>
-  page.getByRole('navigation').getByRole('link', { name }).click();
-/** Settings, on the tab that holds the Transcription section. */
-const toSettings = async (page: Page): Promise<void> => {
-  await go(page, /^(Settings|Configuración)$/);
-  await openSettingsTab(page, 'transcription');
-};
-const toRecord = (page: Page): Promise<void> => go(page, /^(Record|Grabar)$/);
-
-const section = (page: Page): Locator => page.getByTestId('transcription-section');
-const choice = (page: Page): Locator =>
-  section(page).getByRole('radiogroup', { name: 'Where meetings are transcribed' });
-const keyField = (page: Page): Locator =>
-  section(page).getByLabel('API key', { exact: true }).and(page.locator('input'));
-
-/** Saves the Deepgram key the way a test that is not about the key field does: through the channel. */
-const saveKey = (page: Page): Promise<unknown> =>
-  page.evaluate(
-    (key) => window.vozella.invoke('transcription.setProviderKey', { kind: 'Deepgram', key }),
-    KEY,
-  );
-
-/** Every file under the data root whose name ends with `extension`. */
-function filesOf(launched: LaunchedApp, extension: string): string[] {
-  const walk = (dir: string): string[] =>
-    fs.existsSync(dir)
-      ? fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-          const full = path.join(dir, entry.name);
-          if (entry.isDirectory()) return walk(full);
-          return entry.name.endsWith(extension) ? [full] : [];
-        })
-      : [];
-  return walk(launched.dataRoot);
-}
-
-/** Every saved meeting Markdown in the data root. */
-const meetings = (launched: LaunchedApp): string[] =>
-  filesOf(launched, '.md').map((file) => fs.readFileSync(file, 'utf8'));
-
-interface LiveUpdate {
-  readonly displayText: string;
-  readonly committedText: string;
-}
-type LiveWindow = Window & { liveUpdates?: LiveUpdate[] };
-
-/** Keeps every live transcript update the window is sent, in order. */
-const recordLiveUpdates = (page: Page): Promise<void> =>
-  page.evaluate(() => {
-    const target = window as LiveWindow;
-    target.liveUpdates = [];
-    window.vozella.on('transcription.liveUpdate', (update) => {
-      target.liveUpdates?.push({
-        displayText: update.displayText,
-        committedText: update.committedText,
-      });
-    });
-  });
-const liveUpdates = (page: Page): Promise<LiveUpdate[]> =>
-  page.evaluate(() => (window as LiveWindow).liveUpdates ?? []);
-
-/**
- * axe reads an element that is still fading in as hidden, and a hidden label fails its field. The
- * page fade and the panel fades are finite, so this waits for them (never for the recording pulse,
- * which loops) instead of sleeping.
- */
-async function fadesDone(page: Page): Promise<void> {
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () =>
-          document
-            .getAnimations()
-            .filter(
-              (animation) =>
-                animation.playState === 'running' &&
-                animation.effect?.getComputedTiming().iterations !== Infinity,
-            ).length,
-      ),
-    )
-    .toBe(0);
-}
-
-async function serious(page: Page): Promise<{ id: string; impact: string | null }[]> {
-  await fadesDone(page);
-  await page.evaluate(axe.source);
-  return page.evaluate(async () => {
-    const api = (
-      window as unknown as {
-        axe: { run: () => Promise<{ violations: { id: string; impact: string | null }[] }> };
-      }
-    ).axe;
-    const result = await api.run();
-    return result.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
-  });
-}
 
 test('Deepgram with its key: the take streams word by word, and Stop keeps that transcript without a second pass', async () => {
   // The upload client refuses every request: a pass after Stop, if one ran, would fail in view.
@@ -285,7 +151,7 @@ test('a key Deepgram refuses: the live captions stop with the reason, the take r
     { VOZELLA_FAKE_STREAM_FAIL: 'KeyInvalid' },
   );
   try {
-    await saveKey(page);
+    await saveKey(page, 'Deepgram', KEY);
     await toRecord(page);
     await page.getByRole('textbox', { name: 'Title' }).fill('Refused stream');
     await page.getByTestId('BtnRecord').click();
@@ -347,7 +213,7 @@ for (const theme of ['light', 'dark'] as const) {
       await toSettings(page);
       await expect(choice(page).getByRole('radio', { name: /^Deepgram/ })).toBeChecked();
       // Without the key: the notice, the key field and the open guide.
-      const guide = section(page).getByRole('button', { name: 'How to get a Deepgram API key' });
+      const guide = section(page).getByRole('button', { name: 'How to get your Deepgram API key' });
       await expect(guide).toHaveAttribute('aria-expanded', 'true');
       await expect(
         section(page).getByRole('link', { name: /Open the Deepgram API keys page/ }),
@@ -392,54 +258,13 @@ for (const theme of ['light', 'dark'] as const) {
 }
 
 test("Electron's main process WebSocket sends the request header a live session carries its key in", async () => {
-  // A server on this PC that only looks at the upgrade request and drops the connection. Nothing
-  // leaves the machine and the "key" is a made-up word.
-  const upgrades: http.IncomingHttpHeaders[] = [];
-  const server = http.createServer();
-  server.on('upgrade', (request, socket) => {
-    upgrades.push(request.headers);
-    socket.destroy();
-  });
-  await new Promise<void>((resolve) => {
-    server.listen(0, '127.0.0.1', resolve);
-  });
-  const { port } = server.address() as AddressInfo;
+  // The same call `globalLiveSocket` makes, in the process that makes it in the app, to a server
+  // on this PC. The "key" is a made-up word.
   const { launched, page } = await open();
   try {
-    // The same call `globalLiveSocket` makes, in the process that makes it in the app.
-    const seen = await launched.app.evaluate(
-      (_electron, url) =>
-        new Promise<{ events: string[]; code: number | null; node: string; electron: string }>(
-          (resolve) => {
-            type HeaderSocket = new (
-              url: string,
-              init: { headers: Record<string, string> },
-            ) => {
-              addEventListener(type: string, listener: (event: { code?: number }) => void): void;
-            };
-            const Socket = (globalThis as unknown as { WebSocket: HeaderSocket }).WebSocket;
-            const events: string[] = [];
-            const done = (code: number | null): void => {
-              resolve({
-                events,
-                code,
-                node: process.versions.node,
-                electron: process.versions.electron,
-              });
-            };
-            const socket = new Socket(url, { headers: { Authorization: 'Token e2e-not-a-key' } });
-            socket.addEventListener('error', () => events.push('error'));
-            socket.addEventListener('close', (event) => {
-              events.push('close');
-              done(event.code ?? null);
-            });
-            setTimeout(() => {
-              done(null);
-            }, 15_000);
-          },
-        ),
-      `ws://127.0.0.1:${String(port)}/v1/listen?model=nova-3`,
-    );
+    const { upgrades, seen } = await mainProcessUpgrade(launched, '/v1/listen?model=nova-3', {
+      Authorization: 'Token e2e-not-a-key',
+    });
     test.info().annotations.push({
       type: 'electron-websocket',
       description: `electron ${seen.electron}, node ${seen.node}: events ${seen.events.join(',')}, close code ${String(seen.code)}`,
@@ -452,10 +277,5 @@ test("Electron's main process WebSocket sends the request header a live session 
     expect(seen.code).toBe(1006);
   } finally {
     await closeApp(launched, page);
-    await new Promise<void>((resolve) => {
-      server.close(() => {
-        resolve();
-      });
-    });
   }
 });
