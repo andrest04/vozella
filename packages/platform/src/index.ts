@@ -14,6 +14,7 @@ export * from './native/create-native-ports';
 export * from './native/native-adapters';
 export * from './native/window-scanner';
 export * from './fakes/fake-window-scanner';
+export * from './fakes/fake-text-injector';
 export * from './fs/atomic-write';
 export * from './fs/keyed-mutex';
 export * from './library/ensure-directories';

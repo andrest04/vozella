@@ -5,6 +5,7 @@ use napi_derive::napi;
 
 pub mod audio;
 pub mod job;
+pub mod text_input;
 pub mod windows_scan;
 
 /// True when this build can capture audio.
