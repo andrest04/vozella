@@ -407,6 +407,29 @@ describe('live pass', () => {
     expect(engine.recognizers[0]?.streams[0]?.options.language).toBe('en-US');
     await controller.stopLive();
   });
+
+  it('answers the live microphone share of a span, null while no pass runs', () => {
+    const { controller, runtime } = setup();
+    expect(controller.liveMicDominantShare(0, 1000)).toBeNull();
+    const share = vi.spyOn(runtime.live, 'micDominantShare').mockReturnValue(0.25);
+    expect(controller.liveMicDominantShare(2000, 3500)).toBe(0.25);
+    expect(share).toHaveBeenCalledWith(2000, 3500);
+  });
+
+  it('hands every live update to its subscribers until they unsubscribe', async () => {
+    const { controller, engine, frameListeners } = setup();
+    engine.script = { afterPush: [[final('hola', 1)], [final('equipo', 2)]] };
+    const seen: string[] = [];
+    const off = controller.onLiveUpdate((_display, committed) => seen.push(committed));
+    await controller.startLive(null);
+    for (const listener of frameListeners) listener(pcm(1600));
+    await flush();
+    off();
+    for (const listener of frameListeners) listener(pcm(1600));
+    await flush();
+    await controller.stopLive();
+    expect(seen).toEqual(['[00:00.00-00:01.00] hola']);
+  });
 });
 
 describe('offline pass', () => {

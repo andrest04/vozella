@@ -403,6 +403,14 @@ export class TranscriptionController {
   }
 
   /**
+   * How much of a span (engine time, ms) the microphone dominated in the running live pass, 0..1.
+   * Null when no pass runs or no levels arrived yet. Type at cursor tells the user's lines by it.
+   */
+  liveMicDominantShare(startMs: number, endMs: number): number | null {
+    return this.deps.runtime.live.micDominantShare(startMs, endMs);
+  }
+
+  /**
    * A live pass on a cloud engine stopped because the provider refused it (key, credit, model),
    * with the reason as a sentence: a refused upload of an engine that works in pieces, or a
    * refused session of one that streams. The take goes on recording; the recording module shows

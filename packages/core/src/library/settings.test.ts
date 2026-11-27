@@ -4,8 +4,11 @@ import {
   applySettingsPatch,
   parseSettingsJson,
   readSettings,
+  DEFAULT_CURSOR_TYPING_SHORTCUT,
   resolveClaudeEffort,
   resolveClaudeModelId,
+  resolveCursorTypingShortcut,
+  resolveCursorTypingSource,
   resolveCodexEffort,
   resolveCodexModelId,
   resolveLiveQuestionsMode,
@@ -55,6 +58,9 @@ describe('defaults', () => {
       cloudTranscriptionModelId: null,
       customNoteTemplate: null,
       openAtLogin: false,
+      cursorTypingEnabled: true,
+      cursorTypingShortcut: null,
+      cursorTypingSource: null,
     });
   });
 
@@ -401,5 +407,61 @@ describe('resolveLiveQuestionsMode', () => {
       text.indexOf('liveCopilotPillAlong'),
     );
     expect(text.indexOf('futureThing')).toBeGreaterThan(text.indexOf('liveQuestions'));
+  });
+});
+
+describe('type at cursor settings', () => {
+  it('a file written before them loads the defaults and keeps its property set', () => {
+    const old = serializeSettings({ uiLanguage: 'es', openAtLogin: true });
+    expect(old).not.toContain('cursorTyping');
+    const { raw, settings } = parseSettingsJson(old);
+    expect(settings.cursorTypingEnabled).toBe(true);
+    expect(resolveCursorTypingShortcut(settings)).toBe('CommandOrControl+Alt+Space');
+    expect(resolveCursorTypingSource(settings)).toBe('others');
+    expect(serializeSettings(raw)).toBe(old);
+    expect(
+      serializeSettings(
+        applySettingsPatch(raw, {
+          cursorTypingEnabled: true,
+          cursorTypingShortcut: null,
+          cursorTypingSource: null,
+        }),
+      ),
+    ).toBe(old);
+  });
+
+  it('turning it off is written and round-trips', () => {
+    const text = serializeSettings(applySettingsPatch({}, { cursorTypingEnabled: false }));
+    expect(text).toContain('"cursorTypingEnabled": false');
+    expect(parseSettingsJson(text).settings.cursorTypingEnabled).toBe(false);
+    expect(readSettings({ cursorTypingEnabled: 'no' }).cursorTypingEnabled).toBe(true);
+  });
+
+  it('a chosen shortcut and source are written once set and round-trip', () => {
+    const text = serializeSettings(
+      applySettingsPatch(
+        { futureThing: 1 },
+        { cursorTypingShortcut: 'Ctrl+Shift+T', cursorTypingSource: 'all' },
+      ),
+    );
+    const { settings } = parseSettingsJson(text);
+    expect(resolveCursorTypingShortcut(settings)).toBe('Ctrl+Shift+T');
+    expect(resolveCursorTypingSource(settings)).toBe('all');
+    expect(text.indexOf('futureThing')).toBeGreaterThan(text.indexOf('cursorTypingSource'));
+  });
+
+  it('a blank shortcut and an unknown source resolve to the defaults', () => {
+    expect(DEFAULT_CURSOR_TYPING_SHORTCUT).toBe('CommandOrControl+Alt+Space');
+    for (const shortcut of ['', '   ']) {
+      expect(resolveCursorTypingShortcut({ ...defaults, cursorTypingShortcut: shortcut })).toBe(
+        DEFAULT_CURSOR_TYPING_SHORTCUT,
+      );
+    }
+    expect(resolveCursorTypingShortcut({ ...defaults, cursorTypingShortcut: ' Alt+F9 ' })).toBe(
+      'Alt+F9',
+    );
+    for (const source of ['All', 'everyone', '']) {
+      expect(resolveCursorTypingSource({ ...defaults, cursorTypingSource: source })).toBe('others');
+    }
   });
 });

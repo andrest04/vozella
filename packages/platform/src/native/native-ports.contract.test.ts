@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { AudioCapturePort, AudioFrame, CaptureSession } from '@vozella/core';
+import type { AudioCapturePort, AudioFrame, CaptureSession, TextInjectorPort } from '@vozella/core';
 import { FakeAudioCapture } from '../fakes/fake-audio-capture';
+import { FakeTextInjector } from '../fakes/fake-text-injector';
 import { loadNativeAddon, type NativeAddon, type NativeFrame } from './addon';
 import { createNativePorts } from './create-native-ports';
-import { NativeAudioCapture } from './native-adapters';
+import { NativeAudioCapture, NativeTextInjector } from './native-adapters';
 
 /** A stand-in addon with the same surface as the Rust one. */
 function stubAddon(overrides: Partial<NativeAddon> = {}): NativeAddon {
@@ -35,9 +36,112 @@ function stubAddon(overrides: Partial<NativeAddon> = {}): NativeAddon {
     },
     listTopLevelWindows: () => Promise.resolve([]),
     assignToKillOnCloseJob: () => undefined,
+    foregroundTarget: () => ({
+      windowHandle: 1001,
+      focusHandle: 1002,
+      processId: 4242,
+      processName: 'notepad.exe',
+      isOwnProcess: false,
+      menuOpen: false,
+      modifiersHeld: false,
+      blocked: false,
+    }),
+    typeText: (text) => ({ sent: text.length * 2, expected: text.length * 2 }),
     ...overrides,
   };
 }
+
+/** A stub addon that records what it was asked to type, as the OS would receive it. */
+function recordingAddon(): { addon: NativeAddon; typed: string[] } {
+  const typed: string[] = [];
+  const addon = stubAddon({
+    typeText: (text) => {
+      if (text !== '') typed.push(text);
+      return { sent: text.length * 2, expected: text.length * 2 };
+    },
+  });
+  return { addon, typed };
+}
+
+/** The same assertions run against the fake and the native adapter. */
+function textInjectorContract(
+  name: string,
+  make: () => { injector: TextInjectorPort; typed: () => readonly string[] },
+) {
+  describe(`TextInjectorPort contract: ${name}`, () => {
+    it('types the text and reports every event sent', () => {
+      const { injector, typed } = make();
+      const result = injector.typeText('qué tal');
+      expect(typed()).toEqual(['qué tal']);
+      expect(result.expected).toBeGreaterThan(0);
+      expect(result.sent).toBe(result.expected);
+    });
+
+    it('sends nothing for an empty string', () => {
+      const { injector, typed } = make();
+      expect(injector.typeText('')).toEqual({ sent: 0, expected: 0 });
+      expect(typed()).toEqual([]);
+    });
+
+    it('describes the foreground target', () => {
+      const target = make().injector.foregroundTarget();
+      expect(target).toEqual({
+        windowHandle: expect.any(Number) as number,
+        focusHandle: expect.any(Number) as number,
+        processId: expect.any(Number) as number,
+        processName: expect.any(String) as string,
+        isOwnProcess: false,
+        menuOpen: false,
+        modifiersHeld: false,
+        blocked: false,
+      });
+    });
+  });
+}
+
+textInjectorContract('fake', () => {
+  const injector = new FakeTextInjector();
+  return { injector, typed: () => injector.typed };
+});
+textInjectorContract('native adapter over a stub addon', () => {
+  const { addon, typed } = recordingAddon();
+  return { injector: new NativeTextInjector(addon), typed: () => typed };
+});
+
+describe('NativeTextInjector', () => {
+  it('maps fields napi leaves out to null', () => {
+    const addon = stubAddon({
+      foregroundTarget: () => ({
+        windowHandle: 7,
+        processId: 9,
+        isOwnProcess: true,
+        menuOpen: true,
+        modifiersHeld: true,
+        blocked: true,
+      }),
+    });
+    expect(new NativeTextInjector(addon).foregroundTarget()).toEqual({
+      windowHandle: 7,
+      focusHandle: null,
+      processId: 9,
+      processName: null,
+      isOwnProcess: true,
+      menuOpen: true,
+      modifiersHeld: true,
+      blocked: true,
+    });
+  });
+
+  it('answers null when there is no foreground window', () => {
+    const addon = stubAddon({ foregroundTarget: () => null });
+    expect(new NativeTextInjector(addon).foregroundTarget()).toBeNull();
+  });
+
+  it('reports a short count from the addon unchanged', () => {
+    const addon = stubAddon({ typeText: () => ({ sent: 0, expected: 4 }) });
+    expect(new NativeTextInjector(addon).typeText('hi')).toEqual({ sent: 0, expected: 4 });
+  });
+});
 
 /** The same assertions run against the fake and the native adapter. */
 function audioContract(name: string, make: () => AudioCapturePort) {
@@ -111,6 +215,19 @@ describe('createNativePorts', () => {
   it('builds fakes without touching the filesystem', () => {
     const ports = createNativePorts({ fake: true });
     expect(ports.backend).toBe('fake');
+    expect(ports.textInjector).toBeInstanceOf(FakeTextInjector);
+  });
+
+  it('wires the text injector to the addon', () => {
+    const ports = createNativePorts({ fake: false, addonPath: 'x.node', load: () => stubAddon() });
+    expect(ports.textInjector).toBeInstanceOf(NativeTextInjector);
+  });
+
+  it('rejects an addon without the text input exports', () => {
+    const older: Partial<NativeAddon> = { ...stubAddon() };
+    delete older.foregroundTarget;
+    delete older.typeText;
+    expect(() => loadNativeAddon('x.node', () => older)).toThrow(/expected API/);
   });
 
   it('builds native adapters from an addon loaded by path', async () => {

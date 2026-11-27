@@ -44,6 +44,23 @@ export interface NativeAudioDecoder {
   close(): void;
 }
 
+/** napi leaves a `None` field out of the object, so optional fields may be missing. */
+export interface NativeForegroundTarget {
+  windowHandle: number;
+  focusHandle?: number | null;
+  processId: number;
+  processName?: string | null;
+  isOwnProcess: boolean;
+  menuOpen: boolean;
+  modifiersHeld: boolean;
+  blocked: boolean;
+}
+
+export interface NativeTypeTextResult {
+  sent: number;
+  expected: number;
+}
+
 export interface NativeAddon {
   platformSupported(): boolean;
   startCapture(
@@ -63,6 +80,10 @@ export interface NativeAddon {
   listTopLevelWindows(): Promise<{ processName: string; title: string }[]>;
   /** Puts the process in a Job Object that kills it when this process dies. Throws on failure. */
   assignToKillOnCloseJob(pid: number): void;
+  /** The window that would receive typed keys, or null when none is in the foreground. */
+  foregroundTarget(): NativeForegroundTarget | null;
+  /** Types the text with one SendInput call. Throws only off Windows. */
+  typeText(text: string): NativeTypeTextResult;
 }
 
 /**
@@ -82,7 +103,9 @@ export function loadNativeAddon(addonPath: string, load: (path: string) => unkno
     typeof addon.windowsBuild !== 'function' ||
     typeof addon.openAudioDecoder !== 'function' ||
     typeof addon.listTopLevelWindows !== 'function' ||
-    typeof addon.assignToKillOnCloseJob !== 'function'
+    typeof addon.assignToKillOnCloseJob !== 'function' ||
+    typeof addon.foregroundTarget !== 'function' ||
+    typeof addon.typeText !== 'function'
   ) {
     throw new Error(`native addon at ${addonPath} does not expose the expected API`);
   }

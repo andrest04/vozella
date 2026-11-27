@@ -2,6 +2,7 @@ import type { PillStateDto, RecordingStateDto } from '@vozella/contracts';
 import { EXPANDED_RADIUS_DIP, formatElapsed } from '@vozella/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useT } from '../../i18n/I18nProvider';
+import { useCursorTypingPill } from '../cursor-typing/use-cursor-typing-pill';
 import { useElapsed } from '../record/use-elapsed';
 import { HIGHLIGHT_FEEDBACK_MS, highlightMoment } from '../record/use-recording';
 import { useTimedValue } from '../record/use-timed-value';
@@ -28,6 +29,7 @@ export function PillContainer() {
   const animations = useRef(true);
   animations.current = pill?.animationsEnabled ?? true;
   const highlighted = useTimedValue<string>(HIGHLIGHT_FEEDBACK_MS);
+  const typing = useCursorTypingPill(hint !== null);
 
   const clearHintTimer = useCallback((): void => {
     if (hintTimer.current !== null) window.clearTimeout(hintTimer.current);
@@ -151,6 +153,9 @@ export function PillContainer() {
         hint={hint}
         canHighlight={recording?.phase === 'Recording'}
         highlighted={highlighted.value}
+        typing={typing.badge}
+        note={typing.note}
+        typingAnnouncement={typing.announcement}
         labels={{
           openApp: t('LiveCopilot_OpenApp.AutomationProperties.Name'),
           pause: t('LiveCopilot_Pause.AutomationProperties.Name'),

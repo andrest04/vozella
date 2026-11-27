@@ -58,8 +58,10 @@ interface Session {
   readonly recognizer: AsrRecognizer;
   readonly stream: AsrStream;
   readonly accumulator: StreamingTranscriptAccumulator;
-  /** Microphone activity in engine time, only while speaker labels run. */
-  readonly micActivity: MicActivityRecorder | null;
+  /** Microphone activity in engine time. The accumulator reads it only while speaker labels run. */
+  readonly micActivity: MicActivityRecorder;
+  /** Some frame that reached the engine carried source levels. */
+  levelsSeen: boolean;
   readonly queue: Frame[];
   wake: (() => void) | null;
   closed: boolean;
@@ -126,12 +128,16 @@ export class LiveTranscriptionService {
         await created.recognizer.dispose().catch(() => undefined);
         throw error;
       }
-      const micActivity = created.diarization ? new MicActivityRecorder() : null;
+      const micActivity = new MicActivityRecorder();
       const session: Session = {
         recognizer: created.recognizer,
         stream,
-        accumulator: new StreamingTranscriptAccumulator(options.recordedAtMs, { micActivity }),
+        // Only speaker labels name `[ You ]`; without them the transcript stays untagged.
+        accumulator: new StreamingTranscriptAccumulator(options.recordedAtMs, {
+          micActivity: created.diarization ? micActivity : null,
+        }),
         micActivity,
+        levelsSeen: false,
         queue: [],
         wake: null,
         closed: false,
@@ -160,6 +166,17 @@ export class LiveTranscriptionService {
     }
     session.queue.push(frame);
     session.wake?.();
+  }
+
+  /**
+   * How much of a span (engine time, ms) the microphone dominated, 0..1, whatever the speaker
+   * labels setting. Type at cursor reads it to tell the local user's lines from the others'.
+   * Reads only the current session: null when none runs or no frame has carried levels yet.
+   */
+  micDominantShare(startMs: number, endMs: number): number | null {
+    const session = this.session;
+    if (!session?.levelsSeen) return null;
+    return session.micActivity.dominantShare(startMs, endMs);
   }
 
   /** Commits the leftover interim, closes the engine objects and returns the committed text. */
@@ -248,6 +265,7 @@ export class LiveTranscriptionService {
       let changed = false;
       // Recorded when the frame reaches the engine, so a dropped frame shifts neither timeline.
       recordLevels(session.micActivity, frame);
+      if (frame.levels !== undefined && frame.levels.length > 0) session.levelsSeen = true;
       try {
         await session.stream.push(frame.samples, frame.sampleRate);
         for (const result of await session.stream.pullAvailable()) {
@@ -289,8 +307,7 @@ export class LiveTranscriptionService {
  * Keeps the activity aligned with the audio the engine heard: one level per
  * {@link MIC_ACTIVITY_FRAME_MS} of the frame, silence where levels are missing or short.
  */
-function recordLevels(recorder: MicActivityRecorder | null, frame: Frame): void {
-  if (recorder === null) return;
+function recordLevels(recorder: MicActivityRecorder, frame: Frame): void {
   const count = Math.round(frameMs(frame) / MIC_ACTIVITY_FRAME_MS);
   for (let i = 0; i < count; i += 1) {
     recorder.push(frame.levels?.[i] ?? SILENCE);

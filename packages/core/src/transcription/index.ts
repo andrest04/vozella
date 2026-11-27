@@ -6,6 +6,7 @@ export * from './committed-line';
 export * from './engine-catalog';
 export * from './engine-installer';
 export * from './highlights';
+export * from './line-source';
 export * from './local-speaker';
 export * from './mic-activity';
 export * from './live-service';

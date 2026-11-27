@@ -23,7 +23,7 @@ const COPY = {
     list: 'Settings sections',
     labels: ['Recording', 'Transcription', 'Summaries & AI', 'General'],
     sections: [
-      ['Microphone', 'Call detection'],
+      ['Microphone', 'Type at cursor', 'Call detection'],
       ['Meeting language', 'Transcription'],
       ['Summary provider'],
       ['Appearance', 'Language', 'Startup', 'Data', 'About'],

@@ -17,6 +17,7 @@ import { AboutSection } from './AboutSection';
 import { CallDetectionSection } from './CallDetectionSection';
 import { DataSection } from './DataSection';
 import { LanguageSection } from './LanguageSection';
+import { CursorTypingSection } from './CursorTypingSection';
 import { CustomTemplateSection } from './CustomTemplateSection';
 import { LiveQuestionsSection } from './LiveQuestionsSection';
 import { MeetingLanguageSection } from './MeetingLanguageSection';
@@ -88,7 +89,14 @@ export function SettingsRoute() {
           </div>
         );
       case 'microphone':
-        return <MicrophoneSection />;
+        // Type at cursor works only while a take records, so it follows what is recorded. It
+        // is a block of its own in the tab's gap; `recording`, its natural slot, is not built.
+        return (
+          <>
+            <MicrophoneSection />
+            <CursorTypingSection />
+          </>
+        );
       case 'meetingLanguage':
         return (
           <MeetingLanguageSection

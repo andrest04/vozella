@@ -5,6 +5,7 @@ import type {
   MicrophoneDeviceSource,
   OsBuildProbe,
   ProcessInfoProvider,
+  TextInjectorPort,
   WindowScanPort,
 } from '@vozella/core';
 import { openWavFileDecoder } from '../audio/wav-file-decoder';
@@ -16,6 +17,7 @@ import {
   FakeProcessInfo,
 } from '../fakes/fake-audio-devices';
 import type { ProcessJobPort } from '../llama/process-guard';
+import { FakeTextInjector } from '../fakes/fake-text-injector';
 import { FakeWindowLister } from '../fakes/fake-window-scanner';
 import { loadNativeAddon } from './addon';
 import {
@@ -25,6 +27,7 @@ import {
   NativeOsBuild,
   NativeProcessJob,
   NativeProcessInfo,
+  NativeTextInjector,
   NativeWindowLister,
   openNativeDecoder,
 } from './native-adapters';
@@ -44,6 +47,8 @@ export interface NativePorts {
   readonly processJob: ProcessJobPort | undefined;
   /** Is any open window a meeting call. A failed scan answers false. */
   readonly windowScan: WindowScanPort;
+  /** Types text into the focused field of another app. */
+  readonly textInjector: TextInjectorPort;
 }
 
 export type NativePortsOptions =
@@ -71,6 +76,7 @@ export function createNativePorts(options: NativePortsOptions): NativePorts {
       openDecoder: openWavFileDecoder,
       processJob: undefined,
       windowScan: new WindowScanner(new FakeWindowLister()),
+      textInjector: new FakeTextInjector(),
     };
   }
   const addon = loadNativeAddon(options.addonPath, options.load);
@@ -85,5 +91,6 @@ export function createNativePorts(options: NativePortsOptions): NativePorts {
     openDecoder: (path) => openNativeDecoder(addon, path),
     processJob: addon.platformSupported() ? new NativeProcessJob(addon) : undefined,
     windowScan: new WindowScanner(new NativeWindowLister(addon), options.onError),
+    textInjector: new NativeTextInjector(addon),
   };
 }

@@ -303,6 +303,12 @@ export const appSettingsSchema = z.object({
   customNoteTemplate: z.string().nullable(),
   /** Windows starts Vozella at sign in, hidden in the tray. Off by default. */
   openAtLogin: z.boolean(),
+  /** Type at cursor is offered while recording. On by default. */
+  cursorTypingEnabled: z.boolean(),
+  /** The Electron accelerator that arms it; null or blank is `CommandOrControl+Alt+Space`. */
+  cursorTypingShortcut: z.string().nullable(),
+  /** `others` or `all`; null or unknown is `others`. */
+  cursorTypingSource: z.string().nullable(),
 });
 export type AppSettingsDto = z.infer<typeof appSettingsSchema>;
 

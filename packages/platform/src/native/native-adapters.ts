@@ -11,8 +11,11 @@ import type {
   MicrophoneDevice,
   MicrophoneDeviceSource,
   OsBuildProbe,
+  ForegroundTarget,
   ProcessDetails,
   ProcessInfoProvider,
+  TextInjectorPort,
+  TypeTextResult,
 } from '@vozella/core';
 import type { ProcessJobPort } from '../llama/process-guard';
 import type { NativeAddon, NativeSessionMonitor } from './addon';
@@ -160,6 +163,31 @@ export class NativeOsBuild implements OsBuildProbe {
 
   windowsBuild(): number {
     return this.addon.windowsBuild();
+  }
+}
+
+/** Adapter: typing into the focused field of another app through the Rust addon. */
+export class NativeTextInjector implements TextInjectorPort {
+  constructor(private readonly addon: NativeAddon) {}
+
+  foregroundTarget(): ForegroundTarget | null {
+    const t = this.addon.foregroundTarget();
+    if (!t) return null;
+    return {
+      windowHandle: t.windowHandle,
+      focusHandle: t.focusHandle ?? null,
+      processId: t.processId,
+      processName: t.processName ?? null,
+      isOwnProcess: t.isOwnProcess,
+      menuOpen: t.menuOpen,
+      modifiersHeld: t.modifiersHeld,
+      blocked: t.blocked,
+    };
+  }
+
+  typeText(text: string): TypeTextResult {
+    const r = this.addon.typeText(text);
+    return { sent: r.sent, expected: r.expected };
   }
 }
 

@@ -34,6 +34,8 @@ function addon(overrides: Partial<NativeAddon> = {}): NativeAddon {
     openAudioDecoder: () => ({ read: () => null, close: () => undefined }),
     listTopLevelWindows: () => Promise.resolve([]),
     assignToKillOnCloseJob: () => undefined,
+    foregroundTarget: () => null,
+    typeText: () => ({ sent: 0, expected: 0 }),
     ...overrides,
   };
 }

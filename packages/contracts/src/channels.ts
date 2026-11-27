@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { defineRequest } from './channel';
 import * as audio from './audio';
 import * as chat from './chat';
+import * as cursorTyping from './cursor-typing';
 import * as library from './library';
 import * as liveCopilot from './live-copilot';
 import * as meetingPrompt from './meeting-prompt';
@@ -221,6 +222,8 @@ export const requestChannels = {
   [updates.updatesGetState.name]: updates.updatesGetState,
   [updates.updatesInstall.name]: updates.updatesInstall,
   [updates.updatesCheck.name]: updates.updatesCheck,
+  [cursorTyping.cursorTypingGetState.name]: cursorTyping.cursorTypingGetState,
+  [cursorTyping.cursorTypingToggle.name]: cursorTyping.cursorTypingToggle,
 } as const;
 
 export const eventChannels = {
@@ -261,6 +264,7 @@ export const eventChannels = {
   [chat.chatPromptsChanged.name]: chat.chatPromptsChanged,
   [chat.chatThreadsChanged.name]: chat.chatThreadsChanged,
   [updates.updatesStateChanged.name]: updates.updatesStateChanged,
+  [cursorTyping.cursorTypingStateChanged.name]: cursorTyping.cursorTypingStateChanged,
 } as const;
 
 export type RequestChannels = typeof requestChannels;

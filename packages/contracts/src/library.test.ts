@@ -191,6 +191,27 @@ describe('library contracts', () => {
     );
   });
 
+  it('a settings patch can turn type at cursor off, pick its shortcut and its source', () => {
+    const patch = {
+      cursorTypingEnabled: false,
+      cursorTypingShortcut: 'CommandOrControl+Alt+Space',
+      cursorTypingSource: 'all',
+    };
+    expect(settingsUpdate.input.safeParse({ patch }).success).toBe(true);
+    // Back to the default shortcut and source.
+    expect(
+      settingsUpdate.input.safeParse({
+        patch: { cursorTypingShortcut: null, cursorTypingSource: null },
+      }).success,
+    ).toBe(true);
+    expect(settingsUpdate.input.safeParse({ patch: { cursorTypingEnabled: null } }).success).toBe(
+      false,
+    );
+    expect(settingsUpdate.input.safeParse({ patch: { cursorTypingShortcut: 5 } }).success).toBe(
+      false,
+    );
+  });
+
   it('the Projects shell tag exists and a project can be published as selected', () => {
     expect(shellTagSchema.safeParse('Projects').success).toBe(true);
     expect(shellTagSchema.safeParse('Folders').success).toBe(false);

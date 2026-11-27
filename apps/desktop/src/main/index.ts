@@ -36,6 +36,7 @@ import {
   BrowserWindow,
   clipboard,
   dialog,
+  globalShortcut,
   ipcMain,
   Menu,
   nativeImage,
@@ -77,6 +78,13 @@ import { registerMeetingPromptHandlers } from './ipc/meeting-prompt-handlers';
 import { AudioController } from './audio/audio-controller';
 import { registerAudioHandlers } from './ipc/audio-handlers';
 import { composeChat } from './chat/compose-chat';
+import {
+  changesCursorTyping,
+  composeCursorTyping,
+  refreshCursorTypingSettings,
+} from './cursor-typing/compose-cursor-typing';
+import type { CursorTypingController } from './cursor-typing/cursor-typing-controller';
+import { installCursorTypingProbe } from './cursor-typing/cursor-typing-probe';
 import { composeProjects } from './projects/compose-projects';
 import { composeSettings } from './settings/compose-settings';
 import { composeSummaries } from './summaries/compose-summaries';
@@ -217,6 +225,8 @@ function main(): void {
   let mainWindow: BrowserWindow | undefined;
   /** The live copilot pill; made with the main window and closed with it. */
   let pill: PillController | undefined;
+  /** Type at cursor; made with the transcription, it follows the recording state. */
+  let cursorTyping: CursorTypingController | undefined;
   /** File dialogs parented to the main window while it exists. */
   const dialogs = windowDialogs(() => mainWindow);
   /** Every request channel checks its sender against the app's own windows first. */
@@ -480,7 +490,10 @@ function main(): void {
     }
     // The pill follows the recording: its visibility rule and the start handoff.
     if (channel.name === recordingStateChanged.name) {
-      pill?.onRecordingState((payload as PayloadInputOf<typeof recordingStateChanged>).isRecording);
+      const state = payload as PayloadInputOf<typeof recordingStateChanged>;
+      pill?.onRecordingState(state.isRecording);
+      // Only the Recording phase: Stop disarms at once, before the last lines drain (Stopping).
+      cursorTyping?.setRecording(state.phase === 'Recording');
     }
   }
 
@@ -657,6 +670,9 @@ function main(): void {
         onSettingsSaved: (patch) => {
           if (changesTranscriptionEngine(patch)) void transcriptionController.refreshStatus();
           if (typeof patch.openAtLogin === 'boolean') openAtLogin.apply(patch.openAtLogin);
+          if (cursorTyping && changesCursorTyping(patch)) {
+            refreshCursorTypingSettings(cursorTyping, logger.child('cursor-typing'));
+          }
         },
       });
 
@@ -825,6 +841,30 @@ function main(): void {
         server: ipcServer,
         stopOnExit,
       });
+
+      // Type at cursor: finalized live lines typed into the field armed with the global shortcut,
+      // held only while a take records.
+      const composedCursorTyping = composeCursorTyping({
+        fakeNative,
+        loadInjector: () =>
+          createNativePorts({
+            fake: false,
+            addonPath: nativeAddonPath,
+            // A real require, so the bundler leaves the .node load to runtime.
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            load: (file) => require(file) as unknown,
+          }).textInjector,
+        transcription: transcriptionController,
+        settings: library.settings,
+        shortcuts: globalShortcut,
+        broadcast,
+        logger: logger.child('cursor-typing'),
+        server: ipcServer,
+        stopOnExit,
+      });
+      cursorTyping = composedCursorTyping.controller;
+      // Test mode only: the e2e reads what the fake injector typed and moves its foreground.
+      if (mode === 'test') installCursorTypingProbe(composedCursorTyping.injector);
 
       // Recording: the service owns a take from Record to the saved summary.
       const liveAsk = new LiveAsk({
