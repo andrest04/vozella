@@ -107,6 +107,49 @@ export function elevenLabsFailureKind(messageType: unknown): ApiFailureKind {
   }
 }
 
+/** The rate the realtime socket is sent: `audio_format=pcm_16000`, mono 16-bit little-endian. */
+export const ELEVENLABS_REALTIME_SAMPLE_RATE = 16_000;
+
+/**
+ * The realtime socket of a live stream, from the HTTPS base (`ELEVENLABS_BASE_URL`, or a local one
+ * in tests) on the same host over `wss`. Commits are the app's (`manual`) and each committed
+ * transcript carries its word times. No language for `auto`: Scribe detects it.
+ */
+export function elevenLabsRealtimeUrl(baseUrl: string, model: string, language: string): string {
+  const query = new URLSearchParams({
+    model_id: model,
+    audio_format: `pcm_${String(ELEVENLABS_REALTIME_SAMPLE_RATE)}`,
+    commit_strategy: 'manual',
+    include_timestamps: 'true',
+  });
+  const code = elevenLabsLanguageCode(language);
+  if (code !== null) query.set('language_code', code);
+  const base = baseUrl.replace(/\/+$/, '').replace(/^http/i, 'ws');
+  return `${base}/speech-to-text/realtime?${query.toString()}`;
+}
+
+/** The `message_type`s of the realtime errors in the AsyncAPI spec; a `warning` is not one. */
+const REALTIME_ERROR_TYPES: readonly string[] = [
+  'error',
+  'auth_error',
+  'quota_exceeded',
+  'commit_throttled',
+  'unaccepted_terms',
+  'rate_limited',
+  'queue_overflow',
+  'resource_exhausted',
+  'session_time_limit_exceeded',
+  'input_error',
+  'invalid_request',
+  'chunk_size_exceeded',
+  'insufficient_audio_activity',
+  'transcriber_error',
+];
+
+/** True for a realtime message that reports an error (its text is in the `error` field). */
+export const isElevenLabsRealtimeError = (messageType: unknown): boolean =>
+  typeof messageType === 'string' && REALTIME_ERROR_TYPES.includes(messageType);
+
 /**
  * Codes of an HTTP error that mean the credit is spent, whatever the status: the documented
  * `insufficient_credits` (402) and `daily_generation_limit_reached` (429, which waiting a few

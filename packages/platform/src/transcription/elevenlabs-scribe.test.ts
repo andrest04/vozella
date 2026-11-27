@@ -6,11 +6,14 @@ import {
   ELEVENLABS_DEFAULT_BATCH_MODEL,
   ELEVENLABS_DEFAULT_LIVE_MODEL,
   ELEVENLABS_LIVE_MODELS,
+  ELEVENLABS_REALTIME_SAMPLE_RATE,
   elevenLabsFailureFromHttpStatus,
   elevenLabsFailureKind,
   elevenLabsLanguageCode,
   elevenLabsLiveModel,
+  elevenLabsRealtimeUrl,
   elevenLabsWords,
+  isElevenLabsRealtimeError,
 } from './elevenlabs-scribe';
 
 describe('elevenlabs-scribe: constants', () => {
@@ -50,9 +53,12 @@ describe('elevenLabsLanguageCode', () => {
     expect(elevenLabsLanguageCode(language)).toBe(code);
   });
 
-  it.each(['auto', 'AUTO', '', '  '])('sends no language for %j so Scribe detects it', (language) => {
-    expect(elevenLabsLanguageCode(language)).toBeNull();
-  });
+  it.each(['auto', 'AUTO', '', '  '])(
+    'sends no language for %j so Scribe detects it',
+    (language) => {
+      expect(elevenLabsLanguageCode(language)).toBeNull();
+    },
+  );
 });
 
 describe('elevenLabsWords', () => {
@@ -115,6 +121,59 @@ describe('elevenLabsFailureKind: realtime message types', () => {
   ])('maps %j to %s', (messageType, kind) => {
     expect(elevenLabsFailureKind(messageType)).toBe(kind);
   });
+});
+
+describe('elevenLabsRealtimeUrl', () => {
+  it('opens the realtime path over wss with manual commits, timestamps and 16 kHz PCM', () => {
+    const url = new URL(elevenLabsRealtimeUrl(ELEVENLABS_BASE_URL, 'scribe_v2_realtime', 'es-US'));
+    expect(url.origin + url.pathname).toBe('wss://api.elevenlabs.io/v1/speech-to-text/realtime');
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      model_id: 'scribe_v2_realtime',
+      audio_format: 'pcm_16000',
+      commit_strategy: 'manual',
+      include_timestamps: 'true',
+      language_code: 'es',
+    });
+    expect(ELEVENLABS_REALTIME_SAMPLE_RATE).toBe(16_000);
+  });
+
+  it('leaves the language out for auto, so Scribe detects it', () => {
+    const url = new URL(elevenLabsRealtimeUrl(ELEVENLABS_BASE_URL, 'scribe_v3_live', 'auto'));
+    expect(url.searchParams.has('language_code')).toBe(false);
+  });
+
+  it('keeps a plain http base for tests as ws, and drops a trailing slash', () => {
+    const url = new URL(elevenLabsRealtimeUrl('http://localhost:9/v1/', 'm', 'en'));
+    expect(url.origin + url.pathname).toBe('ws://localhost:9/v1/speech-to-text/realtime');
+  });
+});
+
+describe('isElevenLabsRealtimeError', () => {
+  it.each([
+    'error',
+    'auth_error',
+    'quota_exceeded',
+    'commit_throttled',
+    'unaccepted_terms',
+    'rate_limited',
+    'queue_overflow',
+    'resource_exhausted',
+    'session_time_limit_exceeded',
+    'input_error',
+    'invalid_request',
+    'chunk_size_exceeded',
+    'insufficient_audio_activity',
+    'transcriber_error',
+  ])('reads %s as an error', (messageType) => {
+    expect(isElevenLabsRealtimeError(messageType)).toBe(true);
+  });
+
+  it.each(['warning', 'session_started', 'partial_transcript', 'something_new', 7, undefined])(
+    'does not read %j as an error',
+    (messageType) => {
+      expect(isElevenLabsRealtimeError(messageType)).toBe(false);
+    },
+  );
 });
 
 describe('elevenLabsFailureFromHttpStatus', () => {

@@ -76,6 +76,7 @@ export * from './transcription/deepgram-speech-to-text-client';
 export * from './transcription/deepgram-live-speech-provider';
 export * from './transcription/elevenlabs-scribe';
 export * from './transcription/elevenlabs-speech-to-text-client';
+export * from './transcription/elevenlabs-live-speech-provider';
 export * from './transcription/cloud-speech-factory';
 export * from './fakes/fake-speech-to-text-client';
 export * from './fakes/fake-streaming-speech-provider';
