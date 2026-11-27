@@ -1,7 +1,6 @@
 import {
   ApiProviderError,
   CancelSource,
-  isApiProviderError,
   type CancelSignal,
   type CloudSpeechTimer,
   type StreamingSpeechListener,
@@ -27,6 +26,7 @@ import {
   type LiveSocketEvent,
   type LiveSocketFactory,
 } from './live-socket';
+import { LiveKeyCheck } from './live-key-check';
 
 /**
  * A `KeepAlive` goes out this often while the socket is open. Deepgram closes a stream that gets
@@ -70,27 +70,20 @@ export interface DeepgramLiveOptions {
  * error.
  */
 export class DeepgramLiveSpeechProvider implements StreamingSpeechProvider {
-  /** What the sessions of this provider have learned, for the ones opened after them. */
-  private readonly known: KnownKey = { accepted: null };
+  /** What the sessions of this provider have learned of the key, for the ones opened after them. */
+  private readonly keyCheck: LiveKeyCheck;
 
-  constructor(private readonly options: DeepgramLiveOptions) {}
+  constructor(private readonly options: DeepgramLiveOptions) {
+    this.keyCheck = new LiveKeyCheck(options.displayName, options.checkKey);
+  }
 
   get displayName(): string {
     return this.options.displayName;
   }
 
   open(options: StreamingSpeechOptions, listener: StreamingSpeechListener): StreamingSpeechSession {
-    return new DeepgramLiveSession(this.options, options, listener, this.known);
+    return new DeepgramLiveSession(this.options, options, listener, this.keyCheck);
   }
-}
-
-/**
- * The key a session of the provider opened with. The streaming engine opens a new session after a
- * drop, and while the network is down each of them fails to open: with a key the provider has
- * already taken, that is a connection failure and the key check is not sent again.
- */
-interface KnownKey {
-  accepted: string | null;
 }
 
 const text = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
@@ -113,7 +106,7 @@ class DeepgramLiveSession implements StreamingSpeechSession {
     private readonly options: DeepgramLiveOptions,
     private readonly stream: StreamingSpeechOptions,
     private readonly listener: StreamingSpeechListener,
-    private readonly known: KnownKey,
+    private readonly keyCheck: LiveKeyCheck,
   ) {
     this.unlink = stream.cancel.onCancel(() => {
       this.close();
@@ -173,7 +166,7 @@ class DeepgramLiveSession implements StreamingSpeechSession {
     try {
       socket = (this.options.socket ?? globalLiveSocket)(url, { Authorization: `Token ${key}` });
     } catch {
-      void this.explainNeverOpened();
+      this.explainNeverOpened();
       return;
     }
     this.socket = socket;
@@ -190,7 +183,7 @@ class DeepgramLiveSession implements StreamingSpeechSession {
     });
     socket.addEventListener('error', () => {
       // After the open, the close that follows carries the code; before it, nothing else will.
-      if (!this.isOpen) void this.explainNeverOpened();
+      if (!this.isOpen) this.explainNeverOpened();
     });
     socket.addEventListener('close', (event) => {
       this.onClose(event);
@@ -204,7 +197,7 @@ class DeepgramLiveSession implements StreamingSpeechSession {
     }
     if (this.isOpen) return;
     this.isOpen = true;
-    this.known.accepted = this.key;
+    this.keyCheck.accept(this.key);
     void this.keepAlive();
     this.listener.opened();
   }
@@ -275,7 +268,7 @@ class DeepgramLiveSession implements StreamingSpeechSession {
   private onClose(event: LiveSocketEvent): void {
     if (this.done) return;
     if (!this.isOpen) {
-      void this.explainNeverOpened();
+      this.explainNeverOpened();
       return;
     }
     // A normal close after CloseStream is the end of the stream even when no Metadata came.
@@ -292,22 +285,12 @@ class DeepgramLiveSession implements StreamingSpeechSession {
    * apart. An accepted key leaves a connection failure, and so does a key an earlier session of
    * this provider opened with, which is not asked about again.
    */
-  private async explainNeverOpened(): Promise<void> {
+  private explainNeverOpened(): void {
     if (this.done || this.explaining) return;
     this.explaining = true;
-    const { displayName } = this.options;
-    if (this.key !== '' && this.known.accepted === this.key) {
-      this.end(new ApiProviderError(displayName, 'Network'));
-      return;
-    }
-    let failure: ApiProviderError;
-    try {
-      await this.options.checkKey(this.key, this.stream.cancel);
-      failure = new ApiProviderError(displayName, 'Network');
-    } catch (error) {
-      failure = isApiProviderError(error) ? error : new ApiProviderError(displayName, 'Network');
-    }
-    this.end(failure);
+    this.keyCheck.explain(this.key, this.stream.cancel, (failure) => {
+      this.end(failure);
+    });
   }
 
   /** The failure of an `Error` message: its code picks the kind, its text is kept without the key. */

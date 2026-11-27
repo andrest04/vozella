@@ -13,12 +13,23 @@ import {
 
 describe('the transcription engine kinds', () => {
   it('lists the local engine, then the cloud kinds', () => {
-    expect(cloudTranscriptionKindSchema.options).toEqual(['Groq', 'OpenAi', 'Deepgram']);
-    expect(transcriptionEngineKindSchema.options).toEqual(['Local', 'Groq', 'OpenAi', 'Deepgram']);
+    expect(cloudTranscriptionKindSchema.options).toEqual([
+      'Groq',
+      'OpenAi',
+      'Deepgram',
+      'ElevenLabs',
+    ]);
+    expect(transcriptionEngineKindSchema.options).toEqual([
+      'Local',
+      'Groq',
+      'OpenAi',
+      'Deepgram',
+      'ElevenLabs',
+    ]);
   });
 
   it('keeps the transcription-only providers out of the API engine kinds', () => {
-    expect(transcriptionProviderKindSchema.options).toEqual(['Deepgram']);
+    expect(transcriptionProviderKindSchema.options).toEqual(['Deepgram', 'ElevenLabs']);
     for (const kind of transcriptionProviderKindSchema.options) {
       expect(apiProviderKindSchema.options as readonly string[]).not.toContain(kind);
       // The key of a transcription-only provider never travels on the API engine channel.
@@ -58,7 +69,13 @@ describe('the key channels of the transcription-only providers', () => {
     ).toBe(true);
     expect(transcriptionClearProviderKey.input.safeParse({ kind: 'Deepgram' }).success).toBe(true);
     expect(transcriptionVerifyProviderKey.input.safeParse({ kind: 'Deepgram' }).success).toBe(true);
-    for (const kind of ['Groq', 'OpenAi', 'Local', 'deepgram']) {
+    expect(
+      transcriptionSetProviderKey.input.safeParse({ kind: 'ElevenLabs', key: 'xi-test' }).success,
+    ).toBe(true);
+    expect(transcriptionVerifyProviderKey.input.safeParse({ kind: 'ElevenLabs' }).success).toBe(
+      true,
+    );
+    for (const kind of ['Groq', 'OpenAi', 'Local', 'deepgram', 'elevenlabs']) {
       expect(transcriptionSetProviderKey.input.safeParse({ kind, key: 'k' }).success).toBe(false);
       expect(transcriptionClearProviderKey.input.safeParse({ kind }).success).toBe(false);
       expect(transcriptionVerifyProviderKey.input.safeParse({ kind }).success).toBe(false);

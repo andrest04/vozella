@@ -88,7 +88,7 @@ function pageDto(extra: Record<string, unknown> = {}): SettingsPageDto {
       modelOptions: ['gpt-5.6'],
       effortOptions: ['low'],
     },
-    transcriptionKeys: { Groq: false, OpenAi: false, Deepgram: false },
+    transcriptionKeys: { Groq: false, OpenAi: false, Deepgram: false, ElevenLabs: false },
     cliStatus: null,
     engines: engines(),
     transcriptionLanguage: 'es',

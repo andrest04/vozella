@@ -16,6 +16,8 @@ import {
 } from './cloud-speech-factory';
 import { DeepgramLiveSpeechProvider } from './deepgram-live-speech-provider';
 import { DeepgramSpeechToTextClient } from './deepgram-speech-to-text-client';
+import { ElevenLabsLiveSpeechProvider } from './elevenlabs-live-speech-provider';
+import { ElevenLabsSpeechToTextClient } from './elevenlabs-speech-to-text-client';
 import { OpenAiSpeechToTextClient } from './openai-speech-to-text-client';
 
 const KEY = 'dg-factory-secret-0123456789';
@@ -30,6 +32,14 @@ const chunk = (): SpeechToTextRequest => ({
 const DEEPGRAM_ANSWER = {
   metadata: { duration: 1 },
   results: { channels: [{ alternatives: [{ transcript: 'Hola.', words: [] }] }] },
+};
+
+const ELEVENLABS_KEY = 'xi-factory-secret-0123456789';
+
+const ELEVENLABS_ANSWER = {
+  language_code: 'es',
+  text: 'Hola.',
+  words: [{ text: 'Hola.', start: 0, end: 0.5, type: 'word' }],
 };
 
 const none = (): CancelSource['signal'] => new CancelSource().signal;
@@ -84,6 +94,34 @@ describe('createCloudSpeechToTextClient: the adapter of each protocol', () => {
     );
     await made.transcribe(chunk(), none());
     expect(fake.calls[0]?.form?.get('model')).toBe('whisper-large-v3-turbo');
+  });
+
+  it('builds the ElevenLabs Scribe client, with its endpoint, the default model and stored key', async () => {
+    const fake = new FakeFetch({ chunks: [JSON.stringify(ELEVENLABS_ANSWER)] });
+    const made = createCloudSpeechToTextClient(
+      { keys: new FakeApiKeyStore({ ElevenLabs: ELEVENLABS_KEY }), fetch: fake.fetch },
+      { kind: 'ElevenLabs', settings: readSettings({}) },
+    );
+    expect(made).toBeInstanceOf(ElevenLabsSpeechToTextClient);
+    expect((await made.transcribe(chunk(), none())).text).toBe('Hola.');
+    const call = fake.calls[0];
+    expect(call?.url).toBe('https://api.elevenlabs.io/v1/speech-to-text');
+    expect(call?.form?.get('model_id')).toBe('scribe_v2');
+    expect(call?.headers['xi-api-key']).toBe(ELEVENLABS_KEY);
+  });
+
+  it.each([
+    ['scribe_v3', 'scribe_v3'],
+    ['nova-3', 'scribe_v2'],
+    ['whisper-large-v3-turbo', 'scribe_v2'],
+  ])('ElevenLabs asked with the saved model %s uploads with %s', async (model, sent) => {
+    const fake = new FakeFetch({ chunks: [JSON.stringify(ELEVENLABS_ANSWER)] });
+    const made = createCloudSpeechToTextClient(
+      { keys: new FakeApiKeyStore({ ElevenLabs: ELEVENLABS_KEY }), fetch: fake.fetch },
+      { kind: 'ElevenLabs', settings: readSettings({}), model },
+    );
+    await made.transcribe(chunk(), none());
+    expect(fake.calls[0]?.form?.get('model_id')).toBe(sent);
   });
 
   it('fails as KeyMissing for Deepgram without a stored key', async () => {
@@ -202,5 +240,100 @@ describe('createStreamingSpeechProvider', () => {
     await settle();
     expect(accepted.fake.calls).toHaveLength(1);
     expect(accepted.closed[0]).toMatchObject({ kind: 'Network' });
+  });
+});
+
+describe('createStreamingSpeechProvider: ElevenLabs', () => {
+  const streaming = (
+    reply: FakeHttpReply = {},
+    key: string | null = ELEVENLABS_KEY,
+    model: string | null = null,
+  ) => {
+    const sockets = new ScriptedLiveSockets();
+    const fake = new FakeFetch(reply);
+    const provider = createStreamingSpeechProvider(
+      {
+        keys: new FakeApiKeyStore(key === null ? {} : { ElevenLabs: key }),
+        timer: new ManualSpeechTimer(),
+        fetch: fake.fetch,
+        socket: sockets.factory,
+      },
+      { kind: 'ElevenLabs', settings: readSettings({}), model },
+    );
+    if (provider === null) throw new Error('ElevenLabs must stream');
+    const closed: (ApiProviderError | null)[] = [];
+    const heard: string[] = [];
+    provider.open(
+      { language: 'es-US', sampleRate: RATE, cancel: none() },
+      {
+        opened: () => heard.push('opened'),
+        interim: () => undefined,
+        final: () => undefined,
+        closed: (error) => closed.push(error),
+      },
+    );
+    return { provider, sockets, fake, closed, heard };
+  };
+
+  it('builds the Scribe realtime provider on its endpoint, with the live pair of the default model', async () => {
+    const { provider, sockets, heard } = streaming();
+    await settle();
+    expect(provider).toBeInstanceOf(ElevenLabsLiveSpeechProvider);
+    expect(provider.displayName).toBe('ElevenLabs');
+    const socket = sockets.sockets[0];
+    const url = new URL(socket?.url ?? '');
+    expect(url.origin + url.pathname).toBe('wss://api.elevenlabs.io/v1/speech-to-text/realtime');
+    expect(url.searchParams.get('model_id')).toBe('scribe_v2_realtime');
+    expect(url.searchParams.get('language_code')).toBe('es');
+    expect(socket?.headers).toEqual({ 'xi-api-key': ELEVENLABS_KEY });
+    socket?.open();
+    socket?.message({ message_type: 'session_started', session_id: 's', config: {} });
+    expect(heard).toEqual(['opened']);
+  });
+
+  it.each([
+    ['scribe_v3', 'scribe_v3_live'],
+    ['scribe_v2', 'scribe_v2_realtime'],
+    ['nova-3', 'scribe_v2_realtime'],
+  ])('the saved model %s streams with %s', async (model, live) => {
+    const { sockets } = streaming({}, ELEVENLABS_KEY, model);
+    await settle();
+    expect(new URL(sockets.sockets[0]?.url ?? '').searchParams.get('model_id')).toBe(live);
+  });
+
+  it('fails as KeyMissing without a stored key', async () => {
+    const { sockets, closed } = streaming({}, null);
+    await settle();
+    expect(sockets.sockets).toHaveLength(0);
+    expect(closed[0]).toMatchObject({ kind: 'KeyMissing', displayName: 'ElevenLabs' });
+  });
+
+  it('asks ElevenLabs, not Deepgram, about a key whose socket never opens', async () => {
+    const { sockets, fake, closed } = streaming({
+      status: 401,
+      chunks: [`{"detail":{"status":"invalid_api_key","message":"${ELEVENLABS_KEY}"}}`],
+    });
+    await settle();
+    sockets.sockets[0]?.fail();
+    sockets.sockets[0]?.serverClose(1006);
+    await settle();
+    expect(fake.calls).toHaveLength(1);
+    expect(fake.calls[0]).toMatchObject({
+      url: 'https://api.elevenlabs.io/v1/single-use-token/realtime_scribe',
+      method: 'POST',
+      headers: { 'xi-api-key': ELEVENLABS_KEY },
+    });
+    expect(closed).toHaveLength(1);
+    expect(closed[0]).toMatchObject({ kind: 'KeyInvalid', displayName: 'ElevenLabs' });
+    expect(closed[0]?.message).not.toContain(ELEVENLABS_KEY);
+  });
+
+  it('an accepted key whose socket never opens is a connection failure', async () => {
+    const { sockets, fake, closed } = streaming({ chunks: ['{"token":"sutkn_test"}'] });
+    await settle();
+    sockets.sockets[0]?.serverClose(1006);
+    await settle();
+    expect(fake.calls).toHaveLength(1);
+    expect(closed[0]).toMatchObject({ kind: 'Network', displayName: 'ElevenLabs' });
   });
 });

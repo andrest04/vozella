@@ -23,4 +23,4 @@ export const API_PROVIDER_IDS = API_PROVIDERS.map((provider) => provider.id);
  * summary, chat or setup schema lists them. It restates the kinds of core's
  * `TRANSCRIPTION_PROVIDERS` table, and the same test compares the two.
  */
-export const TRANSCRIPTION_PROVIDER_KINDS = ['Deepgram'] as const;
+export const TRANSCRIPTION_PROVIDER_KINDS = ['Deepgram', 'ElevenLabs'] as const;

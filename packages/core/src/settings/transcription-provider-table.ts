@@ -6,12 +6,17 @@ import type { AppSettings } from '../library/settings';
  */
 
 /**
- * How a stored key is checked without transcribing anything: a GET of `path` under the provider's
- * endpoint with `Authorization: <authScheme> <key>`. Any 2xx answer means the key is accepted.
+ * How a stored key is checked without transcribing anything: a request of `method` to `path` under
+ * the provider's endpoint, with no body, that carries the key in `header`, after `authScheme` and
+ * a space when there is one (`Authorization: Token <key>`), else bare (`xi-api-key: <key>`). Any
+ * 2xx answer means the key is accepted.
  */
 export interface TranscriptionKeyCheck {
+  readonly method: 'GET' | 'POST';
   readonly path: string;
-  readonly authScheme: string;
+  /** The header name in lower case, as `fetch` sends it. */
+  readonly header: string;
+  readonly authScheme: string | null;
 }
 
 /** What one row declares. The saved `kind` (also the row's key) never changes. */
@@ -41,6 +46,15 @@ interface TranscriptionProviderDeclaration {
  * Deepgram (docs checked 2026-11-15): developers.deepgram.com/reference/management-api/projects/list
  * is the key check (`GET /v1/projects`, 401 for a key it does not know); the `Token` scheme is in
  * developers.deepgram.com/docs/authenticating.
+ *
+ * ElevenLabs (docs checked 2026-11-26): the key goes bare in `xi-api-key`
+ * (elevenlabs.io/docs/api-reference/authentication). The key check asks for a single-use token of
+ * the realtime transcription (`POST /v1/single-use-token/realtime_scribe`,
+ * elevenlabs.io/docs/api-reference/tokens/create): the token is what opens a realtime Scribe
+ * session, so a key that can mint one can stream, and minting transcribes nothing (an unused
+ * token expires after 15 minutes). The docs do not say which scope of a restricted key the
+ * endpoint requires, nor which status a refused key gets: unverified until tried with a real key.
+ * `GET /v1/models` was the alternative; nothing says it needs the speech-to-text scope.
  */
 export const TRANSCRIPTION_PROVIDERS = {
   Deepgram: {
@@ -49,7 +63,20 @@ export const TRANSCRIPTION_PROVIDERS = {
     nameKey: 'Ui_DeepgramName',
     defaultBaseUrl: 'https://api.deepgram.com/v1',
     resolveBaseUrl: () => 'https://api.deepgram.com/v1',
-    keyCheck: { path: '/projects', authScheme: 'Token' },
+    keyCheck: { method: 'GET', path: '/projects', header: 'authorization', authScheme: 'Token' },
+  },
+  ElevenLabs: {
+    kind: 'ElevenLabs',
+    displayName: 'ElevenLabs',
+    nameKey: 'Ui_ElevenLabsName',
+    defaultBaseUrl: 'https://api.elevenlabs.io/v1',
+    resolveBaseUrl: () => 'https://api.elevenlabs.io/v1',
+    keyCheck: {
+      method: 'POST',
+      path: '/single-use-token/realtime_scribe',
+      header: 'xi-api-key',
+      authScheme: null,
+    },
   },
 } as const satisfies Readonly<Record<string, TranscriptionProviderDeclaration>>;
 

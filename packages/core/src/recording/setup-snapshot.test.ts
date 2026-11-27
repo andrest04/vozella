@@ -119,6 +119,9 @@ describe('buildSetupSnapshot', () => {
     expect(missing.canRecord).toBe(false);
     expect(missing.engine.reason).toBe('key-missing');
     expect(missing.engine.detail).toEqual({ key: 'Ui_ApiKeyMissing', args: ['Deepgram'] });
+    const elevenLabs = snap({ transcriptionEngine: 'ElevenLabs', engineReady: false });
+    expect(elevenLabs.engine.reason).toBe('key-missing');
+    expect(elevenLabs.engine.detail).toEqual({ key: 'Ui_ApiKeyMissing', args: ['ElevenLabs'] });
   });
   it('uses the catalog header keys', () => {
     const s = snap();

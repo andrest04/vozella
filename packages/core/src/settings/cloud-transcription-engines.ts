@@ -9,10 +9,12 @@ import {
 /**
  * How a provider takes audio. `openai-audio-transcriptions` is the OpenAI-compatible
  * `POST {baseUrl}/audio/transcriptions`; `deepgram-listen` is Deepgram's `/listen` (a WebSocket
- * while recording, a POST for a finished file). A provider with its own API adds a value here and
- * its own adapter.
+ * while recording, a POST for a finished file); `elevenlabs-scribe` is ElevenLabs Scribe (the
+ * realtime WebSocket while recording, `POST {baseUrl}/speech-to-text` for a finished file). A
+ * provider with its own API adds a value here and its own adapter.
  */
-export type CloudTranscriptionProtocol = 'openai-audio-transcriptions' | 'deepgram-listen';
+export type CloudTranscriptionProtocol =
+  'openai-audio-transcriptions' | 'deepgram-listen' | 'elevenlabs-scribe';
 
 /**
  * How the text of a live recording arrives: in `pieces` a few seconds after they were said (each
@@ -65,6 +67,14 @@ export const CLOUD_TRANSCRIPTION_MAX_FILE_BYTES = 25 * 1024 * 1024;
  * Deepgram (checked 2026-11-15): `nova-3` on `/v1/listen`, live and prerecorded. Its docs give no
  * request or audio quota and no minimum billed length, so the limits are null. Keys are created in
  * the console (console.deepgram.com), which opens on the project that holds them.
+ *
+ * ElevenLabs (checked 2026-11-26): elevenlabs.io/docs/api-reference/speech-to-text/convert and
+ * .../speech-to-text/v-1-speech-to-text-realtime. The setting names the batch model (`scribe_v2`,
+ * `scribe_v3`); the live pass streams with its realtime pair (`scribe_v2_realtime`,
+ * `scribe_v3_live`). `scribe_v2` is the default because the docs do not confirm `scribe_v3` as a
+ * batch id yet. A file may be up to 15 h or 5 GB, far over the pieces the app uploads, and the docs
+ * give no request or audio quota and no minimum billed length, so the limits are null. Keys are
+ * created at elevenlabs.io/app/settings/api-keys.
  */
 export const CLOUD_TRANSCRIPTION_ENGINES = {
   Groq: {
@@ -102,6 +112,16 @@ export const CLOUD_TRANSCRIPTION_ENGINES = {
     defaultModel: 'nova-3',
     limits: { requestsPerMinute: null, audioSecondsPerHour: null, minBilledSeconds: null },
     keyPageUrl: 'https://console.deepgram.com/',
+  },
+  ElevenLabs: {
+    kind: 'ElevenLabs',
+    protocol: 'elevenlabs-scribe',
+    liveText: 'streaming',
+    models: ['scribe_v2', 'scribe_v3'],
+    modelNames: { scribe_v2: 'Scribe v2', scribe_v3: 'Scribe v3' },
+    defaultModel: 'scribe_v2',
+    limits: { requestsPerMinute: null, audioSecondsPerHour: null, minBilledSeconds: null },
+    keyPageUrl: 'https://elevenlabs.io/app/settings/api-keys',
   },
 } as const satisfies Partial<
   Record<ApiProviderKind | TranscriptionProviderKind, CloudTranscriptionEngineDeclaration>

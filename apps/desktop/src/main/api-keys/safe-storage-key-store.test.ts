@@ -55,13 +55,16 @@ describe('SafeStorageKeyStore', () => {
   it('keeps the key of a transcription-only provider next to the API engines, apart from them', async () => {
     const first = new SafeStorageKeyStore({ file, cipher: fakeCipher() });
     await first.set('Deepgram', 'dg-secret-value');
+    await first.set('ElevenLabs', 'xi-secret-value');
     await first.set('Groq', 'gsk-other');
     expect(fs.readFileSync(file, 'utf8')).not.toContain('dg-secret-value');
+    expect(fs.readFileSync(file, 'utf8')).not.toContain('xi-secret-value');
 
     const second = new SafeStorageKeyStore({ file, cipher: fakeCipher() });
     expect(await second.get('Deepgram')).toBe('dg-secret-value');
     await second.delete('Deepgram');
     expect(await second.has('Deepgram')).toBe(false);
+    expect(await second.get('ElevenLabs')).toBe('xi-secret-value');
     expect(await second.get('Groq')).toBe('gsk-other');
   });
 

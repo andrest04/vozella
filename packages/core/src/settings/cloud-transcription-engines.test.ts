@@ -19,12 +19,13 @@ import {
 } from './cloud-transcription-engines';
 
 describe('the cloud transcription engine table', () => {
-  it('offers Groq first, then OpenAI, then Deepgram', () => {
-    expect([...CLOUD_TRANSCRIPTION_KINDS]).toEqual(['Groq', 'OpenAi', 'Deepgram']);
+  it('offers Groq first, then OpenAI, Deepgram and ElevenLabs', () => {
+    expect([...CLOUD_TRANSCRIPTION_KINDS]).toEqual(['Groq', 'OpenAi', 'Deepgram', 'ElevenLabs']);
     expect(CLOUD_TRANSCRIPTION_ENGINE_LIST.map((engine) => engine.kind)).toEqual([
       'Groq',
       'OpenAi',
       'Deepgram',
+      'ElevenLabs',
     ]);
   });
 
@@ -47,6 +48,13 @@ describe('the cloud transcription engine table', () => {
     expect(CLOUD_TRANSCRIPTION_ENGINES.Deepgram.models).toEqual(['nova-3']);
     expect(CLOUD_TRANSCRIPTION_ENGINES.Deepgram.modelNames).toEqual({ 'nova-3': 'Nova-3' });
     expect(CLOUD_TRANSCRIPTION_ENGINES.Deepgram.defaultModel).toBe('nova-3');
+    // One setting names the batch model; the live adapter streams with its realtime pair.
+    expect(CLOUD_TRANSCRIPTION_ENGINES.ElevenLabs.models).toEqual(['scribe_v2', 'scribe_v3']);
+    expect(CLOUD_TRANSCRIPTION_ENGINES.ElevenLabs.modelNames).toEqual({
+      scribe_v2: 'Scribe v2',
+      scribe_v3: 'Scribe v3',
+    });
+    expect(CLOUD_TRANSCRIPTION_ENGINES.ElevenLabs.defaultModel).toBe('scribe_v2');
   });
 
   it.each(CLOUD_TRANSCRIPTION_ENGINE_LIST)(
@@ -68,6 +76,7 @@ describe('the cloud transcription engine table', () => {
       ['Groq', 'openai-audio-transcriptions', 'pieces'],
       ['OpenAi', 'openai-audio-transcriptions', 'pieces'],
       ['Deepgram', 'deepgram-listen', 'streaming'],
+      ['ElevenLabs', 'elevenlabs-scribe', 'streaming'],
     ]);
   });
 
@@ -77,6 +86,9 @@ describe('the cloud transcription engine table', () => {
       'https://platform.openai.com/api-keys',
     );
     expect(CLOUD_TRANSCRIPTION_ENGINES.Deepgram.keyPageUrl).toBe('https://console.deepgram.com/');
+    expect(CLOUD_TRANSCRIPTION_ENGINES.ElevenLabs.keyPageUrl).toBe(
+      'https://elevenlabs.io/app/settings/api-keys',
+    );
   });
 
   it.each(CLOUD_TRANSCRIPTION_ENGINE_LIST)(
@@ -105,6 +117,12 @@ describe('the cloud transcription engine table', () => {
       audioSecondsPerHour: null,
       minBilledSeconds: null,
     });
+    // ElevenLabs documents no per-minute or per-hour quota and no minimum billed length either.
+    expect(CLOUD_TRANSCRIPTION_ENGINES.ElevenLabs.limits).toEqual({
+      requestsPerMinute: null,
+      audioSecondsPerHour: null,
+      minBilledSeconds: null,
+    });
   });
 });
 
@@ -117,10 +135,15 @@ describe('where the name, the endpoint and the key of a cloud engine come from',
     expect(cloudTranscriptionProvider('Deepgram')).toBe(TRANSCRIPTION_PROVIDERS.Deepgram);
     expect(cloudTranscriptionProvider('Deepgram').displayName).toBe('Deepgram');
   });
+
+  it('ElevenLabs resolves to its transcription-only provider', () => {
+    expect(cloudTranscriptionProvider('ElevenLabs')).toBe(TRANSCRIPTION_PROVIDERS.ElevenLabs);
+    expect(cloudTranscriptionProvider('ElevenLabs').displayName).toBe('ElevenLabs');
+  });
 });
 
 describe('isCloudTranscriptionKind', () => {
-  it.each(['Groq', 'OpenAi', 'Deepgram'])('%s can transcribe', (kind) => {
+  it.each(['Groq', 'OpenAi', 'Deepgram', 'ElevenLabs'])('%s can transcribe', (kind) => {
     expect(isCloudTranscriptionKind(kind)).toBe(true);
   });
 
@@ -138,6 +161,7 @@ describe('resolveCloudTranscriptionModel', () => {
     expect(resolveCloudTranscriptionModel('Groq', '  ')).toBe('whisper-large-v3-turbo');
     expect(resolveCloudTranscriptionModel('OpenAi', undefined)).toBe('whisper-1');
     expect(resolveCloudTranscriptionModel('Deepgram', null)).toBe('nova-3');
+    expect(resolveCloudTranscriptionModel('ElevenLabs', null)).toBe('scribe_v2');
   });
 
   it('keeps a saved id the engine lists, trimmed', () => {
@@ -149,6 +173,9 @@ describe('resolveCloudTranscriptionModel', () => {
     expect(resolveCloudTranscriptionModel('Deepgram', 'whisper-large-v3-turbo')).toBe('nova-3');
     expect(resolveCloudTranscriptionModel('Groq', 'nova-3')).toBe('whisper-large-v3-turbo');
     expect(resolveCloudTranscriptionModel('OpenAi', 'whisper-large-v3')).toBe('whisper-1');
+    expect(resolveCloudTranscriptionModel('ElevenLabs', 'nova-3')).toBe('scribe_v2');
+    // A live model id is not a value of the setting: it names the batch model.
+    expect(resolveCloudTranscriptionModel('ElevenLabs', 'scribe_v3_live')).toBe('scribe_v2');
   });
 
   it('an id no engine lists is not sent either', () => {
@@ -175,10 +202,12 @@ describe('the transcription engine setting', () => {
     ['Groq', 'Groq'],
     ['OpenAi', 'OpenAi'],
     ['Deepgram', 'Deepgram'],
+    ['ElevenLabs', 'ElevenLabs'],
     // An API engine that cannot transcribe, another case, or anything unknown is Local.
     ['Anthropic', 'Local'],
     ['groq', 'Local'],
     ['deepgram', 'Local'],
+    ['elevenlabs', 'Local'],
     ['Whisper', 'Local'],
   ] as const)('reads %j as %s', (saved, kind) => {
     expect(resolveTranscriptionEngine({ transcriptionEngine: saved })).toBe(kind);

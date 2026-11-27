@@ -113,17 +113,35 @@ describe('SettingsPageService.load', () => {
     expect(JSON.stringify(api)).not.toMatch(/key"\s*:/i);
   });
 
-  it('says whether each cloud transcription engine has its key, and keeps Deepgram out of the API engines', async () => {
+  it('says whether each cloud transcription engine has its key, and keeps the transcription-only providers out of the API engines', async () => {
     const none = await page().service.load();
-    expect(none.transcriptionKeys).toEqual({ Groq: false, OpenAi: false, Deepgram: false });
+    expect(none.transcriptionKeys).toEqual({
+      Groq: false,
+      OpenAi: false,
+      Deepgram: false,
+      ElevenLabs: false,
+    });
 
     const some = await page({ keys: ['Groq', 'Deepgram'] }).service.load();
-    expect(some.transcriptionKeys).toEqual({ Groq: true, OpenAi: false, Deepgram: true });
+    expect(some.transcriptionKeys).toEqual({
+      Groq: true,
+      OpenAi: false,
+      Deepgram: true,
+      ElevenLabs: false,
+    });
+    expect((await page({ keys: ['ElevenLabs'] }).service.load()).transcriptionKeys).toEqual({
+      Groq: false,
+      OpenAi: false,
+      Deepgram: false,
+      ElevenLabs: true,
+    });
     // An engine that is also an API engine shares that engine's key.
     expect(some.api.Groq.keySet).toBe(true);
     // A transcription-only provider is never an API engine or a summary engine.
-    expect(Object.keys(some.api)).not.toContain('Deepgram');
-    expect(some.engines.map((engine) => engine.kind as string)).not.toContain('Deepgram');
+    for (const kind of ['Deepgram', 'ElevenLabs']) {
+      expect(Object.keys(some.api)).not.toContain(kind);
+      expect(some.engines.map((engine) => engine.kind as string)).not.toContain(kind);
+    }
   });
 
   it('the app language follows the OS when nothing is saved, and the saved choice otherwise', async () => {

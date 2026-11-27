@@ -21,16 +21,19 @@ export const ELEVENLABS_BASE_URL = 'https://api.elevenlabs.io/v1';
 /** The header that carries the key, on the upload and on the WebSocket handshake alike. */
 export const ELEVENLABS_API_KEY_HEADER = 'xi-api-key';
 
-/** The models of an uploaded piece, the default first. */
-export const ELEVENLABS_BATCH_MODELS = ['scribe_v3', 'scribe_v2'] as const;
+/**
+ * The models of an uploaded piece, the default first. `scribe_v2` is the default because the docs
+ * do not confirm `scribe_v3` as a batch id yet (the engine row in core has the same default).
+ */
+export const ELEVENLABS_BATCH_MODELS = ['scribe_v2', 'scribe_v3'] as const;
 export type ElevenLabsBatchModel = (typeof ELEVENLABS_BATCH_MODELS)[number];
 
 /** The models of a live stream, in the order of their batch pairs. */
-export const ELEVENLABS_LIVE_MODELS = ['scribe_v3_live', 'scribe_v2_realtime'] as const;
+export const ELEVENLABS_LIVE_MODELS = ['scribe_v2_realtime', 'scribe_v3_live'] as const;
 export type ElevenLabsLiveModel = (typeof ELEVENLABS_LIVE_MODELS)[number];
 
-export const ELEVENLABS_DEFAULT_BATCH_MODEL: ElevenLabsBatchModel = 'scribe_v3';
-export const ELEVENLABS_DEFAULT_LIVE_MODEL: ElevenLabsLiveModel = 'scribe_v3_live';
+export const ELEVENLABS_DEFAULT_BATCH_MODEL: ElevenLabsBatchModel = 'scribe_v2';
+export const ELEVENLABS_DEFAULT_LIVE_MODEL: ElevenLabsLiveModel = 'scribe_v2_realtime';
 
 const LIVE_PAIR: Readonly<Record<ElevenLabsBatchModel, ElevenLabsLiveModel>> = {
   scribe_v3: 'scribe_v3_live',

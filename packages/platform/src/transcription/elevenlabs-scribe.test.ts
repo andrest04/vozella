@@ -22,11 +22,12 @@ describe('elevenlabs-scribe: constants', () => {
     expect(ELEVENLABS_API_KEY_HEADER).toBe('xi-api-key');
   });
 
-  it('lists the batch and live models with the newest first as the default', () => {
-    expect(ELEVENLABS_BATCH_MODELS).toEqual(['scribe_v3', 'scribe_v2']);
-    expect(ELEVENLABS_LIVE_MODELS).toEqual(['scribe_v3_live', 'scribe_v2_realtime']);
-    expect(ELEVENLABS_DEFAULT_BATCH_MODEL).toBe('scribe_v3');
-    expect(ELEVENLABS_DEFAULT_LIVE_MODEL).toBe('scribe_v3_live');
+  it('lists the batch and live models with the confirmed v2 first as the default', () => {
+    // The default of the engine row in core: v3's batch id is not confirmed yet.
+    expect(ELEVENLABS_BATCH_MODELS).toEqual(['scribe_v2', 'scribe_v3']);
+    expect(ELEVENLABS_LIVE_MODELS).toEqual(['scribe_v2_realtime', 'scribe_v3_live']);
+    expect(ELEVENLABS_DEFAULT_BATCH_MODEL).toBe('scribe_v2');
+    expect(ELEVENLABS_DEFAULT_LIVE_MODEL).toBe('scribe_v2_realtime');
   });
 });
 
@@ -35,8 +36,8 @@ describe('elevenLabsLiveModel', () => {
     ['scribe_v3', 'scribe_v3_live'],
     ['scribe_v2', 'scribe_v2_realtime'],
     [' scribe_v2 ', 'scribe_v2_realtime'],
-    ['something-else', 'scribe_v3_live'],
-    ['', 'scribe_v3_live'],
+    ['something-else', 'scribe_v2_realtime'],
+    ['', 'scribe_v2_realtime'],
   ])('pairs the batch model %j with the live model %s', (batch, live) => {
     expect(elevenLabsLiveModel(batch)).toBe(live);
   });

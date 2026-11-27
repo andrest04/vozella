@@ -141,19 +141,21 @@ describe('TranscriptionRuntime: the selected engine', () => {
 });
 
 describe('TranscriptionRuntime: an engine whose live text is streamed', () => {
-  /** Deepgram selected with its key, and a streaming provider the test chooses. */
+  /** Deepgram (or `kind`) selected with its key, and a streaming provider the test chooses. */
   async function streamingRuntime(
     options: {
       streaming?: StreamingSpeechProvider | null;
       key?: boolean;
       audioSeconds?: number;
+      kind?: 'Deepgram' | 'ElevenLabs';
     } = {},
   ) {
+    const kind = options.kind ?? 'Deepgram';
     const engine = new FakeAsrEngine();
     const settings = new InMemorySettingsStore();
-    await settings.update({ transcriptionEngine: 'Deepgram' });
+    await settings.update({ transcriptionEngine: kind });
     const keys: ApiKeyStore = new FakeApiKeyStore();
-    if (options.key !== false) await keys.set('Deepgram', 'dg-test');
+    if (options.key !== false) await keys.set(kind, 'test-key');
     const clients: { kind: CloudTranscriptionKind; client: FakeSpeechToTextClient }[] = [];
     const asked: CloudTranscriptionKind[] = [];
     const streaming =
@@ -231,6 +233,25 @@ describe('TranscriptionRuntime: an engine whose live text is streamed', () => {
     expect(asked).toEqual(['Deepgram']);
     expect(clients).toEqual([]);
     expect(engine.recognizers).toHaveLength(0);
+  });
+
+  it('ElevenLabs streams its live pass too, and uploads the pass after Stop', async () => {
+    const { runtime, clients, asked } = await streamingRuntime({ kind: 'ElevenLabs' });
+    expect((await runtime.engine()).kind).toBe('ElevenLabs');
+    const updates: { committedText: string }[] = [];
+    runtime.live.onTranscriptUpdated((update) => updates.push(update));
+    await startLive(runtime);
+    for (let i = 0; i < 5; i += 1) {
+      runtime.live.pushFrame(new Float32Array(RATE / 2).fill(0.25), RATE);
+    }
+    await vi.waitFor(() => {
+      expect(updates.at(-1)?.committedText).toBe('[00:00.00-00:01.90] uno dos tres cuatro');
+    });
+    await runtime.live.stop();
+    expect(asked).toEqual(['ElevenLabs']);
+    expect(clients).toEqual([]);
+    expect(await offline(runtime)).toBe('[00:00.00-00:01.90] alfa beta gamma delta');
+    expect(clients.map((entry) => entry.kind)).toEqual(['ElevenLabs']);
   });
 
   it('the pass after Stop and an imported file upload the recording, with no session', async () => {

@@ -368,6 +368,7 @@
   "Ui_ApiGroqName": "Groq",
   "Ui_ApiOpenAiCompatibleName": "OpenAI-compatible",
   "Ui_DeepgramName": "Deepgram",
+  "Ui_ElevenLabsName": "ElevenLabs",
   "Ui_ApiKeyMissing": "{0} needs your API key. Add it in Settings.",
   "Ui_ApiKeyInvalid": "{0} did not accept your API key. Check it in Settings.",
   "Ui_ApiQuotaExceeded": "Your {0} account is out of credit or quota. Check your plan with {0}.",

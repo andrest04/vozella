@@ -1,7 +1,6 @@
 import {
   ApiProviderError,
   CancelSource,
-  isApiProviderError,
   type CancelSignal,
   type CloudSpeechTimer,
   type SpeechToTextWord,
@@ -28,6 +27,7 @@ import {
   type LiveSocketEvent,
   type LiveSocketFactory,
 } from './live-socket';
+import { LiveKeyCheck } from './live-key-check';
 
 /** Audio goes out in chunks this long; the guide asks for 0.1 to 1 s. */
 export const ELEVENLABS_CHUNK_MS = 250;
@@ -108,23 +108,20 @@ export interface ElevenLabsLiveOptions {
  * error. Protocol: https://elevenlabs.io/docs/api-reference/speech-to-text/v-1-speech-to-text-realtime
  */
 export class ElevenLabsLiveSpeechProvider implements StreamingSpeechProvider {
-  /** What the sessions of this provider have learned, for the ones opened after them. */
-  private readonly known: KnownKey = { accepted: null };
+  /** What the sessions of this provider have learned of the key, for the ones opened after them. */
+  private readonly keyCheck: LiveKeyCheck;
 
-  constructor(private readonly options: ElevenLabsLiveOptions) {}
+  constructor(private readonly options: ElevenLabsLiveOptions) {
+    this.keyCheck = new LiveKeyCheck(options.displayName, options.checkKey);
+  }
 
   get displayName(): string {
     return this.options.displayName;
   }
 
   open(options: StreamingSpeechOptions, listener: StreamingSpeechListener): StreamingSpeechSession {
-    return new ElevenLabsLiveSession(this.options, options, listener, this.known);
+    return new ElevenLabsLiveSession(this.options, options, listener, this.keyCheck);
   }
-}
-
-/** The key a session of the provider started with: a later one that cannot open is the network. */
-interface KnownKey {
-  accepted: string | null;
 }
 
 /** One commit sent and not yet answered, in server milliseconds. */
@@ -231,7 +228,7 @@ class ElevenLabsLiveSession implements StreamingSpeechSession {
     private readonly options: ElevenLabsLiveOptions,
     private readonly stream: StreamingSpeechOptions,
     private readonly listener: StreamingSpeechListener,
-    private readonly known: KnownKey,
+    private readonly keyCheck: LiveKeyCheck,
   ) {
     this.resampler =
       stream.sampleRate > 0 && stream.sampleRate !== RATE
@@ -317,7 +314,7 @@ class ElevenLabsLiveSession implements StreamingSpeechSession {
     try {
       socket = (this.options.socket ?? globalLiveSocket)(url, { [ELEVENLABS_API_KEY_HEADER]: key });
     } catch {
-      void this.explainNeverOpened();
+      this.explainNeverOpened();
       return;
     }
     this.socket = socket;
@@ -331,7 +328,7 @@ class ElevenLabsLiveSession implements StreamingSpeechSession {
     });
     socket.addEventListener('error', () => {
       // After the start, the close that follows carries the code; before it, nothing else will.
-      if (!this.isOpen) void this.explainNeverOpened();
+      if (!this.isOpen) this.explainNeverOpened();
     });
     socket.addEventListener('close', (event) => {
       this.onClose(event);
@@ -345,7 +342,7 @@ class ElevenLabsLiveSession implements StreamingSpeechSession {
     }
     if (this.isOpen) return;
     this.isOpen = true;
-    this.known.accepted = this.key;
+    this.keyCheck.accept(this.key);
     this.armIdle();
     this.listener.opened();
   }
@@ -566,7 +563,7 @@ class ElevenLabsLiveSession implements StreamingSpeechSession {
   private onClose(event: LiveSocketEvent): void {
     if (this.done) return;
     if (!this.isOpen) {
-      void this.explainNeverOpened();
+      this.explainNeverOpened();
       return;
     }
     this.end(this.closeFailure(event));
@@ -577,22 +574,12 @@ class ElevenLabsLiveSession implements StreamingSpeechSession {
    * 1006, no HTTP status); the key check tells them apart. A key an earlier session of this
    * provider started with is not asked about again.
    */
-  private async explainNeverOpened(): Promise<void> {
+  private explainNeverOpened(): void {
     if (this.done || this.explaining) return;
     this.explaining = true;
-    const { displayName } = this.options;
-    if (this.key !== '' && this.known.accepted === this.key) {
-      this.end(new ApiProviderError(displayName, 'Network'));
-      return;
-    }
-    let failure: ApiProviderError;
-    try {
-      await this.options.checkKey(this.key, this.stream.cancel);
-      failure = new ApiProviderError(displayName, 'Network');
-    } catch (error) {
-      failure = isApiProviderError(error) ? error : new ApiProviderError(displayName, 'Network');
-    }
-    this.end(failure);
+    this.keyCheck.explain(this.key, this.stream.cancel, (failure) => {
+      this.end(failure);
+    });
   }
 
   /** The failure of an error message: its type picks the kind, its text is kept without the key. */

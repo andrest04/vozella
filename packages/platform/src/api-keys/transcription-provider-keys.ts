@@ -4,12 +4,14 @@ import {
   ApiProviderError,
   isApiProviderError,
   TRANSCRIPTION_PROVIDERS,
+  type ApiFailureKind,
   type ApiKeyStore,
   type CancelSignal,
   type TranscriptionProvider,
   type TranscriptionProviderKind,
 } from '@vozella/core';
 import { apiBody, globalFetch } from '../api-providers/api-http';
+import { elevenLabsFailureFromHttpStatus } from '../transcription/elevenlabs-scribe';
 
 /** How long Verify waits for the provider before it says it took too long. */
 export const TRANSCRIPTION_KEY_VERIFY_TIMEOUT_MS = 20_000;
@@ -19,6 +21,17 @@ export interface VerifyTranscriptionKeyOptions {
   /** Defaults to `TRANSCRIPTION_KEY_VERIFY_TIMEOUT_MS`. */
   readonly timeoutMs?: number;
 }
+
+/**
+ * How a refusal of the key check reads, where a provider's answer needs more than its status:
+ * ElevenLabs says a spent credit with its own codes, under 401 too. Every other provider maps like
+ * any API call.
+ */
+const KEY_CHECK_FAILURES: Partial<
+  Record<TranscriptionProviderKind, (status: number, bodyText: string) => ApiFailureKind>
+> = {
+  ElevenLabs: elevenLabsFailureFromHttpStatus,
+};
 
 /**
  * Asks a transcription-only provider whether it accepts a key, with the request its table row
@@ -34,14 +47,20 @@ export async function verifyTranscriptionProviderKey(
 ): Promise<void> {
   const secret = key?.trim() ?? '';
   if (secret === '') throw new ApiProviderError(provider.displayName, 'KeyMissing');
+  const { keyCheck } = provider;
+  const classify = KEY_CHECK_FAILURES[provider.kind];
   const answer = apiBody(
     {
-      url: `${provider.defaultBaseUrl}${provider.keyCheck.path}`,
-      method: 'GET',
-      headers: { authorization: `${provider.keyCheck.authScheme} ${secret}` },
+      url: `${provider.defaultBaseUrl}${keyCheck.path}`,
+      method: keyCheck.method,
+      headers: {
+        [keyCheck.header]:
+          keyCheck.authScheme === null ? secret : `${keyCheck.authScheme} ${secret}`,
+      },
     },
     {
       fetch: fetchImpl,
+      ...(classify ? { classify } : {}),
       timeoutMs: options.timeoutMs ?? TRANSCRIPTION_KEY_VERIFY_TIMEOUT_MS,
       ...(options.cancel ? { cancel: options.cancel } : {}),
       displayName: provider.displayName,
