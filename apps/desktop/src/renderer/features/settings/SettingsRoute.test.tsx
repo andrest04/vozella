@@ -1385,14 +1385,14 @@ describe('Settings tabs', () => {
       'SettingsTab-general',
     ]);
     expect(selectedTab()).toBe('Recording');
-    expect(sections()).toEqual(['Microphone', 'Call detection']);
+    expect(sections()).toEqual(['Microphone', 'Type at cursor', 'Call detection']);
   });
 
   it.each([
     ['Transcription', ['Meeting language', 'Transcription']],
     ['Summaries & AI', ['Summary provider']],
     ['General', ['Appearance', 'Language', 'Startup', 'Data', 'About']],
-    ['Recording', ['Microphone', 'Call detection']],
+    ['Recording', ['Microphone', 'Type at cursor', 'Call detection']],
   ])('the %s tab shows only its sections, in lifecycle order', async (name, wanted) => {
     install(handlers);
     mount('en', name === 'Recording' ? 'general' : 'recording');
@@ -1528,7 +1528,7 @@ describe('Settings tabs', () => {
     visit();
     await openRow('Codex CLI');
     await userEvent.click(screen.getByRole('tab', { name: 'Recording' }));
-    expect(sections()).toEqual(['Microphone', 'Call detection']);
+    expect(sections()).toEqual(['Microphone', 'Type at cursor', 'Call detection']);
   });
 });
 

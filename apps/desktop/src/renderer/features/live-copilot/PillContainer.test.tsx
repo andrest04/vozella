@@ -343,3 +343,137 @@ describe('PillContainer', () => {
     });
   });
 });
+
+describe('PillContainer type at cursor', () => {
+  const typing = (over: Record<string, unknown> = {}) => ({
+    state: { status: 'off' },
+    shortcut: { status: 'registered', accelerator: 'CommandOrControl+Alt+Space' },
+    lastRefusal: null,
+    ...over,
+  });
+  const armed = (warning: string | null = null) => ({
+    status: 'armed',
+    source: 'others',
+    processName: 'chrome.exe',
+    warning,
+  });
+  const paused = (reason: string) => ({
+    status: 'paused',
+    source: 'others',
+    processName: 'chrome.exe',
+    reason,
+    warning: null,
+  });
+  const note = () => screen.queryByTestId('pill-cursor-typing-note');
+  const announced = () => screen.getByTestId('pill-cursor-typing-status');
+  const badge = () => screen.queryByTestId('pill-cursor-typing-badge');
+
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+  });
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
+
+  it('shows nothing while typing is off and no hint has run', async () => {
+    const bridge = install();
+    await mount();
+    bridge.emit('cursorTyping.state', typing());
+    expect(badge()).toBeNull();
+    expect(note()).toBeNull();
+    expect(announced()).toHaveTextContent('');
+  });
+
+  it('marks the logo while armed, names the app briefly and announces it', async () => {
+    const bridge = install();
+    await mount();
+    bridge.emit('cursorTyping.state', typing({ state: armed() }));
+    expect(badge()).toHaveAttribute('data-mode', 'armed');
+    expect(badge()).toHaveAttribute('title', 'Typing into Chrome');
+    expect(note()).toHaveTextContent('Typing into Chrome');
+    expect(announced()).toHaveTextContent('Typing into Chrome');
+    act(() => {
+      vi.advanceTimersByTime(4100);
+    });
+    expect(note()).toBeNull();
+    expect(badge()).toHaveAttribute('data-mode', 'armed');
+    expect(announced()).toHaveTextContent('Typing into Chrome');
+  });
+
+  it('says why typing paused, with a different mark than armed', async () => {
+    const bridge = install();
+    await mount();
+    bridge.emit('cursorTyping.state', typing({ state: armed() }));
+    bridge.emit('cursorTyping.state', typing({ state: paused('focus-changed') }));
+    expect(badge()).toHaveAttribute('data-mode', 'paused');
+    expect(note()).toHaveTextContent('Paused: go back to Chrome to continue');
+    bridge.emit('cursorTyping.state', typing({ state: paused('blocked') }));
+    expect(note()).toHaveTextContent("Can't type into apps running as administrator");
+    bridge.emit('cursorTyping.state', typing({ state: armed('speaker-unknown') }));
+    expect(badge()).toHaveAttribute('data-mode', 'paused');
+    expect(note()).toHaveTextContent("No microphone: can't tell who's speaking");
+  });
+
+  it('confirms a stop with a short note and drops the mark', async () => {
+    const bridge = install();
+    await mount();
+    bridge.emit('cursorTyping.state', typing({ state: armed() }));
+    bridge.emit('cursorTyping.state', typing());
+    expect(badge()).toBeNull();
+    expect(note()).toHaveTextContent('Stopped typing');
+  });
+
+  it('answers a press that armed nothing', async () => {
+    const bridge = install();
+    await mount();
+    bridge.emit('cursorTyping.state', typing({ lastRefusal: 'own-window' }));
+    expect(badge()).toBeNull();
+    expect(note()).toHaveTextContent('Put your cursor in another app first');
+    expect(announced()).toHaveTextContent('Put your cursor in another app first');
+  });
+
+  it('names a shortcut another app holds', async () => {
+    const bridge = install();
+    await mount();
+    bridge.emit(
+      'cursorTyping.state',
+      typing({ shortcut: { status: 'unavailable', accelerator: 'CommandOrControl+Alt+Space' } }),
+    );
+    expect(note()).toHaveTextContent('Another app uses Ctrl+Alt+Space');
+  });
+
+  it('teaches the shortcut once, after the started hint closes', async () => {
+    const bridge = install();
+    await mount();
+    bridge.emit('cursorTyping.state', typing());
+    bridge.emit('pill.hint', { show: true, durationMs: 2500, edge: 'Right', pulse: false });
+    expect(note()).toBeNull();
+    bridge.emit('pill.hint', { show: false, durationMs: 2500, edge: 'Right', pulse: false });
+    expect(note()).toHaveTextContent('Ctrl+Alt+Space types at your cursor');
+    act(() => {
+      vi.advanceTimersByTime(4100);
+    });
+    expect(note()).toBeNull();
+    bridge.emit('pill.hint', { show: true, durationMs: 2500, edge: 'Right', pulse: false });
+    bridge.emit('pill.hint', { show: false, durationMs: 2500, edge: 'Right', pulse: false });
+    expect(note()).toBeNull();
+  });
+
+  it('keeps the started hint on top of a note', async () => {
+    const bridge = install();
+    await mount();
+    bridge.emit('pill.hint', { show: true, durationMs: 2500, edge: 'Right', pulse: false });
+    bridge.emit('cursorTyping.state', typing({ state: armed() }));
+    expect(note()).toBeNull();
+    expect(screen.getByRole('status')).toHaveTextContent(en.LiveCopilot_StartedMessage);
+    expect(announced()).toHaveTextContent('Typing into Chrome');
+  });
+
+  it('speaks Spanish', async () => {
+    const bridge = install();
+    await mount('es');
+    bridge.emit('cursorTyping.state', typing({ state: paused('focus-changed') }));
+    expect(note()).toHaveTextContent('En pausa: vuelve a Chrome para continuar');
+  });
+});

@@ -1,6 +1,6 @@
 import type { PillEdgeDto } from '@vozella/contracts';
 import { EXPANDED_RADIUS_DIP, PULSE_SCALE, TIMINGS } from '@vozella/core';
-import { MessageSquare, Pause, Play, Square, Star } from 'lucide-react';
+import { Keyboard, KeyboardOff, MessageSquare, Pause, Play, Square, Star } from 'lucide-react';
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { AudioBars, Icon, Mark, cn } from '../../ui';
 import { useReducedMotion } from '../../ui/use-reduced-motion';
@@ -27,6 +27,13 @@ export interface CapsuleHint {
   readonly message: string;
   readonly side: HintSide;
   readonly pulse: boolean;
+}
+
+/** The type at cursor mark on the logo tile. Its label is the tooltip; the live region speaks. */
+export interface CapsuleTyping {
+  /** `paused` also covers a missing microphone: nothing reaches the field. */
+  readonly mode: 'armed' | 'paused';
+  readonly label: string;
 }
 
 export interface CapsuleLabels {
@@ -70,12 +77,24 @@ export interface CapsuleViewProps {
   /** "Highlighted 00:12.34" while the feedback of the last mark lasts, null otherwise. */
   readonly highlighted: string | null;
   readonly labels: CapsuleLabels;
+  /** Type at cursor is armed or paused; null or absent while it is off. */
+  readonly typing?: CapsuleTyping | null;
+  /** A short type at cursor note, drawn like the hint while no hint is showing. */
+  readonly note?: string | null;
+  /** The last type at cursor change, read politely by screen readers. */
+  readonly typingAnnouncement?: string;
   readonly onOpenApp: () => void;
   readonly onTogglePause: () => void;
   readonly onStop: () => void;
   readonly onHighlight: () => void;
   readonly onToggleExpanded: () => void;
 }
+
+/** The surface of the started hint and of the type at cursor note: one voice for both. */
+const NOTE =
+  'pointer-events-none absolute z-10 rounded-control bg-ink px-1.5 py-1 text-center text-caption text-on-ink ' +
+  'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 ' +
+  'forced-colors:border forced-colors:border-[CanvasText] forced-colors:bg-[Canvas] forced-colors:text-[CanvasText]';
 
 const BUTTON =
   'pill-no-drag inline-flex shrink-0 items-center justify-center rounded-full outline-offset-2 ' +
@@ -89,6 +108,8 @@ const BUTTON =
  */
 export function CapsuleView(props: CapsuleViewProps) {
   const { rect, paused, labels, hint } = props;
+  const typing = props.typing ?? null;
+  const note = props.note ?? null;
   const radius = props.expanded ? EXPANDED_RADIUS_DIP : Math.min(rect.width, rect.height) / 2;
   const reduced = useReducedMotion();
   const pulse = hint?.pulse === true && !reduced;
@@ -150,10 +171,28 @@ export function CapsuleView(props: CapsuleViewProps) {
           onClick={props.onOpenApp}
           className={cn(
             BUTTON,
-            'size-8 rounded-overlay border border-hairline bg-paper hover:bg-hover active:bg-pressed forced-colors:border-[ButtonBorder]',
+            'relative size-8 rounded-overlay border border-hairline bg-paper hover:bg-hover active:bg-pressed forced-colors:border-[ButtonBorder]',
           )}
         >
           <Mark size={20} />
+          {typing ? (
+            // Glyph and fill both change with the mode, so color never carries it alone.
+            <span
+              data-testid="pill-cursor-typing-badge"
+              data-mode={typing.mode}
+              title={typing.label}
+              aria-hidden="true"
+              className={cn(
+                'absolute -right-1.5 -bottom-1.5 flex size-4.5 items-center justify-center rounded-full border',
+                typing.mode === 'armed'
+                  ? 'border-ink bg-ink text-on-ink'
+                  : 'border-border-control bg-paper-raised text-ink',
+                'forced-colors:border-[CanvasText] forced-colors:bg-[Canvas] forced-colors:text-[CanvasText]',
+              )}
+            >
+              <Icon icon={typing.mode === 'armed' ? Keyboard : KeyboardOff} size={12} />
+            </span>
+          ) : null}
         </button>
         <div data-item="bars" className="flex items-center justify-center">
           <AudioBars level={props.level} paused={paused} running={props.running} />
@@ -246,19 +285,38 @@ export function CapsuleView(props: CapsuleViewProps) {
       >
         {props.highlighted ?? ''}
       </span>
+      <span
+        aria-live="polite"
+        aria-atomic="true"
+        data-testid="pill-cursor-typing-status"
+        className="sr-only"
+      >
+        {props.typingAnnouncement ?? ''}
+      </span>
       {hint ? (
         <div
           role="status"
           data-testid="pill-hint"
           data-side={hint.side}
           className={cn(
-            'pointer-events-none absolute z-10 rounded-control bg-ink px-1.5 py-1 text-center text-caption text-on-ink',
-            'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
+            NOTE,
             props.vertical ? 'w-[calc(100%-4px)]' : 'max-w-[85%] whitespace-nowrap',
-            'forced-colors:border forced-colors:border-[CanvasText] forced-colors:bg-[Canvas] forced-colors:text-[CanvasText]',
           )}
         >
           {hint.message}
+        </div>
+      ) : note !== null ? (
+        // No role: the live region above already says it, and only the hint is a status.
+        <div
+          data-testid="pill-cursor-typing-note"
+          className={cn(
+            NOTE,
+            'animate-fade-in motion-reduce:animate-none',
+            // A note can run longer than the hint: it wraps instead of running off the capsule.
+            props.vertical ? 'w-[calc(100%-4px)]' : 'w-max max-w-[85%]',
+          )}
+        >
+          {note}
         </div>
       ) : null}
     </div>
