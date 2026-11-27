@@ -197,7 +197,7 @@ describe('TranscriptionSection: a cloud engine without its key', () => {
     installTranscriptionApi({ 'transcription.getStatus': () => groqNoKey });
     mount();
     const setup = await screen.findByRole('group', { name: 'Groq setup' });
-    const toggle = within(setup).getByRole('button', { name: 'How to get a Groq API key' });
+    const toggle = within(setup).getByRole('button', { name: 'How to get your Groq API key' });
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     const steps = within(within(setup).getByRole('list')).getAllByRole('listitem');
     expect(steps.map((step) => step.textContent)).toEqual([
@@ -261,7 +261,7 @@ describe('TranscriptionSection: a cloud engine with its key', () => {
       within(setup).getByText('The same key also works for summaries and chat with Groq.'),
     ).toBeVisible();
     expect(
-      within(setup).getByRole('button', { name: 'How to get a Groq API key' }),
+      within(setup).getByRole('button', { name: 'How to get your Groq API key' }),
     ).toHaveAttribute('aria-expanded', 'false');
     expect(within(setup).queryByRole('list')).toBeNull();
   });
@@ -371,7 +371,7 @@ describe('TranscriptionSection: Deepgram, a provider that only transcribes', () 
     mount();
     const setup = await screen.findByRole('group', { name: 'Deepgram setup' });
     expect(
-      within(setup).getByRole('button', { name: 'How to get a Deepgram API key' }),
+      within(setup).getByRole('button', { name: 'How to get your Deepgram API key' }),
     ).toHaveAttribute('aria-expanded', 'true');
     expect(
       within(setup).getByRole('link', { name: /Open the Deepgram API keys page/ }),
@@ -490,7 +490,7 @@ describe('TranscriptionSection: ElevenLabs, another provider that only transcrib
       ),
     ).toBeVisible();
     expect(
-      within(setup).getByRole('button', { name: 'How to get a ElevenLabs API key' }),
+      within(setup).getByRole('button', { name: 'How to get your ElevenLabs API key' }),
     ).toHaveAttribute('aria-expanded', 'true');
     expect(
       within(setup).getByRole('link', { name: /Open the ElevenLabs API keys page/ }),

@@ -474,7 +474,7 @@
   "Ui_CloudAudioNotice": "While {0} is selected, the audio of each meeting is sent to {0} to be turned into text.",
   "Ui_CloudSameKey": "The same key also works for summaries and chat with {0}.",
   "Ui_CloudKeyTranscriptionOnly": "This key is used only to transcribe. Summaries and chat use the engine you choose for them.",
-  "Ui_CloudKeyGuideTitle": "How to get a {0} API key",
+  "Ui_CloudKeyGuideTitle": "How to get your {0} API key",
   "Ui_CloudKeyGuideOpen": "Open the {0} API keys page",
   "Ui_OpensInBrowser": "(opens in your browser)",
   "Ui_CloudKeyGuideSignIn": "Sign in, or create an account if you do not have one.",

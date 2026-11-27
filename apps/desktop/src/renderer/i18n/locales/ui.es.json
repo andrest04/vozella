@@ -474,7 +474,7 @@
   "Ui_CloudAudioNotice": "Mientras {0} esté seleccionado, el audio de cada reunión se envía a {0} para convertirlo en texto.",
   "Ui_CloudSameKey": "La misma clave también sirve para los resúmenes y el chat con {0}.",
   "Ui_CloudKeyTranscriptionOnly": "Esta clave solo se usa para transcribir. Los resúmenes y el chat usan el motor que elijas para ellos.",
-  "Ui_CloudKeyGuideTitle": "Cómo obtener una clave de API de {0}",
+  "Ui_CloudKeyGuideTitle": "Cómo conseguir tu clave de API de {0}",
   "Ui_CloudKeyGuideOpen": "Abre la página de claves de API de {0}",
   "Ui_OpensInBrowser": "(se abre en tu navegador)",
   "Ui_CloudKeyGuideSignIn": "Inicia sesión o crea una cuenta si todavía no tienes una.",
