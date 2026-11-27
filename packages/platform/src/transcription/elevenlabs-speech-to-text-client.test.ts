@@ -189,7 +189,11 @@ describe('ElevenLabsSpeechToTextClient: the answer', () => {
 describe('ElevenLabsSpeechToTextClient: failures', () => {
   it.each([
     [401, '{"detail":{"type":"authentication_error","code":"invalid_api_key"}}', 'KeyInvalid'],
-    [403, '{"detail":{"type":"authorization_error","code":"insufficient_permissions"}}', 'KeyInvalid'],
+    [
+      403,
+      '{"detail":{"type":"authorization_error","code":"insufficient_permissions"}}',
+      'KeyInvalid',
+    ],
     [402, '{"detail":{"type":"payment_required","code":"insufficient_credits"}}', 'QuotaExceeded'],
     [429, '{"detail":{"type":"rate_limit_error","code":"rate_limit_exceeded"}}', 'RateLimited'],
     [

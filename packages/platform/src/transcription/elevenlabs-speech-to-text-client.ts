@@ -78,7 +78,10 @@ export class ElevenLabsSpeechToTextClient implements SpeechToTextClient {
       },
     );
     // A webhook acknowledgement or any other shape carries neither field.
-    if (!isJsonObject(answer) || (typeof answer.text !== 'string' && !Array.isArray(answer.words))) {
+    if (
+      !isJsonObject(answer) ||
+      (typeof answer.text !== 'string' && !Array.isArray(answer.words))
+    ) {
       throw new ApiProviderError(displayName, 'Unknown', 'The answer was not a transcription.');
     }
 
