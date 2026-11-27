@@ -349,6 +349,7 @@ describe('PillContainer type at cursor', () => {
     state: { status: 'off' },
     shortcut: { status: 'registered', accelerator: 'CommandOrControl+Alt+Space' },
     lastRefusal: null,
+    refusalSeq: 0,
     ...over,
   });
   const armed = (warning: string | null = null) => ({
@@ -431,6 +432,19 @@ describe('PillContainer type at cursor', () => {
     expect(badge()).toBeNull();
     expect(note()).toHaveTextContent('Put your cursor in another app first');
     expect(announced()).toHaveTextContent('Put your cursor in another app first');
+  });
+
+  it('answers a repeated press with the same refusal again', async () => {
+    const bridge = install();
+    await mount();
+    bridge.emit('cursorTyping.state', typing({ lastRefusal: 'inactive', refusalSeq: 1 }));
+    expect(note()).toHaveTextContent('Start a recording first');
+    act(() => {
+      vi.advanceTimersByTime(4100);
+    });
+    expect(note()).toBeNull();
+    bridge.emit('cursorTyping.state', typing({ lastRefusal: 'inactive', refusalSeq: 2 }));
+    expect(note()).toHaveTextContent('Start a recording first');
   });
 
   it('names a shortcut another app holds', async () => {

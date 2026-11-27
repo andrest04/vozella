@@ -84,6 +84,7 @@ import {
   refreshCursorTypingSettings,
 } from './cursor-typing/compose-cursor-typing';
 import type { CursorTypingController } from './cursor-typing/cursor-typing-controller';
+import { installCursorTypingProbe } from './cursor-typing/cursor-typing-probe';
 import { composeProjects } from './projects/compose-projects';
 import { composeSettings } from './settings/compose-settings';
 import { composeSummaries } from './summaries/compose-summaries';
@@ -843,7 +844,7 @@ function main(): void {
 
       // Type at cursor: finalized live lines typed into the field armed with the global shortcut,
       // held only while a take records.
-      cursorTyping = composeCursorTyping({
+      const composedCursorTyping = composeCursorTyping({
         fakeNative,
         loadInjector: () =>
           createNativePorts({
@@ -860,7 +861,10 @@ function main(): void {
         logger: logger.child('cursor-typing'),
         server: ipcServer,
         stopOnExit,
-      }).controller;
+      });
+      cursorTyping = composedCursorTyping.controller;
+      // Test mode only: the e2e reads what the fake injector typed and moves its foreground.
+      if (mode === 'test') installCursorTypingProbe(composedCursorTyping.injector);
 
       // Recording: the service owns a take from Record to the saved summary.
       const liveAsk = new LiveAsk({

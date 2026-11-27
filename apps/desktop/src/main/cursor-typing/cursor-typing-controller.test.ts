@@ -177,6 +177,7 @@ describe('CursorTypingController toggle', () => {
       state: { status: 'armed', source: 'all', processName: 'notepad.exe', warning: null },
       shortcut: { status: 'registered', accelerator: DEFAULT },
       lastRefusal: null,
+      refusalSeq: 0,
     });
     t.shortcuts.press(DEFAULT);
     expect(t.last()?.state).toEqual({ status: 'off' });
@@ -225,6 +226,23 @@ describe('CursorTypingController toggle', () => {
     expect(t.last()?.lastRefusal).toBeNull();
   });
 
+  it('broadcasts every refused press, the same refusal twice included', async () => {
+    const t = await setup();
+    const before = t.statuses.length;
+    t.controller.toggle();
+    t.controller.toggle();
+    const sent = t.statuses.slice(before);
+    expect(sent.map((status) => status.lastRefusal)).toEqual(['inactive', 'inactive']);
+    expect(sent.map((status) => status.refusalSeq)).toEqual([1, 2]);
+
+    // A new take clears the refusal but never rewinds the count.
+    t.controller.setRecording(true);
+    expect(t.last()).toMatchObject({ lastRefusal: null, refusalSeq: 2 });
+    t.injector.target = null;
+    expect(t.controller.toggle()).toEqual({ ok: false, reason: 'no-target' });
+    expect(t.last()).toMatchObject({ lastRefusal: 'no-target', refusalSeq: 3 });
+  });
+
   it('a toggle that disarms answers null', async () => {
     const t = await setup();
     t.controller.setRecording(true);
@@ -247,6 +265,7 @@ describe('CursorTypingController recording lifecycle', () => {
         state: { status: 'off' },
         shortcut: { status: 'inactive', accelerator: DEFAULT },
         lastRefusal: null,
+        refusalSeq: 0,
       },
     ]);
 
@@ -267,6 +286,7 @@ describe('CursorTypingController recording lifecycle', () => {
         state: { status: 'off' },
         shortcut: { status: 'inactive', accelerator: DEFAULT },
         lastRefusal: null,
+        refusalSeq: 0,
       },
     ]);
     t.controller.setRecording(true);

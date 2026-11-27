@@ -84,6 +84,8 @@ export class CursorTypingController {
   private held: string | null = null;
   private shortcutStatus: ShortcutStatus = 'inactive';
   private lastRefusal: CursorTypingRefusalDto | null = null;
+  /** Bumped by every refused toggle and never reset: an identical refusal is still broadcast. */
+  private refusalSeq = 0;
   private published: string | null = null;
   /** Above zero while a step runs: the typer's own emits wait for the step's single publish. */
   private quiet = 0;
@@ -151,7 +153,10 @@ export class CursorTypingController {
       const result: CursorTypingToggleResult = this.isActive()
         ? this.typer.arm(this.prefs.source)
         : { ok: false, reason: 'inactive' };
-      if (!result.ok) this.lastRefusal = result.reason;
+      if (!result.ok) {
+        this.lastRefusal = result.reason;
+        this.refusalSeq += 1;
+      }
       return result;
     });
   }
@@ -161,6 +166,7 @@ export class CursorTypingController {
       state: this.typer.state(),
       shortcut: { status: this.shortcutStatus, accelerator: this.prefs.accelerator },
       lastRefusal: this.lastRefusal,
+      refusalSeq: this.refusalSeq,
     };
   }
 

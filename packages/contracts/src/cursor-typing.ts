@@ -56,6 +56,12 @@ export const cursorTypingStatusSchema = z.object({
   }),
   /** The last toggle that armed nothing; cleared by the next arm, a disarm or a new take. */
   lastRefusal: cursorTypingRefusalSchema.nullable(),
+  /**
+   * Counts every toggle that armed nothing and never goes back, so a second press with the same
+   * refusal still changes the status and the page answers it again. Main always sends it; a
+   * status without it counts as no refusal seen.
+   */
+  refusalSeq: z.number().int().nonnegative().optional(),
 });
 export type CursorTypingStatusDto = z.infer<typeof cursorTypingStatusSchema>;
 

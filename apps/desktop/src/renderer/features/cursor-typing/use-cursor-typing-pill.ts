@@ -43,6 +43,8 @@ export function useCursorTypingPill(hintVisible: boolean): CursorTypingPill {
 
   const stateText = status ? cursorTypingStateText(status, t) : null;
   const refusalText = status ? cursorTypingRefusalText(status.lastRefusal, t) : null;
+  // Every refused press bumps it, so the same refusal twice shows its note twice.
+  const refusalSeq = status?.refusalSeq ?? 0;
   const typingStatus = status?.state.status ?? 'off';
   const held = status?.shortcut.status === 'registered';
   const teachable = held && typingStatus === 'off';
@@ -64,7 +66,7 @@ export function useCursorTypingPill(hintVisible: boolean): CursorTypingPill {
     if (refusalText === null) return;
     show(refusalText);
     setAnnouncement(refusalText);
-  }, [refusalText, show]);
+  }, [refusalText, refusalSeq, show]);
 
   // Per take: the shortcut is let go when the take ends, which starts the next lesson afresh.
   const hintSeen = useRef(false);

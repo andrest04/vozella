@@ -80,6 +80,20 @@ describe('cursor typing contracts', () => {
     );
   });
 
+  it('counts refused presses, so the same refusal twice is still news', () => {
+    const base = {
+      state: { status: 'off' },
+      shortcut: { status: 'inactive', accelerator: 'Alt+F9' },
+      lastRefusal: 'inactive',
+    };
+    expect(cursorTypingStatusSchema.parse({ ...base, refusalSeq: 2 })).toEqual({
+      ...base,
+      refusalSeq: 2,
+    });
+    expect(cursorTypingStatusSchema.safeParse({ ...base, refusalSeq: -1 }).success).toBe(false);
+    expect(cursorTypingStatusSchema.safeParse({ ...base, refusalSeq: 1.5 }).success).toBe(false);
+  });
+
   it('toggle takes no input and answers the arm outcome with the new status', () => {
     expect(cursorTypingToggle.input.safeParse({}).success).toBe(true);
     expect(cursorTypingToggle.input.safeParse({ source: 'all' }).success).toBe(false);
